@@ -852,3 +852,16 @@ Licence:
 Found in hex form in kernel source.
 
 --------------------------------------------------------------------------
+
+Driver: imx-sdma -- Freescale i.MX SDMA driver
+
+File: imx/sdma/sdma-imx25.bin
+File: imx/sdma/sdma-imx31.bin
+File: imx/sdma/sdma-imx35.bin
+File: imx/sdma/sdma-imx51.bin
+File: imx/sdma/sdma-imx53.bin
+File: imx/sdma/sdma-imx6.bin
+
+License: Redistributable. See LICENCE.fsl_firmware for details
+
+--------------------------------------------------------------------------
