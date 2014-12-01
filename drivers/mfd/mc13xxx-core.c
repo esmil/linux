@@ -395,6 +395,9 @@ static int mc13xxx_probe_flags_dt(struct mc13xxx *mc13xxx)
 	if (of_property_read_bool(np, "fsl,mc13xxx-uses-touch"))
 		mc13xxx->flags |= MC13XXX_USE_TOUCHSCREEN;
 
+	if (of_get_property(np, "fsl,mc13xxx-uses-poweroff", NULL))
+		mc13xxx->flags |= MC13XXX_USE_POWEROFF;
+
 	return 0;
 }
 #else

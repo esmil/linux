@@ -19,12 +19,14 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include "mc13xxx.h"
 
 #define MC13892_REVISION			7
 
 #define MC13892_POWERCTL0			13
-#define MC13892_POWERCTL0_USEROFFSPI		3
+#define MC13892_POWERCTL0_WARMEN		(1<<2)
+#define MC13892_POWERCTL0_USEROFFSPI		(1<<3)
 #define MC13892_POWERCTL0_VCOINCELLVSEL		20
 #define MC13892_POWERCTL0_VCOINCELLVSEL_M	(7<<20)
 #define MC13892_POWERCTL0_VCOINCELLEN		(1<<23)
@@ -528,6 +530,20 @@ static unsigned int mc13892_vcam_get_mode(struct regulator_dev *rdev)
 
 static struct regulator_ops mc13892_vcam_ops;
 
+static struct mc13xxx *mc13892_power_off_handle;
+
+static void mc13892_power_off(void)
+{
+	struct mc13xxx *mc13892 = mc13892_power_off_handle;
+
+	mc13xxx_lock(mc13892);
+	mc13xxx_reg_rmw(mc13892, MC13892_POWERCTL0,
+			MC13892_POWERCTL0_USEROFFSPI | MC13892_POWERCTL0_WARMEN,
+			MC13892_POWERCTL0_USEROFFSPI);
+	mc13xxx_unlock(mc13892);
+	msleep(500);
+}
+
 static int mc13892_regulator_probe(struct platform_device *pdev)
 {
 	struct mc13xxx_regulator_priv *priv;
@@ -621,6 +637,18 @@ static int mc13892_regulator_probe(struct platform_device *pdev)
 				mc13892_regulators[i].desc.name);
 			return PTR_ERR(priv->regulators[i]);
 		}
+	}
+
+	if (mc13xxx_get_flags(mc13892) & MC13XXX_USE_POWEROFF) {
+		/* set the pm_power_off function
+		 * or complain if it's already set */
+		if (pm_power_off == NULL) {
+			mc13892_power_off_handle = mc13892;
+			pm_power_off = mc13892_power_off;
+		} else
+			dev_err(&pdev->dev,
+					"%s: pm_power_off function already registered",
+					__func__);
 	}
 
 	return 0;

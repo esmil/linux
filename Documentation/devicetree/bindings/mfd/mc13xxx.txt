@@ -8,6 +8,8 @@ Optional properties:
 - fsl,mc13xxx-uses-codec : Indicate the Audio Codec is being used
 - fsl,mc13xxx-uses-rtc : Indicate the RTC is being used
 - fsl,mc13xxx-uses-touch : Indicate the touchscreen controller is being used
+- fsl,mc13xxx-uses-poweroff : Indicate the regulator is used to power off the
+  system
 
 Sub-nodes:
 - codec: Contain the Audio Codec node.

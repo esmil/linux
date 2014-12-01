@@ -219,6 +219,7 @@
 		interrupt-parent = <&gpio1>;
 		interrupts = <8 IRQ_TYPE_LEVEL_HIGH>;
 		fsl,mc13xxx-uses-rtc;
+		fsl,mc13xxx-uses-poweroff;
 
 		regulators {
 			sw1_reg: sw1 {

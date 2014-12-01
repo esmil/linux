@@ -224,6 +224,7 @@ struct mc13xxx_codec_platform_data {
 #define MC13XXX_USE_CODEC	(1 << 1)
 #define MC13XXX_USE_ADC		(1 << 2)
 #define MC13XXX_USE_RTC		(1 << 3)
+#define MC13XXX_USE_POWEROFF	(1 << 4)
 
 struct mc13xxx_platform_data {
 	unsigned int flags;
