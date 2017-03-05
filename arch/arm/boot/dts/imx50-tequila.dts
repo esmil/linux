@@ -1,0 +1,187 @@
+/*
+ * Copyright 2013 Greg Ungerer <gerg@uclinux.org>
+ * Copyright 2011 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ * Copyright 2017 Emil Renner Berthing <kernel@esmil.dk>
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/dts-v1/;
+#include "imx50.dtsi"
+
+/ {
+	model = "Amazon Kindle 4 (tequila)";
+	compatible = "fsl,imx50-tequila", "fsl,imx50";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory {
+		reg = <0x70000000 0x10000000>;
+	};
+};
+
+&wdog1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_wdog>;
+	fsl,ext-reset-output;
+	status = "okay";
+};
+
+&iomuxc {
+	imx50-tequila {
+		pinctrl_uart1: uart1grp {
+			fsl,pins = <
+				MX50_PAD_UART1_TXD__UART1_TXD_MUX	0x1c4
+				MX50_PAD_UART1_RXD__UART1_RXD_MUX	0x1e4
+			>;
+		};
+
+		pinctrl_wdog: wdoggrp {
+			fsl,pins = <
+				MX50_PAD_WDOG__WDOG1_WDOG_RST_B_DEB	0xc
+			>;
+		};
+
+		pinctrl_cspi: cspigrp {
+			fsl,pins = <
+				MX50_PAD_CSPI_MISO__CSPI_MISO		0xc4
+				MX50_PAD_CSPI_MOSI__CSPI_MOSI		0xc4
+				MX50_PAD_CSPI_SCLK__CSPI_SCLK		0xc4
+				MX50_PAD_CSPI_SS0__GPIO4_11		0x0
+				MX50_PAD_ECSPI1_MOSI__GPIO4_13		0xc4
+			>;
+		};
+
+		pinctrl_pmic: pmicgrp {
+			fsl,pins = <
+				MX50_PAD_UART1_CTS__GPIO6_8		0x1c4
+			>;
+		};
+	};
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1>;
+	status = "okay";
+};
+
+&cspi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_cspi>;
+	fsl,spi-num-chipselects = <2>;
+	cs-gpios = <&gpio4 11 0>, <&gpio4 13 0>;
+	status = "okay";
+
+	pmic: mc13892@0 {
+		compatible = "fsl,mc13892";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_pmic>;
+		spi-max-frequency = <6000000>;
+		spi-cs-high;
+		reg = <0>;
+		interrupt-parent = <&gpio6>;
+		interrupts = <8 GPIO_ACTIVE_HIGH>;
+		fsl,mc13xxx-uses-rtc;
+
+		regulators {
+			sw1_reg: sw1 {
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <1375000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			sw2_reg: sw2 {
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <1850000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			sw3_reg: sw3 {
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1850000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			sw4_reg: sw4 {
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1850000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			viohi_reg: viohi {
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			vpll_reg: vpll {
+				regulator-min-microvolt = <1050000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			vdig_reg: vdig {
+				regulator-min-microvolt = <1250000>;
+				regulator-max-microvolt = <1250000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			vsd_reg: vsd {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3150000>;
+			};
+
+			vusb2_reg: vusb2 {
+				regulator-min-microvolt = <2400000>;
+				regulator-max-microvolt = <2775000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			vvideo_reg: vvideo {
+				regulator-min-microvolt = <2775000>;
+				regulator-max-microvolt = <2775000>;
+			};
+
+			vaudio_reg: vaudio {
+				regulator-min-microvolt = <2300000>;
+				regulator-max-microvolt = <3000000>;
+			};
+
+			vcam_reg: vcam {
+				regulator-min-microvolt = <2500000>;
+				regulator-max-microvolt = <3000000>;
+			};
+
+			vgen1_reg: vgen1 {
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+			};
+
+			vgen2_reg: vgen2 {
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3150000>;
+				regulator-always-on;
+			};
+
+			vgen3_reg: vgen3 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+			};
+		};
+	};
+};
