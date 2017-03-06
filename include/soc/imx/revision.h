@@ -31,6 +31,7 @@ int mx35_revision(void);
 int mx51_revision(void);
 int mx53_revision(void);
 
+void imx_set_soc_revision(unsigned int rev);
 unsigned int imx_get_soc_revision(void);
 void imx_print_silicon_rev(const char *cpu, int srev);
 

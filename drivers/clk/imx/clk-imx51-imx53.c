@@ -383,6 +383,7 @@ static void __init mx50_clocks_init(struct device_node *np)
 	clk_set_rate(clk[IMX5_CLK_ESDHC_B_PODF], 200000000);
 
 	clk_prepare_enable(clk[IMX5_CLK_IIM_GATE]);
+	imx_set_soc_revision(IMX_CHIP_REVISION_1_1);
 	imx_print_silicon_rev("i.MX50", IMX_CHIP_REVISION_1_1);
 	clk_disable_unprepare(clk[IMX5_CLK_IIM_GATE]);
 
