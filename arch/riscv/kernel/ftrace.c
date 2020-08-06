@@ -9,6 +9,7 @@
 #include <linux/uaccess.h>
 #include <linux/memory.h>
 #include <asm/cacheflush.h>
+#include <asm/insn.h>
 #include <asm/patch.h>
 
 #ifdef CONFIG_DYNAMIC_FTRACE
@@ -24,15 +25,34 @@ int ftrace_arch_code_modify_post_process(void) __releases(&text_mutex)
 	return 0;
 }
 
-static int ftrace_check_current_call(unsigned long hook_pos,
-				     unsigned int *expected)
+/*
+ * A general call in RISC-V is a pair of insts:
+ * 1) auipc: setting high-20 pc-related bits to ra register
+ * 2) jalr: setting low-12 offset to ra, jump to ra, and set ra to
+ *          return address (original pc + 4)
+ *
+ * Dynamic ftrace generates probes to call sites, so we must deal with
+ * both auipc and jalr at the same time.
+ */
+static void make_call(u32 insn[2], unsigned long caller, unsigned long callee)
 {
-	unsigned int replaced[2];
-	unsigned int nops[2] = {NOP4, NOP4};
+	unsigned long offset = callee - caller;
 
-	/* we expect nops at the hook position */
-	if (!expected)
-		expected = nops;
+	insn[0] = RISCV_INSN_AUIPC | RISCV_INSN_RD_RA |
+		riscv_insn_u_imm(offset + 0x800);
+	insn[1] = RISCV_INSN_JALR | RISCV_INSN_RD_RA | RISCV_INSN_RS1_RA |
+		riscv_insn_i_imm(offset);
+}
+
+static void make_nops(u32 insn[2])
+{
+	insn[0] = RISCV_INSN_NOP;
+	insn[1] = RISCV_INSN_NOP;
+}
+
+static int ftrace_check_current_call(unsigned long hook_pos, u32 expected[2])
+{
+	u32 replaced[2];
 
 	/*
 	 * Read the text we want to modify;
@@ -59,14 +79,15 @@ static int ftrace_check_current_call(unsigned long hook_pos,
 static int __ftrace_modify_call(unsigned long hook_pos, unsigned long target,
 				bool enable)
 {
-	unsigned int call[2];
-	unsigned int nops[2] = {NOP4, NOP4};
+	u32 insn[2];
 
-	make_call(hook_pos, target, call);
+	if (enable)
+		make_call(insn, hook_pos, target);
+	else
+		make_nops(insn);
 
 	/* Replace the auipc-jalr pair at once. Return -EPERM on write error. */
-	if (patch_text_nosync
-	    ((void *)hook_pos, enable ? call : nops, MCOUNT_INSN_SIZE))
+	if (patch_text_nosync((void *)hook_pos, insn, MCOUNT_INSN_SIZE))
 		return -EPERM;
 
 	return 0;
@@ -74,8 +95,11 @@ static int __ftrace_modify_call(unsigned long hook_pos, unsigned long target,
 
 int ftrace_make_call(struct dyn_ftrace *rec, unsigned long addr)
 {
-	int ret = ftrace_check_current_call(rec->ip, NULL);
+	u32 insn[2];
+	int ret;
 
+	make_nops(insn);
+	ret = ftrace_check_current_call(rec->ip, insn);
 	if (ret)
 		return ret;
 
@@ -85,12 +109,11 @@ int ftrace_make_call(struct dyn_ftrace *rec, unsigned long addr)
 int ftrace_make_nop(struct module *mod, struct dyn_ftrace *rec,
 		    unsigned long addr)
 {
-	unsigned int call[2];
+	u32 call[2];
 	int ret;
 
-	make_call(rec->ip, addr, call);
+	make_call(call, rec->ip, addr);
 	ret = ftrace_check_current_call(rec->ip, call);
-
 	if (ret)
 		return ret;
 
@@ -101,6 +124,7 @@ int ftrace_update_ftrace_func(ftrace_func_t func)
 {
 	int ret = __ftrace_modify_call((unsigned long)&ftrace_call,
 				       (unsigned long)func, true);
+
 	if (!ret) {
 		ret = __ftrace_modify_call((unsigned long)&ftrace_regs_call,
 					   (unsigned long)func, true);
@@ -119,12 +143,11 @@ int __init ftrace_dyn_arch_init(void)
 int ftrace_modify_call(struct dyn_ftrace *rec, unsigned long old_addr,
 		       unsigned long addr)
 {
-	unsigned int call[2];
+	u32 call[2];
 	int ret;
 
-	make_call(rec->ip, old_addr, call);
+	make_call(call, rec->ip, old_addr);
 	ret = ftrace_check_current_call(rec->ip, call);
-
 	if (ret)
 		return ret;
 
@@ -159,11 +182,9 @@ void prepare_ftrace_return(unsigned long *parent, unsigned long self_addr,
 extern void ftrace_graph_call(void);
 int ftrace_enable_ftrace_graph_caller(void)
 {
-	unsigned int call[2];
 	static int init_graph = 1;
+	u32 insn[2];
 	int ret;
-
-	make_call(&ftrace_graph_call, &ftrace_stub, call);
 
 	/*
 	 * When enabling graph tracer for the first time, ftrace_graph_call
@@ -171,14 +192,14 @@ int ftrace_enable_ftrace_graph_caller(void)
 	 * the 8-bytes at the position becomes NOPs.
 	 */
 	if (init_graph) {
-		ret = ftrace_check_current_call((unsigned long)&ftrace_graph_call,
-						call);
+		make_call(insn,	(unsigned long)&ftrace_graph_call,
+				(unsigned long)&ftrace_stub);
 		init_graph = 0;
 	} else {
-		ret = ftrace_check_current_call((unsigned long)&ftrace_graph_call,
-						NULL);
+		make_nops(insn);
 	}
 
+	ret = ftrace_check_current_call((unsigned long)&ftrace_graph_call, insn);
 	if (ret)
 		return ret;
 
@@ -188,10 +209,11 @@ int ftrace_enable_ftrace_graph_caller(void)
 
 int ftrace_disable_ftrace_graph_caller(void)
 {
-	unsigned int call[2];
+	u32 call[2];
 	int ret;
 
-	make_call(&ftrace_graph_call, &prepare_ftrace_return, call);
+	make_call(call, (unsigned long)&ftrace_graph_call,
+			(unsigned long)&prepare_ftrace_return);
 
 	/*
 	 * This is to make sure that ftrace_enable_ftrace_graph_caller
@@ -199,7 +221,6 @@ int ftrace_disable_ftrace_graph_caller(void)
 	 */
 	ret = ftrace_check_current_call((unsigned long)&ftrace_graph_call,
 					call);
-
 	if (ret)
 		return ret;
 
