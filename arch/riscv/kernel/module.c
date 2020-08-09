@@ -13,6 +13,23 @@
 #include <linux/pgtable.h>
 #include <asm/sections.h>
 
+#ifdef CONFIG_32BIT
+static inline bool riscv_insn_valid_32bit_offset(ptrdiff_t val)
+{
+	return true;
+}
+#else
+static inline bool riscv_insn_valid_32bit_offset(ptrdiff_t val)
+{
+	/*
+	 * auipc+jalr can reach any signed PC-relative offset in the range
+	 * [-2^31 - 2^11, 2^31 - 2^11).
+	 */
+	return (-(1L << 31) - (1L << 11)) <= val &&
+		val < ((1L << 31) - (1L << 11));
+}
+#endif
+
 static int riscv_insn_rmw(u8 *location, u32 keep, u32 set)
 {
 	u16 *parcel = (u16 *)location;
@@ -111,7 +128,7 @@ static int apply_r_riscv_pcrel_hi20_rela(struct module *me, u8 *location,
 {
 	ptrdiff_t offset = (u8 *)v - location;
 
-	if (offset != (s32)offset) {
+	if (!riscv_insn_valid_32bit_offset(offset)) {
 		pr_err(
 		  "%s: target %016llx can not be addressed by the 32-bit offset from PC = %p\n",
 		  me->name, (long long)v, location);
@@ -202,10 +219,9 @@ static int apply_r_riscv_call_plt_rela(struct module *me, u8 *location,
 				       Elf_Addr v)
 {
 	ptrdiff_t offset = (u8 *)v - location;
-	s32 fill_v = offset;
 	u32 hi20, lo12;
 
-	if (offset != fill_v) {
+	if (!riscv_insn_valid_32bit_offset(offset)) {
 		/* Only emit the plt entry if offset over 32-bit range */
 		if (IS_ENABLED(CONFIG_MODULE_SECTIONS)) {
 			unsigned long entry = module_emit_plt_entry(me, v);
@@ -228,10 +244,9 @@ static int apply_r_riscv_call_rela(struct module *me, u8 *location,
 				   Elf_Addr v)
 {
 	ptrdiff_t offset = (u8 *)v - location;
-	s32 fill_v = offset;
 	u32 hi20, lo12;
 
-	if (offset != fill_v) {
+	if (!riscv_insn_valid_32bit_offset(offset)) {
 		pr_err(
 		  "%s: target %016llx can not be addressed by the 32-bit offset from PC = %p\n",
 		  me->name, (long long)v, location);
