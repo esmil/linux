@@ -21,6 +21,9 @@
 #include <linux/module.h>
 #include <linux/gpio/driver.h>
 #include <linux/platform_device.h>
+#include <linux/proc_fs.h>
+#include <linux/uaccess.h>
+#include <linux/mutex.h>
 #include <linux/spinlock.h>
 
 #define GPIO_EN		0x0
@@ -57,6 +60,12 @@ struct starfive_gpio {
 	unsigned		trigger[MAX_GPIO];
 	unsigned int		irq_parent[MAX_GPIO];
 };
+
+/* lock for procfs read access */
+static DEFINE_MUTEX(read_lock);
+
+/* lock for procfs write access */
+static DEFINE_MUTEX(write_lock);
 
 static DEFINE_SPINLOCK(sfg_lock);
 
@@ -460,6 +469,136 @@ void sf_vic_gpio_manual(int offset, int v)
 }
 EXPORT_SYMBOL_GPL(sf_vic_gpio_manual);
 
+static int str_to_num(char *str)
+{
+	char *p = str;
+	int value = 0;
+
+	if ((*p == '0') && (*(p + 1) == 'x' || *(p + 1) == 'X')) {
+		p = p + 2;
+		while (((*p >= '0') && (*p <= '9')) ||
+				((*p >= 'a') && (*p <= 'f')) ||
+				((*p >= 'A') && (*p <= 'F'))) {
+			if ((*p >= '0') && (*p <= '9'))
+				value = value * 16 + (*p - '0');
+			if ((*p >= 'a') && (*p <= 'f'))
+				value = value * 16 + 10 + (*p - 'a');
+			if ((*p >= 'A') && (*p <= 'F'))
+				value = value * 16 + 10 + (*p - 'A');
+			p = p + 1;
+		}
+	} else {
+		while ((*p >= '0') && (*p <= '9')) {
+			value = value * 10 + (*p - '0');
+			p = p + 1;
+		}
+	}
+
+	if (*p != '\0')
+		return -EFAULT;
+
+	return value;
+}
+
+static ssize_t vic_gpio_proc_write(struct file *file, const char __user *buf,
+						size_t count, loff_t *ppos)
+{
+	int ret;
+	char message[64], cmd[8], gnum[8], v[8];
+	int gpionum, value;
+
+	if (mutex_lock_interruptible(&write_lock))
+		return -ERESTARTSYS;
+
+	ret = copy_from_user(message, buf, count);
+	mutex_unlock(&write_lock);
+	if (ret)
+		return -EFAULT;
+	sscanf(message, "%s %s %s", cmd, gnum, v);
+	gpionum = str_to_num(gnum);
+	if (gpionum < 0)
+		return -EFAULT;
+	value = str_to_num(v);
+	if (value < 0)
+		return -EFAULT;
+
+	if (!strcmp(cmd, "dout")) {
+		if (gpionum < 0 || gpionum > 63) {
+			printk(KERN_ERR "vic-gpio: dout gpionum (0-63) value (0/1) invalid: gpionum = %d value = %d\n",
+					gpionum, value);
+			return -EFAULT;
+		}
+		sf_vic_gpio_dout_value(gpionum, value);
+	} else if (!strcmp(cmd, "doen")) {
+		if (gpionum < 0 || gpionum > 63) {
+			printk(KERN_ERR "vic-gpio: doen gpionum (0-63) value (0/1) invalid: gpionum = %d value = %d\n",
+					gpionum, value);
+			return -EFAULT;
+		}
+		sf_vic_gpio_doen_value(gpionum, value);
+	} else if (!strcmp(cmd, "utrv")) {
+		if (gpionum < 0 || gpionum > 63) {
+			printk(KERN_ERR "vic-gpio: utrv gpionum (0-63) is invalid: %d\n", gpionum);
+			return -EFAULT;
+		}
+		sf_vic_gpio_doen_reverse(gpionum, value);
+	} else if (!strcmp(cmd, "enrv")) {
+		if (gpionum < 0 || gpionum > 63) {
+			printk(KERN_ERR "vic-gpio: enrv gpionum (0-63) is invalid: %d\n", gpionum);
+			return -EFAULT;
+		}
+		sf_vic_gpio_doen_reverse(gpionum, value);
+	} else if (!strcmp(cmd, "manu")) {
+		if (gpionum < 0x250 || gpionum > 0x378 || (gpionum & 0x3)) {
+			printk(KERN_ERR "vic-gpio: manu offset (0x250-0x378 & mod 4) is invalid: %d\n", gpionum);
+			return -EFAULT;
+		}
+		sf_vic_gpio_manual(gpionum, value);
+	} else {
+		printk(KERN_ERR "vic-gpio: cmd (dout doen utrv enrv manu) invalid: %s\n", cmd);
+	}
+
+	return count;
+}
+
+static ssize_t vic_gpio_proc_read(struct file *file, char __user *buf,
+		size_t count, loff_t *ppos)
+{
+	int ret;
+	unsigned int copied;
+	char message[256];
+
+	sprintf(message, "Usage: echo 'cmd gpionum value' >/proc/vic_gpio\n\t"
+		"cmd: dout doen utrv enrv or manu\n\t"
+		"gpionum: gpionum or address offset for manu\n\t"
+		"value: 0/1 for utrv/enrv, value for dout/doen/manual\n");
+	copied = strlen(message);
+
+	if (*ppos >= copied)
+		return 0;
+
+	if (mutex_lock_interruptible(&read_lock))
+		return -ERESTARTSYS;
+
+	ret = copy_to_user(buf, message, copied);
+	if (ret) {
+		mutex_unlock(&read_lock);
+		return ret;
+	}
+	*ppos += copied;
+
+	mutex_unlock(&read_lock);
+
+	return copied;
+}
+
+static const struct file_operations vic_gpio_fops = {
+	.owner	= THIS_MODULE,
+	.read	= vic_gpio_proc_read,
+	.write	= vic_gpio_proc_write,
+	.llseek	= noop_llseek,
+};
+
 static int starfive_gpio_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -528,6 +667,9 @@ static int starfive_gpio_probe(struct platform_device *pdev)
 
 	writel_relaxed(1, chip->base + GPIO_EN);
 
+	if (proc_create(PROC_VIC, 0, NULL, (void *)&vic_gpio_fops) == NULL) {
+		return -ENOMEM;
+	}
 	dev_info(dev, "StarFive GPIO chip registered %d GPIOs\n", ngpio);
 
 	return 0;
