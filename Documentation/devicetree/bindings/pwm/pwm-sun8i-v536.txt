@@ -1,0 +1,24 @@
+Allwinner sun8i-v536 SoC PWM controller
+
+Required properties:
+ - compatible: should be "allwinner,<name>-pwm"
+   "allwinner,sun8i-v833-pwm"
+   "allwinner,sun8i-v536-pwm"
+   "allwinner,sun50i-r818-pwm"
+   "allwinner,sun50i-a133-pwm"
+   "allwinner,sun50i-r329-pwm"
+ - reg: physical base address and length of the controller's registers
+ - #pwm-cells: should be 3. See pwm.txt in this directory for a description of
+   the cells format.
+ - clocks: From common clock binding, handle to the parent clock.
+ - resets: From reset clock binding, handle to the parent clock.
+
+Example:
+
+	pwm: pwm@300a0000 {
+		compatible = "allwinner,sun50i-r818-pwm";
+		reg = <0x0300a000 0x3ff>;
+		clocks = <&ccu CLK_BUS_PWM>;
+		resets = <&ccu RST_BUS_PWM>;
+		#pwm-cells = <3>;
+	};
