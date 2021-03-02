@@ -615,6 +615,17 @@ config PWM_SUN4I
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-sun4i.
 
+config PWM_SUN8I_V536
+	tristate "Allwinner SUN8I V536 enhanced PWM support"
+	depends on ARCH_SUNXI || COMPILE_TEST
+	depends on HAS_IOMEM && COMMON_CLK
+	help
+	  Enhanced PWM framework driver for Allwinner A133, D1, R329, R818,
+	  V536 and V833 SoCs.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called pwm-sun8i-v536.
+
 config PWM_SUNPLUS
 	tristate "Sunplus PWM support"
 	depends on ARCH_SUNPLUS || COMPILE_TEST
