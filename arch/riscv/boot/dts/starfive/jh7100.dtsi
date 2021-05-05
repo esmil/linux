@@ -79,35 +79,30 @@
 		#clock-cells = <0>;
 		compatible = "fixed-clock";
 		clock-frequency = <25000000>;
-		clock-output-names = "hfclk";
 	};
 
 	rtcclk: rtcclk {
 		#clock-cells = <0>;
 		compatible = "fixed-clock";
 		clock-frequency = <6250000>;
-		clock-output-names = "rtcclk";
 	};
 
 	i2c0clk: i2c0clk {
 		#clock-cells = <0>;
 		compatible = "fixed-clock";
 		clock-frequency = <49500000>;
-		clock-output-names = "i2c0clk";
 	};
 
 	i2c2clk: i2c2clk {
 		#clock-cells = <0>;
 		compatible = "fixed-clock";
 		clock-frequency = <50000000>;
-		clock-output-names = "i2c2clk";
 	};
 
 	axiclk: axiclk {
 		#clock-cells = <0>;
 		compatible = "fixed-clock";
 		clock-frequency = <500000000>;
-		clock-output-names = "axiclk";
 	};
 
 	ahb0clk: ahb0clk {
