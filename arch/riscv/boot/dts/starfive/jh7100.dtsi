@@ -284,7 +284,7 @@
 			reg-names = "control";
 		};
 
-		plic: plic@c000000 {
+		plic: interrupt-controller@c000000 {
 			#interrupt-cells = <1>;
 			compatible = "riscv,plic0";
 			interrupt-controller;
@@ -295,7 +295,7 @@
 			riscv,ndev = <127>;
 		};
 
-		uart0: hs_serial@11870000 {
+		uart0: serial@11870000 {
 			compatible = "snps,dw-apb-uart";
 			interrupt-parent = <&plic>;
 			interrupts = <92>;
@@ -309,7 +309,7 @@
 			status = "disabled";
 		};
 
-		uart1: hs_serial@11880000 {
+		uart1: serial@11880000 {
 			compatible = "snps,dw-apb-uart";
 			interrupt-parent = <&plic>;
 			interrupts = <93>;
@@ -351,7 +351,7 @@
 			status = "disabled";
 		};
 
-		dma2p: sgdma2p@100b0000 {
+		dma2p: dma-controller@100b0000 {
 			compatible = "snps,axi-dma-1.01a";
 			reg = <0x0 0x100b0000 0x0 0x10000>;
 			clocks = <&axiclk>, <&ahb0clk>;
@@ -367,7 +367,7 @@
 			status = "okay";
 		};
 
-		dma1p: sgdma1p@10500000 {
+		dma1p: dma-controller@10500000 {
 			compatible = "snps,axi-dma-1.01a";
 			reg = <0x0 0x10500000 0x0 0x10000>;
 			clocks = <&axiclk>, <&ahb0clk>;
@@ -487,7 +487,7 @@
 			snps,blen = <256 128 64 32 0 0 0>;
 		};
 
-		gmac: gmac@10020000 {
+		gmac: ethernet@10020000 {
 			compatible = "snps,dwmac";
 			reg = <0x0 0x10020000 0x0 0x10000>;
 			interrupt-parent = <&plic>;
@@ -634,7 +634,7 @@
 			};
 		};
 
-		sdio0: sdio0@10000000 {
+		sdio0: mmc@10000000 {
 			compatible = "snps,dw-mshc";
 			reg = <0x0 0x10000000 0x0 0x10000>;
 			interrupts = <4>;
@@ -654,7 +654,7 @@
 			post-power-on-delay-ms = <200>;
 		};
 
-		sdio1: sdio1@10010000 {
+		sdio1: mmc@10010000 {
 			compatible = "snps,dw-mshc";
 			reg = <0x0 0x10010000 0x0 0x10000>;
 			interrupts = <5>;
