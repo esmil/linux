@@ -405,6 +405,8 @@
 			reg = <0x0 0x11910000 0x0 0x10000>;
 			reg-names = "control";
 			interrupt-controller;
+			#interrupt-cells = <2>;
+			gpio-controller;
 			#gpio-cells = <2>;
 		};
 
