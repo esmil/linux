@@ -2,6 +2,7 @@
 #include "jh7100.dtsi"
 #include <dt-bindings/starfive_fb.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	#address-cells = <2>;
@@ -20,6 +21,18 @@
 
 	cpus {
 		timebase-frequency = <6250000>;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led-ack {
+			gpios = <&gpio 43 GPIO_ACTIVE_HIGH>;
+			color = <LED_COLOR_ID_GREEN>;
+			function = LED_FUNCTION_HEARTBEAT;
+			linux,default-trigger = "heartbeat";
+			label = "ack";
+		};
 	};
 };
 
