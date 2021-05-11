@@ -8,10 +8,10 @@
 	compatible = "starfive,jh7100";
 
 	aliases {
-		spi0 = "/soc/spi@11860000";
-		mshc0 = "/soc/mmc@10000000";
-		mshc1 = "/soc/mmc@10010000";
-		usb0 = "/soc/usb@104c0000";
+		spi0 = &qspi;
+		mshc0 = &sdio0;
+		mshc1 = &sdio1;
+		usb0 = &usb3;
 	};
 
 	chosen {
