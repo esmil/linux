@@ -135,6 +135,7 @@
 	broken-cd;
 	bus-width = <4>;
 	cap-sd-highspeed;
+	max-frequency = <50000000>;
 	status = "okay";
 };
 
@@ -145,6 +146,7 @@
 	cap-sd-highspeed;
 	cap-sdio-irq;
 	cap-power-off-card;
+	max-frequency = <10000000>;
 	mmc-pwrseq = <&wifi_pwrseq>;
 	non-removable;
 	status = "okay";
