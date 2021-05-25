@@ -11,62 +11,55 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/hwmon.h>
-#include <linux/hwmon-sysfs.h>
-#include <linux/device.h>
-#include <linux/platform_device.h>
 #include <linux/interrupt.h>
+#include <linux/module.h>
 #include <linux/of.h>
-#include <linux/err.h>
-#include <linux/mutex.h>
-#include <linux/device.h>
-#include <asm-generic/io.h>
-#include <linux/regmap.h>
+#include <linux/platform_device.h>
 
-#define SFCTEMP_Y100  23750L
-#define SFCTEMP_Z100 409400L
-#define SFCTEMP_K100   8110L
+/* TempSensor reset. The RSTN can be de-asserted once the analog core has
+ * powered up. Trst(min 100ns)
+ * 0:reset  1:de-assert */
+#define SFCTEMP_RSTN     BIT(0)
 
-union sfctemp_reg {
-	u32 v;
-	struct {
-		/* TempSensor reset. The RSTN can be de-asserted once the
-		 * analog core has powered up. Trst(min 100ns)
-		 * 0:reset  1:de-assert */
-		u32 rstn   : 1;
-		/* TempSensor analog core power down. The analog core will be
-		 * power up when PD de-asserted after Tpu(min 50us) has
-		 * elapsed. the RSTN should be held low until the analog core
-		 * is powered up.
-		 * 0:power up  1:power down */
-		u32 pd     : 1;
-		/* TempSensor start conversion enable.
-		 * 0:disable  1:enable */
-		u32 run    : 1;
-		u32 rsvd_0 : 1;
-		/* TempSensor calibration mode enable.
-		 * 0:disable  1:enable */
-		u32 cal    : 1;
-		/* TempSensor signature enable. Generate a toggle value
-		 * outputting on DOUT for test purpose.
-		 * 0:disable  1:enable */
-		u32 sgn    : 1;
-		u32 rsvd_1 : 6;
-		/* TempSensor test access control.
-		 * 0000:normal 0001:Test1  0010:Test2  0011:Test3
-		 * 0100:Test4  1000:Test8  1001:Test9 */
-		u32 tm     : 4;
-		/* TempSensor conversion value output.
-		 * Temp(c)=DOUT/4094*Y-K */
-		u32 dout   : 12;
-		u32 rsvd_2 : 3;
-		/* TempSensor digital test output. */
-		u32 digo   : 1;
-	} bits;
-};
+/* TempSensor analog core power down. The analog core will be powered up
+ * Tpu(min 50us) after PD is de-asserted. RSTN should be held low until the
+ * analog core is powered up.
+ * 0:power up  1:power down */
+#define SFCTEMP_PD       BIT(1)
+
+/* TempSensor start conversion enable.
+ * 0:disable  1:enable */
+#define SFCTEMP_RUN      BIT(2)
+
+/* TempSensor calibration mode enable.
+ * 0:disable  1:enable */
+#define SFCTEMP_CAL      BIT(4)
+
+/* TempSensor signature enable. Generate a toggle value outputting on DOUT for
+ * test purpose.
+ * 0:disable  1:enable */
+#define SFCTEMP_SGN      BIT(5)
+
+/* TempSensor test access control.
+ * 0000:normal 0001:Test1  0010:Test2  0011:Test3
+ * 0100:Test4  1000:Test8  1001:Test9 */
+#define SFCTEMP_TM_Pos   12
+#define SFCTEMP_TM_Msk   GENMASK(15, 12)
+
+/* TempSensor conversion value output.
+ * Temp(c)=Y*DOUT/4094 - K */
+#define SFCTEMP_DOUT_Pos 16
+#define SFCTEMP_DOUT_Msk GENMASK(27, 16)
+
+/* TempSensor digital test output. */
+#define SFCTEMP_DIGO     BIT(31)
+
+/* DOUT to Celcius conversion constants */
+#define SFCTEMP_Y1000 237500L
+#define SFCTEMP_Z       4094L
+#define SFCTEMP_K1000  81100L
 
 struct sfctemp {
 	void __iomem *regs;
@@ -77,50 +70,40 @@ struct sfctemp {
 static irqreturn_t sfctemp_isr(int irq, void *data)
 {
 	struct sfctemp *sfctemp = data;
-	union sfctemp_reg reg;
+	u32 reg = readl(sfctemp->regs);
 
-	reg.v = readl(sfctemp->regs);
-	sfctemp->dout = reg.bits.dout;
+	sfctemp->dout = (reg & SFCTEMP_DOUT_Msk) >> SFCTEMP_DOUT_Pos;
 	return IRQ_HANDLED;
 }
 
 static void sfctemp_power_up(struct sfctemp *sfctemp)
 {
-	union sfctemp_reg init;
-
-	init.v = 0;
-	init.bits.pd = 1;
-	writel(init.v, sfctemp->regs);
+	writel(SFCTEMP_PD, sfctemp->regs);
 	udelay(1);
 
-	init.bits.pd = 0;
-	writel(init.v, sfctemp->regs);
+	writel(0, sfctemp->regs);
 	/* wait t_pu(50us) + t_rst(100ns) */
-	udelay(60);
+	usleep_range(60, 200);
 
-	init.bits.rstn = 1;
-	writel(init.v, sfctemp->regs);
+	writel(SFCTEMP_RSTN, sfctemp->regs);
 	/* wait t_su(500ps) */
 	udelay(1);
 
-	init.bits.run = 1;
-	writel(init.v, sfctemp->regs);
+	writel(SFCTEMP_RSTN | SFCTEMP_RUN, sfctemp->regs);
 	/* wait 1st sample (8192 temp_sense clk: ~2MHz) */
-	mdelay(10);
+	msleep(10);
 }
 
 static void sfctemp_power_down(struct sfctemp *sfctemp)
 {
-	union sfctemp_reg init;
+	u32 reg = readl(sfctemp->regs);
 
-	init.v = readl(sfctemp->regs);
-	init.bits.run = 0;
-	writel(init.v, sfctemp->regs);
+	reg &= ~SFCTEMP_RUN;
+	writel(reg, sfctemp->regs);
 	udelay(1);
 
-	init.bits.pd   = 1;
-	init.bits.rstn = 0;
-	writel(init.v, sfctemp->regs);
+	reg = (reg | SFCTEMP_PD) & ~SFCTEMP_RSTN;
+	writel(reg, sfctemp->regs);
 	udelay(1);
 }
 
@@ -176,8 +159,8 @@ static int sfctemp_read(struct device *dev, enum hwmon_sensor_types type,
 			if (!sfctemp->enabled)
 				return -ENODATA;
 			/* calculate temperature in milli Celcius */
-			*val  = (1000 * SFCTEMP_Y100 * (long)sfctemp->dout) / SFCTEMP_Z100
-				- 10 * SFCTEMP_K100;
+			*val = (SFCTEMP_Y1000 * (long)sfctemp->dout) / SFCTEMP_Z
+				- SFCTEMP_K1000;
 			return 0;
 		}
 		return -EINVAL;
