@@ -7,9 +7,6 @@
 	#size-cells = <2>;
 	compatible = "starfive,jh7100";
 
-	chosen {
-	};
-
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
