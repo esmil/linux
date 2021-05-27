@@ -182,9 +182,10 @@
 	};
 
 	soc {
+		compatible = "starfive,jh7100", "simple-bus";
+		interrupt-parent = <&plic>;
 		#address-cells = <2>;
 		#size-cells = <2>;
-		compatible = "starfive,jh7100", "simple-bus";
 		ranges;
 
 		ccache: cache-controller@2010000 {
@@ -194,7 +195,6 @@
 			cache-size = <2097152>;
 			cache-unified;
 			compatible = "sifive,fu540-c000-ccache", "starfive,ccache0", "cache";
-			interrupt-parent = <&plic>;
 			interrupts = <128 131 129 130>;
 			/*next-level-cache = <&L40 &L36>;*/
 			reg = <0x0 0x2010000 0x0 0x1000>,
@@ -241,7 +241,6 @@
 
 		uart0: serial@11870000 {
 			compatible = "snps,dw-apb-uart";
-			interrupt-parent = <&plic>;
 			interrupts = <92>;
 			reg = <0x0 0x11870000 0x0 0x10000>;
 			reg-io-width = <4>;
@@ -255,7 +254,6 @@
 
 		uart1: serial@11880000 {
 			compatible = "snps,dw-apb-uart";
-			interrupt-parent = <&plic>;
 			interrupts = <93>;
 			reg = <0x0 0x11880000 0x0 0x10000>;
 			reg-io-width = <4>;
@@ -269,7 +267,6 @@
 
 		uart2: serial@12430000 {
 			compatible = "snps,dw-apb-uart";
-			interrupt-parent = <&plic>;
 			interrupts = <72>;
 			reg = <0x0 0x12430000 0x0 0x10000>;
 			reg-io-width = <4>;
@@ -283,7 +280,6 @@
 
 		uart3: serial@12440000 {
 			compatible = "snps,dw-apb-uart";
-			interrupt-parent = <&plic>;
 			interrupts = <73>;
 			reg = <0x0 0x12440000 0x0 0x10000>;
 			reg-io-width = <4>;
@@ -300,7 +296,6 @@
 			reg = <0x0 0x100b0000 0x0 0x10000>;
 			clocks = <&axiclk>, <&ahb0clk>;
 			clock-names = "core-clk", "cfgr-clk";
-			interrupt-parent = <&plic>;
 			interrupts = <2>;
 		        #dma-cells = <1>;
 			dma-channels = <4>;
@@ -317,7 +312,6 @@
 			reg = <0x0 0x10500000 0x0 0x10000>;
 			clocks = <&axiclk>, <&ahb0clk>;
 			clock-names = "core-clk", "cfgr-clk";
-			interrupt-parent = <&plic>;
 			interrupts = <1>;
 		        #dma-cells = <1>;
 			dma-channels = <16>;
@@ -335,7 +329,6 @@
 			      <0x0 0x104d0000 0x0 0x10000>,	// memory area for DEVICE registers
 			      <0x0 0x104e0000 0x0 0x10000>;	// memory area for OTG/DRD registers
 			reg-names = "otg", "xhci", "dev";
-			interrupt-parent = <&plic>;
 			interrupts = <44>, <52>, <43>;
 			interrupt-names = "host", "peripheral", "otg";
 			phy-names = "cdns3,usb3-phy", "cdns3,usb2-phy";
@@ -345,7 +338,6 @@
 
 		gpio: gpio@11910000 {
 			compatible = "starfive,gpio0";
-			interrupt-parent = <&plic>;
 			interrupts = <32>;
 			reg = <0x0 0x11910000 0x0 0x10000>;
 			reg-names = "control";
@@ -361,7 +353,6 @@
 			#clock-cells = <0>;
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0x118b0000 0x0 0x10000>;
-			interrupt-parent = <&plic>;
 			interrupts = <96>;
 			clocks = <&i2c0clk>;
 			clock-frequency = <100000>;
@@ -378,7 +369,6 @@
 			#clock-cells = <0>;
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0x118c0000 0x0 0x10000>;
-			interrupt-parent = <&plic>;
 			interrupts = <97>;
 			clocks = <&i2c0clk>;
 			clock-frequency = <400000>;
@@ -395,7 +385,6 @@
 			#clock-cells = <0>;
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0x12450000 0x0 0x10000>;
-			interrupt-parent = <&plic>;
 			interrupts = <74>;
 			clocks = <&i2c2clk>;
 			clock-frequency = <100000>;
@@ -409,7 +398,6 @@
 		trng: trng@118d0000 {
 			compatible = "starfive,vic-rng";
 			reg = <0x0 0x118d0000 0x0 0x10000>;
-			interrupt-parent = <&plic>;
 			interrupts = <98>;
 			clocks = <&hfclk>;
 		};
@@ -419,7 +407,6 @@
 			reg = <0x0 0x100d0000 0x0 0x20000>,
 			      <0x0 0x11800234 0x0 0xc>;
 			reg-names = "secmem", "secclk";
-			interrupt-parent = <&plic>;
 			interrupts = <31>;
 			clocks = <&hfclk>;
 		};
@@ -434,7 +421,6 @@
 		gmac: ethernet@10020000 {
 			compatible = "snps,dwmac";
 			reg = <0x0 0x10020000 0x0 0x10000>;
-			interrupt-parent = <&plic>;
 			interrupts = <6 7>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			max-frame-size = <9000>;
@@ -454,7 +440,6 @@
 
 		nbdla: nvdla@11940000 {
 			compatible = "nvidia,nvdla_os_initial";
-			interrupt-parent = <&plic>;
 			interrupts = <22>;
 			memory-region = <&nvdla_reserved>;
 			reg = <0x0 0x11940000 0x0 0x40000>;
@@ -465,7 +450,6 @@
 			compatible = "cm,codaj12-jpu-1";
 			reg = <0x0 0x11900000 0x0 0x300>;
 			memory-region = <&jpu_reserved>;
-			interrupt-parent = <&plic>;
 			interrupts = <24>;
 			clocks = <&jpuclk>;
 			clock-names = "jpege";
@@ -477,7 +461,6 @@
 			compatible = "c&m,cm511-vpu";
 			reg = <0 0x118f0000 0 0x10000>;
 			//memory-region = <&vpu_reserved>;
-			interrupt-parent = <&plic>;
 			interrupts = <23>;
 			clocks = <&vpuclk>;
 			clock-names = "vcodec";
@@ -487,7 +470,6 @@
 		vpu_enc: vpu_enc@118e0000 {
 			compatible = "cm,cm521-vpu";
 			reg = <0x0 0x118e0000 0x0 0x4000>;
-			interrupt-parent = <&plic>;
 			interrupts = <26>;
 			clocks = <&vpuclk>;
 			clock-names = "vcodec";
@@ -512,7 +494,6 @@
 			reg = <0x0 0x11860000 0x0 0x10000>,
 			      <0x0 0x20000000 0x0 0x20000000>;
 			interrupts = <3>;
-			interrupt-parent = <&plic>;
 			clocks = <&qspi_clk>;
 			cdns,fifo-depth = <256>;
 			cdns,fifo-width = <4>;
@@ -526,7 +507,6 @@
 			compatible = "snps,dw-apb-ssi";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			interrupt-parent = <&plic>;
 			interrupts = <FIXME>;
 			reg = <0x0 0x11890000 0x0 0x10000>;
 			clocks = <&spiclk>;
@@ -537,7 +517,6 @@
 			compatible = "snps,dw-apb-ssi";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			interrupt-parent = <&plic>;
 			interrupts = <FIXME>;
 			reg = <0x0 0x118a0000 0x0 0x10000>;
 			clocks = <&spiclk>;
@@ -549,7 +528,6 @@
 			compatible = "snps,dw-apb-ssi";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			interrupt-parent = <&plic>;
 			interrupts = <70>;
 			reg = <0x0 0x12410000 0x0 0x10000>;
 			clocks = <&spiclk>;
@@ -563,7 +541,6 @@
 			      <0x10 0x72001000 0x0 0x00fff000>,
 			      <0x0  0x124b0000 0x0 0x00010000>;
 			clocks = <&hfclk>;
-			interrupt-parent = <&plic>;
 			firmware-name = "vp6_elf";
 			dsp-irq = <19 20>;
 			dsp-irq-src = <0x20 0x21>;
@@ -582,7 +559,6 @@
 			compatible = "snps,dw-mshc";
 			reg = <0x0 0x10000000 0x0 0x10000>;
 			interrupts = <4>;
-			interrupt-parent = <&plic>;
 			clocks = <&dwmmc_biuclk>;
 			clock-names = "biu";
 			clock-frequency = <100000000>;
@@ -596,7 +572,6 @@
 			compatible = "snps,dw-mshc";
 			reg = <0x0 0x10010000 0x0 0x10000>;
 			interrupts = <5>;
-			interrupt-parent = <&plic>;
 			clocks = <&dwmmc_biuclk>;
 			clock-names = "biu";
 			clock-frequency = <100000000>;
@@ -608,7 +583,6 @@
 
 		sfivefb: sfivefb@12000000 {
 			compatible = "starfive,vpp-lcdc";
-			interrupt-parent = <&plic>;
 			interrupts = <101>, <103>;
 			interrupt-names = "lcdc_irq", "vpp1_irq";
 			reg = <0x0 0x12000000 0x0 0x10000>,
@@ -641,7 +615,6 @@
 			      <0x0 0x11858000 0x0 0x10000>;
 			reg-names = "mipi0", "vclk", "vrst", "mipi1", "sctrl",
 			            "isp0", "isp1", "tclk", "trst", "iopad";
-			interrupt-parent = <&plic>;
 			interrupts = <119 109>;
 			memory-region = <&vin_reserved>;
 			/*defaule config for imx219 vin&isp*/
@@ -664,7 +637,6 @@
 			#thermal-sensor-cells = <0>;
 			compatible = "sfc,tempsensor";
 			reg = <0x0 0x124a0000 0x0 0x1000>;
-			interrupt-parent = <&plic>;
 			interrupts = <122>;
 		};
 
