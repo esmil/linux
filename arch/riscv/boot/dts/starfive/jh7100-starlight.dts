@@ -5,8 +5,6 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-	#address-cells = <2>;
-	#size-cells = <2>;
 	compatible = "beagle,beaglev-starlight-jh7100";
 	model = "BeagleV Starlight Beta";
 
