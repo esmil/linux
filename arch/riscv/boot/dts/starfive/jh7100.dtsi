@@ -385,8 +385,8 @@
 			      <0x0 0x104e0000 0x0 0x10000>;	// memory area for OTG/DRD registers
 			reg-names = "otg", "xhci", "dev";
 			interrupt-parent = <&plic>;
-			interrupts = <43>, <44>, <52>;
-			interrupt-names = "otg", "host", "peripheral";
+			interrupts = <44>, <52>, <43>;
+			interrupt-names = "host", "peripheral", "otg";
 			phy-names = "cdns3,usb3-phy", "cdns3,usb2-phy";
 			maximum-speed = "super-speed";
 			status = "disabled";
