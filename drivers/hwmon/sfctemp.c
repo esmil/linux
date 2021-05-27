@@ -11,10 +11,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/hwmon.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 
@@ -62,6 +64,8 @@
 #define SFCTEMP_K1000  81100L
 
 struct sfctemp {
+	struct mutex lock;
+	struct completion conversion_done;
 	void __iomem *regs;
 	u32 dout;
 	bool enabled;
@@ -72,7 +76,9 @@ static irqreturn_t sfctemp_isr(int irq, void *data)
 	struct sfctemp *sfctemp = data;
 	u32 reg = readl(sfctemp->regs);
 
+	writel(SFCTEMP_RSTN, sfctemp->regs);
 	sfctemp->dout = (reg & SFCTEMP_DOUT_Msk) >> SFCTEMP_DOUT_Pos;
+	complete(&sfctemp->conversion_done);
 	return IRQ_HANDLED;
 }
 
@@ -88,10 +94,6 @@ static void sfctemp_power_up(struct sfctemp *sfctemp)
 	writel(SFCTEMP_RSTN, sfctemp->regs);
 	/* wait t_su(500ps) */
 	udelay(1);
-
-	writel(SFCTEMP_RSTN | SFCTEMP_RUN, sfctemp->regs);
-	/* wait 1st sample (8192 temp_sense clk: ~2MHz) */
-	msleep(10);
 }
 
 static void sfctemp_power_down(struct sfctemp *sfctemp)
@@ -103,24 +105,62 @@ static void sfctemp_power_down(struct sfctemp *sfctemp)
 	udelay(1);
 }
 
+static void sfctemp_run(struct sfctemp *sfctemp)
+{
+	writel(SFCTEMP_RSTN | SFCTEMP_RUN, sfctemp->regs);
+}
+
 static int sfctemp_enable(struct sfctemp *sfctemp)
 {
+	mutex_lock(&sfctemp->lock);
 	if (sfctemp->enabled)
-		return 0;
+		goto done;
 
 	sfctemp_power_up(sfctemp);
 	sfctemp->enabled = true;
+done:
+	mutex_unlock(&sfctemp->lock);
 	return 0;
 }
 
 static int sfctemp_disable(struct sfctemp *sfctemp)
 {
+	mutex_lock(&sfctemp->lock);
 	if (!sfctemp->enabled)
-		return 0;
+		goto done;
 
 	sfctemp_power_down(sfctemp);
 	sfctemp->enabled = false;
+done:
+	mutex_unlock(&sfctemp->lock);
 	return 0;
+}
+
+static int sfctemp_convert(struct sfctemp *sfctemp, long *val)
+{
+	long ret;
+
+	mutex_lock(&sfctemp->lock);
+	if (!sfctemp->enabled) {
+		ret = -ENODATA;
+		goto out;
+	}
+
+	sfctemp_run(sfctemp);
+
+	ret = wait_for_completion_interruptible_timeout(&sfctemp->conversion_done,
+			                                msecs_to_jiffies(10));
+	if (ret < 0)
+		goto out;
+
+	/* calculate temperature in milli Celcius */
+	*val = (SFCTEMP_Y1000 * (long)sfctemp->dout) / SFCTEMP_Z
+		- SFCTEMP_K1000;
+
+	ret = 0;
+out:
+	mutex_unlock(&sfctemp->lock);
+	return ret;
 }
 
 static umode_t sfctemp_is_visible(const void *data, enum hwmon_sensor_types type,
@@ -152,12 +192,7 @@ static int sfctemp_read(struct device *dev, enum hwmon_sensor_types type,
 			*val = sfctemp->enabled;
 			return 0;
 		case hwmon_temp_input:
-			if (!sfctemp->enabled)
-				return -ENODATA;
-			/* calculate temperature in milli Celcius */
-			*val = (SFCTEMP_Y1000 * (long)sfctemp->dout) / SFCTEMP_Z
-				- SFCTEMP_K1000;
-			return 0;
+			return sfctemp_convert(sfctemp, val);
 		}
 		return -EINVAL;
 	default:
@@ -209,6 +244,7 @@ static int sfctemp_probe(struct platform_device *pdev)
 	struct device *hwmon_dev;
 	struct resource *mem;
 	struct sfctemp *sfctemp;
+	long val;
 	int ret;
 
 	sfctemp = devm_kzalloc(dev, sizeof(*sfctemp), GFP_KERNEL);
@@ -216,6 +252,9 @@ static int sfctemp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	dev_set_drvdata(dev, sfctemp);
+
+	mutex_init(&sfctemp->lock);
+	init_completion(&sfctemp->conversion_done);
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	sfctemp->regs = devm_ioremap_resource(dev, mem);
@@ -242,7 +281,14 @@ static int sfctemp_probe(struct platform_device *pdev)
 	if (IS_ERR(hwmon_dev))
 		return PTR_ERR(hwmon_dev);
 
-	dev_info(dev, "%s: sensor '%s'\n", dev_name(hwmon_dev), pdev->name);
+	/* do a conversion to check everything works */
+	ret = sfctemp_convert(sfctemp, &val);
+	if (ret) {
+		hwmon_device_unregister(hwmon_dev);
+		return ret;
+	}
+
+	dev_info(dev, "%ld.%03ld C\n", val / 1000, val % 1000);
 	return 0;
 }
 
