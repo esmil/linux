@@ -5,8 +5,8 @@
 #include <dt-bindings/leds/common.h>
 
 / {
-	compatible = "beagle,beaglev-starlight-jh7100";
 	model = "BeagleV Starlight Beta";
+	compatible = "beagle,beaglev-starlight-jh7100", "starfive,jh7100";
 
 	aliases {
 		mshc0 = &sdio0;
