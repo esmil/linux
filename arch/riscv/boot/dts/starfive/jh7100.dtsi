@@ -184,7 +184,6 @@
 	soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
-		#clock-cells = <1>;
 		compatible = "starfive,jh7100", "simple-bus";
 		ranges;
 
