@@ -223,7 +223,10 @@
 		clint: clint@2000000 {
 			#interrupt-cells = <1>;
 			compatible = "riscv,clint0";
-			interrupts-extended = <&cpu0_intc 3 &cpu0_intc 7 &cpu1_intc 3 &cpu1_intc 7>;
+			interrupts-extended = <&cpu0_intc 3>,
+					      <&cpu0_intc 7>,
+					      <&cpu1_intc 3>,
+					      <&cpu1_intc 7>;
 			reg = <0x0 0x2000000 0x0 0x10000>;
 			reg-names = "control";
 		};
@@ -232,7 +235,10 @@
 			#interrupt-cells = <1>;
 			compatible = "riscv,plic0";
 			interrupt-controller;
-			interrupts-extended = <&cpu0_intc 11 &cpu0_intc 9 &cpu1_intc 11 &cpu1_intc 9>;
+			interrupts-extended = <&cpu0_intc 11>,
+					      <&cpu0_intc 9>,
+					      <&cpu1_intc 11>,
+					      <&cpu1_intc 9>;
 			reg = <0x0 0xc000000 0x0 0x4000000>;
 			reg-names = "control";
 			riscv,max-priority = <7>;
@@ -549,8 +555,8 @@
 			interrupts = <27 28>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			ranges = <0x40000000 0x0  0x40000000 0x01000000
-			          0xb0000000 0x10 0x70000000 0x3000000>;
+			ranges = <0x40000000 0x0  0x40000000 0x01000000>,
+				 <0xb0000000 0x10 0x70000000 0x3000000>;
 			dsp@0 {
 			};
 		};
