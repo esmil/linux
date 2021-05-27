@@ -555,7 +555,7 @@
 		};
 
 		qspi: spi@11860000 {
-			compatible = "cadence,qspi", "cdns,qspi-nor";
+			compatible = "cdns,qspi-nor";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x0 0x11860000 0x0 0x10000>,
