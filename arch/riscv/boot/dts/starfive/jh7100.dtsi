@@ -351,6 +351,7 @@
 			clock-names = "core-clk", "cfgr-clk";
 			interrupt-parent = <&plic>;
 			interrupts = <2>;
+		        #dma-cells = <1>;
 			dma-channels = <4>;
 			snps,dma-masters = <1>;
 			snps,data-width = <4>;
@@ -367,6 +368,7 @@
 			clock-names = "core-clk", "cfgr-clk";
 			interrupt-parent = <&plic>;
 			interrupts = <1>;
+		        #dma-cells = <1>;
 			dma-channels = <16>;
 			snps,dma-masters = <1>;
 			snps,data-width = <3>;
