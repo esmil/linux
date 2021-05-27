@@ -96,14 +96,10 @@ static void sfctemp_power_up(struct sfctemp *sfctemp)
 
 static void sfctemp_power_down(struct sfctemp *sfctemp)
 {
-	u32 reg = readl(sfctemp->regs);
-
-	reg &= ~SFCTEMP_RUN;
-	writel(reg, sfctemp->regs);
+	writel(SFCTEMP_RSTN, sfctemp->regs);
 	udelay(1);
 
-	reg = (reg | SFCTEMP_PD) & ~SFCTEMP_RSTN;
-	writel(reg, sfctemp->regs);
+	writel(SFCTEMP_PD, sfctemp->regs);
 	udelay(1);
 }
 
