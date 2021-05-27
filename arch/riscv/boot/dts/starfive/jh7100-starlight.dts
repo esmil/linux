@@ -81,19 +81,6 @@
 	};
 };
 
-&uart0 {
-	status = "okay";
-};
-
-&uart3 {
-	status = "okay";
-};
-
-&usb3 {
-	dr_mode = "host";
-	status = "okay";
-};
-
 &i2c0 {
 	imx219@10 {
 		compatible = "imx219";
@@ -156,16 +143,6 @@
 		cdns,tslch-ns = <1>;
 		spi-tx-bus-width = <1>;
 		spi-rx-bus-width = <1>;
-	};
-};
-
-&spi2 {
-	status = "okay";
-
-	spi_dev0: spi@0 {
-		compatible = "rohm,dh2228fv";
-		spi-max-frequency = <10000000>;
-		reg = <0>;
 	};
 };
 
@@ -425,4 +402,27 @@
 		];
 		*/
 	};
+};
+
+&spi2 {
+	status = "okay";
+
+	spi_dev0: spi@0 {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <10000000>;
+		reg = <0>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&uart3 {
+	status = "okay";
+};
+
+&usb3 {
+	dr_mode = "host";
+	status = "okay";
 };
