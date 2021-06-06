@@ -286,6 +286,10 @@ static const struct sun8i_pwm_data sun8i_pwm_data_c9 = {
 	.npwm = 9,
 };
 
+static const struct sun8i_pwm_data sun20i_pwm_data_c8 = {
+	.npwm = 8,
+};
+
 static const struct sun8i_pwm_data sun50i_pwm_data_c16 = {
 	.npwm = 16,
 };
@@ -294,6 +298,9 @@ static const struct of_device_id sun8i_pwm_dt_ids[] = {
 	{
 		.compatible = "allwinner,sun8i-v536-pwm",
 		.data = &sun8i_pwm_data_c9,
+	}, {
+		.compatible = "allwinner,sun20i-d1-pwm",
+		.data = &sun20i_pwm_data_c8,
 	}, {
 		.compatible = "allwinner,sun50i-r818-pwm",
 		.data = &sun50i_pwm_data_c16,
