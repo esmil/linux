@@ -62,6 +62,10 @@ properties:
       - 0
       - 1
 
+  vref-supply:
+    description:
+      Regulator for the analog reference voltage
+
 allOf:
   - if:
       properties:
@@ -131,6 +135,17 @@ allOf:
         - clocks
         - clock-names
         - resets
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            enum:
+              - allwinner,sun20i-d1-ths
+
+    then:
+      required:
+        - vref-supply
 
 required:
   - compatible
