@@ -16,6 +16,7 @@ properties:
       - allwinner,sun8i-a83t-ths
       - allwinner,sun8i-h3-ths
       - allwinner,sun8i-r40-ths
+      - allwinner,sun20i-d1-ths
       - allwinner,sun50i-a64-ths
       - allwinner,sun50i-a100-ths
       - allwinner,sun50i-h5-ths
@@ -55,6 +56,10 @@ properties:
       - 0
       - 1
 
+  vref-supply:
+    description:
+      Regulator for the analog reference voltage
+
 allOf:
   - if:
       properties:
@@ -84,7 +89,9 @@ allOf:
       properties:
         compatible:
           contains:
-            const: allwinner,sun8i-h3-ths
+            enum:
+              - allwinner,sun8i-h3-ths
+              - allwinner,sun20i-d1-ths
 
     then:
       properties:
@@ -103,6 +110,7 @@ allOf:
             enum:
               - allwinner,sun8i-h3-ths
               - allwinner,sun8i-r40-ths
+              - allwinner,sun20i-d1-ths
               - allwinner,sun50i-a64-ths
               - allwinner,sun50i-a100-ths
               - allwinner,sun50i-h5-ths
@@ -113,6 +121,17 @@ allOf:
         - clocks
         - clock-names
         - resets
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            enum:
+              - allwinner,sun20i-d1-ths
+
+    then:
+      required:
+        - vref-supply
 
 required:
   - compatible
