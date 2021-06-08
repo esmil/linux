@@ -35,7 +35,7 @@ First we need to configure the kernel though. Linux has a *very* extensive
 configuration system, but you can get a good baseline configuration for the
 board using:
 ```shell
-make -j8 ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- starlight_defconfig
+make -j8 ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- beaglev_starlight_defconfig
 ```
 
 There is nothing magic about this configuration other than it has all the
@@ -79,7 +79,7 @@ This assumes your root file system is at `/dev/mmcblk0p2` which it is on the
 default Fedora image. Also if your kernel is very big it might be beneficial to
 use the compressed `Image.gz` rather than the uncompressed `Image`.
 
-The `starlight_defconfig` doesn't enable modules, but if you enabled them in
+The `beaglev_starlight_defconfig` doesn't enable modules, but if you enabled them in
 your build you'll also need to install them in `/lib/modules/` on the root file
 system. How to do that best is out of scope for this README though.
 
