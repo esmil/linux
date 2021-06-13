@@ -30,6 +30,12 @@ config SND_SUN8I_CODEC_ANALOG
 	  Say Y or M if you want to add support for the analog controls for
 	  the codec embedded in newer Allwinner SoCs.
 
+config SND_SUN20I_CODEC
+	tristate "Allwinner D1 (sun20i) Audio Codec"
+	depends on ARCH_SUNXI || COMPILE_TEST
+	help
+	  Say Y or M to add support for the audio codec in Allwinner D1 SoC.
+
 config SND_SUN50I_CODEC_ANALOG
 	tristate "Allwinner sun50i Codec Analog Controls Support"
 	depends on (ARM64 && ARCH_SUNXI) || COMPILE_TEST
