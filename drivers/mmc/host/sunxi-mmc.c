@@ -214,6 +214,9 @@
 #define SDXC_IDMAC_DES0_CES	BIT(30) /* card error summary */
 #define SDXC_IDMAC_DES0_OWN	BIT(31) /* 1-idma owns it, 0-host owns it */
 
+/* Buffer size must be a multiple of 4 bytes. */
+#define SDXC_IDMAC_SIZE_ALIGN	4
+
 #define SDXC_CLK_400K		0
 #define SDXC_CLK_25M		1
 #define SDXC_CLK_50M		2
@@ -361,17 +364,15 @@ static void sunxi_mmc_init_idma_des(struct sunxi_mmc_host *host,
 {
 	struct sunxi_idma_des *pdes = (struct sunxi_idma_des *)host->sg_cpu;
 	dma_addr_t next_desc = host->sg_dma;
-	int i, max_len = (1 << host->cfg->idma_des_size_bits);
+	int i;
 
 	for (i = 0; i < data->sg_len; i++) {
 		pdes[i].config = cpu_to_le32(SDXC_IDMAC_DES0_CH |
 					     SDXC_IDMAC_DES0_OWN |
 					     SDXC_IDMAC_DES0_DIC);
 
-		if (data->sg[i].length == max_len)
-			pdes[i].buf_size = 0; /* 0 == max_len */
-		else
-			pdes[i].buf_size = cpu_to_le32(data->sg[i].length);
+		pdes[i].buf_size = cpu_to_le32(ALIGN(data->sg[i].length,
+						     SDXC_IDMAC_SIZE_ALIGN));
 
 		next_desc += sizeof(struct sunxi_idma_des);
 		pdes[i].buf_addr_ptr1 =
@@ -1421,7 +1422,8 @@ static int sunxi_mmc_probe(struct platform_device *pdev)
 	mmc->max_blk_count	= 8192;
 	mmc->max_blk_size	= 4096;
 	mmc->max_segs		= PAGE_SIZE / sizeof(struct sunxi_idma_des);
-	mmc->max_seg_size	= (1 << host->cfg->idma_des_size_bits);
+	mmc->max_seg_size	= (1 << host->cfg->idma_des_size_bits) -
+				  SDXC_IDMAC_SIZE_ALIGN;
 	mmc->max_req_size	= mmc->max_seg_size * mmc->max_segs;
 	/* 400kHz ~ 52MHz */
 	mmc->f_min		=   400000;
