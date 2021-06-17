@@ -14,7 +14,6 @@
 #include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
-#include <linux/gpio-starfive-vic.h>
 
 
 #define SC2235_CHIP_ID_H	(0x22)

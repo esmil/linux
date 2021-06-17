@@ -19,7 +19,6 @@
  */
 #include <linux/clk.h>
 #include <linux/gpio.h>
-#include <linux/gpio-starfive-vic.h>
 #include <linux/gpio/consumer.h>
 #include <linux/device.h>
 #include <linux/delay.h>

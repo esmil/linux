@@ -32,7 +32,6 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
-#include <linux/gpio-starfive-vic.h>
 
 #include "i2c-designware-core.h"
 

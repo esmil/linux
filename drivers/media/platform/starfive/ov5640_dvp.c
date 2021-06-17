@@ -13,7 +13,6 @@
 #include <linux/types.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
-#include <linux/gpio-starfive-vic.h>
 
 #define OV5640_CHIP_ID_HIGH_BYTE	0x300A   // max should be 0x56
 #define OV5640_CHIP_ID_LOW_BYTE		0x300B   // max should be 0x40
