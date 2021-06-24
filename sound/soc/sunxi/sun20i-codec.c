@@ -709,6 +709,10 @@ static int sun20i_codec_component_probe(struct snd_soc_component *component)
 				      0x3 << SUN20I_CODEC_ADC_DIG_CTRL_ADC_VOL_EN,
 				      0x3 << SUN20I_CODEC_ADC_DIG_CTRL_ADC_VOL_EN);
 
+	/* Maaagic... */
+	snd_soc_component_update_bits(component, SUN20I_CODEC_RAMP,
+				      BIT(1) | BIT(0), BIT(0));
+
 	return 0;
 
 err_assert_reset:
