@@ -192,7 +192,7 @@ static irqreturn_t sun8i_irq_thread(int irq, void *data)
 
 	for_each_set_bit(i, &irq_bitmap, tmdev->chip->sensor_num) {
 		thermal_zone_device_update(tmdev->sensor[i].tzd,
-					   THERMAL_EVENT_UNSPECIFIED);
+					   THERMAL_EVENT_TEMP_SAMPLE);
 	}
 
 	return IRQ_HANDLED;
