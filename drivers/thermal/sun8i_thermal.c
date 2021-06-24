@@ -199,7 +199,7 @@ static irqreturn_t sun8i_irq_thread(int irq, void *data)
 		if (IS_ERR(tmdev->sensor[i].tzd))
 			continue;
 		thermal_zone_device_update(tmdev->sensor[i].tzd,
-					   THERMAL_EVENT_UNSPECIFIED);
+					   THERMAL_EVENT_TEMP_SAMPLE);
 	}
 
 	return IRQ_HANDLED;
