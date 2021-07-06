@@ -277,7 +277,7 @@
 			interrupts = <96>;
 			clocks = <&clkgen JH7100_CLK_I2C0_CORE>,
 				 <&clkgen JH7100_CLK_I2C0_APB>;
-			clock-names = "core", "pclk";
+			clock-names = "ref", "pclk";
 			status = "disabled";
 		};
 
@@ -289,7 +289,7 @@
 			interrupts = <97>;
 			clocks = <&clkgen JH7100_CLK_I2C1_CORE>,
 				 <&clkgen JH7100_CLK_I2C1_APB>;
-			clock-names = "core", "pclk";
+			clock-names = "ref", "pclk";
 			status = "disabled";
 		};
 
@@ -301,7 +301,7 @@
 			interrupts = <74>;
 			clocks = <&clkgen JH7100_CLK_I2C2_CORE>,
 				 <&clkgen JH7100_CLK_I2C2_APB>;
-			clock-names = "core", "pclk";
+			clock-names = "ref", "pclk";
 			status = "disabled";
 		};
 
@@ -313,7 +313,7 @@
 			interrupts = <75>;
 			clocks = <&clkgen JH7100_CLK_I2C3_CORE>,
 				 <&clkgen JH7100_CLK_I2C3_APB>;
-			clock-names = "core", "pclk";
+			clock-names = "ref", "pclk";
 			status = "disabled";
 		};
 
