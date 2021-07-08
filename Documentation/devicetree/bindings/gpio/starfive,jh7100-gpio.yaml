@@ -56,7 +56,7 @@ examples:
       gpio@11910000 {
         compatible = "starfive,jh7100-gpio";
         reg = <0x11910000 0x10000>;
-        clocks = <&clkgen CLK_GPIO_APB>
+        clocks = <&clkgen JH7100_CLK_GPIO_APB>;
         gpio-controller;
         #gpio-cells = <2>;
         interrupt-controller;
