@@ -126,6 +126,10 @@
 #define PAD_DRIVE_STRENGTH_MASK		0x00f
 #define PAD_DRIVE_STRENGTH_POS		0
 
+static bool keepmux;
+module_param(keepmux, bool, 0644);
+MODULE_PARM_DESC(keepmux, "Keep pinmux settings from previous boot stage");
+
 struct starfive_pinctrl {
 	struct gpio_chip gc;
 	struct pinctrl_gpio_range gpios;
@@ -1212,6 +1216,49 @@ static void starfive_gpio_irq_handler(struct irq_desc *desc)
 	chained_irq_exit(chip, desc);
 }
 
+#define MAX_GPI (GPI_USB_OVER_CURRENT + 1)
+static const DECLARE_BITMAP(starfive_gpio_in_defaults, MAX_GPI) = {
+	BIT_MASK(GPI_I2C0_PAD_SCK_IN) |
+	BIT_MASK(GPI_I2C0_PAD_SDA_IN) |
+	BIT_MASK(GPI_I2C1_PAD_SCK_IN) |
+	BIT_MASK(GPI_I2C1_PAD_SDA_IN) |
+	BIT_MASK(GPI_I2C2_PAD_SCK_IN) |
+	BIT_MASK(GPI_I2C2_PAD_SDA_IN) |
+	BIT_MASK(GPI_I2C3_PAD_SCK_IN) |
+	BIT_MASK(GPI_I2C3_PAD_SDA_IN) |
+	BIT_MASK(GPI_SDIO0_PAD_CARD_DETECT_N) |
+
+	BIT_MASK(GPI_SDIO1_PAD_CARD_DETECT_N) |
+	BIT_MASK(GPI_SPI0_PAD_SS_IN_N) |
+	BIT_MASK(GPI_SPI1_PAD_SS_IN_N) |
+	BIT_MASK(GPI_SPI2_PAD_SS_IN_N) |
+	BIT_MASK(GPI_SPI2AHB_PAD_SS_N) |
+	BIT_MASK(GPI_SPI3_PAD_SS_IN_N),
+
+	BIT_MASK(GPI_UART0_PAD_SIN) |
+	BIT_MASK(GPI_UART1_PAD_SIN) |
+	BIT_MASK(GPI_UART2_PAD_SIN) |
+	BIT_MASK(GPI_UART3_PAD_SIN) |
+	BIT_MASK(GPI_USB_OVER_CURRENT)
+};
+
+static void starfive_pinmux_reset(struct starfive_pinctrl *sfp)
+{
+	int i;
+
+	for (i = 0; i < MAX_GPIO; i++) {
+		writel_relaxed(GPO_DISABLE,
+			       sfp->base + GPIO_N_DOEN_CFG + 8 * i);
+		writel_relaxed(GPO_LOW,
+			       sfp->base + GPIO_N_DOUT_CFG + 8 * i);
+	}
+
+	for (i = 0; i < MAX_GPI; i++) {
+		writel_relaxed(test_bit(i, starfive_gpio_in_defaults),
+			       sfp->base + GPIO_IN_OFFSET + 4 * i);
+	}
+}
+
 static int __init starfive_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1244,6 +1291,9 @@ static int __init starfive_probe(struct platform_device *pdev)
 		dev_err(dev, "could not register pinctrl driver: %d\n", ret);
 		return ret;
 	}
+
+	if (!keepmux)
+		starfive_pinmux_reset(sfp);
 
 	if (!of_property_read_u32(dev->of_node, "starfive,signal-group", &value)) {
 		if (value <= 6)
