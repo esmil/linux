@@ -36,6 +36,9 @@ ENTRY(__asm_copy_from_user)
 	 * Use byte copy only if too small.
 	 */
 	li	a3, 8*SZREG /* size must be larger than size in word_copy */
+	neg	t1, a0
+	andi	t1, t1, SZREG-1
+	add	a3, a3, t1
 	bltu	a2, a3, .Lbyte_copy_tail
 
 	/*
