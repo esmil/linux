@@ -1152,21 +1152,23 @@ static int starfive_irq_set_type(struct irq_data *d, unsigned int trigger)
 
 static void starfive_gpio_irq_handler(struct irq_desc *desc)
 {
+	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
 	struct starfive_pinctrl *sfp = starfive_from_irq_desc(desc);
+	struct irq_chip *chip = irq_desc_get_chip(desc);
 	unsigned long mis;
 	unsigned int pin;
 
-	chained_irq_enter(&sfp->ic, desc);
+	chained_irq_enter(chip, desc);
 
 	mis = readl_relaxed(sfp->base + GPIO_MIS_LOW);
 	for_each_set_bit(pin, &mis, 32)
-		generic_handle_irq(irq_find_mapping(sfp->gc.irq.domain, pin));
+		generic_handle_irq(irq_find_mapping(gc->irq.domain, pin));
 
 	mis = readl_relaxed(sfp->base + GPIO_MIS_HIGH);
 	for_each_set_bit(pin, &mis, 32)
-		generic_handle_irq(irq_find_mapping(sfp->gc.irq.domain, pin + 32));
+		generic_handle_irq(irq_find_mapping(gc->irq.domain, pin + 32));
 
-	chained_irq_exit(&sfp->ic, desc);
+	chained_irq_exit(chip, desc);
 }
 
 #define MAX_GPI (GPI_USB_OVER_CURRENT + 1)
@@ -1256,6 +1258,7 @@ static int __init starfive_probe(struct platform_device *pdev)
 	}
 
 	value = readl(sfp->padctl + IO_PADSHARE_SEL);
+	pr_err("DEBUG read IO_PADSHARE_SEL=0x%x", value);
 	switch (value) {
 	case 0:
 		sfp->gpios.pin_base = 0x10000;
