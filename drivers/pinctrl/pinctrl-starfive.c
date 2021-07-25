@@ -117,11 +117,11 @@
 
 #define PAD_SLEW_RATE_MASK		0xe00
 #define PAD_SLEW_RATE_POS		9
-#define PAD_STRONG_PULL_UP		0x100
+#define PAD_BIAS_STRONG_PULL_UP		0x100
 #define PAD_INPUT_ENABLE		0x080
 #define PAD_INPUT_SCHMITT_ENABLE	0x040
-#define PAD_PULL_UP_DISABLE		0x020
-#define PAD_PULL_DOWN_ENABLE		0x010
+#define PAD_BIAS_DISABLE		0x020
+#define PAD_BIAS_PULL_DOWN		0x010
 #define PAD_BIAS_MASK			0x130
 #define PAD_DRIVE_STRENGTH_MASK		0x00f
 #define PAD_DRIVE_STRENGTH_POS		0
@@ -682,15 +682,15 @@ static int starfive_pinconf_get(struct pinctrl_dev *pctldev,
 
 	switch (param) {
 	case PIN_CONFIG_BIAS_DISABLE:
-		enabled = (value & PAD_BIAS_MASK) == PAD_PULL_UP_DISABLE;
+		enabled = value & PAD_BIAS_DISABLE;
 		arg = 0;
 		break;
 	case PIN_CONFIG_BIAS_PULL_DOWN:
-		enabled = value & PAD_PULL_DOWN_ENABLE;
+		enabled = value & PAD_BIAS_PULL_DOWN;
 		arg = 1;
 		break;
 	case PIN_CONFIG_BIAS_PULL_UP:
-		enabled = !(value & PAD_PULL_UP_DISABLE);
+		enabled = !(value & PAD_BIAS_MASK);
 		arg = 1;
 		break;
 	case PIN_CONFIG_INPUT_ENABLE:
@@ -710,7 +710,7 @@ static int starfive_pinconf_get(struct pinctrl_dev *pctldev,
 		arg = value & PAD_DRIVE_STRENGTH_MASK;
 		break;
 	case PIN_CONFIG_STARFIVE_STRONG_PULL_UP:
-		enabled = value & PAD_STRONG_PULL_UP;
+		enabled = value & PAD_BIAS_STRONG_PULL_UP;
 		arg = enabled;
 		break;
 	default:
@@ -757,14 +757,13 @@ static int starfive_pinconf_group_set(struct pinctrl_dev *pctldev,
 		switch (param) {
 		case PIN_CONFIG_BIAS_DISABLE:
 			mask |= PAD_BIAS_MASK;
-			value = (value & ~PAD_BIAS_MASK) | PAD_PULL_UP_DISABLE;
+			value = (value & ~PAD_BIAS_MASK) | PAD_BIAS_DISABLE;
 			break;
 		case PIN_CONFIG_BIAS_PULL_DOWN:
 			if (arg == 0)
 				return -ENOTSUPP;
 			mask |= PAD_BIAS_MASK;
-			value = (value & ~PAD_BIAS_MASK) |
-				PAD_PULL_UP_DISABLE | PAD_PULL_DOWN_ENABLE;
+			value = (value & ~PAD_BIAS_MASK) | PAD_BIAS_PULL_DOWN;
 			break;
 		case PIN_CONFIG_BIAS_PULL_UP:
 			if (arg == 0)
@@ -795,10 +794,11 @@ static int starfive_pinconf_group_set(struct pinctrl_dev *pctldev,
 		case PIN_CONFIG_STARFIVE_STRONG_PULL_UP:
 			if (arg) {
 				mask |= PAD_BIAS_MASK;
-				value = (value & ~PAD_BIAS_MASK) | PAD_STRONG_PULL_UP;
+				value = (value & ~PAD_BIAS_MASK) |
+					PAD_BIAS_STRONG_PULL_UP;
 			} else {
-				mask |= PAD_STRONG_PULL_UP;
-				value = value & ~PAD_STRONG_PULL_UP;
+				mask |= PAD_BIAS_STRONG_PULL_UP;
+				value = value & ~PAD_BIAS_STRONG_PULL_UP;
 			}
 			break;
 		default:
@@ -821,7 +821,7 @@ static void starfive_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 	struct starfive_pinctrl *sfp = pinctrl_dev_get_drvdata(pctldev);
 	u16 value = starfive_padctl_get(sfp, pin);
 
-	if (value & PAD_STRONG_PULL_UP)
+	if (value & PAD_BIAS_STRONG_PULL_UP)
 		seq_puts(s, ", strong pull up enabled");
 
 	if (value & PAD_DRIVE_STRENGTH_MASK)
@@ -912,7 +912,7 @@ static int starfive_gpio_direction_output(struct gpio_chip *gc,
 	/* disable input, schmitt trigger and bias */
 	starfive_padctl_rmw(sfp, starfive_gpio_to_pin(sfp, gpio),
 			PAD_BIAS_MASK | PAD_INPUT_ENABLE | PAD_INPUT_SCHMITT_ENABLE,
-			PAD_PULL_UP_DISABLE);
+			PAD_BIAS_DISABLE);
 
 	return 0;
 }
@@ -961,13 +961,13 @@ static int starfive_gpio_set_config(struct gpio_chip *gc, unsigned int gpio,
 	switch (pinconf_to_config_param(config)) {
 	case PIN_CONFIG_BIAS_DISABLE:
 		mask  = PAD_BIAS_MASK;
-		value = PAD_PULL_UP_DISABLE;
+		value = PAD_BIAS_DISABLE;
 		break;
 	case PIN_CONFIG_BIAS_PULL_DOWN:
 		if (arg == 0)
 			return -ENOTSUPP;
 		mask  = PAD_BIAS_MASK;
-		value = PAD_PULL_UP_DISABLE | PAD_PULL_DOWN_ENABLE;
+		value = PAD_BIAS_PULL_DOWN;
 		break;
 	case PIN_CONFIG_BIAS_PULL_UP:
 		if (arg == 0)
