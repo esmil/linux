@@ -31,18 +31,21 @@
 #define MAX_GPIO	64
 
 /* Global enable for GPIO interrupts, offset: 0x0, field: GPIOEN
-   set to 1 if GPIO interrupts are enabled, set to 0 to disable */
+ * set to 1 if GPIO interrupts are enabled, set to 0 to disable
+ */
 #define IRQ_GLOBAL_EN		0x0
 
 /* Interrupt Type for GPIO[31:0], offset: 0x10, field: GPIOS_0
- * set to 1 if edge-triggered, set to 0 for level-triggered */
+ * set to 1 if edge-triggered, set to 0 for level-triggered
+ */
 #define IRQ_TYPE_LOW		0x10
 
 /* Interrupt Type for GPIO[63:32], offset: 0x14, field: GPIOS_1 */
 #define IRQ_TYPE_HIGH		0x14
 
 /* Edge-Triggered Interrupt Type for GPIO[31:0], offset: 0x18, field: GPIOIBE_0
- * set to 1 if both positive and negative edge, set to 0 if single edge */
+ * set to 1 if both positive and negative edge, set to 0 if single edge
+ */
 #define IRQ_EDGE_BOTH_LOW	0x18
 
 /* Edge-Triggered Interrupt Type for GPIO[63:32], offset: 0x1c, field: GPIOIBE_1 */
@@ -51,28 +54,32 @@
 /* Interrupt Trigger Polarity for GPIO[31:0], offset: 0x20, field: GPIOEV_0
  * for edge-triggered on single edge, set to 1 for rising edge, 0 for falling edge
  * for edge-triggered on both edges, this field is ignored
- * for level-triggered, set to 1 for high level, 0 for low level */
+ * for level-triggered, set to 1 for high level, 0 for low level
+ */
 #define IRQ_POLARITY_LOW	0x20
 
 /* Interrupt Trigger Polarity for GPIO[63:32], offset: 0x24, field: GPIOEV_1 */
 #define IRQ_POLARITY_HIGH	0x24
 
 /* Interrupt Enable for GPIO[31:0], offset: 0x28, field: GPIOIE_0
- * set to 1 to enable (unmask) the interrupt, set to 0 to disable (mask) */
+ * set to 1 to enable (unmask) the interrupt, set to 0 to disable (mask)
+ */
 #define IRQ_ENABLE_LOW		0x28
 
 /* Interrupt Mask for GPIO[63:32], offset: 0x2c, field: GPIOIE_1 */
 #define IRQ_ENABLE_HIGH		0x2c
 
 /* Clear Edge-Triggered Interrupts GPIO[31:0], offset: 0x30, field: GPIOC_0
- * set to 1 to clear edge-triggered interrupt */
+ * set to 1 to clear edge-triggered interrupt
+ */
 #define IRQ_CLEAR_EDGE_LOW	0x30
 
 /* Clear Edge-Triggered Interrupts GPIO[63:32], offset: 0x34, field: GPIOC_1 */
 #define IRQ_CLEAR_EDGE_HIGH	0x34
 
 /* Edge-Triggered Interrupt Status GPIO[31:0], offset: 0x38, field: GPIORIS_0
- * value of 1 means edge detected, value of 0 means no edge detected */
+ * value of 1 means edge detected, value of 0 means no edge detected
+ */
 #define IRQ_EDGE_STATUS_LOW	0x38
 
 /* Edge-Triggered Interrupt Status GPIO[63:32], offset: 0x3C, field: GPIORIS_1 */
@@ -80,14 +87,16 @@
 
 /* Interrupt Status after Masking GPIO[31:0], offset: 0x40, field: GPIOMIS_0
  * status of edge-triggered or level-triggered after masking
- * value of 1 means edge or level was detected, value of 0 menas not detected */
+ * value of 1 means edge or level was detected, value of 0 menas not detected
+ */
 #define IRQ_MASKED_STATUS_LOW	0x40
 
 /* Interrupt Status after Masking GPIO[63:32], offset: 0x44, field: GPIOMIS_1 */
 #define IRQ_MASKED_STATUS_HIGH	0x44
 
 /* Data Value of GPIO for GPIO[31:0], offest: 0x48, field: GPIODIN_0
- * dynamically reflects value on the GPIO pin */
+ * dynamically reflects value on the GPIO pin
+ */
 #define GPIO_DIN_LOW		0x48
 
 /* Data Value of GPIO for GPIO[63:32], offest: 0x4C, field: GPIODIN_1 */
@@ -98,7 +107,8 @@
  * bytes wide too. Output data and output enable registers for a given GPIO pad
  * are contiguous. Thus GPIO0_DOUT_CFG is 0x50 and GPIO0_DOEN_CFG is 0x54 while
  * GPIO1_DOUT_CFG is 0x58 and GPIO1_DOEN_CFG is 0x5C. The stride between GPIO
- * GPIO pads is effectively 8, thus: GPIOn_DOUT_CFG is 0x50+8n */
+ * GPIO pads is effectively 8, thus: GPIOn_DOUT_CFG is 0x50+8n
+ */
 #define GPIO_N_DOUT_CFG		0x50
 
 /* GPIO0_DOEN_CFG is 0x54, GPIOn_DOEN_CFG is 0x54+8n */
@@ -106,13 +116,15 @@
 
 /* From Section 12.3, there are 75 input signal configuration registers which
  * are 4 bytes wide starting with GPI_CPU_JTAG_TCK_CFG at 0x250 and ending with
- * GPI_USB_OVER_CURRENT_CFG 0x378 */
+ * GPI_USB_OVER_CURRENT_CFG 0x378
+ */
 #define GPIO_IN_OFFSET		0x250
 
 /* From Section 11, IO_PADSHARE_SEL register can be programmed to select one of
  * pre-defined multiplexed signal groups on PAD_FUNC_SHARE and PAD_GPIO pads.
  * This is a global setting. Per Table 11-1, setting IO_PADSHARE_SEL to 6 would
- * result in GPIO[63:0] being mapped to PAD_FUNC_SHARE[63:0] */
+ * result in GPIO[63:0] being mapped to PAD_FUNC_SHARE[63:0]
+ */
 #define IO_PADSHARE_SEL		0x1a0
 
 #define PAD_SLEW_RATE_MASK		0xe00
