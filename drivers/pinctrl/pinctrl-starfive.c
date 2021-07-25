@@ -14,6 +14,7 @@
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include <linux/spinlock.h>
 #include <dt-bindings/pinctrl/pinctrl-starfive.h>
 
@@ -172,10 +173,19 @@ static bool keepmux;
 module_param(keepmux, bool, 0644);
 MODULE_PARM_DESC(keepmux, "Keep pinmux settings from previous boot stage");
 
+static const struct regmap_config starfive_gpio_regmap_config = {
+	.reg_bits = 32,
+	.reg_stride = 4,
+	.val_bits = 32,
+	.fast_io = true,
+	.disable_locking = true,
+};
+
 struct starfive_pinctrl {
 	struct gpio_chip gc;
 	struct pinctrl_gpio_range gpios;
 	raw_spinlock_t lock;
+	struct regmap *regs;
 	void __iomem *base;
 	void __iomem *padctl;
 	struct pinctrl_dev *pctl;
@@ -429,16 +439,16 @@ static void starfive_pin_dbg_show(struct pinctrl_dev *pctldev,
 {
 	struct starfive_pinctrl *sfp = pinctrl_dev_get_drvdata(pctldev);
 	unsigned int gpio = starfive_pin_to_gpio(sfp, pin);
-	void __iomem *reg;
+	unsigned int reg;
 	u32 dout, doen;
 
 	if (gpio >= MAX_GPIO)
 		return;
 
-	reg = sfp->base + GPIO_N_DOUT_CFG + 8 * gpio;
-	dout = readl_relaxed(reg);
+	reg = GPIO_N_DOUT_CFG + 8 * gpio;
+	regmap_read(sfp->regs, reg, &dout);
 	reg += 4;
-	doen = readl_relaxed(reg);
+	regmap_read(sfp->regs, reg, &doen);
 
 	seq_printf(s, "dout=%u%s doen=%u%s",
 		   dout & 0xffU, (dout & 0x80000000U) ? "r" : "",
@@ -630,9 +640,9 @@ static int starfive_set_mux(struct pinctrl_dev *pctldev,
 	pinmux = group->data;
 	for (i = 0; i < group->num_pins; i++) {
 		unsigned int gpio = starfive_pin_to_gpio(sfp, group->pins[i]);
-		void __iomem *reg_dout;
-		void __iomem *reg_doen;
-		void __iomem *reg_din;
+		unsigned int reg_dout;
+		unsigned int reg_doen;
+		unsigned int reg_din;
 		u32 v, dout, doen, din;
 		unsigned long flags;
 
@@ -648,18 +658,18 @@ static int starfive_set_mux(struct pinctrl_dev *pctldev,
 		dev_dbg(dev, "GPIO%u: dout=0x%x doen=0x%x din=0x%x\n",
 			gpio, dout, doen, din);
 
-		reg_dout = sfp->base + GPIO_N_DOUT_CFG + 8 * gpio;
-		reg_doen = sfp->base + GPIO_N_DOEN_CFG + 8 * gpio;
+		reg_dout = GPIO_N_DOUT_CFG + 8 * gpio;
+		reg_doen = GPIO_N_DOEN_CFG + 8 * gpio;
 		if (din != 0xff)
-			reg_din = sfp->base + GPIO_IN_OFFSET + 4 * din;
+			reg_din = GPIO_IN_OFFSET + 4 * din;
 		else
-			reg_din = NULL;
+			reg_din = 0;
 
 		raw_spin_lock_irqsave(&sfp->lock, flags);
-		writel(dout, reg_dout);
-		writel(doen, reg_doen);
+		regmap_write(sfp->regs, reg_dout, dout);
+		regmap_write(sfp->regs, reg_doen, doen);
 		if (reg_din)
-			writel(gpio + 2, reg_din);
+			regmap_write(sfp->regs, reg_din, gpio + 2);
 		raw_spin_unlock_irqrestore(&sfp->lock, flags);
 	}
 
@@ -913,11 +923,13 @@ static void starfive_gpio_free(struct gpio_chip *gc, unsigned int gpio)
 static int starfive_gpio_get_direction(struct gpio_chip *gc, unsigned int gpio)
 {
 	struct starfive_pinctrl *sfp = starfive_from_gc(gc);
+	int ret = 0;
 
 	if (gpio >= MAX_GPIO)
 		return -EINVAL;
 
-	return readl_relaxed(sfp->base + GPIO_N_DOEN_CFG + 8 * gpio) & 1U;
+	regmap_read(sfp->regs, GPIO_N_DOEN_CFG + 8 * gpio, &ret);
+	return ret & 1U;
 }
 
 static int starfive_gpio_direction_input(struct gpio_chip *gc,
@@ -935,7 +947,7 @@ static int starfive_gpio_direction_input(struct gpio_chip *gc,
 			PAD_INPUT_ENABLE | PAD_INPUT_SCHMITT_ENABLE);
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(GPO_DISABLE, sfp->base + GPIO_N_DOEN_CFG + 8 * gpio);
+	regmap_write(sfp->regs, GPIO_N_DOEN_CFG + 8 * gpio, GPO_DISABLE);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 
 	return 0;
@@ -951,8 +963,8 @@ static int starfive_gpio_direction_output(struct gpio_chip *gc,
 		return -EINVAL;
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(value, sfp->base + GPIO_N_DOUT_CFG + 8 * gpio);
-	writel_relaxed(GPO_ENABLE, sfp->base + GPIO_N_DOEN_CFG + 8 * gpio);
+	regmap_write(sfp->regs, GPIO_N_DOUT_CFG + 8 * gpio, value);
+	regmap_write(sfp->regs, GPIO_N_DOEN_CFG + 8 * gpio, GPO_ENABLE);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 
 	/* disable input, schmitt trigger and bias */
@@ -972,10 +984,10 @@ static int starfive_gpio_get(struct gpio_chip *gc, unsigned int gpio)
 		return -EINVAL;
 
 	if (gpio < 32) {
-		value = readl_relaxed(sfp->base + GPIO_DIN_LOW);
+		regmap_read(sfp->regs, GPIO_DIN_LOW, &value);
 		value = (value >> gpio) & 1U;
 	} else {
-		value = readl_relaxed(sfp->base + GPIO_DIN_HIGH);
+		regmap_read(sfp->regs, GPIO_DIN_HIGH, &value);
 		value = (value >> (gpio - 32)) & 1U;
 	}
 
@@ -992,7 +1004,7 @@ static void starfive_gpio_set(struct gpio_chip *gc, unsigned int gpio,
 		return;
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(value, sfp->base + GPIO_N_DOUT_CFG + 8 * gpio);
+	regmap_write(sfp->regs, GPIO_N_DOUT_CFG + 8 * gpio, value);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 }
 
@@ -1060,22 +1072,22 @@ static void starfive_irq_ack(struct irq_data *d)
 	struct starfive_pinctrl *sfp = starfive_from_irq_data(d);
 	int gpio = irqd_to_hwirq(d);
 	unsigned long flags;
-	void __iomem *ic;
+	unsigned int ic;
 	u32 mask;
 
 	if (gpio < 0 || gpio >= MAX_GPIO)
 		return;
 
 	if (gpio < 32) {
-		ic = sfp->base + IRQ_CLEAR_EDGE_LOW;
+		ic = IRQ_CLEAR_EDGE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ic = sfp->base + IRQ_CLEAR_EDGE_HIGH;
+		ic = IRQ_CLEAR_EDGE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(mask, ic);
+	regmap_write(sfp->regs, ic, mask);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 }
 
@@ -1084,24 +1096,24 @@ static void starfive_irq_mask(struct irq_data *d)
 	struct starfive_pinctrl *sfp = starfive_from_irq_data(d);
 	int gpio = irqd_to_hwirq(d);
 	unsigned long flags;
-	void __iomem *ie;
+	unsigned int ie;
 	u32 mask, value;
 
 	if (gpio < 0 || gpio >= MAX_GPIO)
 		return;
 
 	if (gpio < 32) {
-		ie = sfp->base + IRQ_ENABLE_LOW;
+		ie = IRQ_ENABLE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ie = sfp->base + IRQ_ENABLE_HIGH;
+		ie = IRQ_ENABLE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	value = readl_relaxed(ie);
+	regmap_read(sfp->regs, ie, &value);
 	value &= ~mask;
-	writel_relaxed(value, ie);
+	regmap_write(sfp->regs, ie, value);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 }
 
@@ -1110,28 +1122,28 @@ static void starfive_irq_mask_ack(struct irq_data *d)
 	struct starfive_pinctrl *sfp = starfive_from_irq_data(d);
 	int gpio = irqd_to_hwirq(d);
 	unsigned long flags;
-	void __iomem *ie;
-	void __iomem *ic;
+	unsigned int ie;
+	unsigned int ic;
 	u32 mask, value;
 
 	if (gpio < 0 || gpio >= MAX_GPIO)
 		return;
 
 	if (gpio < 32) {
-		ie = sfp->base + IRQ_ENABLE_LOW;
-		ic = sfp->base + IRQ_CLEAR_EDGE_LOW;
+		ie = IRQ_ENABLE_LOW;
+		ic = IRQ_CLEAR_EDGE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ie = sfp->base + IRQ_ENABLE_HIGH;
-		ic = sfp->base + IRQ_CLEAR_EDGE_HIGH;
+		ie = IRQ_ENABLE_HIGH;
+		ic = IRQ_CLEAR_EDGE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	value = readl_relaxed(ie);
+	regmap_read(sfp->regs, ie, &value);
 	value &= ~mask;
-	writel_relaxed(value, ie);
-	writel_relaxed(mask, ic);
+	regmap_write(sfp->regs, ie, value);
+	regmap_write(sfp->regs, ic, mask);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 }
 
@@ -1140,24 +1152,24 @@ static void starfive_irq_unmask(struct irq_data *d)
 	struct starfive_pinctrl *sfp = starfive_from_irq_data(d);
 	int gpio = irqd_to_hwirq(d);
 	unsigned long flags;
-	void __iomem *ie;
+	unsigned int ie;
 	u32 mask, value;
 
 	if (gpio < 0 || gpio >= MAX_GPIO)
 		return;
 
 	if (gpio < 32) {
-		ie = sfp->base + IRQ_ENABLE_LOW;
+		ie = IRQ_ENABLE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ie = sfp->base + IRQ_ENABLE_HIGH;
+		ie = IRQ_ENABLE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	value = readl_relaxed(ie);
+	regmap_read(sfp->regs, ie, &value);
 	value |= mask;
-	writel_relaxed(value, ie);
+	regmap_write(sfp->regs, ie, value);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 }
 
@@ -1166,7 +1178,7 @@ static int starfive_irq_set_type(struct irq_data *d, unsigned int trigger)
 	struct starfive_pinctrl *sfp = starfive_from_irq_data(d);
 	int gpio = irqd_to_hwirq(d);
 	unsigned long flags;
-	void __iomem *base;
+	int offset = 0;
 	u32 mask, irq_type, edge_both, polarity;
 
 	if (gpio < 0 || gpio >= MAX_GPIO)
@@ -1188,17 +1200,17 @@ static int starfive_irq_set_type(struct irq_data *d, unsigned int trigger)
 	}
 
 	if (gpio < 32) {
-		base = sfp->base;
+		offset = 0;
 		mask = BIT(gpio);
 	} else {
-		base = sfp->base + 4;
+		offset = 4;
 		mask = BIT(gpio - 32);
 	}
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	irq_type = readl_relaxed(base + IRQ_TYPE_LOW);
-	edge_both = readl_relaxed(base + IRQ_EDGE_BOTH_LOW);
-	polarity = readl_relaxed(base + IRQ_POLARITY_LOW);
+	regmap_read(sfp->regs, IRQ_TYPE_LOW + offset, &irq_type);
+	regmap_read(sfp->regs, IRQ_EDGE_BOTH_LOW + offset, &edge_both);
+	regmap_read(sfp->regs, IRQ_POLARITY_LOW + offset, &polarity);
 
 	switch (trigger) {
 	case IRQ_TYPE_EDGE_RISING:
@@ -1226,9 +1238,9 @@ static int starfive_irq_set_type(struct irq_data *d, unsigned int trigger)
 		break;
 	}
 
-	writel_relaxed(irq_type, base + IRQ_TYPE_LOW);
-	writel_relaxed(edge_both, base + IRQ_EDGE_BOTH_LOW);
-	writel_relaxed(polarity, base + IRQ_POLARITY_LOW);
+	regmap_write(sfp->regs, IRQ_TYPE_LOW + offset, irq_type);
+	regmap_write(sfp->regs, IRQ_EDGE_BOTH_LOW + offset, edge_both);
+	regmap_write(sfp->regs, IRQ_POLARITY_LOW + offset, polarity);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 	return 0;
 }
@@ -1246,17 +1258,22 @@ static void starfive_gpio_irq_handler(struct irq_desc *desc)
 {
 	struct starfive_pinctrl *sfp = starfive_from_irq_desc(desc);
 	struct irq_chip *chip = irq_desc_get_chip(desc);
-	unsigned long mis;
+	unsigned long masked_status_ul;
+	unsigned int masked_status;
 	unsigned int pin;
 
 	chained_irq_enter(chip, desc);
 
-	mis = readl_relaxed(sfp->base + IRQ_MASKED_STATUS_LOW);
-	for_each_set_bit(pin, &mis, 32)
+	regmap_read(sfp->regs, IRQ_MASKED_STATUS_LOW, &masked_status);
+	/* hack to fix that regmap_read() is usigned int, while BIT() is unsigned long */
+	masked_status_ul = masked_status;
+	for_each_set_bit(pin, &masked_status_ul, 32)
 		generic_handle_irq(irq_find_mapping(sfp->gc.irq.domain, pin));
 
-	mis = readl_relaxed(sfp->base + IRQ_MASKED_STATUS_HIGH);
-	for_each_set_bit(pin, &mis, 32)
+	regmap_read(sfp->regs, IRQ_MASKED_STATUS_HIGH, &masked_status);
+	/* hack to fix that regmap_read() is usigned int, while BIT() is unsigned long */
+	masked_status_ul = masked_status;
+	for_each_set_bit(pin, &masked_status_ul, 32)
 		generic_handle_irq(irq_find_mapping(sfp->gc.irq.domain, pin + 32));
 
 	chained_irq_exit(chip, desc);
@@ -1305,11 +1322,8 @@ static void starfive_pinmux_reset(struct starfive_pinctrl *sfp)
 	for (i = 0; i < MAX_GPIO; i++) {
 		if (test_bit(i, keep))
 			continue;
-
-		writel_relaxed(GPO_DISABLE,
-			       sfp->base + GPIO_N_DOEN_CFG + 8 * i);
-		writel_relaxed(GPO_LOW,
-			       sfp->base + GPIO_N_DOUT_CFG + 8 * i);
+		regmap_write(sfp->regs, GPIO_N_DOEN_CFG + 8 * i, GPO_DISABLE);
+		regmap_write(sfp->regs, GPIO_N_DOUT_CFG + 8 * i, GPO_LOW);
 	}
 
 	for (i = 0; i < MAX_GPI; i++) {
@@ -1338,6 +1352,12 @@ static int __init starfive_probe(struct platform_device *pdev)
 	if (IS_ERR(sfp->base)) {
 		dev_err(dev, "could not ioremap %s registers\n", "gpio");
 		return PTR_ERR(sfp->base);
+	}
+
+	sfp->regs = devm_regmap_init_mmio(dev, sfp->base, &starfive_gpio_regmap_config);
+	if (IS_ERR(sfp->regs)) {
+		dev_err(dev, "failed to create regmap for gpio registers\n");
+		return PTR_ERR(sfp->regs);
 	}
 
 	sfp->padctl = devm_platform_ioremap_resource_byname(pdev, "padctl");
@@ -1422,9 +1442,9 @@ static int __init starfive_probe(struct platform_device *pdev)
 	sfp->gc.irq.parents[0] = ret;
 
 	/* disable all GPIO interrupts before enabling parent interrupts */
-	writel(0, sfp->base + IRQ_ENABLE_LOW);
-	writel(0, sfp->base + IRQ_ENABLE_HIGH);
-	writel(1, sfp->base + IRQ_GLOBAL_EN);
+	regmap_write(sfp->regs, IRQ_ENABLE_LOW, 0);
+	regmap_write(sfp->regs, IRQ_ENABLE_HIGH, 0);
+	regmap_write(sfp->regs, IRQ_GLOBAL_EN, 1);
 
 	ret = devm_gpiochip_add_data(dev, &sfp->gc, sfp);
 	if (ret) {
