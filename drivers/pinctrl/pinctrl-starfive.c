@@ -3,6 +3,7 @@
  * Pinctrl / GPIO driver for StarFive JH7100 SoC
  *
  * Copyright (C) 2021 Emil Renner Berthing <kernel@esmil.dk>
+ * Copyright (C) 2021 Drew Fustini <drew@pdp7.com>
  * Copyright (C) 2020 Shanghai StarFive Technology Co., Ltd.
  */
 
@@ -27,53 +28,92 @@
  * refer to Section 12. GPIO Registers in JH7100 datasheet:
  * https://github.com/starfive-tech/beaglev_doc
  */
-
-/* global enable */
-#define GPIO_EN		0x0
-
-/* interrupt type */
-#define GPIO_IS_LOW	0x10
-#define GPIO_IS_HIGH	0x14
-
-/* edge trigger interrupt type */
-#define GPIO_IBE_LOW	0x18
-#define GPIO_IBE_HIGH	0x1c
-
-/* edge trigger interrupt polarity */
-#define GPIO_IEV_LOW	0x20
-#define GPIO_IEV_HIGH	0x24
-
-/* interrupt max */
-#define GPIO_IE_LOW	0x28
-#define GPIO_IE_HIGH	0x2c
-
-/* clear edge-triggered interrupt */
-#define GPIO_IC_LOW	0x30
-#define GPIO_IC_HIGH	0x34
-
-/* edge-triggered interrupt status (read-only) */
-#define GPIO_RIS_LOW	0x38
-#define GPIO_RIS_HIGH	0x3c
-
-/* interrupt status after masking (read-only) */
-#define GPIO_MIS_LOW	0x40
-#define GPIO_MIS_HIGH	0x44
-
-/* data value of gpio */
-#define GPIO_DIN_LOW	0x48
-#define GPIO_DIN_HIGH	0x4c
-
-/* GPIO0_DOUT_CFG is 0x50, GPIOn_DOUT_CFG is 0x50+8n */
-#define GPIO_DOUT_X_REG	0x50
-
-/* GPIO0_DOEN_CFG is 0x54, GPIOn_DOEN_CFG is 0x54+8n */
-#define GPIO_DOEN_X_REG	0x54
-
-#define GPIO_IN_OFFSET	0x250
-
 #define MAX_GPIO	64
 
-#define IO_PADSHARE_SEL	0x1a0
+/* Global enable for GPIO interrupts, offset: 0x0, field: GPIOEN
+   set to 1 if GPIO interrupts are enabled, set to 0 to disable */
+#define IRQ_GLOBAL_EN		0x0
+
+/* Interrupt Type for GPIO[31:0], offset: 0x10, field: GPIOS_0
+ * set to 1 if edge-triggered, set to 0 for level-triggered */
+#define IRQ_TYPE_LOW		0x10
+
+/* Interrupt Type for GPIO[63:32], offset: 0x14, field: GPIOS_1 */
+#define IRQ_TYPE_HIGH		0x14
+
+/* Edge-Triggered Interrupt Type for GPIO[31:0], offset: 0x18, field: GPIOIBE_0
+ * set to 1 if both positive and negative edge, set to 0 if single edge */
+#define IRQ_EDGE_BOTH_LOW	0x18
+
+/* Edge-Triggered Interrupt Type for GPIO[63:32], offset: 0x1c, field: GPIOIBE_1 */
+#define IRQ_EDGE_BOTH_HIGH	0x1c
+
+/* Interrupt Trigger Polarity for GPIO[31:0], offset: 0x20, field: GPIOEV_0
+ * for edge-triggered on single edge, set to 1 for rising edge, 0 for falling edge
+ * for edge-triggered on both edges, this field is ignored
+ * for level-triggered, set to 1 for high level, 0 for low level */
+#define IRQ_POLARITY_LOW	0x20
+
+/* Interrupt Trigger Polarity for GPIO[63:32], offset: 0x24, field: GPIOEV_1 */
+#define IRQ_POLARITY_HIGH	0x24
+
+/* Interrupt Enable for GPIO[31:0], offset: 0x28, field: GPIOIE_0
+ * set to 1 to enable (unmask) the interrupt, set to 0 to disable (mask) */
+#define IRQ_ENABLE_LOW		0x28
+
+/* Interrupt Mask for GPIO[63:32], offset: 0x2c, field: GPIOIE_1 */
+#define IRQ_ENABLE_HIGH		0x2c
+
+/* Clear Edge-Triggered Interrupts GPIO[31:0], offset: 0x30, field: GPIOC_0
+ * set to 1 to clear edge-triggered interrupt */
+#define IRQ_CLEAR_EDGE_LOW	0x30
+
+/* Clear Edge-Triggered Interrupts GPIO[63:32], offset: 0x34, field: GPIOC_1 */
+#define IRQ_CLEAR_EDGE_HIGH	0x34
+
+/* Edge-Triggered Interrupt Status GPIO[31:0], offset: 0x38, field: GPIORIS_0
+ * value of 1 means edge detected, value of 0 means no edge detected */
+#define IRQ_EDGE_STATUS_LOW	0x38
+
+/* Edge-Triggered Interrupt Status GPIO[63:32], offset: 0x3C, field: GPIORIS_1 */
+#define IRQ_EDGE_STATUS_HIGH	0x3c
+
+/* Interrupt Status after Masking GPIO[31:0], offset: 0x40, field: GPIOMIS_0
+ * status of edge-triggered or level-triggered after masking
+ * value of 1 means edge or level was detected, value of 0 menas not detected */
+#define MASKED_STATUS_LOW	0x40
+
+/* Interrupt Status after Masking GPIO[63:32], offset: 0x44, field: GPIOMIS_1 */
+#define MASKED_STATUS_HIGH	0x44
+
+/* Data Value of GPIO for GPIO[31:0], offest: 0x48, field: GPIODIN_0
+ * dynamically reflects value on the GPIO pin */
+#define GPIO_DIN_LOW		0x48
+
+/* Data Value of GPIO for GPIO[63:32], offest: 0x4C, field: GPIODIN_1 */
+#define GPIO_DIN_HIGH		0x4c
+
+/* From datasheet section 12.2, there are 64 output data config registers which
+ * are 4 bytes wide. There are 64 output enable config registers which are 4
+ * bytes wide too. Output data and output enable registers for a given GPIO pad
+ * are contiguous. Thus GPIO0_DOUT_CFG is 0x50 and GPIO0_DOEN_CFG is 0x54 while
+ * GPIO1_DOUT_CFG is 0x58 and GPIO1_DOEN_CFG is 0x5C. The stride between GPIO
+ * GPIO pads is effectively 8, thus: GPIOn_DOUT_CFG is 0x50+8n */
+#define GPIO_N_DOUT_CFG		0x50
+
+/* GPIO0_DOEN_CFG is 0x54, GPIOn_DOEN_CFG is 0x54+8n */
+#define GPIO_N_DOEN_CFG		0x54
+
+/* From Section 12.3, there are 75 input signal configuration registers which
+ * are 4 bytes wide starting with GPI_CPU_JTAG_TCK_CFG at 0x250 and ending with
+ * GPI_USB_OVER_CURRENT_CFG 0x378 */
+#define GPIO_IN_OFFSET		0x250
+
+/* From Section 11, IO_PADSHARE_SEL register can be programmed to select one of
+ * pre-defined multiplexed signal groups on PAD_FUNC_SHARE and PAD_GPIO pads.
+ * This is a global setting. Per Table 11-1, setting IO_PADSHARE_SEL to 6 would
+ * result in GPIO[63:0] being mapped to PAD_FUNC_SHARE[63:0] */
+#define IO_PADSHARE_SEL		0x1a0
 
 #define PAD_SLEW_RATE_MASK		0xe00
 #define PAD_SLEW_RATE_POS		9
@@ -354,7 +394,7 @@ static void starfive_pin_dbg_show(struct pinctrl_dev *pctldev,
 	if (gpio >= MAX_GPIO)
 		return;
 
-	reg = sfp->base + GPIO_DOUT_X_REG + 8 * gpio;
+	reg = sfp->base + GPIO_N_DOUT_CFG + 8 * gpio;
 	dout = readl_relaxed(reg);
 	reg += 4;
 	doen = readl_relaxed(reg);
@@ -567,8 +607,8 @@ static int starfive_set_mux(struct pinctrl_dev *pctldev,
 		dev_dbg(dev, "GPIO%u: dout=0x%x doen=0x%x din=0x%x\n",
 			gpio, dout, doen, din);
 
-		reg_dout = sfp->base + GPIO_DOUT_X_REG + 8 * gpio;
-		reg_doen = sfp->base + GPIO_DOEN_X_REG + 8 * gpio;
+		reg_dout = sfp->base + GPIO_N_DOUT_CFG + 8 * gpio;
+		reg_doen = sfp->base + GPIO_N_DOEN_CFG + 8 * gpio;
 		if (din != 0xff)
 			reg_din = sfp->base + GPIO_IN_OFFSET + 4 * din;
 		else
@@ -832,7 +872,7 @@ static int starfive_gpio_get_direction(struct gpio_chip *gc, unsigned int gpio)
 	if (gpio >= MAX_GPIO)
 		return -EINVAL;
 
-	return readl_relaxed(sfp->base + GPIO_DOEN_X_REG + 8 * gpio) & 1U;
+	return readl_relaxed(sfp->base + GPIO_N_DOEN_CFG + 8 * gpio) & 1U;
 }
 
 static int starfive_gpio_direction_input(struct gpio_chip *gc,
@@ -850,7 +890,7 @@ static int starfive_gpio_direction_input(struct gpio_chip *gc,
 			PAD_INPUT_ENABLE | PAD_INPUT_SCHMITT_ENABLE);
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(GPO_DISABLE, sfp->base + GPIO_DOEN_X_REG + 8 * gpio);
+	writel_relaxed(GPO_DISABLE, sfp->base + GPIO_N_DOEN_CFG + 8 * gpio);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 
 	return 0;
@@ -866,8 +906,8 @@ static int starfive_gpio_direction_output(struct gpio_chip *gc,
 		return -EINVAL;
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(value, sfp->base + GPIO_DOUT_X_REG + 8 * gpio);
-	writel_relaxed(GPO_ENABLE, sfp->base + GPIO_DOEN_X_REG + 8 * gpio);
+	writel_relaxed(value, sfp->base + GPIO_N_DOUT_CFG + 8 * gpio);
+	writel_relaxed(GPO_ENABLE, sfp->base + GPIO_N_DOEN_CFG + 8 * gpio);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 
 	/* disable input, schmitt trigger and pulls */
@@ -907,7 +947,7 @@ static void starfive_gpio_set(struct gpio_chip *gc, unsigned int gpio,
 		return;
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	writel_relaxed(value, sfp->base + GPIO_DOUT_X_REG + 8 * gpio);
+	writel_relaxed(value, sfp->base + GPIO_N_DOUT_CFG + 8 * gpio);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 }
 
@@ -982,10 +1022,10 @@ static void starfive_irq_ack(struct irq_data *d)
 		return;
 
 	if (gpio < 32) {
-		ic = sfp->base + GPIO_IC_LOW;
+		ic = sfp->base + IRQ_CLEAR_EDGE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ic = sfp->base + GPIO_IC_HIGH;
+		ic = sfp->base + IRQ_CLEAR_EDGE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
@@ -1006,10 +1046,10 @@ static void starfive_irq_mask(struct irq_data *d)
 		return;
 
 	if (gpio < 32) {
-		ie = sfp->base + GPIO_IE_LOW;
+		ie = sfp->base + IRQ_ENABLE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ie = sfp->base + GPIO_IE_HIGH;
+		ie = sfp->base + IRQ_ENABLE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
@@ -1033,12 +1073,12 @@ static void starfive_irq_mask_ack(struct irq_data *d)
 		return;
 
 	if (gpio < 32) {
-		ie = sfp->base + GPIO_IE_LOW;
-		ic = sfp->base + GPIO_IC_LOW;
+		ie = sfp->base + IRQ_ENABLE_LOW;
+		ic = sfp->base + IRQ_CLEAR_EDGE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ie = sfp->base + GPIO_IE_HIGH;
-		ic = sfp->base + GPIO_IC_HIGH;
+		ie = sfp->base + IRQ_ENABLE_HIGH;
+		ic = sfp->base + IRQ_CLEAR_EDGE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
@@ -1062,10 +1102,10 @@ static void starfive_irq_unmask(struct irq_data *d)
 		return;
 
 	if (gpio < 32) {
-		ie = sfp->base + GPIO_IE_LOW;
+		ie = sfp->base + IRQ_ENABLE_LOW;
 		mask = BIT(gpio);
 	} else {
-		ie = sfp->base + GPIO_IE_HIGH;
+		ie = sfp->base + IRQ_ENABLE_HIGH;
 		mask = BIT(gpio - 32);
 	}
 
@@ -1082,7 +1122,7 @@ static int starfive_irq_set_type(struct irq_data *d, unsigned int trigger)
 	int gpio = irqd_to_hwirq(d);
 	unsigned long flags;
 	void __iomem *base;
-	u32 mask, reg_is, reg_ibe, reg_iev;
+	u32 mask, irq_type, edge_both, polarity;
 
 	if (gpio < 0 || gpio >= MAX_GPIO)
 		return -EINVAL;
@@ -1111,41 +1151,39 @@ static int starfive_irq_set_type(struct irq_data *d, unsigned int trigger)
 	}
 
 	raw_spin_lock_irqsave(&sfp->lock, flags);
-	reg_is = readl_relaxed(base + GPIO_IS_LOW);
-	reg_ibe = readl_relaxed(base + GPIO_IBE_LOW);
-	reg_iev = readl_relaxed(base + GPIO_IEV_LOW);
+	irq_type = readl_relaxed(base + IRQ_TYPE_LOW);
+	edge_both = readl_relaxed(base + IRQ_EDGE_BOTH_LOW);
+	polarity = readl_relaxed(base + IRQ_POLARITY_LOW);
 
 	switch (trigger) {
 	case IRQ_TYPE_EDGE_RISING:
-		reg_is  |= mask;
-		reg_ibe &= ~mask;
-		reg_iev |= mask;
+		irq_type  |= mask;  /* 1: edge triggered */
+		edge_both &= ~mask; /* 0: single edge */
+		polarity  |= mask;  /* 1: rising edge */
 		break;
 	case IRQ_TYPE_EDGE_FALLING:
-		reg_is  |= mask;
-		reg_ibe &= ~mask;
-		reg_iev &= ~mask;
+		irq_type  |= mask;  /* 1: edge triggered */
+		edge_both &= ~mask; /* 0: single edge */
+		polarity  &= ~mask; /* 0: falling edge */
 		break;
 	case IRQ_TYPE_EDGE_BOTH:
-		reg_is  |= mask;
-		reg_ibe |= mask;
-		// no need to set edge type when both
+		irq_type  |= mask;  /* 1: edge triggered */
+		edge_both |= mask;  /* 1: both edges */
+		/* skip polarity when triggered on both edges */
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
-		reg_is  &= ~mask;
-		reg_ibe &= ~mask;
-		reg_iev |= mask;
+		irq_type  &= ~mask; /* 0: level trigged */
+		polarity  |= mask;  /* 1: high level */
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
-		reg_is  &= ~mask;
-		reg_ibe &= ~mask;
-		reg_iev &= ~mask;
+		irq_type  &= ~mask; /* 0: level triggered */
+		polarity  &= ~mask; /* 0: low level */
 		break;
 	}
 
-	writel_relaxed(reg_is, base + GPIO_IS_LOW);
-	writel_relaxed(reg_ibe, base + GPIO_IBE_LOW);
-	writel_relaxed(reg_iev, base + GPIO_IEV_LOW);
+	writel_relaxed(irq_type, base + IRQ_TYPE_LOW);
+	writel_relaxed(edge_both, base + IRQ_EDGE_BOTH_LOW);
+	writel_relaxed(polarity, base + IRQ_POLARITY_LOW);
 	raw_spin_unlock_irqrestore(&sfp->lock, flags);
 	return 0;
 }
@@ -1160,11 +1198,11 @@ static void starfive_gpio_irq_handler(struct irq_desc *desc)
 
 	chained_irq_enter(chip, desc);
 
-	mis = readl_relaxed(sfp->base + GPIO_MIS_LOW);
+	mis = readl_relaxed(sfp->base + MASKED_STATUS_LOW);
 	for_each_set_bit(pin, &mis, 32)
 		generic_handle_irq(irq_find_mapping(gc->irq.domain, pin));
 
-	mis = readl_relaxed(sfp->base + GPIO_MIS_HIGH);
+	mis = readl_relaxed(sfp->base + MASKED_STATUS_HIGH);
 	for_each_set_bit(pin, &mis, 32)
 		generic_handle_irq(irq_find_mapping(gc->irq.domain, pin + 32));
 
@@ -1203,9 +1241,9 @@ static void starfive_pinmux_reset(struct starfive_pinctrl *sfp)
 
 	for (i = 0; i < MAX_GPIO; i++) {
 		writel_relaxed(GPO_DISABLE,
-			       sfp->base + GPIO_DOEN_X_REG + 8 * i);
+			       sfp->base + GPIO_N_DOEN_CFG + 8 * i);
 		writel_relaxed(GPO_LOW,
-			       sfp->base + GPIO_DOUT_X_REG + 8 * i);
+			       sfp->base + GPIO_N_DOUT_CFG + 8 * i);
 	}
 
 	for (i = 0; i < MAX_GPI; i++) {
@@ -1320,9 +1358,9 @@ static int __init starfive_probe(struct platform_device *pdev)
 	sfp->ic.flags = IRQCHIP_SET_TYPE_MASKED;
 
 	/* disable all GPIO interrupts before enabling parent interrupts */
-	writel(0, sfp->base + GPIO_IE_LOW);
-	writel(0, sfp->base + GPIO_IE_HIGH);
-	writel(1, sfp->base + GPIO_EN);
+	writel(0, sfp->base + IRQ_ENABLE_LOW);
+	writel(0, sfp->base + IRQ_ENABLE_HIGH);
+	writel(1, sfp->base + IRQ_GLOBAL_EN);
 
 	ret = devm_gpiochip_add_data(dev, &sfp->gc, sfp);
 	if (ret) {
