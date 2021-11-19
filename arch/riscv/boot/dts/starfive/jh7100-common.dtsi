@@ -243,6 +243,20 @@
 		};
 	};
 
+	pwmdac_pins: pwmdac-0 {
+		pwmdac-pins {
+			pinmux = <GPIOMUX(23, GPO_PWMDAC_LEFT_OUT,
+				  GPO_ENABLE, GPI_NONE)>,
+				 <GPIOMUX(24, GPO_PWMDAC_RIGHT_OUT,
+				  GPO_ENABLE, GPI_NONE)>;
+			bias-disable;
+			drive-strength = <35>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
 	pwm_pins: pwm-0 {
 		pwm-pins {
 			pinmux = <GPIOMUX(7,
@@ -477,6 +491,12 @@
 &ptc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pwm_pins>;
+	status = "okay";
+};
+
+&pwmdac {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwmdac_pins>;
 	status = "okay";
 };
 
