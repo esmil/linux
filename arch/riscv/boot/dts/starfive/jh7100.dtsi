@@ -250,6 +250,12 @@
 			#clock-cells = <1>;
 		};
 
+		audrst: reset-controller@10490000 {
+			compatible = "starfive,jh7100-audrst";
+			reg = <0x0 0x10490000 0x0 0x10000>;
+			#reset-cells = <1>;
+		};
+
 		usb3: usb@104c0000 {
 			compatible = "cdns,usb3";
 			reg = <0x0 0x104c0000 0x0 0x10000>,	// memory area for HOST registers
