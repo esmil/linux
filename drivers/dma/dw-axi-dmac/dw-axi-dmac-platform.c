@@ -993,6 +993,10 @@ dma_chan_prep_dma_memcpy(struct dma_chan *dchan, dma_addr_t dst_adr,
 		num++;
 	}
 
+	/* Total len of src/dest sg == 0, so no descriptor were allocated */
+	if (unlikely(!desc))
+		return NULL;
+
 	/* Set end-of-link to the last link descriptor of list */
 	set_desc_last(&desc->hw_desc[num - 1]);
 	/* Managed transfer list */
@@ -1124,6 +1128,9 @@ static void axi_chan_block_xfer_complete(struct axi_dma_chan *chan)
 				if (hw_desc->llp == llp) {
 					axi_chan_irq_clear(chan, hw_desc->lli->status_lo);
 					hw_desc->lli->ctl_hi |= CH_CTL_H_LLI_VALID;
+#ifdef CONFIG_DW_AXI_DMAC_STARFIVE
+					starfive_flush_dcache(hw_desc->llp, sizeof(*hw_desc->lli));
+#endif
 					desc->completed_blocks = i;
 
 					if (((hw_desc->len * (i + 1)) % desc->period_len) == 0)
