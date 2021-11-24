@@ -9,7 +9,7 @@
 #include <linux/platform_device.h>
 
 int starfive_jh7100_reset_init(struct platform_device *pdev,
-			       const u64 *asserted,
+			       const u32 *asserted,
 			       unsigned int status_offset,
 			       unsigned int nr_resets);
 
