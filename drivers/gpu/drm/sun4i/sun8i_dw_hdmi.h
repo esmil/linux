@@ -334,6 +334,7 @@ struct sun8i_hdmi_phy {
 	struct clk			*clk_pll1;
 	struct device			*dev;
 	unsigned int			rcal;
+	void __iomem			*base;
 	struct regmap			*regs;
 	struct reset_control		*rst_phy;
 	const struct sun8i_hdmi_phy_variant *variant;
