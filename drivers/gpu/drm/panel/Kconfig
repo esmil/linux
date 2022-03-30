@@ -684,6 +684,14 @@ config DRM_PANEL_SITRONIX_ST7701
 	  ST7701 controller for 480X864 LCD panels with MIPI/RGB/SPI
 	  system interfaces.
 
+config DRM_PANEL_SITRONIX_ST7701S
+	tristate "Sitronix ST7701s panel driver"
+	depends on OF
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the Sitronix
+	  ST7701s controller with a SPI interface.
+
 config DRM_PANEL_SITRONIX_ST7703
 	tristate "Sitronix ST7703 based MIPI touchscreen panels"
 	depends on OF
