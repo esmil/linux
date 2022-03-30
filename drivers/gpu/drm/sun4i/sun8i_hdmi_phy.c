@@ -9,6 +9,8 @@
 
 #include "sun8i_dw_hdmi.h"
 
+#include "aw_phy.h"
+
 /*
  * Address can be actually any value. Here is set to same value as
  * it is set in BSP driver.
@@ -398,11 +400,164 @@ static const struct dw_hdmi_phy_ops sun8i_h3_hdmi_phy_ops = {
 	.setup_hpd	= dw_hdmi_phy_setup_hpd,
 };
 
+static int sun20i_d1_hdmi_phy_enable(volatile struct __aw_phy_reg_t __iomem *phy_base)
+{
+	int i = 0, status = 0;
+
+	pr_info("enter %s\n", __func__);
+
+	//enib -> enldo -> enrcal -> encalog -> enbi[3:0] -> enck -> enp2s[3:0] -> enres -> enresck -> entx[3:0]
+	phy_base->phy_ctl4.bits.reg_slv = 4;     //low power voltage 1.08V, default is 3, set 4 as well as pll_ctl0 bit [24:26]
+	phy_base->phy_ctl5.bits.enib = 1;
+	phy_base->phy_ctl0.bits.enldo = 1;
+	phy_base->phy_ctl0.bits.enldo_fs = 1;
+	phy_base->phy_ctl5.bits.enrcal = 1;
+
+	phy_base->phy_ctl5.bits.encalog = 1;
+
+	for (i = 0; i < AW_PHY_TIMEOUT; i++) {
+		udelay(5);
+		status = phy_base->phy_pll_sts.bits.phy_rcalend2d_status;
+		if (status & 0x1) {
+			pr_info("[%s]:phy_rcalend2d_status\n", __func__);
+			break;
+		}
+	}
+	if ((i == AW_PHY_TIMEOUT) && !status) {
+		pr_err("phy_rcalend2d_status Timeout !\n");
+		return -1;
+	}
+
+	phy_base->phy_ctl0.bits.enbi = 0xF;
+	for (i = 0; i < AW_PHY_TIMEOUT; i++) {
+		udelay(5);
+		status = phy_base->phy_pll_sts.bits.pll_lock_status;
+		if (status & 0x1) {
+			pr_info("[%s]:pll_lock_status\n", __func__);
+			break;
+		}
+	}
+	if ((i == AW_PHY_TIMEOUT) && !status) {
+		pr_err("pll_lock_status Timeout! status = 0x%x\n", status);
+		return -1;
+	}
+
+	phy_base->phy_ctl0.bits.enck = 1;
+	phy_base->phy_ctl5.bits.enp2s = 0xF;
+	phy_base->phy_ctl5.bits.enres = 1;
+	phy_base->phy_ctl5.bits.enresck = 1;
+	phy_base->phy_ctl0.bits.entx = 0xF;
+
+	for (i = 0; i < AW_PHY_TIMEOUT; i++) {
+		udelay(5);
+		status = phy_base->phy_pll_sts.bits.tx_ready_dly_status;
+		if (status & 0x1) {
+			pr_info("[%s]:tx_ready_status\n", __func__);
+			break;
+		}
+	}
+	if ((i == AW_PHY_TIMEOUT) && !status) {
+		pr_err("tx_ready_status Timeout ! status = 0x%x\n", status);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int sun20i_d1_hdmi_phy_config(struct dw_hdmi *hdmi, void *data,
 				     const struct drm_display_info *display,
 				     const struct drm_display_mode *mode)
 {
 	struct sun8i_hdmi_phy *phy = data;
+	volatile struct __aw_phy_reg_t __iomem *phy_base = phy->base;
+	int ret;
+
+	pr_info("enter %s\n", __func__);
+
+	/* enable all channel */
+	phy_base->phy_ctl5.bits.reg_p1opt = 0xF;
+
+	// phy_reset
+	phy_base->phy_ctl0.bits.entx = 0;
+	phy_base->phy_ctl5.bits.enresck = 0;
+	phy_base->phy_ctl5.bits.enres = 0;
+	phy_base->phy_ctl5.bits.enp2s = 0;
+	phy_base->phy_ctl0.bits.enck = 0;
+	phy_base->phy_ctl0.bits.enbi = 0;
+	phy_base->phy_ctl5.bits.encalog = 0;
+	phy_base->phy_ctl5.bits.enrcal = 0;
+	phy_base->phy_ctl0.bits.enldo_fs = 0;
+	phy_base->phy_ctl0.bits.enldo = 0;
+	phy_base->phy_ctl5.bits.enib = 0;
+	phy_base->pll_ctl1.bits.reset = 1;
+	phy_base->pll_ctl1.bits.pwron = 0;
+	phy_base->pll_ctl0.bits.envbs = 0;
+
+	// phy_set_mpll
+	phy_base->pll_ctl0.bits.cko_sel = 0x3;
+	phy_base->pll_ctl0.bits.bypass_ppll = 0x1;
+	phy_base->pll_ctl1.bits.drv_ana = 1;
+	phy_base->pll_ctl1.bits.ctrl_modle_clksrc = 0x0; //0: PLL_video   1: MPLL
+	phy_base->pll_ctl1.bits.sdm_en = 0x0;            //mpll sdm jitter is very large, not used for the time being
+	phy_base->pll_ctl1.bits.sckref = 0;        //default value is 1
+	phy_base->pll_ctl0.bits.slv = 4;
+	phy_base->pll_ctl0.bits.prop_cntrl = 7;   //default value 7
+	phy_base->pll_ctl0.bits.gmp_cntrl = 3;    //default value 1
+	phy_base->pll_ctl1.bits.ref_cntrl = 0;
+	phy_base->pll_ctl0.bits.vcorange = 1;
+
+	// phy_set_div
+	phy_base->pll_ctl0.bits.div_pre = 0;      //div7 = n+1
+	phy_base->pll_ctl1.bits.pcnt_en = 0;
+	phy_base->pll_ctl1.bits.pcnt_n = 1;       //div6 = 1 (pcnt_en=0)    [div6 = n (pcnt_en = 1) note that some multiples are problematic] 4-256
+	phy_base->pll_ctl1.bits.pixel_rep = 0;    //div5 = n+1
+	phy_base->pll_ctl0.bits.bypass_clrdpth = 0;
+	phy_base->pll_ctl0.bits.clr_dpth = 0;     //div4 = 1 (bypass_clrdpth = 0)
+	//00: 2    01: 2.5  10: 3   11: 4
+	phy_base->pll_ctl0.bits.n_cntrl = 1;      //div
+	phy_base->pll_ctl0.bits.div2_ckbit = 0;   //div1 = n+1
+	phy_base->pll_ctl0.bits.div2_cktmds = 0;  //div2 = n+1
+	phy_base->pll_ctl0.bits.bcr = 0;          //div3    0: [1:10]  1: [1:40]
+	phy_base->pll_ctl1.bits.pwron = 1;
+	phy_base->pll_ctl1.bits.reset = 0;
+
+	// configure phy
+	/* config values taken from table */
+	phy_base->phy_ctl1.dwval = ((phy_base->phy_ctl1.dwval & 0xFFC0FFFF) | /* config->phy_ctl1 */ 0x0);
+	phy_base->phy_ctl2.dwval = ((phy_base->phy_ctl2.dwval & 0xFF000000) | /* config->phy_ctl2 */ 0x0);
+	phy_base->phy_ctl3.dwval = ((phy_base->phy_ctl3.dwval & 0xFFFF0000) | /* config->phy_ctl3 */ 0xFFFF);
+	phy_base->phy_ctl4.dwval = ((phy_base->phy_ctl4.dwval & 0xE0000000) | /* config->phy_ctl4 */ 0xC0D0D0D);
+	//phy_base->pll_ctl0.dwval |= config->pll_ctl0;
+	//phy_base->pll_ctl1.dwval |= config->pll_ctl1;
+
+	// phy_set_clk
+	phy_base->phy_ctl6.bits.switch_clkch_data_corresponding = 0;
+	phy_base->phy_ctl6.bits.clk_greate0_340m = 0x3FF;
+	phy_base->phy_ctl6.bits.clk_greate1_340m = 0x3FF;
+	phy_base->phy_ctl6.bits.clk_greate2_340m = 0x0;
+	phy_base->phy_ctl7.bits.clk_greate3_340m = 0x0;
+	phy_base->phy_ctl7.bits.clk_low_340m = 0x3E0;
+	phy_base->phy_ctl6.bits.en_ckdat = 1;       //default value is 0
+
+	// phy_base->phy_ctl2.bits.reg_resdi = 0x18;
+	// phy_base->phy_ctl4.bits.reg_slv = 3;         //low power voltage 1.08V, default value is 3
+
+	phy_base->phy_ctl1.bits.res_scktmds = 0;  //
+	phy_base->phy_ctl0.bits.reg_csmps = 2;
+	phy_base->phy_ctl0.bits.reg_ck_test_sel = 0;  //?
+	phy_base->phy_ctl0.bits.reg_ck_sel = 1;
+	phy_base->phy_indbg_ctrl.bits.txdata_debugmode = 0;
+
+	// phy_enable
+	ret = sun20i_d1_hdmi_phy_enable(phy_base);
+	if (ret)
+		return ret;
+
+	phy_base->phy_ctl0.bits.sda_en = 1;
+	phy_base->phy_ctl0.bits.scl_en = 1;
+	phy_base->phy_ctl0.bits.hpd_en = 1;
+	phy_base->phy_ctl0.bits.reg_den = 0xF;
+	phy_base->pll_ctl0.bits.envbs = 1;
 
 	return 0;
 }
@@ -720,6 +875,7 @@ static int sun8i_hdmi_phy_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, PTR_ERR(regs),
 				     "Couldn't map the HDMI PHY registers\n");
 
+	phy->base = regs;
 	phy->regs = devm_regmap_init_mmio(dev, regs,
 					  &sun8i_hdmi_phy_regmap_config);
 	if (IS_ERR(phy->regs))
