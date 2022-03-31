@@ -133,7 +133,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
 		return dev_err_probe(dev, PTR_ERR(hdmi->rst_ctrl),
 				     "Could not get ctrl reset control\n");
 
-	hdmi->clk_tmds = devm_clk_get(dev, "tmds");
+	hdmi->clk_tmds = devm_clk_get_optional(dev, "tmds");
 	if (IS_ERR(hdmi->clk_tmds))
 		return dev_err_probe(dev, PTR_ERR(hdmi->clk_tmds),
 				     "Couldn't get the tmds clock\n");
@@ -246,6 +246,11 @@ static const struct sun8i_dw_hdmi_quirks sun8i_a83t_quirks = {
 	.mode_valid = sun8i_dw_hdmi_mode_valid_a83t,
 };
 
+static const struct sun8i_dw_hdmi_quirks sun20i_d1_quirks = {
+	.mode_valid = sun8i_dw_hdmi_mode_valid_a83t,
+	.use_drm_infoframe = true,
+};
+
 static const struct sun8i_dw_hdmi_quirks sun50i_h6_quirks = {
 	.mode_valid = sun8i_dw_hdmi_mode_valid_h6,
 	.use_drm_infoframe = true,
@@ -255,6 +260,10 @@ static const struct of_device_id sun8i_dw_hdmi_dt_ids[] = {
 	{
 		.compatible = "allwinner,sun8i-a83t-dw-hdmi",
 		.data = &sun8i_a83t_quirks,
+	},
+	{
+		.compatible = "allwinner,sun20i-d1-dw-hdmi",
+		.data = &sun20i_d1_quirks,
 	},
 	{
 		.compatible = "allwinner,sun50i-h6-dw-hdmi",
