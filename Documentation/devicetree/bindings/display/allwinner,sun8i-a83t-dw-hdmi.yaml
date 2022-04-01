@@ -29,6 +29,7 @@ properties:
           - enum:
               - allwinner,sun8i-h3-dw-hdmi
               - allwinner,sun8i-r40-dw-hdmi
+              - allwinner,sun20i-d1-dw-hdmi
               - allwinner,sun50i-a64-dw-hdmi
           - const: allwinner,sun8i-a83t-dw-hdmi
 
