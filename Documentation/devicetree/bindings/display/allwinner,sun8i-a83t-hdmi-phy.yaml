@@ -19,6 +19,7 @@ properties:
       - allwinner,sun8i-a83t-hdmi-phy
       - allwinner,sun8i-h3-hdmi-phy
       - allwinner,sun8i-r40-hdmi-phy
+      - allwinner,sun20i-d1-hdmi-phy
       - allwinner,sun50i-a64-hdmi-phy
       - allwinner,sun50i-h6-hdmi-phy
 
