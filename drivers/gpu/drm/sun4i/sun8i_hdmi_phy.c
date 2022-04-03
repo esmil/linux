@@ -398,6 +398,28 @@ static const struct dw_hdmi_phy_ops sun8i_h3_hdmi_phy_ops = {
 	.setup_hpd	= dw_hdmi_phy_setup_hpd,
 };
 
+static int sun20i_d1_hdmi_phy_config(struct dw_hdmi *hdmi, void *data,
+				     const struct drm_display_info *display,
+				     const struct drm_display_mode *mode)
+{
+	struct sun8i_hdmi_phy *phy = data;
+
+	return 0;
+}
+
+static void sun20i_d1_hdmi_phy_disable(struct dw_hdmi *hdmi, void *data)
+{
+	struct sun8i_hdmi_phy *phy = data;
+}
+
+static const struct dw_hdmi_phy_ops sun20i_d1_hdmi_phy_ops = {
+	.init		= sun20i_d1_hdmi_phy_config,
+	.disable	= sun20i_d1_hdmi_phy_disable,
+	.read_hpd	= dw_hdmi_phy_read_hpd,
+	.update_hpd	= dw_hdmi_phy_update_hpd,
+	.setup_hpd	= dw_hdmi_phy_setup_hpd,
+};
+
 static void sun8i_hdmi_phy_unlock(struct sun8i_hdmi_phy *phy)
 {
 	/* enable read access to HDMI controller */
@@ -576,6 +598,7 @@ void sun8i_hdmi_phy_set_ops(struct sun8i_hdmi_phy *phy,
 	const struct sun8i_hdmi_phy_variant *variant = phy->variant;
 
 	if (variant->phy_ops) {
+		plat_data->phy_force_vendor = true;
 		plat_data->phy_ops = variant->phy_ops;
 		plat_data->phy_name = "sun8i_dw_hdmi_phy";
 		plat_data->phy_data = phy;
@@ -612,6 +635,11 @@ static const struct sun8i_hdmi_phy_variant sun8i_r40_hdmi_phy = {
 	.phy_init = &sun8i_hdmi_phy_init_h3,
 };
 
+static const struct sun8i_hdmi_phy_variant sun20i_d1_hdmi_phy = {
+	.phy_ops = &sun20i_d1_hdmi_phy_ops,
+	.phy_init = &sun50i_hdmi_phy_init_h6,
+};
+
 static const struct sun8i_hdmi_phy_variant sun50i_a64_hdmi_phy = {
 	.has_phy_clk = true,
 	.phy_ops = &sun8i_h3_hdmi_phy_ops,
@@ -637,6 +665,10 @@ static const struct of_device_id sun8i_hdmi_phy_of_table[] = {
 	{
 		.compatible = "allwinner,sun8i-r40-hdmi-phy",
 		.data = &sun8i_r40_hdmi_phy,
+	},
+	{
+		.compatible = "allwinner,sun20i-d1-hdmi-phy",
+		.data = &sun20i_d1_hdmi_phy,
 	},
 	{
 		.compatible = "allwinner,sun50i-a64-hdmi-phy",
