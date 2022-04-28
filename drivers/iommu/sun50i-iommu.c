@@ -1070,11 +1070,15 @@ err_free_cache:
 	return ret;
 }
 
+static const struct sun50i_iommu_variant sun20i_d1_iommu = {
+};
+
 static const struct sun50i_iommu_variant sun50i_h6_iommu = {
 	.has_reset = true,
 };
 
 static const struct of_device_id sun50i_iommu_dt[] = {
+	{ .compatible = "allwinner,sun20i-d1-iommu", .data = &sun20i_d1_iommu },
 	{ .compatible = "allwinner,sun50i-h6-iommu", .data = &sun50i_h6_iommu },
 	{ /* sentinel */ },
 };
