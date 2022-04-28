@@ -445,6 +445,8 @@ static int sun50i_iommu_enable(struct sun50i_iommu *iommu)
 
 	spin_lock_irqsave(&iommu->iommu_lock, flags);
 
+	iommu_write(iommu, IOMMU_BYPASS_REG, 0);
+
 	iommu_write(iommu, IOMMU_TTB_REG, sun50i_domain->dt_dma);
 	iommu_write(iommu, IOMMU_TLB_PREFETCH_REG,
 		    IOMMU_TLB_PREFETCH_MASTER_ENABLE(0) |
