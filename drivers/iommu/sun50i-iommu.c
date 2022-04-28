@@ -97,6 +97,10 @@
 
 #define SPAGE_SIZE			4096
 
+struct sun50i_iommu_variant {
+	bool has_reset;
+};
+
 struct sun50i_iommu {
 	struct iommu_device iommu;
 
@@ -993,8 +997,13 @@ static irqreturn_t sun50i_iommu_irq(int irq, void *dev_id)
 
 static int sun50i_iommu_probe(struct platform_device *pdev)
 {
+	const struct sun50i_iommu_variant *variant;
 	struct sun50i_iommu *iommu;
 	int ret, irq;
+
+	variant = of_device_get_match_data(&pdev->dev);
+	if (!variant)
+		return -EINVAL;
 
 	iommu = devm_kzalloc(&pdev->dev, sizeof(*iommu), GFP_KERNEL);
 	if (!iommu)
@@ -1030,7 +1039,8 @@ static int sun50i_iommu_probe(struct platform_device *pdev)
 		goto err_free_cache;
 	}
 
-	iommu->reset = devm_reset_control_get(&pdev->dev, NULL);
+	if (variant->has_reset)
+		iommu->reset = devm_reset_control_get_exclusive(&pdev->dev, NULL);
 	if (IS_ERR(iommu->reset)) {
 		dev_err(&pdev->dev, "Couldn't get our reset line.\n");
 		ret = PTR_ERR(iommu->reset);
@@ -1065,9 +1075,13 @@ err_free_cache:
 	return ret;
 }
 
+static const struct sun50i_iommu_variant sun50i_h6_iommu = {
+	.has_reset = true,
+};
+
 static const struct of_device_id sun50i_iommu_dt[] = {
-	{ .compatible = "allwinner,sun50i-h6-iommu", },
-	{ .compatible = "allwinner,sun50i-h616-iommu", },
+	{ .compatible = "allwinner,sun50i-h6-iommu", .data = &sun50i_h6_iommu },
+	{ .compatible = "allwinner,sun50i-h616-iommu", .data = &sun50i_h6_iommu },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, sun50i_iommu_dt);
