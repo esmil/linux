@@ -1443,6 +1443,7 @@ config REGULATOR_STW481X_VMMC
 config REGULATOR_SUN20I
 	tristate "Allwinner D1 internal LDOs"
 	depends on ARCH_SUNXI || COMPILE_TEST
+	depends on NVMEM
 	select MFD_SYSCON
 	default ARCH_SUNXI
 	help
