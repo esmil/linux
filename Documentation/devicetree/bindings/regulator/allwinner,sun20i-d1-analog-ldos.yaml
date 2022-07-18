@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/regulator/allwinner,sun20i-d1-analog-ldos.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Allwinner D1 Analog LDOs
+
+maintainers:
+  - Samuel Holland <samuel@sholland.org>
+
+description:
+  Allwinner D1 contains a set of LDOs which are designed to supply analog power
+  inside and outside the SoC. They are controlled by a register within the audio
+  codec MMIO space, but which is not part of the audio codec clock/reset domain.
+
+properties:
+  compatible:
+    enum:
+      - allwinner,sun20i-d1-analog-ldos
+
+  reg:
+    maxItems: 1
+
+  nvmem-cells:
+    items:
+      - description: NVMEM cell for the calibrated bandgap reference trim value
+
+  nvmem-cell-names:
+    items:
+      - const: bg_trim
+
+patternProperties:
+  "^(a|hp)ldo$":
+    type: object
+    $ref: regulator.yaml#
+    unevaluatedProperties: false
+
+required:
+  - compatible
+  - reg
+  - nvmem-cells
+  - nvmem-cell-names
+
+additionalProperties: false
+
+examples:
+  - |
+    audio-codec@2030000 {
+        compatible = "simple-mfd", "syscon";
+        reg = <0x2030000 0x1000>;
+        ranges;
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        regulators@2030348 {
+            compatible = "allwinner,sun20i-d1-analog-ldos";
+            reg = <0x2030348 0x4>;
+            nvmem-cells = <&bg_trim>;
+            nvmem-cell-names = "bg_trim";
+
+            reg_aldo: aldo {
+                regulator-min-microvolt = <1800000>;
+                regulator-max-microvolt = <1800000>;
+            };
+
+            reg_hpldo: hpldo {
+                regulator-min-microvolt = <1800000>;
+                regulator-max-microvolt = <1800000>;
+            };
+        };
+    };
+
+...
