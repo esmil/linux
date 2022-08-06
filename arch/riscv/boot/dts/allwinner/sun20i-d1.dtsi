@@ -105,6 +105,10 @@
 	};
 };
 
+&hdmi {
+	hvcc-supply = <&reg_ldoa>;
+};
+
 &pio {
 	/omit-if-no-ref/
 	dmic_pb11_d0_pin: dmic-pb11-d0-pin {
