@@ -80,6 +80,13 @@ properties:
   dmas:
     maxItems: 1
 
+  phys:
+    maxItems: 1
+
+  phy-names:
+    items:
+      - const: "lvds0"
+
   resets:
     anyOf:
       - items:
