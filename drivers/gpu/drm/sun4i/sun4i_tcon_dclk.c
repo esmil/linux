@@ -6,6 +6,7 @@
  * Maxime Ripard <maxime.ripard@free-electrons.com>
  */
 
+#include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/regmap.h>
 
@@ -194,12 +195,15 @@ int sun4i_dclk_create(struct device *dev, struct sun4i_tcon *tcon)
 	if (IS_ERR(tcon->dclk))
 		return PTR_ERR(tcon->dclk);
 
+	clk_rate_exclusive_get(tcon->dclk);
+
 	return 0;
 }
 EXPORT_SYMBOL(sun4i_dclk_create);
 
 int sun4i_dclk_free(struct sun4i_tcon *tcon)
 {
+	clk_rate_exclusive_put(tcon->dclk);
 	clk_unregister(tcon->dclk);
 	return 0;
 }
