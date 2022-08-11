@@ -79,6 +79,18 @@
 	};
 };
 
+&codec {
+	routing = "Headphone Jack", "HPOUTL",
+		  "Headphone Jack", "HPOUTR",
+		  "LINEINL", "HPOUTL",
+		  "LINEINR", "HPOUTR",
+		  "MICIN3", "Headset Microphone",
+		  "Headset Microphone", "HBIAS";
+	widgets = "Microphone", "Headset Microphone",
+		  "Headphone", "Headphone Jack";
+	status = "okay";
+};
+
 &cpu0 {
 	cpu-supply = <&reg_vdd_cpu>;
 };
