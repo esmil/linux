@@ -60,6 +60,18 @@
 	};
 };
 
+&codec {
+	routing = "Internal Speaker", "HPOUTL",
+		  "Internal Speaker", "HPOUTR",
+		  "LINEINL", "HPOUTL",
+		  "LINEINR", "HPOUTR",
+		  "MICIN3", "Internal Microphone",
+		  "Internal Microphone", "HBIAS";
+	widgets = "Microphone", "Internal Microphone",
+		  "Speaker", "Internal Speaker";
+	status = "okay";
+};
+
 &de {
 	status = "okay";
 };
