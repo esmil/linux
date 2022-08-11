@@ -37,6 +37,7 @@
 		ethernet0 = &emac;
 		ethernet1 = &xr829;
 		serial0 = &uart0;
+		spi0 = &spi0;
 	};
 
 	chosen {
@@ -229,6 +230,49 @@
 
 &pwm {
 	pinctrl-0 = <&pwm0_pd16_pin>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&spi0 {
+	pinctrl-0 = <&spi0_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	flash@0 {
+		compatible = "spi-nand";
+		reg = <0>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "boot0";
+				reg = <0x00000000 0x00100000>;
+			};
+
+			partition@100000 {
+				label = "uboot";
+				reg = <0x00100000 0x00300000>;
+			};
+
+			partition@400000 {
+				label = "secure_storage";
+				reg = <0x00400000 0x00100000>;
+			};
+
+			partition@500000 {
+				label = "sys";
+				reg = <0x00500000 0x0fb00000>;
+			};
+		};
+	};
+};
+
+&spi1 {
+	pinctrl-0 = <&spi1_pd_pins>;
 	pinctrl-names = "default";
 	status = "okay";
 };
