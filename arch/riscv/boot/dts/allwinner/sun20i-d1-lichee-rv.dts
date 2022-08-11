@@ -68,6 +68,12 @@
 	status = "okay";
 };
 
+&spi0 {
+	pinctrl-0 = <&spi0_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
 &uart0 {
 	pinctrl-0 = <&uart0_pb8_pins>;
 	pinctrl-names = "default";
