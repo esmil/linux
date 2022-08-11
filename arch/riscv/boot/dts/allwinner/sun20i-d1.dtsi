@@ -77,10 +77,23 @@
 		};
 
 		codec: audio-codec@2030000 {
-			compatible = "simple-mfd", "syscon";
+			compatible = "allwinner,sun20i-d1-codec", "simple-mfd", "syscon";
 			reg = <0x2030000 0x1000>;
+			interrupts = <SOC_PERIPHERAL_IRQ(25) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_AUDIO>,
+				 <&ccu CLK_AUDIO_ADC>,
+				 <&ccu CLK_AUDIO_DAC>,
+				 <&dcxo>,
+				 <&rtc CLK_OSC32K>;
+			clock-names = "bus", "adc", "dac", "hosc", "losc";
+			resets = <&ccu RST_BUS_AUDIO>;
+			dmas = <&dma 7>, <&dma 7>;
+			dma-names = "rx", "tx";
+			avcc-supply = <&reg_aldo>;
+			hpvcc-supply = <&reg_hpldo>;
 			#address-cells = <1>;
 			#size-cells = <1>;
+			#sound-dai-cells = <0>;
 
 			regulators@2030348 {
 				compatible = "allwinner,sun20i-d1-analog-ldos";

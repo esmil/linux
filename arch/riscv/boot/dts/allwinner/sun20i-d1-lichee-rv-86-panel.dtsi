@@ -9,6 +9,12 @@
 		ethernet1 = &xr829;
 	};
 
+	audio_amplifier: audio-amplifier {
+		compatible = "simple-audio-amplifier";
+		enable-gpios = <&pio 1 10 GPIO_ACTIVE_HIGH>; /* PB10 */
+		sound-name-prefix = "Amplifier";
+	};
+
 	dmic_codec: dmic-codec {
 		compatible = "dmic-codec";
 		num-channels = <2>;
@@ -50,6 +56,21 @@
 		pinctrl-0 = <&clk_pg11_pin>;
 		pinctrl-names = "default";
 	};
+};
+
+&codec {
+	aux-devs = <&audio_amplifier>;
+	routing = "Internal Speaker", "Amplifier OUTL",
+		  "Internal Speaker", "Amplifier OUTR",
+		  "Amplifier INL", "HPOUTL",
+		  "Amplifier INR", "HPOUTR",
+		  "LINEINL", "HPOUTL",
+		  "LINEINR", "HPOUTR",
+		  "MICIN3", "Internal Microphone",
+		  "Internal Microphone", "HBIAS";
+	widgets = "Microphone", "Internal Microphone",
+		  "Speaker", "Internal Speaker";
+	status = "okay";
 };
 
 &dmic {
