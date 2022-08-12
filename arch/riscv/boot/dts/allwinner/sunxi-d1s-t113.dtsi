@@ -106,6 +106,30 @@
 			};
 
 			/omit-if-no-ref/
+			pwm0_pd16_pin: pwm0-pd16-pin {
+				pins = "PD16";
+				function = "pwm0";
+			};
+
+			/omit-if-no-ref/
+			pwm2_pd18_pin: pwm2-pd18-pin {
+				pins = "PD18";
+				function = "pwm2";
+			};
+
+			/omit-if-no-ref/
+			pwm4_pd20_pin: pwm4-pd20-pin {
+				pins = "PD20";
+				function = "pwm4";
+			};
+
+			/omit-if-no-ref/
+			pwm7_pd22_pin: pwm7-pd22-pin {
+				pins = "PD22";
+				function = "pwm7";
+			};
+
+			/omit-if-no-ref/
 			rgmii_pe_pins: rgmii-pe-pins {
 				pins = "PE0", "PE1", "PE2", "PE3", "PE4",
 				       "PE5", "PE6", "PE7", "PE8", "PE9",
@@ -143,6 +167,17 @@
 				pins = "PB6", "PB7";
 				function = "uart3";
 			};
+		};
+
+		pwm: pwm@2000c00 {
+			compatible = "allwinner,sun20i-d1-pwm";
+			reg = <0x2000c00 0x400>;
+			interrupts = <SOC_PERIPHERAL_IRQ(18) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_PWM>, <&dcxo>;
+			clock-names = "bus", "mod";
+			resets = <&ccu RST_BUS_PWM>;
+			status = "disabled";
+			#pwm-cells = <3>;
 		};
 
 		ccu: clock-controller@2001000 {
