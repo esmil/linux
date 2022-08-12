@@ -52,16 +52,13 @@
 		vin-supply = <&reg_vcc>;
 	};
 
-	/*
-	 * This regulator is PWM-controlled, but the PWM controller is not
-	 * yet supported, so fix the regulator to its default voltage.
-	 */
 	reg_vdd_cpu: vdd-cpu {
-		compatible = "regulator-fixed";
+		compatible = "pwm-regulator";
+		pwms = <&pwm 0 50000 0>;
+		pwm-supply = <&reg_vcc>;
 		regulator-name = "vdd-cpu";
-		regulator-min-microvolt = <1100000>;
-		regulator-max-microvolt = <1100000>;
-		vin-supply = <&reg_vcc>;
+		regulator-min-microvolt = <810000>;
+		regulator-max-microvolt = <1160000>;
 	};
 
 	wifi_pwrseq: wifi-pwrseq {
@@ -173,6 +170,12 @@
 };
 
 &ohci1 {
+	status = "okay";
+};
+
+&pwm {
+	pinctrl-0 = <&pwm0_pd16_pin>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
