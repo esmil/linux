@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/display/panel/sitronix,st7701s.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sitronix ST7701 based LCD panels
+
+maintainers:
+  - Samuel Holland <samuel@sholland.org>
+
+description: |
+  Panel used on Lichee RV 86 Panel
+
+allOf:
+  - $ref: panel-common.yaml#
+  - $ref: /schemas/spi/spi-peripheral-props.yaml#
+
+properties:
+  compatible:
+    items:
+      - const: sitronix,st7701s
+
+  backlight: true
+
+  reset-gpios: true
+
+required:
+  - compatible
+  - reset-gpios
+
+unevaluatedProperties: false
