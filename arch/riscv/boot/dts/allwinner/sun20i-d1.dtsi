@@ -37,6 +37,21 @@
 	};
 
 	soc {
+		ledc: led-controller@2008000 {
+			compatible = "allwinner,sun20i-d1-ledc",
+				     "allwinner,sun50i-a100-ledc";
+			reg = <0x2008000 0x400>;
+			interrupts = <SOC_PERIPHERAL_IRQ(20) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_LEDC>, <&ccu CLK_LEDC>;
+			clock-names = "bus", "mod";
+			resets = <&ccu RST_BUS_LEDC>;
+			dmas = <&dma 42>;
+			dma-names = "tx";
+			status = "disabled";
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
 		ths: temperature-sensor@2009400 {
 			compatible = "allwinner,sun20i-d1-ths";
 			reg = <0x2009400 0x400>;
@@ -132,6 +147,12 @@
 	i2c2_pb0_pins: i2c2-pb0-pins {
 		pins = "PB0", "PB1";
 		function = "i2c2";
+	};
+
+	/omit-if-no-ref/
+	ledc_pc0_pin: ledc-pc0-pin {
+		pins = "PC0";
+		function = "ledc";
 	};
 
 	/omit-if-no-ref/
