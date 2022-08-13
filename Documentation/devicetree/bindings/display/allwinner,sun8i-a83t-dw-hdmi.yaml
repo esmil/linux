@@ -20,9 +20,6 @@ maintainers:
   - Maxime Ripard <mripard@kernel.org>
 
 properties:
-  "#phy-cells":
-    const: 0
-
   compatible:
     oneOf:
       - const: allwinner,sun8i-a83t-dw-hdmi
