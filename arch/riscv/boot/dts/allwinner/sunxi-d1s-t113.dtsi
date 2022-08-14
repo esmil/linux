@@ -201,6 +201,14 @@
 			#io-channel-cells = <1>;
 		};
 
+		iommu: iommu@2010000 {
+			compatible = "allwinner,sun20i-d1-iommu";
+			reg = <0x2010000 0x10000>;
+			interrupts = <SOC_PERIPHERAL_IRQ(64) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_IOMMU>;
+			#iommu-cells = <1>;
+		};
+
 		dmic: dmic@2031000 {
 			compatible = "allwinner,sun20i-d1-dmic",
 				     "allwinner,sun50i-h6-dmic";
@@ -691,6 +699,7 @@
 				 <&display_clocks CLK_MIXER0>;
 			clock-names = "bus", "mod";
 			resets = <&display_clocks RST_MIXER0>;
+			iommus = <&iommu 2>;
 
 			ports {
 				#address-cells = <1>;
@@ -713,6 +722,7 @@
 				 <&display_clocks CLK_MIXER1>;
 			clock-names = "bus", "mod";
 			resets = <&display_clocks RST_MIXER1>;
+			iommus = <&iommu 2>;
 
 			ports {
 				#address-cells = <1>;
