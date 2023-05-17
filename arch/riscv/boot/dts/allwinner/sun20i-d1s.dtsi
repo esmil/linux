@@ -74,3 +74,14 @@
 		};
 	};
 };
+
+&sid {
+	ths_calib: ths-calib@14 {
+		reg = <0x14 0x4>;
+	};
+
+	bg_trim: bg-trim@28 {
+		reg = <0x28 0x4>;
+		bits = <16 8>;
+	};
+};
