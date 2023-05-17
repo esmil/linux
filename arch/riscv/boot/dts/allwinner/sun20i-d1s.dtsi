@@ -115,3 +115,14 @@
 			<0x00000000 0x0000000f 0xffffffff 0xffffffff 0x00020000>;
 	};
 };
+
+&sid {
+	ths_calib: ths-calib@14 {
+		reg = <0x14 0x4>;
+	};
+
+	bg_trim: bg-trim@28 {
+		reg = <0x28 0x4>;
+		bits = <16 8>;
+	};
+};

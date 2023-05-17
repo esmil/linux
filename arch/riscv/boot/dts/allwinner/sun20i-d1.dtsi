@@ -13,7 +13,34 @@
 			interrupts = <SOC_PERIPHERAL_IRQ(61) IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ccu CLK_BUS_LRADC>;
 			resets = <&ccu RST_BUS_LRADC>;
+			vref-supply = <&reg_aldo>;
 			status = "disabled";
+		};
+
+		codec: audio-codec@2030000 {
+			compatible = "simple-mfd", "syscon";
+			reg = <0x2030000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			regulators@2030348 {
+				compatible = "allwinner,sun20i-d1-analog-ldos";
+				reg = <0x2030348 0x4>;
+				nvmem-cells = <&bg_trim>;
+				nvmem-cell-names = "bg_trim";
+
+				reg_aldo: aldo {
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					vdd33-supply = <&reg_vcc_3v3>;
+				};
+
+				reg_hpldo: hpldo {
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <1800000>;
+					hpldoin-supply = <&reg_vcc_3v3>;
+				};
+			};
 		};
 
 		i2s0: i2s@2032000 {
@@ -62,5 +89,22 @@
 	uart0_pb8_pins: uart0-pb8-pins {
 		pins = "PB8", "PB9";
 		function = "uart0";
+	};
+};
+
+&syscon {
+	regulators@3000150 {
+		compatible = "allwinner,sun20i-d1-system-ldos";
+		reg = <0x3000150 0x4>;
+
+		reg_ldoa: ldoa {
+			regulator-always-on;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			ldo-in-supply = <&reg_vcc_3v3>;
+		};
+
+		reg_ldob: ldob {
+		};
 	};
 };
