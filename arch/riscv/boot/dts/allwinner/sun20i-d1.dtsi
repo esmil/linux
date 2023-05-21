@@ -32,6 +32,7 @@
 				reg_aldo: aldo {
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
+					regulator-always-on;
 					vdd33-supply = <&reg_vcc_3v3>;
 				};
 
