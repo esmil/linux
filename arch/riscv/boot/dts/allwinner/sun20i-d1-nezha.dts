@@ -121,6 +121,17 @@
 	};
 };
 
+&lradc {
+	status = "okay";
+
+	button-160 {
+		label = "OK";
+		linux,code = <KEY_OK>;
+		channel = <0>;
+		voltage = <160000>;
+	};
+};
+
 &mdio {
 	ext_rgmii_phy: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
