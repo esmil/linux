@@ -939,6 +939,7 @@
 			resets = <&stgcrg JH7110_STGRST_SEC_AHB>;
 			dmas = <&sdma 1 2>, <&sdma 0 2>;
 			dma-names = "tx", "rx";
+			status = "disabled";
 		};
 
 		sdma: dma-controller@16008000 {
