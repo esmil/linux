@@ -4,6 +4,7 @@
  */
 
 #include "th1520-lichee-module-4a.dtsi"
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	model = "Sipeed Lichee Pi 4A";
@@ -39,6 +40,27 @@
 		#cooling-cells = <2>;
 		pwms = <&pwm 1 10000000 0>;
 		cooling-levels = <0 66 196 255>;
+	};
+
+	hub_5v: regulator-hub-5v {
+		compatible = "regulator-fixed";
+		regulator-name = "HUB_5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		enable-active-high;
+		gpio = <&ioexp3 3 GPIO_ACTIVE_HIGH>;
+	};
+
+	vcc5v_usb: regulator-vcc5v-usb {
+		compatible = "regulator-fixed";
+		regulator-name = "VCC5V_USB";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		enable-active-high;
+		gpio = <&gpio1 22 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vcc5v_usb_pins>;
 	};
 
 	thermal-zones {
@@ -84,6 +106,15 @@
 				};
 			};
 		};
+	};
+};
+
+&aogpio {
+	usb-sel-hog {
+		gpio-hog;
+		gpios = <4 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "USB_SEL";
 	};
 };
 
@@ -229,10 +260,46 @@
 			slew-rate = <0>;
 		};
 	};
+
+	vcc5v_usb_pins: vcc5v-usb-0 {
+		enable-pins {
+			pins = "GPIO1_22";
+			bias-disable;
+			drive-strength = <3>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
 };
 
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_pins>;
 	status = "okay";
+};
+
+&usb {
+	status = "okay";
+	vbus-supply = <&vcc5v_usb>;
+};
+
+&usb_dwc3 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	hub_2_0: hub@1 {
+		compatible = "usb2109,2817";
+		reg = <1>;
+		peer-hub = <&hub_3_0>;
+		vdd-supply = <&hub_5v>;
+	};
+
+	hub_3_0: hub@2 {
+		compatible = "usb2109,817";
+		reg = <2>;
+		peer-hub = <&hub_2_0>;
+		vdd-supply = <&hub_5v>;
+	};
 };
