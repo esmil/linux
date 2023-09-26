@@ -168,7 +168,7 @@ static struct regmap *sun20i_regulator_get_regmap(struct device *dev)
 	 * its platform device. This is ugly, but required for devicetree
 	 * backward compatibility.
 	 */
-	regmap = syscon_node_to_regmap(dev->parent->of_node);
+	regmap = device_node_to_regmap(dev->parent->of_node);
 	if (!IS_ERR(regmap))
 		return regmap;
 
