@@ -107,6 +107,11 @@
 			};
 		};
 	};
+
+	wifi_pwrseq: wifi-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&ioexp2 4 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &aogpio {
@@ -314,6 +319,21 @@
 			input-schmitt-disable;
 			slew-rate = <0>;
 		};
+	};
+};
+
+&sdio1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	bus-width = <4>;
+	cap-sd-highspeed;
+	max-frequency = <100000000>;
+	mmc-pwrseq = <&wifi_pwrseq>;
+	non-removable;
+	status = "okay";
+
+	rtl8723ds: wifi@1 {
+		reg = <1>;
 	};
 };
 
