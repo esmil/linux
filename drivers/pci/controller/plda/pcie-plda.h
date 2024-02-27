@@ -187,6 +187,7 @@ struct plda_pcie_rp {
 	int msi_irq;
 	int intx_irq;
 	int num_events;
+	u16 msi_quirk_delay_us;
 };
 
 struct plda_event {

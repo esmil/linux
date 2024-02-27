@@ -406,6 +406,7 @@ static int starfive_pcie_probe(struct platform_device *pdev)
 
 	plda->host_ops = &sf_host_ops;
 	plda->num_events = PLDA_MAX_EVENT_NUM;
+	plda->msi_quirk_delay_us = 1;
 	/* mask doorbell event */
 	plda->events_bitmap = GENMASK(PLDA_INT_EVENT_NUM - 1, 0)
 			     & ~BIT(PLDA_AXI_DOORBELL)
