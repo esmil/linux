@@ -1125,8 +1125,13 @@ static void es8326_init(struct snd_soc_component *component)
 
 	regmap_write(es8326->regmap, ES8326_ADC_MUTE, 0x0f);
 	regmap_write(es8326->regmap, ES8326_CLK_DIV_LRCK, 0xff);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	regmap_write(es8326->regmap, ES8326_ADC1_SRC, es8326->mic1_src);
+	regmap_write(es8326->regmap, ES8326_ADC2_SRC, es8326->mic2_src);
+#else
 	regmap_write(es8326->regmap, ES8326_ADC1_SRC, 0x44);
 	regmap_write(es8326->regmap, ES8326_ADC2_SRC, 0x66);
+#endif
 	es8326_disable_micbias(es8326->component);
 	if (es8326->version > ES8326_VERSION_B) {
 		regmap_update_bits(es8326->regmap, ES8326_ANA_MICBIAS, 0x73, 0x10);
