@@ -475,6 +475,9 @@ static const struct _coeff_div coeff_div_v3[] = {
 	{3072, 8000, 24576000, 0x60, 0x02, 0x10, 0x35, 0x8A, 0x1B, 0x1F, 0x7F},
 	{3250, 8000, 26000000, 0x0C, 0x18, 0x0F, 0x2D, 0x8A, 0x0A, 0x27, 0x27},
 };
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static void es8326_enable_spk(struct es8326_priv *es8326, bool enable);
+#endif
 
 static inline int get_coeff(int mclk, int rate, int array,
 				const struct _coeff_div *coeff_div)
@@ -627,6 +630,10 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 					ES8326_MUTE_MASK, ES8326_MUTE);
 			regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF,
 					0x30, 0x00);
+			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+			if (!es8326->hp)
+				es8326_enable_spk(es8326, false);
+			#endif
 		} else {
 			regmap_update_bits(es8326->regmap,  ES8326_ADC_MUTE,
 					0x0F, 0x0F);
@@ -660,6 +667,10 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 			regmap_write(es8326->regmap, ES8326_HP_CAL, ES8326_HP_ON);
 			regmap_update_bits(es8326->regmap, ES8326_DAC_MUTE,
 					ES8326_MUTE_MASK, ~(ES8326_MUTE));
+			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+			if (!es8326->hp)
+				es8326_enable_spk(es8326, true);
+			#endif
 		} else {
 			msleep(300);
 			if (es8326->version > ES8326_VERSION_B) {
@@ -1360,7 +1371,7 @@ static int es8326_i2c_probe(struct i2c_client *i2c)
 			dev_err(&i2c->dev, "Failed to request spk_ctl_gpio\n");
 			return ret;
 		}
-		es8326_enable_spk(es8326, true);
+		es8326_enable_spk(es8326, false);
 	}
 #endif
 	es8326->mclk = devm_clk_get_optional(&i2c->dev, "mclk");
