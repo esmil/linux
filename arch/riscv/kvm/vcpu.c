@@ -20,6 +20,7 @@
 #include <asm/kvm_mmu.h>
 #include <asm/kvm_nacl.h>
 #include <asm/kvm_vcpu_vector.h>
+#include <asm/switch_to.h>
 
 #define CREATE_TRACE_POINTS
 #include "trace.h"
@@ -569,6 +570,9 @@ static void kvm_riscv_vcpu_setup_config(struct kvm_vcpu *vcpu)
 					  SMSTATEEN0_AIA_ISEL;
 		if (riscv_isa_extension_available(isa, SMSTATEEN))
 			cfg->hstateen0 |= SMSTATEEN0_SSTATEEN0;
+
+		if (has_scontext())
+			cfg->hstateen0 |= SMSTATEEN0_HSCONTEXT;
 	}
 
 	if (vcpu->guest_debug)
@@ -758,6 +762,8 @@ static __always_inline void kvm_riscv_vcpu_swap_in_guest_state(struct kvm_vcpu *
 	    (cfg->hstateen0 & SMSTATEEN0_SSTATEEN0))
 		vcpu->arch.host_sstateen0 = csr_swap(CSR_SSTATEEN0,
 						     smcsr->sstateen0);
+
+	kvm_riscv_debug_vcpu_swap_in_guest_context(vcpu);
 }
 
 static __always_inline void kvm_riscv_vcpu_swap_in_host_state(struct kvm_vcpu *vcpu)
@@ -772,6 +778,8 @@ static __always_inline void kvm_riscv_vcpu_swap_in_host_state(struct kvm_vcpu *v
 	    (cfg->hstateen0 & SMSTATEEN0_SSTATEEN0))
 		smcsr->sstateen0 = csr_swap(CSR_SSTATEEN0,
 					    vcpu->arch.host_sstateen0);
+
+	kvm_riscv_debug_vcpu_swap_in_host_context(vcpu);
 }
 
 /*
