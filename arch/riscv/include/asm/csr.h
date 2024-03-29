@@ -220,6 +220,8 @@
 #define ENVCFG_FIOM			_AC(0x1, UL)
 
 /* Smstateen bits */
+#define SMSTATEEN0_HSCONTEXT_SHIFT	57
+#define SMSTATEEN0_HSCONTEXT		(_ULL(1) << SMSTATEEN0_HSCONTEXT_SHIFT)
 #define SMSTATEEN0_AIA_IMSIC_SHIFT	58
 #define SMSTATEEN0_AIA_IMSIC		(_ULL(1) << SMSTATEEN0_AIA_IMSIC_SHIFT)
 #define SMSTATEEN0_AIA_SHIFT		59
@@ -443,6 +445,10 @@
 #define CSR_VL			0xc20
 #define CSR_VTYPE		0xc21
 #define CSR_VLENB		0xc22
+
+/* riscv-debug-spec: Sdtrig extension */
+#define CSR_SCONTEXT		0x5a8
+#define CSR_HCONTEXT		0x6a8
 
 /* Scalar Crypto Extension - Entropy */
 #define CSR_SEED		0x015
