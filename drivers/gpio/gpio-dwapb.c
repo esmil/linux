@@ -358,6 +358,7 @@ static int dwapb_irq_set_type(struct irq_data *d, u32 type)
 }
 
 #ifdef CONFIG_PM_SLEEP
+#define DWAPB_WAKE_FLAG	0
 static int dwapb_irq_set_wake(struct irq_data *d, unsigned int enable)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
@@ -373,6 +374,7 @@ static int dwapb_irq_set_wake(struct irq_data *d, unsigned int enable)
 	return 0;
 }
 #else
+#define DWAPB_WAKE_FLAG	IRQCHIP_SKIP_SET_WAKE
 #define dwapb_irq_set_wake	NULL
 #endif
 
@@ -385,7 +387,7 @@ static const struct irq_chip dwapb_irq_chip = {
 	.irq_enable	= dwapb_irq_enable,
 	.irq_disable	= dwapb_irq_disable,
 	.irq_set_wake	= dwapb_irq_set_wake,
-	.flags		= IRQCHIP_IMMUTABLE,
+	.flags		= IRQCHIP_IMMUTABLE | DWAPB_WAKE_FLAG,
 	GPIOCHIP_IRQ_RESOURCE_HELPERS,
 };
 
