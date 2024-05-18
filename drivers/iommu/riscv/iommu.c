@@ -19,6 +19,7 @@
 #include <linux/init.h>
 #include <linux/iommu.h>
 #include <linux/iopoll.h>
+#include <linux/irqchip/riscv-imsic.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
 
@@ -1320,6 +1321,51 @@ static bool riscv_iommu_pt_supported(struct riscv_iommu_device *iommu, int pgd_m
 	return false;
 }
 
+static int riscv_iommu_map_msi_bypass(struct riscv_iommu_device *iommu,
+				      struct riscv_iommu_domain *domain)
+{
+	const struct imsic_global_config *imsic_global;
+	const int prot = IOMMU_WRITE | IOMMU_NOEXEC | IOMMU_MMIO;
+	size_t mapped, stride;
+	phys_addr_t base;
+	int i;
+
+	/*
+	 * MSI bypass is required only if:
+	 * 1) IMSIC interrupt controller is enabled and configured
+	 * 2) IOMMU hardware supported interrupt remapping is not enabled
+	 *
+	 * Primary first stage protection domain should provide identity
+	 * mapping for all available supervisor IMSIC doorbell pages.
+	 *
+	 * Note: IOMMU MSI remapping is not supported by the driver yet.
+	 */
+	imsic_global = imsic_get_global_config();
+	if (!imsic_global || !imsic_global->nr_ids)
+		return 0;
+
+	base = imsic_global->base_addr;
+	stride = IMSIC_MMIO_PAGE_SZ << imsic_global->guest_index_bits;
+	for (i = 0; i < BIT(imsic_global->hart_index_bits); i++) {
+		if (riscv_iommu_map_pages(&domain->domain, base, base,
+					  IMSIC_MMIO_PAGE_SZ, 1, prot,
+					  GFP_KERNEL_ACCOUNT, &mapped)) {
+			/* unroll mapping */
+			do {
+				riscv_iommu_unmap_pages(&domain->domain, base,
+							IMSIC_MMIO_PAGE_SZ, 1,
+							NULL);
+				base -= stride;
+			} while (i-- > 0);
+
+			return -ENOMEM;
+		}
+		base += stride;
+	}
+
+	return 0;
+}
+
 static int riscv_iommu_attach_paging_domain(struct iommu_domain *iommu_domain,
 					    struct device *dev)
 {
@@ -1330,6 +1376,10 @@ static int riscv_iommu_attach_paging_domain(struct iommu_domain *iommu_domain,
 
 	if (!riscv_iommu_pt_supported(iommu, domain->pgd_mode))
 		return -ENODEV;
+
+	/* FIXME: Run riscv_iommu_map_msi_bypass() only once. */
+	if (riscv_iommu_map_msi_bypass(iommu, domain))
+		return -ENOMEM;
 
 	fsc = FIELD_PREP(RISCV_IOMMU_PC_FSC_MODE, domain->pgd_mode) |
 	      FIELD_PREP(RISCV_IOMMU_PC_FSC_PPN, virt_to_pfn(domain->pgd_root));
@@ -1466,6 +1516,25 @@ static struct iommu_domain riscv_iommu_identity_domain = {
 	}
 };
 
+static void riscv_iommu_get_resv_regions(struct device *dev,
+					 struct list_head *head)
+{
+	const struct imsic_global_config *imsic_global;
+	struct iommu_resv_region *reg;
+	size_t size;
+
+	/* We assume target MSI controller to be RISC-V AIA IMSIC controller. */
+	imsic_global = imsic_get_global_config();
+	if (imsic_global && imsic_global->nr_ids) {
+		size = IMSIC_MMIO_PAGE_SZ << (imsic_global->guest_index_bits +
+					      imsic_global->hart_index_bits);
+		reg = iommu_alloc_resv_region(imsic_global->base_addr, size,
+					      0, IOMMU_RESV_MSI, GFP_KERNEL);
+		if (reg)
+			list_add_tail(&reg->list, head);
+	}
+}
+
 static struct iommu_group *riscv_iommu_device_group(struct device *dev)
 {
 	if (dev_is_pci(dev))
@@ -1511,6 +1580,7 @@ static struct iommu_device *riscv_iommu_probe_device(struct device *dev)
 	tc = 0;
 	if (iommu->caps & RISCV_IOMMU_CAPABILITIES_AMO_HWAD)
 		tc |= RISCV_IOMMU_DC_TC_SADE;
+
 	for (i = 0; i < fwspec->num_ids; i++) {
 		dc = riscv_iommu_get_dc(iommu, fwspec->ids[i]);
 		if (!dc) {
@@ -1540,6 +1610,7 @@ static const struct iommu_ops riscv_iommu_ops = {
 	.blocked_domain = &riscv_iommu_blocking_domain,
 	.release_domain = &riscv_iommu_blocking_domain,
 	.domain_alloc_paging = riscv_iommu_alloc_paging_domain,
+	.get_resv_regions = riscv_iommu_get_resv_regions,
 	.device_group = riscv_iommu_device_group,
 	.probe_device = riscv_iommu_probe_device,
 	.release_device	= riscv_iommu_release_device,
