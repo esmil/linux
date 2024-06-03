@@ -565,9 +565,7 @@ static int es8326_pcm_hw_params(struct snd_pcm_substream *substream,
 		coeff_div =  coeff_div_v3;
 		array = ARRAY_SIZE(coeff_div_v3);
 	}
-#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-	es8326->sysclk = params_rate(params) * 64;
-#endif
+
 	coeff = get_coeff(es8326->sysclk, params_rate(params), array, coeff_div);
 	/* bit size */
 	switch (params_format(params)) {
