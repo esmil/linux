@@ -51,6 +51,11 @@ struct es8326_priv {
 	int jack_remove_retry;
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
 	int spk_ctl_gpio;
+	int hp_gpio;
+	int hp_irq;
+	int mic_gpio;
+	int mic_irq;
+	struct delayed_work hpmic_detect_work;
 #endif
 };
 
@@ -1010,6 +1015,72 @@ out:
 	return IRQ_HANDLED;
 }
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static void es8326_hpmic_detect_handler(struct work_struct *work)
+{
+	struct es8326_priv *es8326 =
+		container_of(work, struct es8326_priv, hpmic_detect_work.work);
+	struct snd_soc_component *comp = es8326->component;
+	bool hp_status = 0, mic_status = 0;
+	u8 jack_status;
+
+	if (es8326->hp_gpio >= 0) {
+		hp_status = !gpio_get_value(es8326->hp_gpio);
+	}
+	if (es8326->mic_gpio >= 0) {
+		mic_status = !gpio_get_value(es8326->mic_gpio);
+	}
+	jack_status = hp_status | (mic_status << 1);
+	dev_dbg(comp->dev, "jack_status:%d\n", jack_status);
+	if ((jack_status & SND_JACK_HEADSET) == 0) {
+		/* Jack unplugged or spurious IRQ */
+		es8326_disable_micbias(es8326->component);
+		es8326->hp = 0;
+		regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
+		regmap_write(es8326->regmap, ES8326_SYS_BIAS, 0x0a);
+		regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x03);
+
+	} else {
+		if (es8326->hp == 0) {
+			regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
+			es8326_enable_micbias(es8326->component);
+			usleep_range(50000, 70000);
+			regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x00);
+			regmap_write(es8326->regmap, ES8326_SYS_BIAS, 0x1f);
+			regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x08);
+			usleep_range(10000, 15000);
+			es8326->hp = 1;
+			regmap_write(es8326->regmap, ES8326_ADC_SCALE, 0x33);
+			regmap_update_bits(es8326->regmap, ES8326_PGA_PDN,
+					0x08, 0x08);
+			regmap_update_bits(es8326->regmap, ES8326_PGAGAIN,
+					0x80, 0x80);
+			regmap_write(es8326->regmap, ES8326_ADC1_SRC, 0x00);
+			regmap_write(es8326->regmap, ES8326_ADC2_SRC, 0x00);
+			regmap_update_bits(es8326->regmap, ES8326_PGA_PDN,
+					0x08, 0x00);
+			usleep_range(10000, 15000);
+		}
+	}
+	snd_soc_jack_report(es8326->jack,
+		jack_status,
+		SND_JACK_HEADSET);
+	return;
+}
+
+static irqreturn_t es8326_irq_hpmic(int irq, void *dev_id)
+{
+	struct es8326_priv *es8326 = dev_id;
+
+	if (!es8326->jack)
+		goto out;
+	queue_delayed_work(system_wq, &es8326->hpmic_detect_work,
+		msecs_to_jiffies(100));
+out:
+	return IRQ_HANDLED;
+}
+#endif
+
 static int es8326_calibrate(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
@@ -1256,7 +1327,14 @@ static void es8326_enable_jack_detect(struct snd_soc_component *component,
 	es8326->jack = jack;
 
 	mutex_unlock(&es8326->lock);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	if (es8326->irq > 0)
+		es8326_irq(es8326->irq, es8326);
+	else
+		es8326_irq_hpmic(es8326->irq, es8326);
+#else
 	es8326_irq(es8326->irq, es8326);
+#endif
 }
 
 static void es8326_disable_jack_detect(struct snd_soc_component *component)
@@ -1344,6 +1422,10 @@ static int es8326_i2c_probe(struct i2c_client *i2c)
 			  es8326_jack_detect_handler);
 	INIT_DELAYED_WORK(&es8326->button_press_work,
 			  es8326_jack_button_handler);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	INIT_DELAYED_WORK(&es8326->hpmic_detect_work,
+			  es8326_hpmic_detect_handler);
+#endif
 	/* ES8316 is level-based while ES8326 is edge-based */
 	ret = devm_request_threaded_irq(&i2c->dev, es8326->irq, NULL, es8326_irq,
 					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
@@ -1355,21 +1437,50 @@ static int es8326_i2c_probe(struct i2c_client *i2c)
 	}
 
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
-	es8326->spk_ctl_gpio = of_get_named_gpio_flags(i2c->dev.of_node,
+	es8326->spk_ctl_gpio = of_get_named_gpio(i2c->dev.of_node,
 						       "spk-ctl-gpio",
-						       0,
-						       &flags);
+						       0);
 	if (es8326->spk_ctl_gpio < 0) {
 		dev_info(&i2c->dev, "Can not read property spk_ctl_gpio\n");
 		es8326->spk_ctl_gpio = -1;
 	} else {
 		ret = devm_gpio_request_one(&i2c->dev, es8326->spk_ctl_gpio,
-					    GPIOF_DIR_OUT, NULL);
+					    GPIOF_OUT_INIT_LOW, NULL);
 		if (ret) {
 			dev_err(&i2c->dev, "Failed to request spk_ctl_gpio\n");
 			return ret;
 		}
 		es8326_enable_spk(es8326, false);
+	}
+	es8326->hp_gpio = of_get_named_gpio(i2c->dev.of_node,
+					"hp-detect-gpio", 0);
+	if (es8326->hp_gpio < 0) {
+		dev_info(&i2c->dev, "Can not read property hp-detect-gpio\n");
+		es8326->hp_gpio = -1;
+	} else {
+		es8326->hp_irq = gpio_to_irq(es8326->hp_gpio);
+		ret = request_irq(es8326->hp_irq, es8326_irq_hpmic,
+					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					"es8326-hp-irq", es8326);
+		if (ret) {
+			dev_err(&i2c->dev, "Failed to request hp-irq\n");
+			return ret;
+		}
+	}
+	es8326->mic_gpio = of_get_named_gpio(i2c->dev.of_node,
+					"mic-detect-gpio", 0);
+	if (es8326->mic_gpio < 0) {
+		dev_info(&i2c->dev, "Can not read property mic-detect-gpio\n");
+		es8326->mic_gpio = -1;
+	} else {
+		es8326->mic_irq = gpio_to_irq(es8326->mic_gpio);
+		ret = request_irq(es8326->mic_irq, es8326_irq_hpmic,
+					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					"es8326-mic-irq", es8326);
+		if (ret) {
+			dev_err(&i2c->dev, "Failed to request mic-irq\n");
+			return ret;
+		}
 	}
 #endif
 	es8326->mclk = devm_clk_get_optional(&i2c->dev, "mclk");
