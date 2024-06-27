@@ -56,6 +56,7 @@ struct es8326_priv {
 	int mic_gpio;
 	int mic_irq;
 	struct delayed_work hpmic_detect_work;
+	unsigned int coeff;
 #endif
 };
 
@@ -572,6 +573,9 @@ static int es8326_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	coeff = get_coeff(es8326->sysclk, params_rate(params), array, coeff_div);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	es8326->coeff = coeff;
+#endif
 	/* bit size */
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -619,6 +623,44 @@ static int es8326_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	return 0;
 }
+
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static int es8326_reset_clk(struct snd_soc_component *component)
+{
+	const struct _coeff_div *coeff_div;
+	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+	int coeff;
+
+	if (es8326->version == 0) {
+		coeff_div =  coeff_div_v0;
+	} else {
+		coeff_div =  coeff_div_v3;
+	}
+	coeff = es8326->coeff;
+	if (coeff >= 0) {
+		regmap_write(es8326->regmap,  ES8326_CLK_DIV1,
+			     coeff_div[coeff].reg4);
+		regmap_write(es8326->regmap,  ES8326_CLK_DIV2,
+			     coeff_div[coeff].reg5);
+		regmap_write(es8326->regmap,  ES8326_CLK_DLL,
+			     coeff_div[coeff].reg6);
+		regmap_write(es8326->regmap,  ES8326_CLK_MUX,
+			     coeff_div[coeff].reg7);
+		regmap_write(es8326->regmap,  ES8326_CLK_ADC_SEL,
+			     coeff_div[coeff].reg8);
+		regmap_write(es8326->regmap,  ES8326_CLK_DAC_SEL,
+			     coeff_div[coeff].reg9);
+		regmap_write(es8326->regmap,  ES8326_CLK_ADC_OSR,
+			     coeff_div[coeff].rega);
+		regmap_write(es8326->regmap,  ES8326_CLK_DAC_OSR,
+			     coeff_div[coeff].regb);
+	} else {
+		dev_warn(component->dev, "Clock coefficients do not match");
+	}
+
+	return 0;
+}
+#endif
 
 static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 {
@@ -1043,7 +1085,9 @@ static void es8326_hpmic_detect_handler(struct work_struct *work)
 	} else {
 		if (es8326->hp == 0) {
 			regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
+			#ifndef SPACEMIT_CONFIG_CODEC_ES8326
 			es8326_enable_micbias(es8326->component);
+			#endif
 			usleep_range(50000, 70000);
 			regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x00);
 			regmap_write(es8326->regmap, ES8326_SYS_BIAS, 0x1f);
@@ -1237,9 +1281,26 @@ static int es8326_resume(struct snd_soc_component *component)
 	else
 		es8326_init(component);
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	es8326_reset_clk(component);
+	if (es8326->jack) {
+		snd_soc_jack_report(es8326->jack, 0, SND_JACK_HEADSET);
+		if (es8326->jd_inverted) {
+			snd_soc_component_update_bits(component, ES8326_HPDET_TYPE,
+						      ES8326_HP_DET_JACK_POL, ~es8326->jack_pol);
+		}
+	}
+#endif
 	regcache_sync(es8326->regmap);
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	if (es8326->irq > 0)
+		es8326_irq(es8326->irq, es8326);
+	else
+		es8326_irq_hpmic(es8326->irq, es8326);
+#else
 	es8326_irq(es8326->irq, es8326);
+#endif
 	return 0;
 }
 
