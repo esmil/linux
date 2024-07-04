@@ -30,6 +30,15 @@ config SPACEMIT_REBOOT_CONTROL
 	help
 	  Say y here to support go to uboot fastboot when reset.
 
+config SPACEMIT_SOCINFO
+	tristate "Socinfo driver for spacemit SoCs"
+	depends on SOC_SPACEMIT && NVMEM_SPACEMIT_EFUSE
+	select MFD_SYSCON
+	select SOC_BUS
+	help
+	  Spacemit SoCs information driver, which get information from efuse and
+	  report to userspace.
+
 config SPACEMIT_SUSPEND_AFFINITY
 	bool "Spacemit k3 handle irq affinity when standby"
 	depends on SOC_SPACEMIT_K3 && PM_SLEEP
