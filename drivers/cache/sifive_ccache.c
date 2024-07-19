@@ -68,6 +68,7 @@ enum {
 enum {
 	QUIRK_NONSTANDARD_CACHE_OPS	= BIT(0),
 	QUIRK_BROKEN_DATA_UNCORR	= BIT(1),
+	QUIRK_ENABLE_ALL_WAYS		= BIT(2),
 };
 
 #ifdef CONFIG_DEBUG_FS
@@ -119,7 +120,7 @@ static void ccache_config_read(void)
 
 static const struct of_device_id sifive_ccache_ids[] = {
 	{ .compatible = "eswin,eic7700-ccache",
-	  .data = (void *)QUIRK_NONSTANDARD_CACHE_OPS },
+	  .data = (void *)(QUIRK_NONSTANDARD_CACHE_OPS | QUIRK_ENABLE_ALL_WAYS) },
 	{ .compatible = "sifive,fu540-c000-ccache" },
 	{ .compatible = "sifive,fu740-c000-ccache" },
 	{ .compatible = "starfive,jh7100-ccache",
@@ -315,6 +316,14 @@ static int __init sifive_ccache_init(void)
 	if (of_property_read_u32(np, "cache-level", &level)) {
 		rc = -ENOENT;
 		goto err_unmap;
+	}
+
+	if (quirks & QUIRK_ENABLE_ALL_WAYS) {
+		u32 config, ways;
+
+		config = readl(ccache_base + SIFIVE_CCACHE_CONFIG);
+		ways = (config >> 8) & 0xff;
+		writel(ways-1, ccache_base + SIFIVE_CCACHE_WAYENABLE);
 	}
 
 #ifdef CONFIG_RISCV_NONSTANDARD_CACHE_OPS
