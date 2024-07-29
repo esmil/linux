@@ -166,6 +166,14 @@ config IOMMU_SVA
 config IOMMU_IOPF
 	bool
 
+config IOMMU_ESWIN
+	bool "IOMMU EIC7700 Support"
+	depends on ARCH_ESWIN || COMPILE_TEST
+	select IOMMU_API
+	help
+	  Say Y here if you want to compile device drivers for IO Memory
+	  management implementation for EIC7700
+
 config FSL_PAMU
 	bool "Freescale IOMMU support"
 	depends on PCI
