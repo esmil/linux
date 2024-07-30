@@ -213,6 +213,17 @@ config PINCTRL_EQUILIBRIUM
 	  desired pin functions, configure GPIO attributes for LGM SoC pins.
 	  Pin muxing and pin config settings are retrieved from device tree.
 
+config PINCTRL_EIC7700
+	tristate "EIC7700 PINCTRL driver"
+	depends on ARCH_ESWIN || COMPILE_TEST
+	select GENERIC_PINCONF
+	select PINMUX
+	select PINCONF
+	select GENERIC_PINCTRL_GROUPS
+	select GENERIC_PINMUX_FUNCTIONS
+	help
+	  say Y here to add pinctrl eic7700 driver
+
 config PINCTRL_GEMINI
 	bool
 	depends on ARCH_GEMINI
