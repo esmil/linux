@@ -306,6 +306,16 @@ config RTC_DRV_DS1672
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-ds1672.
 
+config RTC_DRV_ESWIN
+	tristate "eswin EIC7700 RTC"
+	depends on ARCH_ESWIN || COMPILE_TEST
+	help
+	  If you say yes here you get support for the eswin EIC7700 real time
+	  clock.
+
+	  This driver can also be built as a module, if so, the module
+	  will be called "rtc-eswin".
+
 config RTC_DRV_HYM8563
 	tristate "Haoyu Microelectronics HYM8563"
 	depends on OF
