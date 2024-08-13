@@ -428,26 +428,6 @@
 			opp-microvolt = <800000>;
 			clock-latency-ns = <70000>;
 		};
-		opp-1500000000 {
-			opp-hz = /bits/ 64 <CLK_FREQ_1500M>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <70000>;
-		};
-		opp-1600000000 {
-			opp-hz = /bits/ 64 <CLK_FREQ_1600M>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <70000>;
-		};
-		opp-1700000000 {
-			opp-hz = /bits/ 64 <CLK_FREQ_1700M>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <70000>;
-		};
-		opp-1800000000 {
-			opp-hz = /bits/ 64 <CLK_FREQ_1800M>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <70000>;
-		};
 	};
 
 	noc {
