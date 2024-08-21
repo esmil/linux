@@ -1,5 +1,24 @@
 menu "CPU errata selection"
 
+config ERRATA_ESWIN_EIC7700
+	bool "ESWIN EIC7700 support"
+	depends on ARCH_ESWIN
+	depends on !DMA_DIRECT_REMAP
+	depends on NONPORTABLE
+	select DMA_GLOBAL_POOL
+	select RISCV_DMA_NONCOHERENT
+	select RISCV_NONSTANDARD_CACHE_OPS
+	select SIFIVE_CCACHE
+	default n
+	help
+	  The ESWIN EIC7700 has caches that are non-coherent with respect to
+	  peripheral DMAs, but does not make use of the standard Zicbom and
+	  Svpbm extensions. Insteand it needs non-standard cache operations
+	  through the SiFive cache controller.
+
+	  Say "Y" if you want to support the SiFive HiFive Premier P550 or
+	  other boards based on this SoC.
+
 config ERRATA_ANDES
 	bool "Andes AX45MP errata"
 	depends on RISCV_ALTERNATIVE && RISCV_SBI
