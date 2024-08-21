@@ -3139,9 +3139,11 @@
 			reg-names = "control";
 			interrupts = <520>;
 		};
-		L7: cache-controller@2010000 {
-			compatible = "sifive,eic7700";
-			reg = <0x0 0x2010000 0x0 0x4000 0x0 0x8000000 0x0 0x400000>;
+
+		ccache: cache-controller@2010000 {
+			compatible = "eswin,eic7700-ccache";
+			reg = <0x0 0x2010000 0x0 0x4000>,
+			      <0x0 0x8000000 0x0 0x400000>;
 			reg-names = "control", "sideband";
 			cache-block-size = <64>;
 			cache-level = <3>;
@@ -3215,7 +3217,7 @@
 			cache-size = <262144>;
 			cache-unified;
 			compatible = "sifive,pL2Cache0", "cache";
-			next-level-cache = <&L7>;
+			next-level-cache = <&ccache>;
 			reg = <0x0 0x104000 0x0 0x4000>;
 			reg-names = "control";
 			sifive,ecc-granularity = <16>;
@@ -3228,7 +3230,7 @@
 			cache-size = <262144>;
 			cache-unified;
 			compatible = "sifive,pL2Cache0", "cache";
-			next-level-cache = <&L7>;
+			next-level-cache = <&ccache>;
 			reg = <0x0 0x108000 0x0 0x4000>;
 			reg-names = "control";
 			sifive,ecc-granularity = <16>;
@@ -3241,7 +3243,7 @@
 			cache-size = <262144>;
 			cache-unified;
 			compatible = "sifive,pL2Cache0", "cache";
-			next-level-cache = <&L7>;
+			next-level-cache = <&ccache>;
 			reg = <0x0 0x10c000 0x0 0x4000>;
 			reg-names = "control";
 			sifive,ecc-granularity = <16>;
@@ -3254,7 +3256,7 @@
 			cache-size = <262144>;
 			cache-unified;
 			compatible = "sifive,pL2Cache0", "cache";
-			next-level-cache = <&L7>;
+			next-level-cache = <&ccache>;
 			reg = <0x0 0x110000 0x0 0x4000>;
 			reg-names = "control";
 			sifive,ecc-granularity = <16>;
