@@ -3072,6 +3072,7 @@
 		compatible = "simple-bus";
 		#address-cells = <2>;
 		#size-cells = <2>;
+		dma-noncoherent;
 		interrupt-parent = <&plic0>;
 		ranges;
 
