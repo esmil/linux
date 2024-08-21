@@ -10,7 +10,7 @@ config AX45MP_L2_CACHE
 
 config SIFIVE_CCACHE
 	bool "Sifive Composable Cache controller"
-	depends on ARCH_SIFIVE || ARCH_STARFIVE
+	depends on ARCH_SIFIVE || ARCH_STARFIVE || ARCH_ESWIN
 	help
 	  Support for the composable cache controller on SiFive platforms.
 
