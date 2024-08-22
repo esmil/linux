@@ -92,6 +92,18 @@
 			reg = <0x0 0xa0000000 0x0 0x100000>;
 		};
 
+		dma-reserved@e1000000 {
+			reg = <0x0 0xe1000000 0x0 0x1000000>;
+			no-map;
+		};
+
+		linux,dma@c061000000 {
+			compatible = "shared-dma-pool";
+			reg = <0xc0 0x61000000 0x0 0x1000000>;
+			no-map;
+			linux,dma-default;
+		};
+
 		g2d_4GB_boundary_reserved_4k {
 			no-map;
 			reg = <0x0 0xfffff000 0x0 0x1000>;
@@ -99,6 +111,10 @@
 	};
 
 	soc {
+		dma-ranges = <0x00 0x80000000 0x00 0x80000000 0x00 0x61000000>,
+			     <0x00 0xe1000000 0xc0 0x61000000 0x00 0x01000000>,
+			     <0x00 0xe2000000 0x00 0xe2000000 0x0f 0x1e000000>;
+
 		reset_test@1e00e000 {
 			compatible = "reset_test";
 			resets = <&d0_reset SCPU_RST_CTRL SW_SCPU_BUS_RSTN>,
