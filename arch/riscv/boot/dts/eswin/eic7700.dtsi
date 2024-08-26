@@ -3562,7 +3562,7 @@
 			snps,block-size = <0x80000 0x80000 0x80000 0x80000 0x80000 0x80000 0x80000 0x80000 0x80000 0x80000 0x80000 0x80000>;
 			snps,axi-max-burst-len = <16>;
 			snps,max-msize = <64>;
-			iommus = <&smmu0 EIC7700_SID_DMA0>;
+			//iommus = <&smmu0 EIC7700_SID_DMA0>;
 			tbus = <EIC7700_TBUID_DMA0>;
 			eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x104c>;
 			eswin,syscfg = <&d0_sys_con DMA1_SID_REG_OFFSET 0x370>;
@@ -3589,7 +3589,7 @@
 			#size-cells = <2>;
 			#address-cells = <2>;
 			dma-ranges = <0x0 0x80000000 0x0 0x80000000 0x100 0x0>;
-			iommus = <&smmu0 EIC7700_SID_DMA1>;
+			//iommus = <&smmu0 EIC7700_SID_DMA1>;
 			tbus = <EIC7700_TBUID_DMA1>;
 			eswin,syscfg = <&d0_sys_con DMA1_SID_REG_OFFSET 0x370>;
 			numa-node-id = <0>;
@@ -3657,7 +3657,7 @@
 			/*spram-region = <&npu0_reserved>;*/
 			#size-cells = <2>;
 			dma-ranges = <0x1 0x0 0x0 0xc0000000 0x1ff 0x0>;
-			iommus = <&smmu0 EIC7700_SID_NPU_DMA>;
+			//iommus = <&smmu0 EIC7700_SID_NPU_DMA>;
 			tbus = <EIC7700_TBUID_NPU>;
 			dsp-avail-num = <1>;
 			spram-size = <0x400000>;
@@ -3731,7 +3731,7 @@
 				firmware-name = "eic7700_dsp_fw";
 				process-id = <0>;
 				dma-ranges = <0x30000000 0x0 0xc0000000 0xce000000>;
-				iommus = <&smmu0 EIC7700_SID_DSP_0>;
+				//iommus = <&smmu0 EIC7700_SID_DSP_0>;
 				tbus = <EIC7700_TBUID_DSP0>;
 				numa-node-id = <0>;
 				aux-e31-dtim = <0x5a110000>;
@@ -3761,7 +3761,7 @@
 				firmware-name = "eic7700_dsp_fw";
 				process-id = <1>;
 				dma-ranges = <0x30000000 0x0 0xc0000000 0xce000000>;
-				iommus = <&smmu0 EIC7700_SID_DSP_1>;
+				//iommus = <&smmu0 EIC7700_SID_DSP_1>;
 				tbus = <EIC7700_TBUID_DSP1>;
 				numa-node-id = <0>;
 				aux-e31-dtim = <0x5a110000>;
@@ -3792,7 +3792,7 @@
 				firmware-name = "eic7700_dsp_fw";
 				process-id = <2>;
 				dma-ranges = <0x30000000 0x0 0xc0000000 0xce000000>;
-				iommus = <&smmu0 EIC7700_SID_DSP_2>;
+				//iommus = <&smmu0 EIC7700_SID_DSP_2>;
 				tbus = <EIC7700_TBUID_DSP2>;
 				numa-node-id = <0>;
 				aux-e31-dtim = <0x5a110000>;
@@ -3823,7 +3823,7 @@
 				firmware-name = "eic7700_dsp_fw";
 				process-id = <3>;
 				dma-ranges = <0x30000000 0x0 0xc0000000 0xce000000>;
-				iommus = <&smmu0 EIC7700_SID_DSP_3>;
+				//iommus = <&smmu0 EIC7700_SID_DSP_3>;
 				tbus = <EIC7700_TBUID_DSP3>;
 				numa-node-id = <0>;
 				aux-e31-dtim = <0x5a110000>;
@@ -3891,7 +3891,7 @@
 					<&d0_reset HSPDMA_RST_CTRL SW_HSP_SATA_ARSTN>;
 			reset-names = "asic0", "oob", "pmalive", "rbc", "apb";
 			#size-cells = <2>;
-			iommus = <&smmu0 EIC7700_SID_SATA>;
+			//iommus = <&smmu0 EIC7700_SID_SATA>;
 			tbus = <EIC7700_TBUID_SATA>;
 			dma-ranges = <0x0 0x0 0x0 0xc0000000 0x200 0x0>;
 			eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x1050>;
@@ -3934,8 +3934,8 @@
 			**********************************/
 			interrupts = <220>;
 			interrupt-names = "msi";
-			iommus = <&smmu0 0xfe0000>;
-			iommu-map = <0x0 &smmu0 0xff0000 0xffffff>;
+			//iommus = <&smmu0 0xfe0000>;
+			//iommu-map = <0x0 &smmu0 0xff0000 0xffffff>;
 			gen-x = <3>;
 			lane-x = <4>;
 			tbus = <EIC7700_TBUID_PCIE>;
@@ -4023,7 +4023,7 @@
 			/* sdhci-caps-mask =  <0x2 0x3000000>; */
 			/* smmu */
 			#size-cells = <2>;
-			iommus = <&smmu0 EIC7700_SID_EMMC0>;
+			//iommus = <&smmu0 EIC7700_SID_EMMC0>;
 			tbus = <EIC7700_TBUID_EMMC>;
 			dma-ranges = <0x0 0x00000000 0x0 0xc0000000 0x1 0x0>;
 			eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x1038>;
@@ -4053,7 +4053,7 @@
 			max-frequency = <208000000>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x20000000 0x0 0xc0000000 0x0 0x40000000>;
-			iommus = <&smmu0 EIC7700_SID_SD0>;
+			//iommus = <&smmu0 EIC7700_SID_SD0>;
 			tbus = <EIC7700_TBUID_SD>;
 			eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x103c>;
 			bus-width = <4>;
@@ -4084,7 +4084,7 @@
 			max-frequency = <208000000>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x20000000 0x0 0xc0000000 0x0 0x40000000>;
-			iommus = <&smmu0 EIC7700_SID_SD1>;
+			//iommus = <&smmu0 EIC7700_SID_SD1>;
 			tbus = <EIC7700_TBUID_SD>;
 			eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x1040>;
 			bus-width = <4>;
@@ -4325,7 +4325,7 @@
 			compatible = "eswin,eic7700-ipc";
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x80000000 0x0 0xc0000000 0x0 0x80000000>;
-			iommus = <&smmu0 EIC7700_SID_SCPU>;
+			//iommus = <&smmu0 EIC7700_SID_SCPU>;
 			tbus = <EIC7700_TBUID_SCPU>;
 			eswin,syscfg = <&d0_sys_con SCPU_SID_REG_OFFSET 0>,
 			               <&d0_sys_con CRYPT_SID_REG_OFFSET 0>;
@@ -4348,7 +4348,7 @@
 			#size-cells = <2>;
 
 			dma-ranges = <0x0 0xb0000000 0x0 0xc0000000 0x0 0x50000000>;
-			iommus = <&smmu0 EIC7700_SID_LCPU>;
+			//iommus = <&smmu0 EIC7700_SID_LCPU>;
 			eswin,syscfg = <&d0_sys_con LCPU_SID_REG_OFFSET 0>;
 			tbus = <EIC7700_TBUID_LPCPU>;
 			mboxes = <&d0_mbox1 0>;
@@ -5025,7 +5025,7 @@
 				dr_mode = "peripheral";
 				phy_type = "utmi";
 				maximum-speed = "high-speed";
-				iommus = <&smmu0 EIC7700_SID_USB0>;
+				//iommus = <&smmu0 EIC7700_SID_USB0>;
 				eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x1044>;
 				dma-ranges = <0x0 0x0 0x0 0xc0000000 0x200 0x0>;
 				snps,dis_enblslpm_quirk;
@@ -5064,7 +5064,7 @@
 				dr_mode = "host";
 				phy_type = "utmi";
 				maximum-speed = "high-speed";
-				iommus = <&smmu0 EIC7700_SID_USB1>;
+				//iommus = <&smmu0 EIC7700_SID_USB1>;
 				eswin,hsp_sp_csr = <&d0_hsp_sp_csr 0x1048>;
 				dma-ranges = <0x0 0x0 0x0 0xc0000000 0x200 0x0>;
 				snps,dis_enblslpm_quirk;
@@ -5128,7 +5128,7 @@
 			id = <0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x20000000 0x0 0x80000000 0x0 0x40000000>;
-			iommus = <&smmu0 EIC7700_SID_ISP0>;
+			//iommus = <&smmu0 EIC7700_SID_ISP0>;
 			tbus = <EIC7700_TBUID_ISP>;
 			eswin,vi_top_csr = <&vi_top_csr 0x1000>;
 			numa-node-id = <0>;
@@ -5164,7 +5164,7 @@
 			interrupts = <26 25>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x20000000 0x0 0x80000000 0x0 0x40000000>;
-			iommus = <&smmu0 EIC7700_SID_DW>;
+			//iommus = <&smmu0 EIC7700_SID_DW>;
 			tbus = <EIC7700_TBUID_DW>;
 			eswin,vi_top_csr = <&vi_top_csr 0x1008>;
 			reg = <0x0 0x51020000 0x0 0xc00>, <0x0 0x51020c00 0x0 0x120>;
