@@ -55,10 +55,15 @@ struct es8326_priv {
 	int hp_irq;
 	int mic_gpio;
 	int mic_irq;
+	int typec_hp;
 	struct delayed_work hpmic_detect_work;
 	unsigned int coeff;
 #endif
 };
+
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static struct es8326_priv *es8326_priv_ptr;
+#endif
 
 static int es8326_crosstalk1_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
@@ -676,8 +681,9 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 			regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF,
 					0x30, 0x00);
 			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-			if (!es8326->hp)
+			if (!es8326->hp && !es8326->typec_hp) {
 				es8326_enable_spk(es8326, false);
+			}
 			#endif
 		} else {
 			regmap_update_bits(es8326->regmap,  ES8326_ADC_MUTE,
@@ -713,7 +719,7 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 			regmap_update_bits(es8326->regmap, ES8326_DAC_MUTE,
 					ES8326_MUTE_MASK, ~(ES8326_MUTE));
 			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-			if (!es8326->hp)
+			if (!es8326->hp && !es8326->typec_hp)
 				es8326_enable_spk(es8326, true);
 			#endif
 		} else {
@@ -947,6 +953,9 @@ static void es8326_jack_detect_handler(struct work_struct *work)
 	if ((iface & ES8326_HPINSERT_FLAG) == 0) {
 		/* Jack unplugged or spurious IRQ */
 		dev_dbg(comp->dev, "No headset detected\n");
+		#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+		spacemit_headphone_notifier_call_chain(HEADSET_EVENT_DISCONNECTED, "headset");
+		#else
 		es8326_disable_micbias(es8326->component);
 		if (es8326->jack->status & SND_JACK_HEADPHONE) {
 			dev_dbg(comp->dev, "Report hp remove event\n");
@@ -970,6 +979,7 @@ static void es8326_jack_detect_handler(struct work_struct *work)
 		regmap_write(es8326->regmap, ES8326_SYS_BIAS, 0x0a);
 		regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x03);
 		regmap_write(es8326->regmap, ES8326_INT_SOURCE, ES8326_INT_SRC_PIN9);
+		#endif
 		/*
 		 * Inverted HPJACK_POL bit to trigger one IRQ to double check HP Removal event
 		 */
@@ -1026,10 +1036,17 @@ static void es8326_jack_detect_handler(struct work_struct *work)
 		}
 		if ((iface & ES8326_HPBUTTON_FLAG) == 0x01) {
 			dev_dbg(comp->dev, "Headphone detected\n");
+			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+			spacemit_headphone_notifier_call_chain(HEADPHONE_EVENT_CONNECTED, "headphone");
+			#else
 			snd_soc_jack_report(es8326->jack,
 					SND_JACK_HEADPHONE, SND_JACK_HEADSET);
+			#endif
 		} else {
 			dev_dbg(comp->dev, "Headset detected\n");
+			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+			spacemit_headphone_notifier_call_chain(HEADSET_EVENT_CONNECTED, "headset");
+			#else
 			snd_soc_jack_report(es8326->jack,
 					SND_JACK_HEADSET, SND_JACK_HEADSET);
 
@@ -1042,6 +1059,7 @@ static void es8326_jack_detect_handler(struct work_struct *work)
 			regmap_update_bits(es8326->regmap, ES8326_PGA_PDN,
 					0x08, 0x00);
 			usleep_range(10000, 15000);
+			#endif
 		}
 	}
 exit:
@@ -1085,34 +1103,10 @@ static void es8326_hpmic_detect_handler(struct work_struct *work)
 	dev_dbg(comp->dev, "jack_status:%d\n", jack_status);
 	if ((jack_status & SND_JACK_HEADSET) == 0) {
 		/* Jack unplugged or spurious IRQ */
-		es8326_disable_micbias(es8326->component);
-		es8326->hp = 0;
-		regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
-		regmap_write(es8326->regmap, ES8326_SYS_BIAS, 0x0a);
-		regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x03);
-
+		spacemit_headphone_notifier_call_chain(HPMIC_EVENT_DISCONNECTED, "hpmic");
 	} else {
 		if (es8326->hp == 0) {
-			regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
-			#ifndef SPACEMIT_CONFIG_CODEC_ES8326
-			es8326_enable_micbias(es8326->component);
-			#endif
-			usleep_range(50000, 70000);
-			regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x00);
-			regmap_write(es8326->regmap, ES8326_SYS_BIAS, 0x1f);
-			regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x08);
-			usleep_range(10000, 15000);
-			es8326->hp = 1;
-			regmap_write(es8326->regmap, ES8326_ADC_SCALE, 0x33);
-			regmap_update_bits(es8326->regmap, ES8326_PGA_PDN,
-					0x08, 0x08);
-			regmap_update_bits(es8326->regmap, ES8326_PGAGAIN,
-					0x80, 0x80);
-			regmap_write(es8326->regmap, ES8326_ADC1_SRC, 0x00);
-			regmap_write(es8326->regmap, ES8326_ADC2_SRC, 0x00);
-			regmap_update_bits(es8326->regmap, ES8326_PGA_PDN,
-					0x08, 0x00);
-			usleep_range(10000, 15000);
+			spacemit_headphone_notifier_call_chain(HPMIC_EVENT_CONNECTED, "hpmic");
 		}
 	}
 	snd_soc_jack_report(es8326->jack,
@@ -1187,6 +1181,10 @@ static int es8326_calibrate(struct snd_soc_component *component)
 static void es8326_init(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+
+	#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	es8326_priv_ptr = es8326;
+	#endif
 
 	regmap_write(es8326->regmap, ES8326_RESET, 0x1f);
 	regmap_write(es8326->regmap, ES8326_VMIDSEL, 0x3E);
@@ -1273,6 +1271,11 @@ static void es8326_init(struct snd_soc_component *component)
 
 	msleep(200);
 	regmap_write(es8326->regmap, ES8326_INT_SOURCE, ES8326_INT_SRC_PIN9);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	es8326->jack_remove_retry = 0;
+	es8326->hp = 0;
+	es8326->typec_hp = 0;
+#endif
 }
 
 static int es8326_resume(struct snd_soc_component *component)
@@ -1335,6 +1338,124 @@ static int es8326_suspend(struct snd_soc_component *component)
 	return 0;
 }
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static BLOCKING_NOTIFIER_HEAD(headphone_notifier_list);
+
+/* spacemit_headphone_register_client - register a client notifier */
+int spacemit_headphone_register_client(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&headphone_notifier_list, nb);
+}
+EXPORT_SYMBOL(spacemit_headphone_register_client);
+
+/* spacemit_headphone_unregister_client - unregister a client notifier */
+int spacemit_headphone_unregister_client(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&headphone_notifier_list, nb);
+}
+EXPORT_SYMBOL(spacemit_headphone_unregister_client);
+
+/* spacemit_headphone_notifier_call_chain - notify clients of headphone status events */
+int spacemit_headphone_notifier_call_chain(__alsa_codec_event_e val, char *v)
+{
+	return blocking_notifier_call_chain(&headphone_notifier_list, val, v);
+}
+EXPORT_SYMBOL_GPL(spacemit_headphone_notifier_call_chain);
+
+int headphone_connect_event(struct notifier_block *nb, unsigned long event,
+    void *v)
+{
+	switch(event){
+	case HEADSET_EVENT_CONNECTED:
+		pr_info("codec got the chain event: HEADSET_EVENT_CONNECTED\n");
+		if (strcmp(v, "typec") == 0) {
+			es8326_priv_ptr->typec_hp = 1;
+		}
+		snd_soc_jack_report(es8326_priv_ptr->jack,
+			SND_JACK_HEADSET, SND_JACK_HEADSET);
+		es8326_enable_spk(es8326_priv_ptr, false);
+		es8326_enable_micbias(es8326_priv_ptr->component);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_PGA_PDN,
+				0x08, 0x08);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_PGAGAIN,
+				0x80, 0x80);
+		regmap_write(es8326_priv_ptr->regmap, ES8326_ADC1_SRC, 0x00);
+		regmap_write(es8326_priv_ptr->regmap, ES8326_ADC2_SRC, 0x00);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_PGA_PDN,
+				0x08, 0x00);
+		usleep_range(10000, 15000);
+		break;
+
+	case HEADSET_EVENT_DISCONNECTED:
+		pr_info("codec got the chain event: HEADSET_EVENT_DISCONNECTED\n");
+		if (strcmp(v, "headset") == 0 || strcmp(v, "headphone") == 0) {
+			es8326_priv_ptr->hp = 0;
+		}
+		if (strcmp(v, "typec") == 0) {
+			es8326_priv_ptr->typec_hp = 0;
+		}
+		if (es8326_priv_ptr->hp == 0 && es8326_priv_ptr->typec_hp == 0) {
+			es8326_disable_micbias(es8326_priv_ptr->component);
+			dev_dbg(es8326_priv_ptr->component->dev, "Report hp remove event\n");
+			es8326_enable_spk(es8326_priv_ptr, true);
+			snd_soc_jack_report(es8326_priv_ptr->jack, 0, SND_JACK_HEADSET);
+			/* mute adc when mic path switch */
+			regmap_write(es8326_priv_ptr->regmap, ES8326_ADC1_SRC, es8326_priv_ptr->mic1_src);
+			regmap_write(es8326_priv_ptr->regmap, ES8326_ADC2_SRC, es8326_priv_ptr->mic2_src);
+			regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
+			regmap_write(es8326_priv_ptr->regmap, ES8326_SYS_BIAS, 0x0a);
+			regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x03);
+			regmap_write(es8326_priv_ptr->regmap, ES8326_INT_SOURCE, ES8326_INT_SRC_PIN9);
+		}
+		break;
+
+	case HEADPHONE_EVENT_CONNECTED:
+		snd_soc_jack_report(es8326_priv_ptr->jack, SND_JACK_HEADPHONE, SND_JACK_HEADPHONE);
+		break;
+
+	case HEADPHONE_EVENT_DISCONNECTED:
+		snd_soc_jack_report(es8326_priv_ptr->jack, 0, SND_JACK_HEADPHONE);
+		break;
+
+	case HPMIC_EVENT_CONNECTED:
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
+		usleep_range(50000, 70000);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HPDET_TYPE, 0x03, 0x00);
+		regmap_write(es8326_priv_ptr->regmap, ES8326_SYS_BIAS, 0x1f);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x08);
+		usleep_range(10000, 15000);
+		es8326_priv_ptr->hp = 1;
+		regmap_write(es8326_priv_ptr->regmap, ES8326_ADC_SCALE, 0x33);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_PGA_PDN,
+				0x08, 0x08);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_PGAGAIN,
+				0x80, 0x80);
+		regmap_write(es8326_priv_ptr->regmap, ES8326_ADC1_SRC, 0x00);
+		regmap_write(es8326_priv_ptr->regmap, ES8326_ADC2_SRC, 0x00);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_PGA_PDN,
+				0x08, 0x00);
+		usleep_range(10000, 15000);
+		break;
+
+	case HPMIC_EVENT_DISCONNECTED:
+		es8326_disable_micbias(es8326_priv_ptr->component);
+		es8326_priv_ptr->hp = 0;
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
+		regmap_write(es8326_priv_ptr->regmap, ES8326_SYS_BIAS, 0x0a);
+		regmap_update_bits(es8326_priv_ptr->regmap, ES8326_HP_DRIVER_REF, 0x0f, 0x03);
+		break;
+
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block headphone_init_notifier = {
+	.notifier_call = headphone_connect_event,
+};
+#endif
+
 static int es8326_probe(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
@@ -1382,6 +1503,9 @@ static int es8326_probe(struct snd_soc_component *component)
 	dev_dbg(component->dev, "interrupt-clk %x", es8326->interrupt_clk);
 
 	es8326_init(component);
+	#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	spacemit_headphone_register_client(&headphone_init_notifier);
+	#endif
 	return 0;
 }
 

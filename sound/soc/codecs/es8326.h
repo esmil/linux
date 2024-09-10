@@ -201,4 +201,21 @@
 #define SPACEMIT_CONFIG_CODEC_ES8326 1
 #endif
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+#include <linux/notifier.h>
+
+typedef enum{
+	HEADSET_EVENT_CONNECTED = 0,
+	HEADSET_EVENT_DISCONNECTED,
+	HEADPHONE_EVENT_CONNECTED,
+	HEADPHONE_EVENT_DISCONNECTED,
+	HPMIC_EVENT_CONNECTED,
+	HPMIC_EVENT_DISCONNECTED,
+} __alsa_codec_event_e;
+
+int spacemit_headphone_register_client(struct notifier_block *nb);
+int spacemit_headphone_unregister_client(struct notifier_block *nb);
+int spacemit_headphone_notifier_call_chain(__alsa_codec_event_e val, char *v);
+int headphone_connect_event(struct notifier_block *nb, unsigned long event, void *v);
+#endif
 #endif
