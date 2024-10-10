@@ -285,6 +285,14 @@ config RESET_SUNXI
 	help
 	  This enables the reset driver for Allwinner SoCs.
 
+config RESET_TH1520
+	bool "T-Head TH1520 reset driver"
+	depends on ARCH_THEAD || COMPILE_TEST
+	depends on OF
+	help
+	  This enables the reset driver for the T-Head TH1520 RISC-V SoC.
+	  If you wish to support this SoC say Y here. Otherwise, say N.
+
 config RESET_TI_SCI
 	tristate "TI System Control Interface (TI-SCI) reset driver"
 	depends on TI_SCI_PROTOCOL || (COMPILE_TEST && TI_SCI_PROTOCOL=n)
