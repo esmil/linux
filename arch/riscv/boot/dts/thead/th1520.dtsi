@@ -6,6 +6,7 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/clock/thead,th1520-clk-ap.h>
+#include <dt-bindings/reset/thead,th1520-reset.h>
 
 / {
 	compatible = "thead,th1520";
@@ -264,6 +265,8 @@
 			reg = <0xff 0xe700c000 0x0 0x1000>;
 			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_SPI>;
+			resets = <&aprst APRST_SPI>;
+			reset-names = "spi";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -275,6 +278,7 @@
 			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_UART_SCLK>, <&clk CLK_UART0_PCLK>;
 			clock-names = "baudclk", "apb_pclk";
+			resets = <&aprst APRST_UART0>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -357,6 +361,7 @@
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_UART_SCLK>, <&clk CLK_UART1_PCLK>;
 			clock-names = "baudclk", "apb_pclk";
+			resets = <&aprst APRST_UART1>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -368,6 +373,7 @@
 			interrupts = <39 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_UART_SCLK>, <&clk CLK_UART3_PCLK>;
 			clock-names = "baudclk", "apb_pclk";
+			resets = <&aprst APRST_UART3>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -378,6 +384,7 @@
 			reg = <0xff 0xe7f20000 0x0 0x4000>;
 			interrupts = <44 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_I2C0>;
+			resets = <&aprst APRST_I2C0>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -388,6 +395,7 @@
 			reg = <0xff 0xe7f24000 0x0 0x4000>;
 			interrupts = <45 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_I2C1>;
+			resets = <&aprst APRST_I2C1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -398,6 +406,7 @@
 			reg = <0xff 0xe7f28000 0x0 0x4000>;
 			interrupts = <48 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_I2C4>;
+			resets = <&aprst APRST_I2C4>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -410,6 +419,7 @@
 			#size-cells = <0>;
 			clocks = <&clk CLK_GPIO2>;
 			clock-names = "bus";
+			resets = <&aprst APRST_GPIO2>;
 
 			gpio2: gpio-controller@0 {
 				compatible = "snps,dw-apb-gpio-port";
@@ -431,6 +441,7 @@
 			#size-cells = <0>;
 			clocks = <&clk CLK_GPIO3>;
 			clock-names = "bus";
+			resets = <&aprst APRST_GPIO3>;
 
 			gpio3: gpio-controller@0 {
 				compatible = "snps,dw-apb-gpio-port";
@@ -449,6 +460,7 @@
 			compatible = "thead,th1520-pinctrl";
 			reg = <0xff 0xe7f3c000 0x0 0x1000>;
 			clocks = <&clk CLK_PADCTRL1>;
+			resets = <&aprst APRST_PADCTRL1_APSYS>;
 			thead,pad-group = <2>;
 		};
 
@@ -459,6 +471,7 @@
 			#size-cells = <0>;
 			clocks = <&clk CLK_GPIO0>;
 			clock-names = "bus";
+			resets = <&aprst APRST_GPIO0>;
 
 			gpio0: gpio-controller@0 {
 				compatible = "snps,dw-apb-gpio-port";
@@ -480,6 +493,7 @@
 			#size-cells = <0>;
 			clocks = <&clk CLK_GPIO1>;
 			clock-names = "bus";
+			resets = <&aprst APRST_GPIO1>;
 
 			gpio1: gpio-controller@0 {
 				compatible = "snps,dw-apb-gpio-port";
@@ -498,6 +512,7 @@
 			compatible = "thead,th1520-pinctrl";
 			reg = <0xff 0xec007000 0x0 0x1000>;
 			clocks = <&clk CLK_PADCTRL0>;
+			resets = <&aprst APRST_PADCTRL0_APSYS>;
 			thead,pad-group = <3>;
 		};
 
@@ -506,6 +521,7 @@
 			reg = <0xff 0xec00c000 0x0 0x4000>;
 			interrupts = <46 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_I2C2>;
+			resets = <&aprst APRST_I2C2>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -517,6 +533,7 @@
 			interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_UART_SCLK>, <&clk CLK_UART2_PCLK>;
 			clock-names = "baudclk", "apb_pclk";
+			resets = <&aprst APRST_UART2>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -527,6 +544,7 @@
 			reg = <0xff 0xec014000 0x0 0x4000>;
 			interrupts = <47 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_I2C3>;
+			resets = <&aprst APRST_I2C3>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -537,6 +555,7 @@
 			reg = <0xff 0xec01c000 0x0 0x4000>;
 			#pwm-cells = <3>;
 			clocks = <&clk CLK_PWM>;
+			resets = <&aprst APRST_PWM>;
 		};
 
 		misc_sysreg: misc_sysreg@ffec02c000 {
@@ -590,6 +609,7 @@
 			reg = <0xff 0xefc32000 0x0 0x14>;
 			clocks = <&clk CLK_PERI_APB_PCLK>;
 			clock-names = "timer";
+			resets = <&aprst APRST_TIMER0>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
@@ -599,6 +619,7 @@
 			reg = <0xff 0xefc32014 0x0 0x14>;
 			clocks = <&clk CLK_PERI_APB_PCLK>;
 			clock-names = "timer";
+			resets = <&aprst APRST_TIMER1>;
 			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
@@ -627,6 +648,7 @@
 			interrupts = <40 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_UART_SCLK>, <&clk CLK_UART4_PCLK>;
 			clock-names = "baudclk", "apb_pclk";
+			resets = <&aprst APRST_UART4>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -638,6 +660,7 @@
 			interrupts = <41 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_UART_SCLK>, <&clk CLK_UART5_PCLK>;
 			clock-names = "baudclk", "apb_pclk";
+			resets = <&aprst APRST_UART5>;
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			status = "disabled";
@@ -648,6 +671,7 @@
 			reg = <0xff 0xf7f2c000 0x0 0x4000>;
 			interrupts = <49 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clk CLK_I2C5>;
+			resets = <&aprst APRST_I2C5>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -700,6 +724,7 @@
 			reg = <0xff 0xfff41000 0x0 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			resets = <&aonrst AONRST_AOGPIO>;
 
 			aogpio: gpio-controller@0 {
 				compatible = "snps,dw-apb-gpio-port";
@@ -735,6 +760,7 @@
 			      <0xff 0xfff4e800 0x0 0x600>;
 			reg-names = "common", "ts", "pd", "vm";
 			clocks = <&aonsys_clk>;
+			resets = <&aonrst AONRST_PVTC>;
 			#thermal-sensor-cells = <1>;
 		};
 
@@ -743,6 +769,7 @@
 			reg = <0xff 0xfff52000 0x0 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			resets = <&aonrst AONRST_AUDGPIO>;
 
 			gpio4: gpio-controller@0 {
 				compatible = "snps,dw-apb-gpio-port";
