@@ -653,6 +653,12 @@
 			status = "disabled";
 		};
 
+		aprst: reset-controller@ffff015000 {
+			compatible = "thead,th1520-reset-ap";
+			reg = <0xff 0xff015000 0x0 0x2000>;
+			#reset-cells = <1>;
+		};
+
 		timer4: timer@ffffc33000 {
 			compatible = "snps,dw-apb-timer";
 			reg = <0xff 0xffc33000 0x0 0x14>;
@@ -706,6 +712,12 @@
 				#interrupt-cells = <2>;
 				interrupts = <76 IRQ_TYPE_LEVEL_HIGH>;
 			};
+		};
+
+		aonrst: reset-controller@fffff44000 {
+			compatible = "thead,th1520-reset-aon";
+			reg = <0xff 0xfff44000 0x0 0x2000>;
+			#reset-cells = <1>;
 		};
 
 		padctrl_aosys: pinctrl@fffff4a000 {
