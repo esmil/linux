@@ -1272,6 +1272,7 @@ static void es8326_init(struct snd_soc_component *component)
 	msleep(200);
 	regmap_write(es8326->regmap, ES8326_INT_SOURCE, ES8326_INT_SRC_PIN9);
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	regmap_write(es8326->regmap, ES8326_FMT, 0x0c);
 	es8326->jack_remove_retry = 0;
 	es8326->hp = 0;
 	es8326->typec_hp = 0;
