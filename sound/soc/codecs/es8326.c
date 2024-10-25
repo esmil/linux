@@ -20,6 +20,7 @@
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/pm.h>
 #endif
 
 struct es8326_priv {
@@ -1279,9 +1280,16 @@ static void es8326_init(struct snd_soc_component *component)
 #endif
 }
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static int es8326_resume(struct device *dev)
+{
+	struct es8326_priv *es8326 = dev_get_drvdata(dev);
+	struct snd_soc_component *component = es8326->component;
+#else
 static int es8326_resume(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+#endif
 	unsigned int reg;
 
 	regcache_cache_only(es8326->regmap, false);
@@ -1317,9 +1325,16 @@ static int es8326_resume(struct snd_soc_component *component)
 	return 0;
 }
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static int es8326_suspend(struct device *dev)
+{
+	struct es8326_priv *es8326 = dev_get_drvdata(dev);
+	struct snd_soc_component *component = es8326->component;
+#else
 static int es8326_suspend(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+#endif
 
 	cancel_delayed_work_sync(&es8326->jack_detect_work);
 	es8326_disable_micbias(component);
@@ -1575,8 +1590,10 @@ static void es8326_remove(struct snd_soc_component *component)
 static const struct snd_soc_component_driver soc_component_dev_es8326 = {
 	.probe		= es8326_probe,
 	.remove		= es8326_remove,
+	#ifndef SPACEMIT_CONFIG_CODEC_ES8326
 	.resume		= es8326_resume,
 	.suspend	= es8326_suspend,
+	#endif
 	.set_bias_level = es8326_set_bias_level,
 	.set_jack	= es8326_set_jack,
 	.dapm_widgets	= es8326_dapm_widgets,
@@ -1588,6 +1605,13 @@ static const struct snd_soc_component_driver soc_component_dev_es8326 = {
 	.use_pmdown_time	= 1,
 	.endianness		= 1,
 };
+
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static const struct dev_pm_ops es8326_pm_ops = {
+	.suspend = es8326_suspend,
+	.resume = es8326_resume,
+};
+#endif
 
 static int es8326_i2c_probe(struct i2c_client *i2c)
 {
@@ -1746,6 +1770,9 @@ static struct i2c_driver es8326_i2c_driver = {
 		.name = "es8326",
 		.acpi_match_table = ACPI_PTR(es8326_acpi_match),
 		.of_match_table = of_match_ptr(es8326_of_match),
+		#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+		.pm = &es8326_pm_ops,
+		#endif
 	},
 	.probe = es8326_i2c_probe,
 	.shutdown = es8326_i2c_shutdown,
