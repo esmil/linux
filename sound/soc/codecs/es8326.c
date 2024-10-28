@@ -960,20 +960,12 @@ static void es8326_jack_detect_handler(struct work_struct *work)
 		es8326_disable_micbias(es8326->component);
 		if (es8326->jack->status & SND_JACK_HEADPHONE) {
 			dev_dbg(comp->dev, "Report hp remove event\n");
-			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-			es8326_enable_spk(es8326, true);
-			#endif
 			snd_soc_jack_report(es8326->jack, 0,
 				    SND_JACK_BTN_0 | SND_JACK_BTN_1 | SND_JACK_BTN_2);
 			snd_soc_jack_report(es8326->jack, 0, SND_JACK_HEADSET);
 			/* mute adc when mic path switch */
-			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-			regmap_write(es8326->regmap, ES8326_ADC1_SRC, es8326->mic1_src);
-			regmap_write(es8326->regmap, ES8326_ADC2_SRC, es8326->mic2_src);
-			#else
 			regmap_write(es8326->regmap, ES8326_ADC1_SRC, 0x44);
 			regmap_write(es8326->regmap, ES8326_ADC2_SRC, 0x66);
-			#endif
 		}
 		es8326->hp = 0;
 		regmap_update_bits(es8326->regmap, ES8326_HPDET_TYPE, 0x03, 0x01);
