@@ -1604,8 +1604,12 @@ static const struct snd_soc_component_driver soc_component_dev_es8326 = {
 
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
 static const struct dev_pm_ops es8326_pm_ops = {
+	#ifdef CONFIG_PM_SLEEP
+	SET_SYSTEM_SLEEP_PM_OPS(es8326_suspend, es8326_resume)
+	#else
 	.suspend = es8326_suspend,
 	.resume = es8326_resume,
+	#endif
 };
 #endif
 
