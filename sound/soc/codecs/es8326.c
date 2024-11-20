@@ -1331,6 +1331,7 @@ static int es8326_suspend(struct snd_soc_component *component)
 	cancel_delayed_work_sync(&es8326->jack_detect_work);
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
 	snd_soc_jack_report(es8326->jack, 0, SND_JACK_HEADSET);
+	es8326_enable_spk(es8326, false);
 #endif
 	es8326_disable_micbias(component);
 	es8326->calibrated = false;
