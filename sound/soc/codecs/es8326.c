@@ -1715,6 +1715,7 @@ static int es8326_i2c_probe(struct i2c_client *i2c)
 		dev_err(&i2c->dev, "unable to enable mclk\n");
 		return ret;
 	}
+	device_enable_async_suspend(&i2c->dev);
 	return devm_snd_soc_register_component(&i2c->dev,
 					&soc_component_dev_es8326,
 					&es8326_dai, 1);
