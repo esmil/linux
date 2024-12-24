@@ -62,6 +62,11 @@ typedef struct {
 } list_manager_t;
 
 typedef struct {
+	struct list_head	*head;
+	refcount_t refcnt;
+} tcm_private;
+
+typedef struct {
 	size_t			mm_heapsize;
 	size_t 			free_size;
 	uintptr_t		start;
@@ -445,22 +450,34 @@ static int add_req_mem_node(request_mem_t *node)
 	return 0;
 }
 
+static void tcm_vma_open(struct vm_area_struct *vma)
+{
+	tcm_private *tcm_pri = (tcm_private *)vma->vm_private_data;
+
+	refcount_inc(&tcm_pri->refcnt);
+}
+
 static void tcm_vma_close(struct vm_area_struct *vma)
 {
 	mm_alloc_node_t *cur, *next;
-	struct list_head *head = (struct list_head *)vma->vm_private_data;
+	tcm_private *tcm_pri = (tcm_private *)vma->vm_private_data;
+	struct list_head *head = tcm_pri->head;
 
+	if (!refcount_dec_and_test(&tcm_pri->refcnt))
+		return;
 	list_for_each_entry_safe(cur, next, head, list) {
 		tcm_free((void *)cur->paddr);
 		list_del(&cur->list);
 		kfree(cur);
 	}
 	kfree(head);
+	kfree(tcm_pri);
 	dev_dbg(tcm.dev, "wake up block thread");
 	wake_up_all(&tcm.wait);
 }
 
 static const struct vm_operations_struct tcm_vm_ops = {
+	.open = tcm_vma_open,
 	.close = tcm_vma_close,
 };
 
@@ -479,6 +496,7 @@ static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
 	struct page* page = NULL;
 	unsigned long pfn;
 	unsigned long addr;
+	tcm_private *tcm_pri;
 	struct list_head *head;
 	mm_alloc_node_t *node;
 
@@ -489,7 +507,11 @@ static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
 	vma->vm_ops = &tcm_vm_ops;
 
 	mutex_lock(&tcm.mutex);
+	tcm_pri = kmalloc(sizeof(tcm_private), GFP_KERNEL);
+	if (!tcm_pri)
+		return -EINVAL;
 	head = tcm_discontinuous_malloc(size);
+	tcm_pri->head = head;
 	mutex_unlock(&tcm.mutex);
 
 	if (!head) {
@@ -497,8 +519,8 @@ static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
 	}
 
 	list_sort(NULL, head, mmap_compare);
-
-	vma->vm_private_data = head;
+	refcount_set(&tcm_pri->refcnt, 1);
+	vma->vm_private_data = tcm_pri;
 	addr = vma->vm_start;
 
 	list_for_each_entry(node, head, list) {
