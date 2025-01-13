@@ -8,3 +8,18 @@ config POWERVR_ROGUE
 	  Say Y here if your SoC contains a PowerVR GPU. For more
 	  information, see <http://www.imgtec.com/powervr/>.
 
+config POWERVR_DVFS
+	tristate "PowerVR GPU DVFS"
+	default n
+	depends on POWERVR_ROGUE && PM_DEVFREQ && PM_OPP
+	select DEVFREQ_GOV_SIMPLE_ONDEMAND
+	help
+	  Enable Dynamic Voltage and Frequency Scaling (DVFS) support
+	  for PowerVR GPU. This allows the GPU frequency and voltage to
+	  be adjusted dynamically based on workload to optimize power
+	  consumption and performance.
+
+	  Requires kernel support for devfreq (CONFIG_PM_DEVFREQ) and
+	  Operating Performance Points (CONFIG_PM_OPP).
+
+	  Say Y here if you want to enable DVFS.

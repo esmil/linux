@@ -310,3 +310,6 @@
 #define TRACK_FW_BOOT
 #define LMA
 #define PVR_LINUX_PHYSMEM_USE_HIGHMEM_ONLY
+#if defined(CONFIG_POWERVR_DVFS)
+#define SUPPORT_LINUX_DVFS 1
+#endif
