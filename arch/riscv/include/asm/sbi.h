@@ -484,6 +484,8 @@ enum sbi_mpxy_attribute_id {
 /* Possible values of MSG_PROT_ID attribute as-per SBI v3.0 (or higher) */
 enum sbi_mpxy_msgproto_id {
 	SBI_MPXY_MSGPROTO_RPMI_ID = 0x0,
+	SBI_MPXY_MSGPROTO_STMM_ID = 0x1,
+	SBI_MPXY_MSGPROTO_TEE_ID = 0x2,
 };
 
 /* RPMI message protocol specific MPXY attributes */

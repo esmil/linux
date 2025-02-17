@@ -511,6 +511,9 @@ static int mpxy_mbox_send_data(struct mbox_chan *chan, void *data)
 	if (mchan->attrs.msg_proto_id == SBI_MPXY_MSGPROTO_RPMI_ID) {
 		mpxy_mbox_send_rpmi_data(mchan, data);
 		return 0;
+	} else if (mchan->attrs.msg_proto_id == SBI_MPXY_MSGPROTO_TEE_ID) {
+		mpxy_mbox_send_rpmi_data(mchan, data);
+		return 0;
 	}
 
 	return -EOPNOTSUPP;

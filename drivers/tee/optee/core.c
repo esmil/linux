@@ -197,6 +197,7 @@ void optee_remove_common(struct optee *optee)
 
 static int smc_abi_rc;
 static int ffa_abi_rc;
+static int mpxy_sbi_rc;
 static bool intf_is_regged;
 
 static int __init optee_core_init(void)
@@ -220,8 +221,12 @@ static int __init optee_core_init(void)
 		intf_is_regged = true;
 	}
 
+#if defined(CONFIG_ARM)
 	smc_abi_rc = optee_smc_abi_register();
 	ffa_abi_rc = optee_ffa_abi_register();
+#elif defined(CONFIG_RISCV)
+	mpxy_sbi_rc = optee_mpxy_sbi_register();
+#endif
 
 	/* If both failed there's no point with this module */
 	if (smc_abi_rc && ffa_abi_rc) {
@@ -243,10 +248,15 @@ static void __exit optee_core_exit(void)
 		intf_is_regged = false;
 	}
 
+#if defined(CONFIG_ARM)
 	if (!smc_abi_rc)
 		optee_smc_abi_unregister();
 	if (!ffa_abi_rc)
 		optee_ffa_abi_unregister();
+#elif defined(CONFIG_RISCV)
+	if (!mpxy_sbi_rc)
+		optee_mpxy_sbi_unregister();
+#endif
 }
 module_exit(optee_core_exit);
 
