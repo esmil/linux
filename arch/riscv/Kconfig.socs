@@ -97,5 +97,23 @@ config SOC_CANAAN_K210
 	select COMMON_CLK
 	help
 	  This enables support for Canaan Kendryte K210 SoC platform hardware.
+config SOC_SPACEMIT
+	bool "Spacemit SoCs"
+	select SIFIVE_PLIC
+	help
+	  This enables support for Spacemit SoCs platform hardware.
 
+if SOC_SPACEMIT
+
+choice
+        prompt "Spacemit SOCs platform"
+        help
+          choice Spacemit soc platform
+        config SOC_SPACEMIT_K2
+                bool "k2"
+                help
+                  select Spacemit k2 Platform SOCs.
+
+endchoice
+endif
 endmenu # "SoC selection"

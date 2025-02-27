@@ -1,0 +1,246 @@
+/dts-v1/;
+
+/memreserve/	0x0000000040000000 0x0000000000200000;
+/ {
+	#address-cells = <0x02>;
+	#size-cells = <0x02>;
+	compatible = "spacemit,k2";
+	model = "riscv-spacemit,k2";
+
+	reserved-memory {
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		ranges;
+
+		mmode_pmp0@40000000 {
+			reg = <0x00 0x40000000 0x00 0x20000>;
+			no-map;
+		};
+	};
+
+	aliases {
+		uart0 = "/soc/uart@10010000";
+	};
+
+	chosen {
+#if 0
+		bootargs = "console=hvc0 earlycon=sbi rdinit=/sbin/init";
+#else
+		bootargs = "earlycon=sbi console=ttyS0,115200n8 debug loglevel=8,initcall_debug=1 rdinit=/sbin/init";
+#endif
+	};
+
+	cpus {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+		timebase-frequency = <50000000>;
+
+		cpu-map {
+
+			cluster0 {
+				core0 {
+					cpu = <&cpu0>;
+				};
+			};
+		};
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			reg = <0x00>;
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv64imafdcvhsu_smaia_ssaia_smstateen_zicbom_sscofpmf_svpbmt_sstc";
+			mmu-type = "riscv,sv48";
+			cpu-ai = "true";
+			riscv,cbom-block-size = <0x40>;
+			cpu-cacheline = "64Bytes";
+			phandle = <0x01>;
+
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <0x01>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+				phandle = <0x06>;
+			};
+		};
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x00 0x40000000 0x00 0xc0000000>;
+	};
+
+	soc {
+		#address-cells = <0x02>;
+		#size-cells = <0x02>;
+		compatible = "simple-bus";
+		ranges;
+
+		uart@10010000 {
+			interrupts = <0x10 4>;
+			interrupt-parent = <&saplic>;
+			clock-frequency = <0x2faf080>;
+			reg = <0x00 0x10010000 0x00 0x1000>;
+			reg-io-width = <0x04>;
+			reg-shift = <0x02>;
+			hw-flow-control = "unsupport";
+			compatible = "snps,dw-apb-uart";
+			status = "okay";
+		};
+
+		tcm@38000000 {
+			compatible = "spacemit,k1-pro-tcm";
+			reg = <0x00 0x38000000 0x00 0x80000>;
+			#address-cells = <0x01>;
+			#size-cells = <0x01>;
+			ranges = <0x00 0x00 0x38000000 0x80000>;
+			no-memory-wc;
+
+			core0_tcm@0 {
+				reg = <0x00 0x20000>;
+				pool;
+			};
+
+			core1_tcm@20000 {
+				reg = <0x20000 0x20000>;
+				pool;
+			};
+
+			core2_tcm@40000 {
+				reg = <0x40000 0x20000>;
+				pool;
+			};
+
+			core3_tcm@60000 {
+				reg = <0x60000 0x20000>;
+				pool;
+			};
+		};
+
+		dma: dma-controller@10030000 {
+			compatible = "snps,dma-spear1340";
+			reg = <0x00 0x10030000 0x00 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <0x15 4>;
+			dma-masters = <0x01>;
+			dma-channels = <0x08>;
+			chan_allocation_order = <0x00>;
+			chan_priority = <0x00>;
+			block_size = <0x7ff>;
+			data-width = <0x04 0x04 0x04 0x04>;
+			snps,dma-protection-control = <0x01>;
+			snps,max-burst-len = <0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10>;
+			status = "okay";
+		};
+
+                maplic: interrupt-controller@30000000 {
+                        compatible = "riscv,aplic";
+                        msi-parent = <&mimsic>;
+                        reg = <0x0 0x30000000 0x0 0x4000>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+                        riscv,num-sources = <96>;
+                        riscv,children = <&saplic>;
+                        riscv,delegate = <&saplic 1 90>;
+			status = "disabled";
+                };
+
+                saplic: interrupt-controller@30004000 {
+                        compatible = "riscv,aplic";
+                        msi-parent = <&simsic>;
+                        reg = <0x0 0x30004000 0x0 0x4000>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+                        riscv,num-sources = <96>;
+                };
+
+                mimsic: interrupt-controller@3c000000 {
+                        compatible = "riscv,imsics";
+                        interrupts-extended = <&cpu0_intc 11>;
+                        reg = <0x0 0x3c000000 0x0 0x2000>;
+                        interrupt-controller;
+                        #interrupt-cells = <0>;
+                        msi-controller;
+                        riscv,num-ids = <255>;
+                        status = "disabled";
+                };
+
+                simsic: interrupt-controller@3c400000 {
+                        compatible = "riscv,imsics";
+                        interrupts-extended = <&cpu0_intc 9>;
+                        reg = <0x0 0x3c400000 0x0 0x1000000>;
+                        interrupt-controller;
+                        #interrupt-cells = <0>;
+			#msi-cells = <0>;
+                        msi-controller;
+                        riscv,num-ids = <255>;
+                        riscv,group-index-bits = <1>;
+                        riscv,group-index-shift = <55>;
+                        riscv,hart-index-bits = <4>;
+			riscv,guest-index-bits = <6>;
+                };
+
+		clint@34000000 {
+			interrupts-extended = <
+				&cpu0_intc 0x3 &cpu0_intc 0x7
+			>;
+			reg = <0x00 0x34000000 0x00 0x10000>;
+			compatible = "riscv,clint0";
+			clint,has-no-64bit-mmio;
+		};
+	};
+
+	pmu {
+		compatible = "riscv,pmu";
+
+		riscv,event-to-mhpmevent =
+			/* BRANCH_INSTRUCTIONS */
+			<0x00005 0x0 0x01>,
+			/* BRANCH_MISSES */
+			<0x00006 0x0 0x02>,
+			/* STALLED_CYCLES_FRONTEND */
+			<0x00008 0x0 0x03>,
+			/* STALLED_CYCLES_BACKEND */
+			<0x00009 0x0 0x04>,
+			/* L1D_READ_ACCESS */
+			<0x10000 0x0 0x06>,
+			/* L1D_READ_MISS */
+			<0x10001 0x0 0x05>,
+			/* L1D_WRITE_ACCESS */
+			<0x10002 0x0 0x0a>,
+			/* L1D_WRITE_MISS */
+			<0x10003 0x0 0x09>,
+			/* L1I_READ_ACCESS */
+			<0x10008 0x0 0x0c>,
+			/* L1I_READ_MISS */
+			<0x10009 0x0 0x0b>,
+			/* L1I_PREFETCH_ACCESS */
+			<0x1000c 0x0 0x0e>,
+			/* L1I_PREFETCH_MISS */
+			<0x1000d 0x0 0x0d>,
+			/* DTLB_READ_MISS */
+			<0x10019 0x0 0x15>,
+			/* DTLB_WRITE_MISS */
+			<0x1001b 0x0 0x19>,
+			/* ITLB_READ_MISS */
+			<0x10021 0x0 0x1b>;
+
+		/* 16 valid counters: mhpmcounter3 ~ mhpmcounter18 */
+		riscv,event-to-mhpmcounters =
+			<0x00005 0x00006 0x0007fff8>,
+			<0x00008 0x00009 0x0007fff8>,
+			<0x10000 0x10003 0x0007fff8>,
+			<0x10008 0x10009 0x0007fff8>,
+			<0x1000c 0x1000d 0x0007fff8>,
+			<0x10019 0x10019 0x0007fff8>,
+			<0x1001b 0x1001b 0x0007fff8>,
+			<0x10021 0x10021 0x0007fff8>;
+
+		riscv,raw-event-to-mhpmcounters =
+			/*
+			 * For convenience, we treat 0x1~0xff as valid indexes,
+			 * but actually in hardware the valid indexes are 0x1~0xbd.
+			 */
+			<0x0 0x0 0xffffffff 0xffffff00 0x0007fff8>;
+	};
+};
