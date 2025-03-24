@@ -312,6 +312,13 @@
 					<324>, <325>, <326>, <327>, <328>, <329>, <330>,
 					<331>, <332>, <333>, <334>;
 				gpio-controller;
+				gpio-ranges = <&pinctrl  0 12  1>,
+					      <&pinctrl  1 14 12>,
+					      <&pinctrl 13  1  4>,
+					      <&pinctrl 17 32  1>,
+					      <&pinctrl 18 40  5>,
+					      <&pinctrl 23 51  7>,
+					      <&pinctrl 30 68  2>;
 				ngpios = <32>;
 				#gpio-cells = <2>;
 			};
@@ -320,6 +327,9 @@
 				compatible = "snps,dw-apb-gpio-port";
 				reg = <1>;
 				gpio-controller;
+				gpio-ranges = <&pinctrl  0 70  3>,
+					      <&pinctrl  3 79  7>,
+					      <&pinctrl 10 89 22>;
 				ngpios = <32>;
 				#gpio-cells = <2>;
 			};
@@ -328,6 +338,7 @@
 				compatible = "snps,dw-apb-gpio-port";
 				reg = <2>;
 				gpio-controller;
+				gpio-ranges = <&pinctrl 0 111 32>;
 				ngpios = <32>;
 				#gpio-cells = <2>;
 			};
@@ -336,9 +347,15 @@
 				compatible = "snps,dw-apb-gpio-port";
 				reg = <3>;
 				gpio-controller;
+				gpio-ranges = <&pinctrl 0 143 16>;
 				ngpios = <16>;
 				#gpio-cells = <2>;
 			};
+		};
+
+		pinctrl: pinctrl@51600080 {
+			compatible = "eswin,eic7700-pinctrl";
+			reg = <0x0 0x51600080 0x0 0x1fff80>;
 		};
 	};
 };
