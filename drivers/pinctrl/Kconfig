@@ -194,6 +194,20 @@ config PINCTRL_DIGICOLOR
 	select PINMUX
 	select GENERIC_PINCONF
 
+config PINCTRL_EIC7700
+	tristate "Pinctrl driver for the ESWIN EIC7700 SoC"
+	depends on ARCH_ESWIN || COMPILE_TEST
+	depends on OF
+	select GENERIC_PINMUX_FUNCTIONS
+	select GENERIC_PINCONF
+	select PINMUX
+	help
+	  This is the driver for the pin controller blocks on the
+	  ESWIN EIC7700 SoC.
+
+	  This driver is needed for RISC-V development boards like
+	  the HiFive Premier P550 and Milk-V Megrez.
+
 config PINCTRL_EP93XX
 	bool
 	depends on ARCH_EP93XX || COMPILE_TEST
