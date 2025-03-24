@@ -20,10 +20,56 @@
 	};
 };
 
+&pinctrl {
+	uart0_pins: uart0-0 {
+		tx-pins {
+			pins = "UART0_TX";
+			function = "uart";
+			bias-disable;
+			drive-strength-microamp = <6700>;
+			input-disable;
+			input-schmitt-disable;
+		};
+
+		rx-pins {
+			pins = "UART0_RX";
+			function = "uart";
+			bias-disable;
+			drive-strength-microamp = <6700>;
+			input-enable;
+			input-schmitt-disable;
+		};
+	};
+
+	uart2_pins: uart2-0 {
+		tx-pins {
+			pins = "UART2_TX";
+			function = "uart";
+			bias-disable;
+			drive-strength-microamp = <6700>;
+			input-disable;
+			input-schmitt-disable;
+		};
+
+		rx-pins {
+			pins = "UART2_RX";
+			function = "uart";
+			bias-disable;
+			drive-strength-microamp = <6700>;
+			input-enable;
+			input-schmitt-disable;
+		};
+	};
+};
+
 &uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pins>;
 	status = "okay";
 };
 
 &uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_pins>;
 	status = "okay";
 };
