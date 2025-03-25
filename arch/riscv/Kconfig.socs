@@ -103,17 +103,16 @@ config SOC_SPACEMIT
 	help
 	  This enables support for Spacemit SoCs platform hardware.
 
-if SOC_SPACEMIT
-
-choice
-        prompt "Spacemit SOCs platform"
+config SOC_SPACEMIT_K1
+        bool "enable spacemit K1 SoC platforms"
+        depends on SOC_SPACEMIT
         help
-          choice Spacemit soc platform
-        config SOC_SPACEMIT_K2
-                bool "k2"
-                help
-                  select Spacemit k2 Platform SOCs.
+          Enable Spacemit k1 Platform SOCs.
 
-endchoice
-endif
+config SOC_SPACEMIT_K2
+	bool "enable spacemit K2 SoC platforms"
+	depends on SOC_SPACEMIT
+	help
+	  Enable Spacemit k2 Platform SOCs.
+
 endmenu # "SoC selection"

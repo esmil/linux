@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2025 Spacemit, Inc */
+
+#include "k2.dtsi"
+
+/ {
+	compatible = "spacemit,k2-fpga";
+};
+&uart0 {
+		status = "okay";
+};
