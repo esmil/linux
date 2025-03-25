@@ -81,6 +81,7 @@ obj-$(CONFIG_SERIAL_SC16IS7XX_SPI)	+= sc16is7xx_spi.o
 obj-$(CONFIG_SERIAL_SC16IS7XX_I2C)	+= sc16is7xx_i2c.o
 obj-$(CONFIG_SERIAL_SH_SCI)		+= sh-sci.o
 obj-$(CONFIG_SERIAL_SIFIVE)		+= sifive.o
+obj-$(CONFIG_SERIAL_SPACEMIT)		+= serial_spacemit.o
 obj-$(CONFIG_SERIAL_SPRD)		+= sprd_serial.o
 obj-$(CONFIG_SERIAL_ST_ASC)		+= st-asc.o
 obj-$(CONFIG_SERIAL_STM32)		+= stm32-usart.o

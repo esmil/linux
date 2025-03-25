@@ -475,6 +475,22 @@ config SERIAL_SA1100_CONSOLE
 	  your boot loader (lilo or loadlin) about how to pass options to the
 	  kernel at boot time.)
 
+config SERIAL_SPACEMIT
+	bool "Spacemit serial port support"
+	depends on SOC_SPACEMIT
+	select SERIAL_CORE
+	help
+	  If you have a machine based on Spacemit socs, can enable its
+	  onboard serial port by enabling this option.
+
+config SERIAL_SPACEMIT_CONSOLE
+	bool "Console on spacemit serial port"
+	depends on SERIAL_SPACEMIT
+	select SERIAL_CORE_CONSOLE
+	help
+	  If you have enabled the serial port on the Spacemit SoC ,
+	  you can make it the console by answering Y to this option.
+
 config SERIAL_IMX
 	tristate "IMX serial port support"
 	depends on ARCH_MXC || COMPILE_TEST
