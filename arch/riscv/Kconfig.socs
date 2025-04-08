@@ -115,4 +115,11 @@ config SOC_SPACEMIT_K2
 	help
 	  Enable Spacemit k2 Platform SOCs.
 
+config SOC_SPACEMIT_K2_FPGA
+	bool "Spacemit K2 serial SoC FPGA platform"
+	depends on SOC_SPACEMIT_K2
+	default n
+	help
+	  This enable FPGA platform for K2 SoCs.
+
 endmenu # "SoC selection"
