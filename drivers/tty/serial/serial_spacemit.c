@@ -1944,6 +1944,7 @@ static int serial_pxa_probe(struct platform_device *dev)
 		return -ENOMEM;
 	}
 #endif
+#ifndef CONFIG_SOC_SPACEMIT_K2_FPGA
 	sport->gclk = devm_clk_get(&dev->dev, "gate");
 	if (IS_ERR(sport->gclk)) {
 		ret = PTR_ERR(sport->gclk);
@@ -1970,6 +1971,7 @@ static int serial_pxa_probe(struct platform_device *dev)
 			goto err_free;
 		}
 	}
+#endif
 
 	sport->port.type = PORT_PXA;
 	sport->port.iotype = UPIO_MEM;
