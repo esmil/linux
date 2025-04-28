@@ -13,7 +13,7 @@
 };
 
 &uart0 {
-		status = "okay";
+	status = "okay";
 };
 
 &qspi {
@@ -95,4 +95,24 @@
 			motorcomm,auto-sleep-disabled;
 		};
 	};
+};
+
+&sdcard {
+	bus-width = <4>;
+	broken-cd;
+	cap-sd-highspeed;
+	no-mmc;
+	no-sdio;
+	clock-frequency = <10000000>;
+	status = "disabled";
+};
+
+&emmc {
+	bus-width = <8>;
+	non-removable;
+	cap-mmc-highspeed;
+	no-sd;
+	no-sdio;
+	clock-frequency = <10000000>;
+	status = "disabled";
 };

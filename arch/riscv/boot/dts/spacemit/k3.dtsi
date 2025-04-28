@@ -16,6 +16,9 @@
 
 	aliases {
 		serial0 = &uart0;
+		mmc0 = &sdcard;
+		mmc1 = &sdio;
+		mmc2 = &emmc;
 		ethernet0 = &eth0;
 		ethernet1 = &eth1;
 		ethernet2 = &eth2;
@@ -971,6 +974,50 @@
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
+			status = "disabled";
+		};
+
+		sdcard: mmc@d4280000 {
+			compatible = "spacemit,k3-sdhci";
+			reg = <0x0 0xd4280000 0x0 0x200>;
+			clocks = <&syscon_apmu CLK_APMU_SDH_AXI>,
+				 <&syscon_apmu CLK_APMU_SDH0>,
+				 <&syscon_apbc CLK_APBC_AIB_BUS>,
+				 <&syscon_apbc CLK_APBC_AIB>;
+			clock-names = "core", "io", "aib-bus", "aib";
+			interrupt-parent = <&saplic>;
+			interrupts = <99 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&syscon_apmu RESET_APMU_SDH_AXI>,
+				 <&syscon_apmu RESET_APMU_SDH0>;
+			reset-names = "sdh_axi", "sdh0";
+			status = "disabled";
+		};
+
+		sdio: mmc@d4280800 {
+			compatible = "spacemit,k3-sdhci";
+			reg = <0x0 0xd4280800 0x0 0x200>;
+			clocks = <&syscon_apmu CLK_APMU_SDH_AXI>,
+				 <&syscon_apmu CLK_APMU_SDH1>;
+			clock-names = "core", "io";
+			interrupt-parent = <&saplic>;
+			interrupts = <100 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&syscon_apmu RESET_APMU_SDH_AXI>,
+				 <&syscon_apmu RESET_APMU_SDH1>;
+			reset-names = "sdh_axi", "sdh1";
+			status = "disabled";
+		};
+
+		emmc: mmc@d4281000 {
+			compatible = "spacemit,k3-sdhci";
+			reg = <0x0 0xd4281000 0x0 0x200>;
+			clocks = <&syscon_apmu CLK_APMU_SDH_AXI>,
+				 <&syscon_apmu CLK_APMU_SDH2>;
+			clock-names = "core", "io";
+			interrupt-parent = <&saplic>;
+			interrupts = <101 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&syscon_apmu RESET_APMU_SDH_AXI>,
+				 <&syscon_apmu RESET_APMU_SDH2>;
+			reset-names = "sdh_axi", "sdh2";
 			status = "disabled";
 		};
 	};
