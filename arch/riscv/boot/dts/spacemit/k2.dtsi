@@ -350,9 +350,9 @@
 			reg = <0x0 0xf1800000 0x0 0x4000>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
-			riscv,num-sources = <96>;
+			riscv,num-sources = <512>;
 			riscv,children = <&saplic>;
-			riscv,delegate = <&saplic 1 90>;
+			riscv,delegate = <&saplic 1 512>;
 			status = "disabled";
 		};
 
@@ -362,7 +362,7 @@
 			msi-parent = <&simsic>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
-			riscv,num-sources = <159>;
+			riscv,num-sources = <512>;
 		};
 
 		mimsic: interrupt-controller@f1000000 {
