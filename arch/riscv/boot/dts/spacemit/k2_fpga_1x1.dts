@@ -10,3 +10,7 @@
 &uart0 {
 		status = "okay";
 };
+
+&qspi {
+	status = "disabled";
+};
