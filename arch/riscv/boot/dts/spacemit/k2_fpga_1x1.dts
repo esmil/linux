@@ -6,6 +6,7 @@
 / {
 	compatible = "spacemit,k2-fpga";
 };
+
 &uart0 {
 		status = "okay";
 };
