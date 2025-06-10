@@ -59,3 +59,5 @@ coresight-ctcu-y := coresight-ctcu-core.o
 obj-$(CONFIG_CORESIGHT_KUNIT_TESTS) += coresight-kunit-tests.o
 obj-$(CONFIG_RVTRACE) += rvtrace.o
 rvtrace-y := rvtrace-core.o
+obj-$(CONFIG_RVTRACE_ENCODER) += rvtrace-encoder.o
+rvtrace-encoder-y := rvtrace-encoder-core.o rvtrace-encoder-sysfs.o
