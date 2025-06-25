@@ -15,6 +15,7 @@
 #include <asm/cpu_ops.h>
 #include <asm/numa.h>
 #include <asm/smp.h>
+#include <asm/sbi.h>
 
 bool cpu_has_hotplug(unsigned int cpu)
 {
@@ -69,8 +70,14 @@ void __noreturn arch_cpu_idle_dead(void)
 {
 	idle_task_exit();
 
+#if defined(CONFIG_SOC_SPACEMIT)
+	sbi_flush_local_dcache_all();
+#endif
 	cpuhp_ap_report_dead();
 
+#if defined(CONFIG_SOC_SPACEMIT)
+	sbi_flush_local_dcache_all();
+#endif
 	cpu_ops->cpu_stop();
 	/* It should never reach here */
 	BUG();
