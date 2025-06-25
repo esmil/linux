@@ -76,6 +76,15 @@ int sbi_console_getchar(void)
 }
 EXPORT_SYMBOL(sbi_console_getchar);
 
+#if defined(CONFIG_SOC_SPACEMIT)
+void sbi_flush_local_dcache_all(void)
+{
+       sbi_ecall(SBI_EXT_BASE, SBI_EXT_BASE_FLUSH_CACHE_ALL, 0,
+                       0, 0, 0, 0, 0);
+}
+EXPORT_SYMBOL(sbi_flush_local_dcache_all);
+#endif
+
 /**
  * sbi_shutdown() - Remove all the harts from executing supervisor code.
  *

@@ -55,6 +55,9 @@ enum sbi_ext_base_fid {
 	SBI_EXT_BASE_GET_MVENDORID,
 	SBI_EXT_BASE_GET_MARCHID,
 	SBI_EXT_BASE_GET_MIMPID,
+#if defined(CONFIG_SOC_SPACEMIT)
+       SBI_EXT_BASE_FLUSH_CACHE_ALL,
+#endif
 };
 
 enum sbi_ext_time_fid {
@@ -581,6 +584,11 @@ long sbi_probe_extension(int ext);
 int sbi_fwft_set(u32 feature, unsigned long value, unsigned long flags);
 int sbi_fwft_set_cpumask(const cpumask_t *mask, u32 feature,
 			 unsigned long value, unsigned long flags);
+
+#if defined(CONFIG_SOC_SPACEMIT)
+void sbi_flush_local_dcache_all(void);
+#endif
+
 /**
  * sbi_fwft_set_online_cpus() - Set a feature on all online cpus
  * @feature: The feature to be set
