@@ -3,7 +3,7 @@
 
 /dts-v1/;
 
-#include "k2-cpus.dtsi"
+#include "k3-cpus.dtsi"
 #include <dt-bindings/reset/spacemit-k3-reset.h>
 
 / {

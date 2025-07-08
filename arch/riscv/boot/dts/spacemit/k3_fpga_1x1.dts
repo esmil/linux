@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: (GPL-2.0 OR MIT)
 /* Copyright (c) 2025 Spacemit, Inc */
 
-#include "k2.dtsi"
+#include "k3.dtsi"
 
 / {
-	compatible = "spacemit,k2-fpga";
+	compatible = "spacemit,k3-fpga";
 };
 
 &uart0 {

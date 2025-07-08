@@ -27,7 +27,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu-cacheline = "64Bytes";
 				cpu0_intc: interrupt-controller {
 					#interrupt-cells = <1>;
@@ -59,7 +59,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu-cacheline = "64Bytes";
 				cpu1_intc: interrupt-controller {
 					#interrupt-cells = <1>;
@@ -91,7 +91,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu2_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -122,7 +122,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu3_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -153,7 +153,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu4_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -184,7 +184,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu5_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -215,7 +215,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu6_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -246,7 +246,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu7_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -277,7 +277,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu8_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -308,7 +308,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu9_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -339,7 +339,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu10_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -370,7 +370,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu11_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -401,7 +401,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu12_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -432,7 +432,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu13_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -463,7 +463,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu14_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -494,7 +494,7 @@
 				d-cache-block-size = <64>;
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
-				mmu-type = "riscv,sv48";
+				mmu-type = "riscv,sv39";
 				cpu15_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";

@@ -389,7 +389,7 @@ static u32 qspi_readl(struct spacemit_qspi *qspi, void __iomem *addr)
 		return ioread32(addr);
 }
 
-#ifndef SOC_SPACEMIT_K2_FPGA
+#ifndef SOC_SPACEMIT_K3_FPGA
 static int qspi_set_func_clk(struct spacemit_qspi *qspi)
 {
 	int ret = 0;
@@ -431,7 +431,7 @@ static void qspi_config_mfp(struct spacemit_qspi *qspi)
 {
 	int cs = qspi->cs_selected;
 
-#ifndef SOC_SPACEMIT_K2_FPGA
+#ifndef SOC_SPACEMIT_K3_FPGA
 	/* TODO: only for FPGA */
 #if 0
 	void * __iomem mfpr_base = ioremap((phys_addr_t)0xd401e000, 0x200);
@@ -1360,7 +1360,7 @@ static int spacemit_qspi_host_init(struct spacemit_qspi *qspi)
 	void __iomem *base = qspi->io_map;
 	u32 reg;
 
-#ifndef SOC_SPACEMIT_K2_FPGA
+#ifndef SOC_SPACEMIT_K3_FPGA
 	qspi->resets = devm_reset_control_array_get_optional_exclusive(qspi->dev);
 	if (IS_ERR(qspi->resets)) {
 		dev_err(qspi->dev, "Failed to get qspi's resets\n");
@@ -1464,7 +1464,7 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, qspi);
 
-#ifndef SOC_SPACEMIT_K2_FPGA
+#ifndef SOC_SPACEMIT_K3_FPGA
 	/* get qspi frequency */
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-freq", &qspi->max_hz)) {
 		dev_err(dev, "failed to get qspi frequency\n");
@@ -1662,7 +1662,7 @@ static void spacemit_qspi_remove(struct platform_device *pdev)
 	mutex_destroy(&qspi->lock);
 	iounmap(qspi->pmuap_addr);
 
-#ifndef SOC_SPACEMIT_K2_FPGA
+#ifndef SOC_SPACEMIT_K3_FPGA
 	reset_control_assert(qspi->resets);
 	clk_disable_unprepare(qspi->clk);
 	clk_disable_unprepare(qspi->bus_clk);

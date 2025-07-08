@@ -109,17 +109,17 @@ config SOC_SPACEMIT_K1
         help
           Enable Spacemit k1 Platform SOCs.
 
-config SOC_SPACEMIT_K2
-	bool "enable spacemit K2 SoC platforms"
+config SOC_SPACEMIT_K3
+	bool "enable spacemit K3 SoC platforms"
 	depends on SOC_SPACEMIT
 	help
-	  Enable Spacemit k2 Platform SOCs.
+	  Enable Spacemit k3 Platform SOCs.
 
-config SOC_SPACEMIT_K2_FPGA
-	bool "Spacemit K2 serial SoC FPGA platform"
-	depends on SOC_SPACEMIT_K2
+config SOC_SPACEMIT_K3_FPGA
+	bool "Spacemit K3 serial SoC FPGA platform"
+	depends on SOC_SPACEMIT_K3
 	default n
 	help
-	  This enable FPGA platform for K2 SoCs.
+	  This enable FPGA platform for K3 SoCs.
 
 endmenu # "SoC selection"

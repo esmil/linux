@@ -1071,7 +1071,7 @@ static int serial_pxa_startup(struct uart_port *port)
 	else
 		up->mcr = 0;
 
-#ifdef CONFIG_SOC_SPACEMIT_K2_FPGA
+#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
 	if (up->clk_fpga)
 		up->port.uartclk = up->clk_fpga;
 	else
@@ -1175,7 +1175,7 @@ static int pxa_set_baudrate_clk(struct uart_port *port, unsigned int baud)
 	unsigned long rate;
 	int ret;
 
-#ifdef CONFIG_SOC_SPACEMIT_K2_FPGA
+#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
 	if (uart_console(port))
 		return 0;
 #endif
@@ -1912,7 +1912,7 @@ static int serial_pxa_probe(struct platform_device *dev)
 	int irq;
 	struct resource *dmares;
 	struct uart_pxa_dma *pxa_dma;
-#ifdef CONFIG_SOC_SPACEMIT_K2_FPGA
+#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
 	struct device_node *np = dev->dev.of_node;
 #endif
 
@@ -1944,7 +1944,7 @@ static int serial_pxa_probe(struct platform_device *dev)
 		return -ENOMEM;
 	}
 #endif
-#ifndef CONFIG_SOC_SPACEMIT_K2_FPGA
+#ifndef CONFIG_SOC_SPACEMIT_K3_FPGA
 	sport->gclk = devm_clk_get(&dev->dev, "gate");
 	if (IS_ERR(sport->gclk)) {
 		ret = PTR_ERR(sport->gclk);
@@ -1982,7 +1982,7 @@ static int serial_pxa_probe(struct platform_device *dev)
 	sport->port.dev = &dev->dev;
 	sport->port.flags = UPF_IOREMAP | UPF_BOOT_AUTOCONF;
 
-#ifdef CONFIG_SOC_SPACEMIT_K2_FPGA
+#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
 	of_property_read_u32(np, "clk-fpga", &sport->clk_fpga);
 	if (sport->clk_fpga)
 		sport->port.uartclk = sport->clk_fpga;
