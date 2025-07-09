@@ -31,6 +31,54 @@
 		clock-frequency = <14000000>;
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		 ranges;
+
+		 /* used for rcpu code & data & bss space */
+		 rcpu0_runtime: rcpu0_runtime@100200000 {
+			  reg = <0x1 0x200000 0x0 0x300000>;
+			  no-map;
+		 };
+
+		 /* rcpu's heap */
+		 rcpu0_heap: rcpu0_heap@100500000 {
+			  reg = <0x1 0x500000 0x0 0x200000>;
+			  no-map;
+		 };
+
+		 /* vring0 */
+		 rcpu0_vdev0vring0: rcpu0_vdev0vring0@100700000 {
+			  reg = <0x1 0x700000 0x0 0x3000>;
+			  no-map;
+		 };
+
+		 /* vring1 */
+		 rcpu0_vdev0vring1: rcpu0_vdev0vring1@100703000 {
+			  reg = <0x1 0x703000 0x0 0x3000>;
+			  no-map;
+		 };
+
+		 /* share memory buffer */
+		 rcpu0_vdev0buffer: rcpu0_vdev0buffer@100706000 {
+			  compatible = "shared-dma-pool";
+			  reg = <0x1 0x706000 0x0 0xf6000>;
+			  no-map;
+		 };
+
+		 /* the resource table */
+		 rcpu0_rsc_table: rcpu0_rsc_table@1007fc000 {
+			  reg = <0x1 0x7fc000 0x0 0x4000>;
+			  no-map;
+		 };
+
+		 rpmi0: rpmi0@100800000 {
+			  reg = <0x1 0x00800000 0x0 0x4000>;
+			  no-map;
+		 };
+	};
+
 	soc: soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -40,7 +88,8 @@
 
 		clint0: clint@e081c000 {
 			compatible = "riscv,clint0";
-			interrupts-extended = <&cpu0_intc  3 &cpu0_intc  7
+			interrupts-extended = <
+				&cpu0_intc  3 &cpu0_intc  7
 				&cpu1_intc  3 &cpu1_intc  7
 				&cpu2_intc  3 &cpu2_intc  7
 				&cpu3_intc  3 &cpu3_intc  7
@@ -75,7 +124,8 @@
 
 		simsic: interrupt-controller@e0400000 {
 			compatible = "riscv,imsics";
-			interrupts-extended = <&cpu0_intc 9 &cpu1_intc 9
+			interrupts-extended = <
+				&cpu0_intc 9 &cpu1_intc 9
 				&cpu2_intc 9 &cpu3_intc 9
 				&cpu4_intc 9 &cpu5_intc 9
 				&cpu6_intc 9 &cpu7_intc 9
@@ -99,8 +149,7 @@
 				0x0 0xe0700000 0x0 0x40000
 				0x0 0xe0740000 0x0 0x40000
 				0x0 0xe0780000 0x0 0x40000
-				0x0 0xe07c0000 0x0 0x40000
-			>;
+				0x0 0xe07c0000 0x0 0x40000>;
 			interrupt-controller;
 			#interrupt-cells = <0>;
 			#msi-cells = <0>;
@@ -117,15 +166,16 @@
 		reset: reset-controller@d4050000 {
 			compatible = "spacemit,k3-reset";
 			reg = <0x0 0xd4050000 0x0 0x209c>,
-				<0x0 0xd4282800 0x0 0x400>,
-				<0x0 0xd4015000 0x0 0x1000>,
-				<0x0 0xd4090000 0x0 0x1000>,
-				<0x0 0xd4282c00 0x0 0x400>,
-				<0x0 0xd8440000 0x0 0x98>,
-				<0x0 0xc0000000 0x0 0x4280>,
-				<0x0 0xf0610000 0x0 0x20>,
-				<0x0 0xc0880000 0x0 0xd100>;
-			reg-names = "mpmu", "apmu", "apbc", "apbs", "ciu", "dciu", "ddrc", "apbc2", "rcpu";
+			      <0x0 0xd4282800 0x0 0x400>,
+			      <0x0 0xd4015000 0x0 0x1000>,
+			      <0x0 0xd4090000 0x0 0x1000>,
+			      <0x0 0xd4282c00 0x0 0x400>,
+			      <0x0 0xd8440000 0x0 0x98>,
+			      <0x0 0xc0000000 0x0 0x4280>,
+			      <0x0 0xf0610000 0x0 0x20>,
+			      <0x0 0xc0880000 0x0 0xd100>;
+			reg-names = "mpmu", "apmu", "apbc", "apbs", "ciu",
+				    "dciu", "ddrc", "apbc2", "rcpu";
 			#reset-cells = <1>;
 			status = "okay";
 		};
@@ -159,7 +209,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x0 0xd420c000 0x0 0x1000>,
-				<0x0 0xb8000000 0x0 0xc00000>;
+			      <0x0 0xb8000000 0x0 0xc00000>;
 			reg-names = "qspi-base", "qspi-mmap";
 			spacemit,qspi-sfa1ad = <0x4000000>;
 			spacemit,qspi-sfa2ad = <0x100000>;
