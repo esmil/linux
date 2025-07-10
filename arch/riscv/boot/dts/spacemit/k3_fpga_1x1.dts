@@ -5,6 +5,11 @@
 
 / {
 	compatible = "spacemit,k3-fpga";
+	cpus: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <10000000>;
+	};
 };
 
 &uart0 {
