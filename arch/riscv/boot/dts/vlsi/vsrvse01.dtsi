@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: GPL-2.0
+/dts-v1/;
+
+/ {
+	compatible = "vlsi,vsrvse01";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "VLSI VSRVSE01 SoC";
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <50000000>;
+
+		cpu@0 {
+			compatible = "riscv";
+			reg = <0>;
+			clock-frequency = <50000000>;
+			device_type = "cpu";
+			mmu-type = "riscv,sv32";
+			riscv,isa-base = "rv32i";
+			riscv,isa-extensions = "i", "m", "a", "zicsr", "zifencei";
+
+			riscv_intc: interrupt-controller {
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+		};
+	};
+
+	memory@80000000 {
+		reg = <0x80000000 0x4000000>;
+		device_type = "memory";
+	};
+
+	osc: oscillator {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <50000000>;
+		clock-output-names = "osc";
+	};
+
+	soc {
+		compatible = "simple-bus";
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		interrupt-parent = <&irq_ctrl>;
+
+		irq_ctrl: interrupt-controller@10000000 {
+			compatible = "xlnx,xps-intc-1.00.a";
+			reg = <0x10000000 0x10000>;
+			#address-cells = <0>;
+			#interrupt-cells = <1>;
+			interrupt-controller;
+			interrupts-extended = <&riscv_intc 9>, <&riscv_intc 11>;
+			xlnx,kind-of-intr = <0x7ff>;
+			xlnx,num-intr-inputs = <11>;
+		};
+
+		uart0: serial@10200000 {
+			compatible = "ns16550a";
+			reg = <0x10200000 0x100>;
+			clocks = <&osc>;
+			fifo-size = <16>;
+			interrupts = <4>;
+			reg-shift = <2>;
+		};
+
+		uart1: serial@10200400 {
+			compatible = "ns16550a";
+			reg = <0x10200400 0x100>;
+			clocks = <&osc>;
+			fifo-size = <16>;
+			interrupts = <8>;
+			reg-shift = <2>;
+		};
+
+		uart2: serial@10200800 {
+			compatible = "ns16550a";
+			reg = <0x10200800 0x100>;
+			clocks = <&osc>;
+			fifo-size = <16>;
+			interrupts = <9>;
+			reg-shift = <2>;
+		};
+
+		bootuart: serial@12000000 {
+			compatible = "xlnx,xps-uartlite-1.00.a";
+			reg = <0x12000000 0x100>;
+			current-speed = <4166667>;
+			interrupts = <1>;
+			port-number = <0>;
+			xlnx,data-bits = <8>;
+			xlnx,use-parity = <0>;
+		};
+
+		eth0: ethernet@17000000 {
+			compatible = "vlsi,vsrves01-mac";
+			reg = <0x17000000 0x20000>;
+			clocks = <&osc>;
+			interrupts = <5>, <6>, <7>;
+			interrupt-names = "rx", "tx", "mdio";
+			max-speed = <100>;
+			status = "disabled";
+
+			mdio0: mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+		};
+	};
+};

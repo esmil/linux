@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: GPL-2.0
+/dts-v1/;
+
+#include "vsrvse01.dtsi"
+
+/ {
+	compatible = "vlsi,vsrvse01-catboard", "vlsi,vsrvse01";
+	model = "VSRV CAT Board";
+
+	aliases {
+		ethernet0 = &eth0;
+		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+	};
+};
+
+&eth0 {
+	mac-address = [ 76 73 72 76 65 73 ];
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii";
+	status = "okay";
+};
+
+&mdio0 {
+	phy0: ethernet-phy@0 {
+		reg = <0>;
+	};
+};

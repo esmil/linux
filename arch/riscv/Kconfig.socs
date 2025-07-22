@@ -78,6 +78,12 @@ config ARCH_VIRT
 	help
 	  This enables support for QEMU Virt Machine.
 
+config ARCH_VLSI
+	bool "VLSI SoCs"
+	depends on 32BIT
+	help
+	  This enables support for VLSI SoC platform hardware.
+
 config ARCH_CANAAN
 	bool "Canaan Kendryte SoC"
 	help
