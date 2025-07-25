@@ -455,6 +455,21 @@ config MMP_PDMA
 	help
 	  Support the MMP PDMA engine for PXA and MMP platform.
 
+config MMP_PDMA_SPACEMIT
+	bool "Spacemit mmp_pdma support"
+	depends on ARCH_MMP || ARCH_PXA || COMPILE_TEST || SOC_SPACEMIT
+	select DMA_ENGINE
+	help
+	  Support the MMP PDMA engine for Spacemit-k1x platform.
+
+config SPACEMIT_PDMA_SUPPORT_64BIT
+       bool "SpacemiT PDMA 64-bit support"
+       depends on MMP_PDMA_SPACEMIT
+       help
+         Enable 64-bit DMA addressing support for SpacemiT PDMA controller.
+         This allows the PDMA to access memory above 4GB boundary.
+         If unsure, say N.
+
 config MMP_TDMA
 	tristate "MMP Two-Channel DMA support"
 	depends on ARCH_MMP || COMPILE_TEST
