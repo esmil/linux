@@ -901,9 +901,11 @@ static void pxa_uart_transmit_dma_cb(void *data)
 	if (up->from_resume)
 		up->from_resume = false;
 
+#ifdef CONFIG_PM
 	if (dma_async_is_tx_complete(pxa_dma->txdma_chan, pxa_dma->tx_cookie,
 				     NULL, NULL) == DMA_COMPLETE)
 		schedule_work(&up->uart_tx_lpm_work);
+#endif
 
 	spin_lock_irqsave(&up->port.lock, up->flags);
 	/*
@@ -1150,7 +1152,9 @@ static void serial_pxa_shutdown(struct uart_port *port)
 		pxa_uart_dma_uninit(up);
 	}
 
+#ifdef CONFIG_PM
 	flush_work(&up->uart_tx_lpm_work);
+#endif
 
 	/* Disable interrupts from this port */
 	spin_lock_irqsave(&up->port.lock, flags);
