@@ -195,6 +195,17 @@
 			};
 		};
 
+		pdma0: pdma@d4000000 {
+			compatible = "spacemit,pdma-1.0";
+			reg = <0x0 0xd4000000 0x0 0x4000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <72 4>;
+			#dma-cells= <2>;
+			#dma-channels = <32>;
+			max-burst-size = <64>;
+			status = "ok";
+		};
+
 		uart0: serial@d4017000 {
 			compatible = "spacemit,pxa-uart";
 			reg = <0x0 0xd4017000 0x0 0x100>;
