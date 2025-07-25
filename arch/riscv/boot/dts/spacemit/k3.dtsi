@@ -212,6 +212,9 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <42 4>;
 			clk-fpga = <14750000>;
+			dmas = <&pdma0 4 1
+				&pdma0 3 1>;
+			dma-names = "rx", "tx";
 			status = "ok";
 		};
 
