@@ -237,6 +237,69 @@
 			interrupt-parent = <&saplic>;
 			status = "disabled";
 		};
+
+		mailbox0: mailbox0@cac90000 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac90000 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <210 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
+
+		mailbox1: mailbox1@cac90400 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac90400 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <212 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
+
+		mailbox2: mailbox2@cac90800 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac90800 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <214 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
+
+		mailbox3: mailbox3@cac90c00 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac90c00 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <216 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
+
+		mailbox4: mailbox4@cac91000 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac91000 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <217 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
+
+		mailbox5: mailbox5@cac91400 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac91400 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <226 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
+
+		mailbox6: mailbox6@cac91800 {
+			compatible = "spacemit,k3-mailbox";
+			reg = <0x0 0xcac91800 0x0 0x400>;
+			interrupt-parent = <&saplic>;
+			interrupts = <227 4>;
+			#mbox-cells = <1>;
+			status = "okay";
+		};
 	};
 };
 
