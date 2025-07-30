@@ -161,11 +161,21 @@
 			#interrupt-cells = <0>;
 			#msi-cells = <0>;
 			msi-controller;
-			/* Number of interrupt identities:512 */
+			/* Number of interrupt identities: 511 */
 			riscv,num-ids = <511>;
-			/* Number of HART index bits:16 */
+			/* Number of guest interrupt identities: 511 */
+			riscv,num-guest-ids = <511>;
+			/* Number of HART index bits: 4 (2^4 = 16 harts) */
 			riscv,hart-index-bits = <4>;
-			/* Number of guest index bits:7 */
+			/*
+			 * Number of guest index bits: 6
+			 *    2^6 = 64 interrupt files
+			 *        = 1 s-level interrupt file + 63 vs-level interrupt files
+			 *
+			 * But on K3,
+			 *   X100: only 7 of the 63 vs-level interrupt files are valid.
+			 *   A100: no valid vs-level interrupt files.
+			 */
 			riscv,guest-index-bits = <6>;
 			status = "okay";
 		};
