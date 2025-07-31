@@ -84,6 +84,50 @@
 			reg = <0x1 0x00800000 0x0 0x4000>;
 			no-map;
 		};
+
+		/*****************rcpu1**********************/
+		/* used for rcp1 code & data & bss space */
+		rcpu1_runtime: rcpu1_runtime@100804000 {
+			reg = <0x1 0x804000 0x0 0x300000>;
+			no-map;
+		};
+
+		/* rcpu1's heap */
+		rcpu1_heap: rcpu1_heap@100B04000 {
+			reg = <0x1 0xb04000 0x0 0x200000>;
+			no-map;
+		};
+
+		/* vring0 */
+		rcpu1_vdev0vring0: vdev0vring0@c086c000 {
+			reg = <0x0 0xc086c000 0x0 0x3000>;
+			no-map;
+		};
+
+		/* vring1 */
+		rcpu1_vdev0vring1: vdev0vring1@c086f000 {
+			reg = <0x0 0xc086f000 0x0 0x3000>;
+			no-map;
+		};
+
+		/* rcpu1's dtb */
+		rcpu1_dtb: rcpu1_dtb@c0872000 {
+			reg = <0x0 0xc0872000 0x0 0x4000>;
+			no-map;
+		};
+
+		/* the rcpu1's share memory buffer */
+		rcpu1_vdev0buffer: vdev0buffer@100d04000 {
+			compatible = "shared-dma-pool";
+			reg = <0x1 0xd04000 0x0 0xfc000>;
+			no-map;
+		};
+
+		/* the rcpu1's resource table */
+		rcpu1_rsc_table: rcpu1_rsc_table@100e00000 {
+			reg = <0x1 0xe00000 0x0 0x4000>;
+			no-map;
+		};
 	};
 
 	soc: soc {
@@ -323,10 +367,21 @@
 			reg =  <0 0 0 0>;
 			mboxes = <&mailbox3 1>, <&mailbox3 2>;
 			mbox-names = "vq0", "vq1";
-			firmware-name = "k3_esos.elf";
+			firmware-name = "k3_rcpu0_esos.elf";
 			memory-region = <&rcpu0_pwr>, <&rcpu0_heap>, <&rcpu0_vdev0vring0>, <&rcpu0_vdev0buffer>,
 					<&rcpu0_vdev0vring1>, <&rcpu0_rsc_table>;
 			status = "okay";
+		};
+
+		rcpu1: rcpu_rproc1@1 {
+			compatible = "spacemit,k3-rproc";
+			reg =  <0 0 0 0>;
+			mboxes = <&mailbox4 0>, <&mailbox4 1>;
+			mbox-names = "vq0", "vq1";
+			firmware-name = "k3_rcpu1_esos.elf";
+			memory-region = <&rcpu1_runtime>, <&rcpu1_heap>, <&rcpu1_vdev0vring0>, <&rcpu1_vdev0buffer>,
+					<&rcpu1_vdev0vring1>, <&rcpu1_rsc_table>;
+			status = "disabled";
 		};
 	};
 };
