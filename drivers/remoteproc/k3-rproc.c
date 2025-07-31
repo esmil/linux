@@ -42,7 +42,7 @@
 #define K3_MBOX_VQ1_ID	1
 
 struct spacemit_mbox {
-	const char name[10];
+	const char *name;
 	struct mbox_chan *chan;
 	struct mbox_client client;
 	struct task_struct *mb_thread;
@@ -53,7 +53,7 @@ struct spacemit_mbox {
 
 struct spacemit_rproc {
 	struct device *dev;
-	struct spacemit_mbox *mb;
+	struct spacemit_mbox mb[MAX_MBOX];
 	char *verid;
 	unsigned int size;
 };
@@ -316,25 +316,6 @@ static void k3_rproc_mb_callback(struct mbox_client *cl, void *data)
 	complete(&mb->mb_comp);
 }
 
-static struct spacemit_mbox k3_rpoc_mbox[] = {
-	{
-		.name = "vq0",
-		.vq_id = K3_MBOX_VQ0_ID,
-		.client = {
-			.rx_callback = k3_rproc_mb_callback,
-			.tx_block = true,
-		},
-	},
-	{
-		.name = "vq1",
-		.vq_id = K3_MBOX_VQ1_ID,
-		.client = {
-			.rx_callback = k3_rproc_mb_callback,
-			.tx_block = true,
-		},
-	},
-};
-
 static int spacemit_rproc_probe(struct platform_device *pdev)
 {
 	int ret, i;
@@ -360,8 +341,17 @@ static int spacemit_rproc_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, rproc);
 
-	/* get the mailbox */
-	priv->mb = k3_rpoc_mbox;
+	/* tx */
+	priv->mb[0].name = "vq0";
+	priv->mb[0].vq_id = K3_MBOX_VQ0_ID;
+	priv->mb[0].client.rx_callback = k3_rproc_mb_callback,
+	priv->mb[0].client.tx_block = true,
+
+	/* rx */
+	priv->mb[1].name = "vq1";
+	priv->mb[1].vq_id = K3_MBOX_VQ1_ID;
+	priv->mb[1].client.rx_callback = k3_rproc_mb_callback,
+	priv->mb[1].client.tx_block = true;
 
 	for (i = 0; i < MAX_MBOX; ++i) {
 		name = priv->mb[i].name;
