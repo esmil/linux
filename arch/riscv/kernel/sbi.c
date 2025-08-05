@@ -570,19 +570,19 @@ static inline long sbi_get_firmware_version(void)
 
 long sbi_get_mvendorid(void)
 {
-	return __sbi_base_ecall(SBI_EXT_BASE_GET_MVENDORID);
+	return 0; //__sbi_base_ecall(SBI_EXT_BASE_GET_MVENDORID);
 }
 EXPORT_SYMBOL_GPL(sbi_get_mvendorid);
 
 long sbi_get_marchid(void)
 {
-	return __sbi_base_ecall(SBI_EXT_BASE_GET_MARCHID);
+	return 0; //__sbi_base_ecall(SBI_EXT_BASE_GET_MARCHID);
 }
 EXPORT_SYMBOL_GPL(sbi_get_marchid);
 
 long sbi_get_mimpid(void)
 {
-	return __sbi_base_ecall(SBI_EXT_BASE_GET_MIMPID);
+	return 0; //__sbi_base_ecall(SBI_EXT_BASE_GET_MIMPID);
 }
 EXPORT_SYMBOL_GPL(sbi_get_mimpid);
 
