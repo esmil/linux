@@ -21,7 +21,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -36,6 +36,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -56,7 +64,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -71,6 +79,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -91,7 +107,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -106,6 +122,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -126,7 +150,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -141,6 +165,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -161,7 +193,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -176,6 +208,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -196,7 +236,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -211,6 +251,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -231,7 +279,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -246,6 +294,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -266,7 +322,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -281,6 +337,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -302,7 +366,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -317,6 +381,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -338,7 +410,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -353,6 +425,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -374,7 +454,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -389,6 +469,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -410,7 +498,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -425,6 +513,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -446,7 +542,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -461,6 +557,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -482,7 +586,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -497,6 +601,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -518,7 +630,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -533,6 +645,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
@@ -554,7 +674,7 @@
 						"zimop", "zvbb", "zvbc", "zvfh", "zvfhmin", "zvkb",
 						"zvkg", "zvkn", "zvknc", "zvkned", "zvkng", "zvknha",
 						"zvknhb", "zvks", "zvksc", "zvksed", "zvksh", "zvksg",
-						"zvkt", "zcd";
+						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
 				i-cache-block-size = <64>;
@@ -569,6 +689,14 @@
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
 					interrupt-controller;
+				};
+				debug {
+					compatible = "riscv,debug-v1.0.0";
+					trigger-module {
+						mcontext-present;
+						hcontext-present;
+						scontext-present;
+					};
 				};
 			};
 
