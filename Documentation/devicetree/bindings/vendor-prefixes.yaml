@@ -1678,6 +1678,8 @@ patternProperties:
     description: Vivante Corporation
   "^vivax,.*":
     description: Vivax brand by M SAN Grupa d.o.o.
+  "^vlsi,.*":
+    description: VLSI Solution Oy
   "^vocore,.*":
     description: VoCore Studio
   "^voipac,.*":
