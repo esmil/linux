@@ -486,7 +486,7 @@ config MOXART_DMA
 	select DMA_VIRTUAL_CHANNELS
 	help
 	  Enable support for the MOXA ART SoC DMA controller.
- 
+
 	  Say Y here if you enabled MMP ADMA, otherwise say N.
 
 config MPC512X_DMA
@@ -775,6 +775,15 @@ config SPACEMIT_ADMA
 	depends on DMA_ENGINE && SOC_SPACEMIT
 	help
 	  Enable support for Spacemit Audio DMA Engine.
+
+config USERSPACE_DMA
+	tristate "Userspace DMA driver support"
+	depends on DMA_ENGINE
+	help
+	  Enable a simple userspace DMA test driver.
+	  This driver exposes a character device (e.g. /dev/udma) that
+	  allows userspace to allocate and map DMA buffers and trigger
+	  memcpy operations using the DMA engine.
 
 # driver files
 source "drivers/dma/amd/Kconfig"
