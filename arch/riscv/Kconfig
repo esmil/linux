@@ -1336,6 +1336,15 @@ config BUILTIN_DTB_NAME
 	  for the DTS file that will be used to produce the DTB linked into the
 	  kernel.
 
+config VRI_ADDRESS
+	hex "Load address for the Image.vri target"
+	depends on ARCH_VLSI
+	default 0x80400000
+	help
+	  The VRI format used on the VLSI VSRV SoC has also specifies where in
+	  memory the content should be loaded. Use this option to change the
+	  default of 0x80400000.
+
 endmenu # "Boot options"
 
 config PORTABLE

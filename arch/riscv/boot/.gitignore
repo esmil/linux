@@ -6,3 +6,4 @@ loader.lds
 loader.bin
 vmlinuz*
 xipImage
+bin2vri

@@ -64,6 +64,15 @@ $(obj)/Image.zst: $(obj)/Image FORCE
 $(obj)/Image.xz: $(obj)/Image FORCE
 	$(call if_changed,xzkern)
 
+ifdef CONFIG_VRI_ADDRESS
+hostprogs := bin2vri
+quiet_cmd_bin2vri = BIN2VRI $@
+cmd_bin2vri = $(obj)/bin2vri -v -a $(CONFIG_VRI_ADDRESS) $< $@
+
+$(obj)/Image.vri: $(obj)/Image $(obj)/bin2vri FORCE
+	$(call if_changed,bin2vri)
+endif
+
 $(obj)/loader.bin: $(obj)/loader FORCE
 	$(call if_changed,objcopy)
 
