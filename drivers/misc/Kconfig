@@ -606,6 +606,13 @@ config NSM
 	  To compile this driver as a module, choose M here.
 	  The module will be called nsm.
 
+config SPACEMIT_TCM
+	bool "Generic tcm alloc management driver"
+	depends on SOC_SPACEMIT
+	default y
+	help
+	  This driver allows you to alloc tcm for userspace.
+
 config MARVELL_CN10K_DPI
 	tristate "Octeon CN10K DPI driver"
 	depends on PCI && PCI_IOV
