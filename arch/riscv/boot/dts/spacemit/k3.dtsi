@@ -224,6 +224,16 @@
 			status = "okay";
 		};
 
+		syscon_gpio: syscon-gpio{
+			compatible = "syscon";
+			reg = <0x0 0xd4019000 0x0 0x800>;
+		};
+
+		syscon_gpio_edge: syscon-gpio-edge{
+			compatible = "syscon";
+			reg = <0x0 0xd4019800 0x0 0x10>;
+		};
+
 		reset: reset-controller@d4050000 {
 			compatible = "spacemit,k3-reset";
 			reg = <0x0 0xd4050000 0x0 0x209c>,
