@@ -8,8 +8,10 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include <linux/seq_file.h>
 #include <linux/spinlock.h>
+#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 
@@ -61,6 +63,8 @@ struct spacemit_pinctrl {
 	raw_spinlock_t				lock;
 
 	void __iomem				*regs;
+	struct regmap				*rm_gpio;
+	struct regmap				*rm_gpio_edge;
 };
 
 struct spacemit_pinctrl_data {
@@ -749,6 +753,16 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 	pctrl->regs = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(pctrl->regs))
 		return PTR_ERR(pctrl->regs);
+
+	pctrl->rm_gpio = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+						      "gpio");
+	if (IS_ERR(pctrl->gpio))
+		return PTR_ERR(pctrl->gpio);
+
+	pctrl->rm_gpio_edge = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+							   "gpio_edge");
+	if (IS_ERR(pctrl->gpio_edge))
+		return PTR_ERR(pctrl->gpio_edge);
 
 	func_clk = devm_clk_get_enabled(dev, "func");
 	if (IS_ERR(func_clk))
