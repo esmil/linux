@@ -142,6 +142,13 @@ config RDA_TIMER
 	help
 	  Enables the support for the RDA Micro timer driver.
 
+config SPACEMIT_K1X_TIMER
+	bool "Spacemit k1x/k3 timer driver" if COMPILE_TEST
+	select CLKSRC_MMIO
+	select TIMER_OF
+	help
+	  Enables the support for the spacemit k1x timer driver.
+
 config REALTEK_OTTO_TIMER
 	bool "Clocksource/timer for the Realtek Otto platform" if COMPILE_TEST
 	select TIMER_OF
