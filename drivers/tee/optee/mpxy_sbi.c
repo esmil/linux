@@ -1508,7 +1508,7 @@ static int riscv_mpxy_mbox_probe(struct platform_device *pdev)
 	/* Calculate how many harts we have */
 	for (cpuid = 0; cpuid < NR_CPUS; cpuid++) {
 		unsigned long hartid = cpuid_to_hartid_map(cpuid);
-		
+
 		if (hartid == INVALID_HARTID ||
 		    hartid >= (unsigned long) NR_CPUS)
 			break;
@@ -1540,7 +1540,7 @@ static int riscv_mpxy_mbox_probe(struct platform_device *pdev)
 
 fail_free_channel:
 	for (cpuid = 0; cpuid < nr_cpus; cpuid++) {
-		if (context->chan[cpuid])
+		if (!IS_ERR(context->chan[cpuid]))
 			mbox_free_channel(context->chan[cpuid]);
 	}
 	return ret;
