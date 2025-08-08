@@ -282,7 +282,7 @@
 		};
 
 		qspi: spi@d420c000 {
-			compatible = "spacemit,qspi";
+			compatible = "spacemit,k3-qspi";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x0 0xd420c000 0x0 0x1000>,
@@ -294,10 +294,15 @@
 			spacemit,qspi-sfb2ad = <0x100000>;
 			spacemit,qspi-pmuap-reg = <0xd4282860>;
 			spacemit,qspi-mpmu-acgr-reg = <0xd4051024>;
+			spacemit,qspi-ahb-enable = <0>;
 			spacemit,qspi-freq = <26500000>;
 			spacemit,qspi-id = <4>;
 			interrupts = <117 4>;
 			interrupt-parent = <&saplic>;
+			spacemit,qspi-tx-dma = <1>;
+			spacemit,qspi-rx-dma = <1>;
+			dmas = <&pdma0 45 1>;
+			dma-names = "tx-dma";
 			status = "disabled";
 		};
 

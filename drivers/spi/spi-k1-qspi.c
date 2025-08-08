@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Spacemit QSPI controller driver
+ * Spacemit k1 qspi controller driver
  *
- * Copyright (c) 2025, spacemit Corporation.
+ * Copyright (c) 2023, spacemit Corporation.
  *
  */
 
@@ -31,11 +31,11 @@
 #include <linux/spi/spi-mem.h>
 #include <linux/reset.h>
 
-//#define SPACEMIT_DUMP_QSPI_REG
+//#define K1_DUMP_QSPI_REG
 
 #define QSPI_WAIT_TIMEOUT		(300) /* ms */
 #define QSPI_AUTOSUSPEND_TIMEOUT	2000
-#define SPACEMIT_MPMU_ACGR		0xd4051024
+#define K1_MPMU_ACGR			0xd4051024
 
 /* QSPI PMUap register */
 #define PMUA_QSPI_CLK_RES_CTRL		0xd4282860
@@ -266,8 +266,8 @@ u32 reg_offset_table[] = {
 	QSPI_LCKCR
 };
 
-/* spacemit qspi host priv */
-struct spacemit_qspi {
+/* k1 qspi host priv */
+struct k1_qspi {
 	struct device *dev;
 	struct spi_controller *ctrl;
 	void __iomem *io_map;
@@ -324,7 +324,15 @@ struct spacemit_qspi {
 	u32 tx_underrun_err;
 	u32 rx_overflow_err;
 	u32 ahb_overflow_err;
+
+	u32 lpm_qos;
 };
+
+/* Forward declarations */
+static void qspi_init_ahbread(struct k1_qspi *qspi, int seq_id);
+static void qspi_dump_reg(struct k1_qspi *qspi);
+static int k1_qspi_tx_dma_exec(struct k1_qspi *qspi, const struct spi_mem_op *op);
+static int k1_qspi_rx_dma_exec(struct k1_qspi *qspi, dma_addr_t dma_dst, dma_addr_t dma_src, size_t len);
 
 enum qpsi_cs {
 	QSPI_CS_A1 = 0,
@@ -343,9 +351,9 @@ enum qpsi_mode {
 
 static ssize_t qspi_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct spacemit_qspi *t_qspi = dev_get_drvdata(dev);
-	return sprintf(buf, "%s: rx_dma_en=%u, rx_buf_size=0x%x, tx_dma_en=%u, tx_buf_size=0x%x,"
-				"ahb_read_enable=%u, ahb_buf_size=0x%x\n",
+	struct k1_qspi *t_qspi = dev_get_drvdata(dev);
+	return sprintf(buf, "%s: rx_dma_en=%d, rx_buf_size=0x%x, tx_dma_en=%d, tx_buf_size=0x%x,"
+				"ahb_read_enable=%d, ahb_buf_size=0x%x\n",
 				dev_name(dev),
 				t_qspi->rx_dma_enable, t_qspi->rx_buf_size,
 				t_qspi->tx_dma_enable, t_qspi->tx_buf_size,
@@ -355,8 +363,8 @@ static DEVICE_ATTR_RO(qspi_info);
 
 static ssize_t qspi_err_resp_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct spacemit_qspi *t_qspi = dev_get_drvdata(dev);
-	return sprintf(buf, "%s: tx_underrun (%u), rx_overflow (%u), ahb_overflow (%u)\n",
+	struct k1_qspi *t_qspi = dev_get_drvdata(dev);
+	return sprintf(buf, "%s: tx_underrun (%d), rx_overflow (%d), ahb_overflow (%d)\n",
 			dev_name(dev),
 			t_qspi->tx_underrun_err, t_qspi->rx_overflow_err, t_qspi->ahb_overflow_err);
 }
@@ -373,7 +381,7 @@ static struct attribute_group qspi_dev_group = {
 	.attrs = qspi_dev_attrs,
 };
 
-static void qspi_writel(struct spacemit_qspi *qspi, u32 val, void __iomem *addr)
+static void qspi_writel(struct k1_qspi *qspi, u32 val, void __iomem *addr)
 {
 	if (qspi->endian_xchg)
 		iowrite32be(val, addr);
@@ -381,7 +389,7 @@ static void qspi_writel(struct spacemit_qspi *qspi, u32 val, void __iomem *addr)
 		iowrite32(val, addr);
 }
 
-static u32 qspi_readl(struct spacemit_qspi *qspi, void __iomem *addr)
+static u32 qspi_readl(struct k1_qspi *qspi, void __iomem *addr)
 {
 	if (qspi->endian_xchg)
 		return ioread32be(addr);
@@ -389,8 +397,7 @@ static u32 qspi_readl(struct spacemit_qspi *qspi, void __iomem *addr)
 		return ioread32(addr);
 }
 
-#ifndef SOC_SPACEMIT_K3_FPGA
-static int qspi_set_func_clk(struct spacemit_qspi *qspi)
+static int qspi_set_func_clk(struct k1_qspi *qspi)
 {
 	int ret = 0;
 
@@ -425,13 +432,11 @@ static int qspi_set_func_clk(struct spacemit_qspi *qspi)
 
 	return 0;
 }
-#endif
 
-static void qspi_config_mfp(struct spacemit_qspi *qspi)
+static void qspi_config_mfp(struct k1_qspi *qspi)
 {
 	int cs = qspi->cs_selected;
 
-#ifndef SOC_SPACEMIT_K3_FPGA
 	/* TODO: only for FPGA */
 #if 0
 	void * __iomem mfpr_base = ioremap((phys_addr_t)0xd401e000, 0x200);
@@ -451,12 +456,9 @@ static void qspi_config_mfp(struct spacemit_qspi *qspi)
 	}
 #endif
 	dev_info(qspi->dev, "config mfp for cs:[%d]\n", cs);
-#else
-	dev_info(qspi->dev, "FPGA stage: mfp config skipped for cs:[%d]\n", cs);
-#endif
 }
 
-static int spacemit_qspi_readl_poll_tout(struct spacemit_qspi *qspi, void __iomem *base,
+static int k1_qspi_readl_poll_tout(struct k1_qspi *qspi, void __iomem *base,
 					u32 mask, u32 timeout_us, u8 wait_set)
 {
 	u32 reg;
@@ -470,13 +472,13 @@ static int spacemit_qspi_readl_poll_tout(struct spacemit_qspi *qspi, void __iome
 		return readl_poll_timeout(base, reg, !(reg & mask), 10, timeout_us);
 }
 
-static void qspi_reset(struct spacemit_qspi *qspi)
+static void qspi_reset(struct k1_qspi *qspi)
 {
 	uint32_t reg;
 	int err;
 
 	/* QSPI_SR[QSPI_SR_BUSY] must be 0 */
-	err = spacemit_qspi_readl_poll_tout(qspi, qspi->io_map + QSPI_SR,
+	err = k1_qspi_readl_poll_tout(qspi, qspi->io_map + QSPI_SR,
 			QSPI_SR_BUSY, QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_CLEAR);
 	if (err) {
 		dev_err(qspi->dev, "failed to reset qspi host.\n");
@@ -495,7 +497,8 @@ static void qspi_reset(struct spacemit_qspi *qspi)
 	}
 }
 
-static void qspi_enter_mode(struct spacemit_qspi *qspi, uint32_t mode)
+
+static void qspi_enter_mode(struct k1_qspi *qspi, uint32_t mode)
 {
 	uint32_t mcr;
 
@@ -507,12 +510,12 @@ static void qspi_enter_mode(struct spacemit_qspi *qspi, uint32_t mode)
 	qspi_writel(qspi, mcr, qspi->io_map + QSPI_MCR);
 }
 
-static void qspi_write_sfar(struct spacemit_qspi *qspi, uint32_t val)
+static void qspi_write_sfar(struct k1_qspi *qspi, uint32_t val)
 {
 	int err;
 
 	/* QSPI_SR[IP_ACC] must be 0 */
-	err = spacemit_qspi_readl_poll_tout(qspi, qspi->io_map + QSPI_SR,
+	err = k1_qspi_readl_poll_tout(qspi, qspi->io_map + QSPI_SR,
 			QSPI_SR_IP_ACC_MASK, QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_CLEAR);
 	if (err)
 		dev_err(qspi->dev, "failed to set QSPI_SFAR.\n");
@@ -524,12 +527,12 @@ static void qspi_write_sfar(struct spacemit_qspi *qspi, uint32_t val)
  * IP Command Trigger could not be executed Error Flag may happen for write
  * access to RBCT/SFAR register, need retry for these two register
  */
-static void qspi_write_rbct(struct spacemit_qspi *qspi, uint32_t val)
+static void qspi_write_rbct(struct k1_qspi *qspi, uint32_t val)
 {
 	int err;
 
 	/* QSPI_SR[IP_ACC] must be 0 */
-	err = spacemit_qspi_readl_poll_tout(qspi, qspi->io_map + QSPI_SR,
+	err = k1_qspi_readl_poll_tout(qspi, qspi->io_map + QSPI_SR,
 			QSPI_SR_IP_ACC_MASK, QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_CLEAR);
 	if (err)
 		dev_err(qspi->dev, "failed to set QSPI_RBCT.\n");
@@ -537,7 +540,7 @@ static void qspi_write_rbct(struct spacemit_qspi *qspi, uint32_t val)
 		qspi_writel(qspi, val, qspi->io_map + QSPI_RBCT);
 }
 
-static void qspi_init_ahbread(struct spacemit_qspi *qspi, int seq_id)
+static void qspi_init_ahbread(struct k1_qspi *qspi, int seq_id)
 {
 	u32 buf_cfg = 0;
 
@@ -560,7 +563,7 @@ static void qspi_init_ahbread(struct spacemit_qspi *qspi, int seq_id)
 	dev_info(qspi->dev, "AHB buf size: %d\n", qspi->ahb_buf_size);
 }
 
-static void qspi_dump_reg(struct spacemit_qspi *qspi)
+static void qspi_dump_reg(struct k1_qspi *qspi)
 {
 	u32 reg = 0;
 	void __iomem *base = qspi->io_map;
@@ -596,7 +599,7 @@ static void qspi_dump_reg(struct spacemit_qspi *qspi)
  * invalidate the AHB buffer. This can be achieved by doing the reset
  * of controller after setting MCR0[SWRESET] bit.
  */
-static inline void spacemit_qspi_invalid(struct spacemit_qspi *qspi)
+static inline void k1_qspi_invalid(struct k1_qspi *qspi)
 {
 	u32 reg;
 
@@ -614,8 +617,8 @@ static inline void spacemit_qspi_invalid(struct spacemit_qspi *qspi)
 	qspi_writel(qspi, reg, qspi->io_map + QSPI_MCR);
 }
 
-static void spacemit_qspi_prepare_lut(struct spacemit_qspi *qspi,
-	const struct spi_mem_op *op, u32 seq_id)
+static void k1_qspi_prepare_lut(struct k1_qspi *qspi,
+				const struct spi_mem_op *op, u32 seq_id)
 {
 	u32 lutval[4] = {0,};
 	int lutidx = 0;
@@ -623,35 +626,35 @@ static void spacemit_qspi_prepare_lut(struct spacemit_qspi *qspi,
 
 	/* qspi cmd */
 	lutval[0] |= LUT_DEF(lutidx, LUT_INSTR_CMD,
-			LUT_PAD(op->cmd.buswidth),
-			op->cmd.opcode);
+			     LUT_PAD(op->cmd.buswidth),
+			     op->cmd.opcode);
 	lutidx++;
 
 	/* addr bytes */
 	if (op->addr.nbytes) {
-	lutval[lutidx / 2] |= LUT_DEF(lutidx, LUT_INSTR_ADDR,
-				LUT_PAD(op->addr.buswidth),
-				op->addr.nbytes * 8);
-	lutidx++;
+		lutval[lutidx / 2] |= LUT_DEF(lutidx, LUT_INSTR_ADDR,
+					      LUT_PAD(op->addr.buswidth),
+					      op->addr.nbytes * 8);
+		lutidx++;
 	}
 
 	/* dummy bytes, if needed */
 	if (op->dummy.nbytes) {
-	lutval[lutidx / 2] |= LUT_DEF(lutidx, LUT_INSTR_DUMMY,
-				LUT_PAD(op->dummy.buswidth),
-				op->dummy.nbytes * 8 /
-				op->dummy.buswidth);
-	lutidx++;
+		lutval[lutidx / 2] |= LUT_DEF(lutidx, LUT_INSTR_DUMMY,
+					      LUT_PAD(op->dummy.buswidth),
+					      op->dummy.nbytes * 8 /
+					      op->dummy.buswidth);
+		lutidx++;
 	}
 
 	/* read/write data bytes */
 	if (op->data.nbytes) {
-	lutval[lutidx / 2] |= LUT_DEF(lutidx,
-				op->data.dir == SPI_MEM_DATA_IN ?
-				LUT_INSTR_READ : LUT_INSTR_WRITE,
-				LUT_PAD(op->data.buswidth),
-				0);
-	lutidx++;
+		lutval[lutidx / 2] |= LUT_DEF(lutidx,
+					      op->data.dir == SPI_MEM_DATA_IN ?
+					      LUT_INSTR_READ : LUT_INSTR_WRITE,
+					      LUT_PAD(op->data.buswidth),
+					      0);
+		lutidx++;
 	}
 
 	/* stop condition. */
@@ -662,9 +665,8 @@ static void spacemit_qspi_prepare_lut(struct spacemit_qspi *qspi,
 	qspi_writel(qspi, QSPI_LCKER_UNLOCK, qspi->io_map + QSPI_LCKCR);
 
 	/* fill LUT register */
-	for (i = 0; i < ARRAY_SIZE(lutval); i++) {
-	qspi_writel(qspi, lutval[i], qspi->io_map + QSPI_LUT_REG(seq_id, i));
-	}
+	for (i = 0; i < ARRAY_SIZE(lutval); i++)
+		qspi_writel(qspi, lutval[i], qspi->io_map + QSPI_LUT_REG(seq_id, i));
 
 	/* lock LUT */
 	qspi_writel(qspi, QSPI_LUTKEY_VALUE, qspi->io_map + QSPI_LUTKEY);
@@ -674,8 +676,7 @@ static void spacemit_qspi_prepare_lut(struct spacemit_qspi *qspi,
 		op->cmd.opcode, lutval[0], lutval[1], lutval[2], lutval[3]);
 }
 
-
-static void spacemit_qspi_enable_interrupt(struct spacemit_qspi *qspi, u32 val)
+static void k1_qspi_enable_interrupt(struct k1_qspi *qspi, u32 val)
 {
 	u32 resr = 0;
 
@@ -684,7 +685,7 @@ static void spacemit_qspi_enable_interrupt(struct spacemit_qspi *qspi, u32 val)
 	qspi_writel(qspi, resr, qspi->io_map + QSPI_RSER);
 }
 
-static void spacemit_qspi_disable_interrupt(struct spacemit_qspi *qspi, u32 val)
+static void k1_qspi_disable_interrupt(struct k1_qspi *qspi, u32 val)
 {
 	u32 resr = 0;
 
@@ -693,7 +694,7 @@ static void spacemit_qspi_disable_interrupt(struct spacemit_qspi *qspi, u32 val)
 	qspi_writel(qspi, resr, qspi->io_map + QSPI_RSER);
 }
 
-static void spacemit_qspi_prepare_dma(struct spacemit_qspi *qspi)
+static void k1_qspi_prepare_dma(struct k1_qspi *qspi)
 {
 	struct dma_slave_config dma_cfg;
 	struct device *dev = qspi->dev;
@@ -739,14 +740,14 @@ static void spacemit_qspi_prepare_dma(struct spacemit_qspi *qspi)
 		init_completion(&qspi->dma_completion);
 }
 
-static void spacemit_qspi_dma_callback(void *arg)
+static void k1_qspi_dma_callback(void *arg)
 {
 	struct completion *dma_completion = arg;
 
 	complete(dma_completion);
 }
 
-static int spacemit_qspi_tx_dma_exec(struct spacemit_qspi *qspi,
+static int k1_qspi_tx_dma_exec(struct k1_qspi *qspi,
 			const struct spi_mem_op *op)
 {
 	struct dma_async_tx_descriptor *desc;
@@ -770,7 +771,7 @@ static int spacemit_qspi_tx_dma_exec(struct spacemit_qspi *qspi,
 	}
 
 	reinit_completion(&qspi->dma_completion);
-	desc->callback = spacemit_qspi_dma_callback;
+	desc->callback = k1_qspi_dma_callback;
 	desc->callback_param = &qspi->dma_completion;
 
 	cookie = dmaengine_submit(desc);
@@ -788,7 +789,7 @@ out:
 	return err;
 }
 
-static int spacemit_qspi_rx_dma_exec(struct spacemit_qspi *qspi, dma_addr_t dma_dst,
+static int k1_qspi_rx_dma_exec(struct k1_qspi *qspi, dma_addr_t dma_dst,
 			dma_addr_t dma_src, size_t len)
 {
 	dma_cookie_t cookie;
@@ -803,7 +804,7 @@ static int spacemit_qspi_rx_dma_exec(struct spacemit_qspi *qspi, dma_addr_t dma_
 	}
 
 	reinit_completion(&qspi->dma_completion);
-	desc->callback = spacemit_qspi_dma_callback;
+	desc->callback = k1_qspi_dma_callback;
 	desc->callback_param = &qspi->dma_completion;
 	cookie = dmaengine_submit(desc);
 	ret = dma_submit_error(cookie);
@@ -824,7 +825,7 @@ static int spacemit_qspi_rx_dma_exec(struct spacemit_qspi *qspi, dma_addr_t dma_
 	return 0;
 }
 
-static int spacemit_qspi_rx_dma_sg(struct spacemit_qspi *qspi, struct sg_table rx_sg,
+static int k1_qspi_rx_dma_sg(struct k1_qspi *qspi, struct sg_table rx_sg,
 			       loff_t from)
 {
 	struct scatterlist *sg;
@@ -837,7 +838,7 @@ static int spacemit_qspi_rx_dma_sg(struct spacemit_qspi *qspi, struct sg_table r
 		len = sg_dma_len(sg);
 		dev_dbg(qspi->dev, "rx dma, dst:0x%pad, src:0x%pad, len:%d\n",
 			&dma_dst, &dma_src, len);
-		ret = spacemit_qspi_rx_dma_exec(qspi, dma_dst, dma_src, len);
+		ret = k1_qspi_rx_dma_exec(qspi, dma_dst, dma_src, len);
 		if (ret)
 			return ret;
 		dma_src += len;
@@ -846,7 +847,7 @@ static int spacemit_qspi_rx_dma_sg(struct spacemit_qspi *qspi, struct sg_table r
 	return 0;
 }
 
-static int spacemit_qspi_ahb_read(struct spacemit_qspi *qspi,
+static int k1_qspi_ahb_read(struct k1_qspi *qspi,
 				const struct spi_mem_op *op)
 {
 	int ret = 0;
@@ -864,7 +865,7 @@ static int spacemit_qspi_ahb_read(struct spacemit_qspi *qspi,
 	if (qspi->rx_dma_enable) {
 		if (virt_addr_valid(op->data.buf.in) &&
 		    !spi_controller_dma_map_mem_op_data(qspi->ctrl, op, &sgt)) {
-			ret = spacemit_qspi_rx_dma_sg(qspi, sgt, from);
+			ret = k1_qspi_rx_dma_sg(qspi, sgt, from);
 			spi_controller_dma_unmap_mem_op_data(qspi->ctrl, op, &sgt);
 		} else {
 			ret = -EIO;
@@ -887,7 +888,7 @@ static int spacemit_qspi_ahb_read(struct spacemit_qspi *qspi,
 	return 0;
 }
 
-static int spacemit_qspi_fill_txfifo(struct spacemit_qspi *qspi,
+static int k1_qspi_fill_txfifo(struct k1_qspi *qspi,
 				 const struct spi_mem_op *op)
 {
 	void __iomem *base = qspi->io_map;
@@ -926,13 +927,13 @@ static int spacemit_qspi_fill_txfifo(struct spacemit_qspi *qspi,
 		qspi_writel(qspi, qspi->tx_wmrk, base + QSPI_TBCT);
 
 		/* config DMA channel and start */
-		if (spacemit_qspi_tx_dma_exec(qspi, op)) {
+		if (k1_qspi_tx_dma_exec(qspi, op)) {
 			qspi->tx_wmrk = 0;
 			dev_err(qspi->dev, "failed to start tx dma\n");
 			return -EIO;
 		}
 		/* enable DMA request */
-		spacemit_qspi_enable_interrupt(qspi, QSPI_RSER_TBFDE);
+		k1_qspi_enable_interrupt(qspi, QSPI_RSER_TBFDE);
 
 		/*
 		 * before trigger qspi to send data to external bus, TX bufer
@@ -967,7 +968,7 @@ static int spacemit_qspi_fill_txfifo(struct spacemit_qspi *qspi,
 	return 0;
 }
 
-static void spacemit_qspi_read_rxfifo(struct spacemit_qspi *qspi,
+static void k1_qspi_read_rxfifo(struct k1_qspi *qspi,
 			  const struct spi_mem_op *op)
 {
 	void __iomem *base = qspi->io_map;
@@ -987,9 +988,9 @@ static void spacemit_qspi_read_rxfifo(struct spacemit_qspi *qspi,
 	}
 }
 
-static irqreturn_t spacemit_qspi_irq_handler(int irq, void *dev_id)
+static irqreturn_t k1_qspi_irq_handler(int irq, void *dev_id)
 {
-	struct spacemit_qspi *qspi = dev_id;
+	struct k1_qspi *qspi = dev_id;
 	u32 fr;
 
 	/* disable all interrupts */
@@ -1018,7 +1019,7 @@ static irqreturn_t spacemit_qspi_irq_handler(int irq, void *dev_id)
 
 		if (fr & QSPI_FR_TBUF) {
 			/* disable TBFDE interrupt */
-			spacemit_qspi_disable_interrupt(qspi, QSPI_RSER_TBFDE);
+			k1_qspi_disable_interrupt(qspi, QSPI_RSER_TBFDE);
 			dev_err_ratelimited(qspi->dev, "TX buffer underrun\n");
 			qspi->tx_underrun_err++;
 		}
@@ -1038,22 +1039,21 @@ static irqreturn_t spacemit_qspi_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int spacemit_qspi_do_op(struct spacemit_qspi *qspi, const struct spi_mem_op *op)
+static int k1_qspi_do_op(struct k1_qspi *qspi, const struct spi_mem_op *op)
 {
 	void __iomem *base = qspi->io_map;
 	int err = 0;
 	u32 mcr;
 
 	if (qspi->cmd_interrupt) {
-		spacemit_qspi_enable_interrupt(qspi, QSPI_RSER_TFIE | BUFFER_ERROR_INT | COMMAND_ERROR_INT);
+		k1_qspi_enable_interrupt(qspi, QSPI_RSER_TFIE | BUFFER_ERROR_INT | COMMAND_ERROR_INT);
 		init_completion(&qspi->cmd_completion);
 	}
 
-#ifdef SPACEMIT_DUMP_QSPI_REG
+#ifdef K1_DUMP_QSPI_REG
 	/* dump reg if need */
 	qspi_dump_reg(qspi);
 #endif
-
 	/* trigger LUT */
 	qspi_writel(qspi, op->data.nbytes | QSPI_IPCR_SEQID(SEQID_LUT_SHARED_ID),
 		    base + QSPI_IPCR);
@@ -1062,20 +1062,19 @@ static int spacemit_qspi_do_op(struct spacemit_qspi *qspi, const struct spi_mem_
 	if (qspi->cmd_interrupt) {
 		wait_for_completion(&qspi->cmd_completion);
 	} else {
-		err = spacemit_qspi_readl_poll_tout(qspi, base + QSPI_FR, QSPI_FR_TFF_MASK,
-					QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_SET);
+		err = k1_qspi_readl_poll_tout(qspi, base + QSPI_FR, QSPI_FR_TFF_MASK,
+						QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_SET);
 	}
-
 	if (err) {
 		dev_err(qspi->dev, "opcode:0x%x transaction abort, ret:%d, error flag:0x%08x\n",
 			op->cmd.opcode, err, qspi->fr_error_flag);
 		dev_err(qspi->dev, "pmuap[0x%08x]:0x%08x\n", qspi->pmuap_reg, qspi_readl(qspi, qspi->pmuap_addr));
-		dev_err(qspi->dev, "mpmu[0x%08x]:0x%08x\n", SPACEMIT_MPMU_ACGR, qspi_readl(qspi, qspi->mpmu_acgr));
+		dev_err(qspi->dev, "mpmu[0x%08x]:0x%08x\n", K1_MPMU_ACGR, qspi_readl(qspi, qspi->mpmu_acgr));
 		qspi_dump_reg(qspi);
 		goto tx_dma_unmap;
 	}
 
-	err = spacemit_qspi_readl_poll_tout(qspi, base + QSPI_SR, QSPI_SR_BUSY,
+	err = k1_qspi_readl_poll_tout(qspi, base + QSPI_SR, QSPI_SR_BUSY,
 					QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_CLEAR);
 	if (err) {
 		dev_err(qspi->dev, "opcode:0x%x busy timeout, ret:%d\n", op->cmd.opcode, err);
@@ -1084,18 +1083,16 @@ static int spacemit_qspi_do_op(struct spacemit_qspi *qspi, const struct spi_mem_
 
 	/* read RX buffer for IP command read */
 	if (op->data.nbytes && op->data.dir == SPI_MEM_DATA_IN) {
-#ifdef SPACEMIT_DUMP_QSPI_REG
+#ifdef K1_DUMP_QSPI_REG
 		qspi_dump_reg(qspi);
 #endif
-		spacemit_qspi_read_rxfifo(qspi, op);
+		k1_qspi_read_rxfifo(qspi, op);
 	}
 
 	if (qspi->fr_error_flag & QSPI_FR_TBUF) {
-
 		/* abort current dma transfer */
-		if (qspi->tx_dma_enable) {
+		if (qspi->tx_dma_enable)
 			dmaengine_terminate_all(qspi->tx_dma);
-		}
 
 		/* clear TX buf */
 		mcr = qspi_readl(qspi, qspi->io_map + QSPI_MCR);
@@ -1115,7 +1112,7 @@ static int spacemit_qspi_do_op(struct spacemit_qspi *qspi, const struct spi_mem_
 tx_dma_unmap:
 	if (qspi->tx_wmrk) {
 		/* disable TBFDE interrupt and dma unmap */
-		spacemit_qspi_disable_interrupt(qspi, QSPI_RSER_TBFDE);
+		k1_qspi_disable_interrupt(qspi, QSPI_RSER_TBFDE);
 		spi_controller_dma_unmap_mem_op_data(qspi->ctrl, op, &qspi->sgt);
 		qspi->tx_wmrk = 0;
 	}
@@ -1123,7 +1120,7 @@ tx_dma_unmap:
 	return err;
 }
 
-static void dump_spi_mem_op_info(struct spacemit_qspi *qspi,
+static void dump_spi_mem_op_info(struct k1_qspi *qspi,
 				const struct spi_mem_op *op)
 {
 	dev_dbg(qspi->dev, "cmd.opcode:0x%x\n", op->cmd.opcode);
@@ -1155,7 +1152,7 @@ static int is_read_from_cache_opcode(u8 opcode)
 	return ret;
 }
 
-static int spacemit_qspi_check_buswidth(struct spacemit_qspi *qspi, u8 width)
+static int k1_qspi_check_buswidth(struct k1_qspi *qspi, u8 width)
 {
 	switch (width) {
 	case 1:
@@ -1167,23 +1164,23 @@ static int spacemit_qspi_check_buswidth(struct spacemit_qspi *qspi, u8 width)
 	return -ENOTSUPP;
 }
 
-static bool spacemit_qspi_supports_op(struct spi_mem *mem,
+static bool k1_qspi_supports_op(struct spi_mem *mem,
 				 const struct spi_mem_op *op)
 {
-	struct spacemit_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
+	struct k1_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 	int ret;
 
 	mutex_lock(&qspi->lock);
-	ret = spacemit_qspi_check_buswidth(qspi, op->cmd.buswidth);
+	ret = k1_qspi_check_buswidth(qspi, op->cmd.buswidth);
 
 	if (op->addr.nbytes)
-		ret |= spacemit_qspi_check_buswidth(qspi, op->addr.buswidth);
+		ret |= k1_qspi_check_buswidth(qspi, op->addr.buswidth);
 
 	if (op->dummy.nbytes)
-		ret |= spacemit_qspi_check_buswidth(qspi, op->dummy.buswidth);
+		ret |= k1_qspi_check_buswidth(qspi, op->dummy.buswidth);
 
 	if (op->data.nbytes)
-		ret |= spacemit_qspi_check_buswidth(qspi, op->data.buswidth);
+		ret |= k1_qspi_check_buswidth(qspi, op->data.buswidth);
 
 	if (ret) {
 		mutex_unlock(&qspi->lock);
@@ -1215,7 +1212,7 @@ static bool spacemit_qspi_supports_op(struct spi_mem *mem,
 	 */
 	if ((op->addr.val >= qspi->memmap_size) && (op->data.dir == SPI_MEM_DATA_IN)
 		 && (qspi->ahb_read_enable && !qspi->force_cmd_read)) {
-		pr_err("spacemit_qspi_supports_op: addr.val:%lld greater than the map size\n", op->addr.val);
+		pr_err("k1_qspi_supports_op: addr.val:%lld greater than the map size\n", op->addr.val);
 		mutex_unlock(&qspi->lock);
 		return false;
 	}
@@ -1231,15 +1228,17 @@ static bool spacemit_qspi_supports_op(struct spi_mem *mem,
 	return true;
 }
 
-static const char *spacemit_qspi_get_name(struct spi_mem *mem)
+static const char *k1_qspi_get_name(struct spi_mem *mem)
 {
-	struct spacemit_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
+
+	struct k1_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 	struct device *dev = qspi->dev;
 	const char *name;
 
 	name = devm_kasprintf(dev, GFP_KERNEL,
-			      "%s-%p", dev_name(dev),
-			      mem->spi->chip_select);
+			      "%s-%d", dev_name(dev),
+			      *mem->spi->chip_select);
+
 	if (!name) {
 		dev_err(dev, "failed to get memory for custom flash name\n");
 		return ERR_PTR(-ENOMEM);
@@ -1248,9 +1247,9 @@ static const char *spacemit_qspi_get_name(struct spi_mem *mem)
 	return name;
 }
 
-static int spacemit_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
+static int k1_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 {
-	struct spacemit_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
+	struct k1_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 	int err = 0;
 	u32 mask;
 	u32 reg;
@@ -1264,11 +1263,11 @@ static int spacemit_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *o
 
 	/* wait for controller being ready */
 	mask = QSPI_SR_BUSY | QSPI_SR_IP_ACC_MASK | QSPI_SR_AHB_ACC_MASK;
-	err = spacemit_qspi_readl_poll_tout(qspi, base + QSPI_SR, mask, QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_CLEAR);
+	err = k1_qspi_readl_poll_tout(qspi, base + QSPI_SR, mask, QSPI_WAIT_TIMEOUT*1000, QSPI_WAIT_BIT_CLEAR);
 	if (err) {
 		dev_err(qspi->dev, "controller not ready!\n");
 		dev_err(qspi->dev, "pmuap[0x%08x]:0x%08x\n", qspi->pmuap_reg, qspi_readl(qspi, qspi->pmuap_addr));
-		dev_err(qspi->dev, "mpmu[0x%08x]:0x%08x\n", SPACEMIT_MPMU_ACGR, qspi_readl(qspi, qspi->mpmu_acgr));
+		dev_err(qspi->dev, "mpmu[0x%08x]:0x%08x\n", K1_MPMU_ACGR, qspi_readl(qspi, qspi->mpmu_acgr));
 		qspi_dump_reg(qspi);
 		mutex_unlock(&qspi->lock);
 		return err;
@@ -1305,29 +1304,29 @@ static int spacemit_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *o
 		op->data.dir == SPI_MEM_DATA_IN &&
 		(qspi->ahb_read_enable && !qspi->force_cmd_read) &&
 		is_read_from_cache_opcode(op->cmd.opcode)) {
-		spacemit_qspi_prepare_lut(qspi, op, SEQID_LUT_AHBREAD_ID);
-		err = spacemit_qspi_ahb_read(qspi, op);
+		k1_qspi_prepare_lut(qspi, op, SEQID_LUT_AHBREAD_ID);
+		err = k1_qspi_ahb_read(qspi, op);
 	} else {
 		/* IP command */
-		spacemit_qspi_prepare_lut(qspi, op, SEQID_LUT_SHARED_ID);
+		k1_qspi_prepare_lut(qspi, op, SEQID_LUT_SHARED_ID);
 		if (op->data.nbytes && op->data.dir == SPI_MEM_DATA_OUT) {
-			err = spacemit_qspi_fill_txfifo(qspi, op);
+			err = k1_qspi_fill_txfifo(qspi, op);
 		}
 		if (!err)
-			err = spacemit_qspi_do_op(qspi, op);
+			err = k1_qspi_do_op(qspi, op);
 	}
 
-	/* invalidate the data in the AHB buffer */
-	spacemit_qspi_invalid(qspi);
+	/* invalidate the data in the AHB buffer. */
+	k1_qspi_invalid(qspi);
 
 	mutex_unlock(&qspi->lock);
 
 	return err;
 }
 
-static int spacemit_qspi_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
+static int k1_qspi_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 {
-	struct spacemit_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
+	struct k1_qspi *qspi = spi_controller_get_devdata(mem->spi->controller);
 
 	mutex_lock(&qspi->lock);
 	if (op->data.dir == SPI_MEM_DATA_OUT) {
@@ -1346,21 +1345,20 @@ static int spacemit_qspi_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *
 				qspi->rx_unit_size = SZ_4K;
 			}
 		}
+
 		if (op->data.nbytes > qspi->rx_unit_size)
 			op->data.nbytes = qspi->rx_unit_size;
 	}
-
 	mutex_unlock(&qspi->lock);
 
 	return 0;
 }
 
-static int spacemit_qspi_host_init(struct spacemit_qspi *qspi)
+static int k1_qspi_host_init(struct k1_qspi *qspi)
 {
 	void __iomem *base = qspi->io_map;
 	u32 reg;
 
-#ifndef SOC_SPACEMIT_K3_FPGA
 	qspi->resets = devm_reset_control_array_get_optional_exclusive(qspi->dev);
 	if (IS_ERR(qspi->resets)) {
 		dev_err(qspi->dev, "Failed to get qspi's resets\n");
@@ -1377,16 +1375,6 @@ static int spacemit_qspi_host_init(struct spacemit_qspi *qspi)
 
 	/* rest qspi */
 	qspi_reset(qspi);
-#else
-	dev_info(qspi->dev, "FPGA stage: clock setup skipped\n");
-
-	/* config mfp */
-	qspi_config_mfp(qspi);
-
-	/* Manual reset for FPGA stage */
-	dev_info(qspi->dev, "FPGA stage: performing manual reset\n");
-	qspi_reset(qspi);
-#endif
 
 	/* clock settings */
 	qspi_enter_mode(qspi, QSPI_DISABLE_MODE);
@@ -1428,32 +1416,32 @@ static int spacemit_qspi_host_init(struct spacemit_qspi *qspi)
 	qspi_writel(qspi, 0xffffffff, base + QSPI_FR);
 
 	dev_dbg(qspi->dev, "qspi host init done.\n");
-#ifdef SPACEMIT_DUMP_QSPI_REG
+#ifdef K1_DUMP_QSPI_REG
 	qspi_dump_reg(qspi);
 #endif
 	return 0;
 }
 
-static const struct spi_controller_mem_ops spacemit_qspi_mem_ops = {
-	.adjust_op_size = spacemit_qspi_adjust_op_size,
-	.supports_op = spacemit_qspi_supports_op,
-	.exec_op = spacemit_qspi_exec_op,
-	.get_name = spacemit_qspi_get_name,
+static const struct spi_controller_mem_ops k1_qspi_mem_ops = {
+	.adjust_op_size = k1_qspi_adjust_op_size,
+	.supports_op = k1_qspi_supports_op,
+	.exec_op = k1_qspi_exec_op,
+	.get_name = k1_qspi_get_name,
 };
 
-static int spacemit_qspi_probe(struct platform_device *pdev)
+static int k1_qspi_probe(struct platform_device *pdev)
 {
 	struct spi_controller *ctlr;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	struct spacemit_qspi *qspi;
+	struct k1_qspi *qspi;
 	struct resource *res;
-	int host_irq = 0;
 
 	int ret = 0;
 	u32 qspi_bus_num = 0;
+	int host_irq = 0;
 
-	ctlr = spi_alloc_master(&pdev->dev, sizeof(struct spacemit_qspi));
+	ctlr = spi_alloc_master(&pdev->dev, sizeof(struct k1_qspi));
 	if (!ctlr)
 		return -ENOMEM;
 
@@ -1464,13 +1452,11 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, qspi);
 
-#ifndef SOC_SPACEMIT_K3_FPGA
 	/* get qspi frequency */
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-freq", &qspi->max_hz)) {
 		dev_err(dev, "failed to get qspi frequency\n");
 		goto err_put_ctrl;
 	}
-#endif
 
 	/* get qspi register base address */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qspi-base");
@@ -1488,8 +1474,10 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 		ret = PTR_ERR(qspi->ahb_map);
 		goto err_put_ctrl;
 	}
+
 	qspi->memmap_base = res->start;
 	qspi->memmap_size = resource_size(res) - 1;
+
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-sfa1ad", &qspi->sfa1ad))
 		qspi->sfa1ad = QSPI_FLASH_A1_TOP;
 	else
@@ -1497,7 +1485,7 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-sfa2ad", &qspi->sfa2ad))
 		qspi->sfa2ad = QSPI_FLASH_A2_TOP;
 	else
-		qspi->sfa2ad += qspi->memmap_base;
+		qspi->sfa2ad += qspi->sfa1ad;
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-sfb1ad", &qspi->sfb1ad))
 		qspi->sfb1ad = QSPI_FLASH_B1_TOP;
 	else
@@ -1507,7 +1495,7 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 	else
 		qspi->sfb2ad += qspi->sfb1ad;
 
-	dev_dbg(dev, "spacemit_qspi_probe:memmap base:0x%pa, memmap size:0x%x\n",
+	dev_notice(dev, "k1_qspi_probe: memmap_base=0x%pa, memmap_size=0x%x\n",
 			&qspi->memmap_base, qspi->memmap_size);
 
 	host_irq = platform_get_irq(pdev, 0);
@@ -1515,14 +1503,14 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 		dev_err(dev, "invalid host irq:%d\n", host_irq);
 		goto err_put_ctrl;
 	}
-	ret = devm_request_irq(dev, host_irq, spacemit_qspi_irq_handler,
+	ret = devm_request_irq(dev, host_irq, k1_qspi_irq_handler,
 				0, pdev->name, qspi);
 	if (ret) {
 		dev_err(dev, "failed to request irq:%d\n", ret);
 		goto err_put_ctrl;
 	}
 	init_completion(&qspi->cmd_completion);
-	dev_dbg(qspi->dev, "spacemit_qspi_probe: host_irq:%d\n", host_irq);
+	dev_notice(qspi->dev, "k1_qspi_probe: host_irq:%d\n", host_irq);
 
 	/* map QSPI PMUap register address */
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-pmuap-reg", &qspi->pmuap_reg)) {
@@ -1532,7 +1520,7 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 
 	/* map QSPI MPMU ACGR register address */
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-mpmu-acgr-reg", &qspi->mpmu_acgr_reg)) {
-		qspi->mpmu_acgr_reg = SPACEMIT_MPMU_ACGR;
+		qspi->mpmu_acgr_reg = K1_MPMU_ACGR;
 	}
 	qspi->mpmu_acgr = ioremap(qspi->mpmu_acgr_reg, 4);
 
@@ -1549,7 +1537,7 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 	}
 
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-ahb-enable", &qspi->ahb_read_enable)) {
-		qspi->ahb_read_enable = 1;
+		qspi->ahb_read_enable = 0;
 	}
 
 	if (of_property_read_u32(dev->of_node, "spacemit,qspi-interrupt", &qspi->cmd_interrupt)) {
@@ -1572,7 +1560,7 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 		qspi->rx_dma_enable = 0;
 	}
 
-	spacemit_qspi_prepare_dma(qspi);
+	k1_qspi_prepare_dma(qspi);
 	mutex_init(&qspi->lock);
 
 	/* set the qspi device default index */
@@ -1581,11 +1569,11 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 	else
 		ctlr->bus_num = qspi_bus_num;
 	ctlr->num_chipselect = 1;
-	ctlr->mem_ops = &spacemit_qspi_mem_ops;
+	ctlr->mem_ops = &k1_qspi_mem_ops;
 
-	dev_dbg(dev, "spacemit_qspi_probe: rx_buf_size:%d, tx_buf_size:%d\n",
+	dev_dbg(dev, "k1_qspi_probe: rx_buf_size:%d, tx_buf_size:%d\n",
 			qspi->rx_buf_size, qspi->tx_buf_size);
-	dev_dbg(dev, "spacemit_qspi_probe: ahb_buf_size:%d, ahb_read:%d\n",
+	dev_dbg(dev, "k1_qspi_probe: ahb_buf_size:%d, ahb_read:%d\n",
 			qspi->ahb_buf_size, qspi->ahb_read_enable);
 
 	if (qspi->tx_dma_enable)
@@ -1597,8 +1585,9 @@ static int spacemit_qspi_probe(struct platform_device *pdev)
 		qspi->rx_unit_size = SZ_4K;
 	else
 		qspi->rx_unit_size = qspi->rx_buf_size;
-	spacemit_qspi_host_init(qspi);
+	k1_qspi_host_init(qspi);
 
+	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_autosuspend_delay(&pdev->dev, QSPI_AUTOSUSPEND_TIMEOUT);
 	pm_suspend_ignore_children(&pdev->dev, 1);
@@ -1637,13 +1626,13 @@ err_destroy_mutex:
 err_put_ctrl:
 	spi_controller_put(ctlr);
 
-	dev_err(dev, "Spacemit QSPI probe failed\n");
+	dev_err(dev, "K1 QSPI probe failed\n");
 	return ret;
 }
 
-static void spacemit_qspi_remove(struct platform_device *pdev)
+static void k1_qspi_remove(struct platform_device *pdev)
 {
-	struct spacemit_qspi *qspi = platform_get_drvdata(pdev);
+	struct k1_qspi *qspi = platform_get_drvdata(pdev);
 
 	pm_runtime_get_sync(&pdev->dev);
 
@@ -1662,11 +1651,9 @@ static void spacemit_qspi_remove(struct platform_device *pdev)
 	mutex_destroy(&qspi->lock);
 	iounmap(qspi->pmuap_addr);
 
-#ifndef SOC_SPACEMIT_K3_FPGA
 	reset_control_assert(qspi->resets);
 	clk_disable_unprepare(qspi->clk);
 	clk_disable_unprepare(qspi->bus_clk);
-#endif
 
 #ifdef CONFIG_SYSFS
 	sysfs_remove_group(&(pdev->dev.kobj),
@@ -1675,11 +1662,11 @@ static void spacemit_qspi_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int spacemit_qspi_suspend(struct device *dev)
+static int k1_qspi_suspend(struct device *dev)
 {
 	int ret;
 	u32 sr;
-	struct spacemit_qspi *qspi = dev_get_drvdata(dev);
+	struct k1_qspi *qspi = dev_get_drvdata(dev);
 
 	pm_runtime_get_sync(qspi->dev);
 
@@ -1698,7 +1685,7 @@ static int spacemit_qspi_suspend(struct device *dev)
 	return 0;
 }
 
-static int spacemit_qspi_resume(struct device *dev)
+static int k1_qspi_resume(struct device *dev)
 {
 	int ret;
 
@@ -1716,10 +1703,10 @@ static int spacemit_qspi_resume(struct device *dev)
 #endif
 
 #ifdef CONFIG_PM
-static int spacemit_qspi_runtime_suspend(struct device *dev)
+static int k1_qspi_runtime_suspend(struct device *dev)
 {
 	u32 sr;
-	struct spacemit_qspi *qspi = dev_get_drvdata(dev);
+	struct k1_qspi *qspi = dev_get_drvdata(dev);
 
 	mutex_lock(&qspi->lock);
 	sr = qspi_readl(qspi, qspi->io_map + QSPI_SR);
@@ -1734,44 +1721,45 @@ static int spacemit_qspi_runtime_suspend(struct device *dev)
 	return 0;
 }
 
-static int spacemit_qspi_runtime_resume(struct device *dev)
+static int k1_qspi_runtime_resume(struct device *dev)
 {
-	struct spacemit_qspi *qspi = dev_get_drvdata(dev);
+	struct k1_qspi *qspi = dev_get_drvdata(dev);
 
 	qspi_enter_mode(qspi, QSPI_NORMAL_MODE);
 
 	return 0;
 }
 
-static const struct dev_pm_ops spacemit_qspi_pmops = {
-	SET_SYSTEM_SLEEP_PM_OPS(spacemit_qspi_suspend, spacemit_qspi_resume)
-	SET_RUNTIME_PM_OPS(spacemit_qspi_runtime_suspend,
-		spacemit_qspi_runtime_resume, NULL)
+static const struct dev_pm_ops k1_qspi_pmops = {
+	SET_SYSTEM_SLEEP_PM_OPS(k1_qspi_suspend, k1_qspi_resume)
+	SET_RUNTIME_PM_OPS(k1_qspi_runtime_suspend,
+		k1_qspi_runtime_resume, NULL)
 };
 
-#define SPACEMIT_QSPI_PMOPS (&spacemit_qspi_pmops)
+#define K1_QSPI_PMOPS (&k1_qspi_pmops)
 
 #else
-#define SPACEMIT_QSPI_PMOPS NULL
+#define K1_QSPI_PMOPS NULL
 #endif
 
-static const struct of_device_id spacemit_qspi_dt_ids[] = {
-	{ .compatible = "spacemit,qspi", },
+static const struct of_device_id k1_qspi_dt_ids[] = {
+	{ .compatible = "spacemit,k1-qspi", },
+	{ .compatible = "spacemit,k3-qspi", },
 	{}
 };
-MODULE_DEVICE_TABLE(of, spacemit_qspi_dt_ids);
+MODULE_DEVICE_TABLE(of, k1_qspi_dt_ids);
 
-static struct platform_driver spacemit_qspi_driver = {
+static struct platform_driver spacemit_k1_qspi_driver = {
 	.driver = {
-		.name	= "spacemit-qspi",
-		.of_match_table = spacemit_qspi_dt_ids,
-		.pm = SPACEMIT_QSPI_PMOPS,
+		.name	= "spacemit-k1-qspi",
+		.of_match_table = k1_qspi_dt_ids,
+		.pm = K1_QSPI_PMOPS,
 	},
-	.probe          = spacemit_qspi_probe,
-	.remove         = spacemit_qspi_remove,
+	.probe          = k1_qspi_probe,
+	.remove		= k1_qspi_remove,
 };
-module_platform_driver(spacemit_qspi_driver);
+module_platform_driver(spacemit_k1_qspi_driver);
 
 MODULE_AUTHOR("Spacemit");
-MODULE_DESCRIPTION("Spacemit QSPI controller driver");
+MODULE_DESCRIPTION("Spacemit k1 qspi controller driver");
 MODULE_LICENSE("GPL v2");

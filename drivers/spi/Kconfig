@@ -346,11 +346,11 @@ config SPI_DAVINCI
 	help
 	  SPI master controller for DaVinci/DA8x/OMAP-L/AM1x SPI modules.
 
-config SPI_SPACEMIT_QSPI
-	tristate "Spacemit QSPI Controller"
+config SPI_K1_QSPI
+	tristate "Spacemit k1 QSPI Controller"
 	depends on SPI_MEM
 	help
-	  This enables support for the Spacemit QSPI controller in master mode.
+	  This enables support for the Spacemit k1 and k3 QSPI controller in master mode.
 	  This controller does only support the high-level SPI memory interface
 	  and not support generic SPI messages.
 
