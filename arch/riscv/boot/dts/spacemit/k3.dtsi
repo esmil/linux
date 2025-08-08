@@ -375,6 +375,7 @@
 			status = "okay";
 		};
 
+
 		rcpu1: rcpu_rproc1@1 {
 			compatible = "spacemit,k3-rproc";
 			reg =  <0 0 0 0>;
@@ -384,6 +385,26 @@
 			memory-region = <&rcpu1_runtime>, <&rcpu1_heap>, <&rcpu1_vdev0vring0>, <&rcpu1_vdev0buffer>,
 					<&rcpu1_vdev0vring1>, <&rcpu1_rsc_table>;
 			status = "disabled";
+		};
+
+		timer0: timer@d4014000 {
+			compatible = "spacemit,soc-timer";
+			reg = <0x0 0xd4014000 0x0 0xc8>;
+			spacemit,timer-id = <0>;
+			spacemit,timer-fastclk-frequency = <3250000>;
+			spacemit,timer-apb-frequency = <52000000>;
+			spacemit,timer-frequency = <32768>;
+			resets = <&reset RESET_TIMERS1>;
+			status = "okay";
+
+			counter0 {
+				compatible = "spacemit,timer-match";
+				interrupts = <23 4>;
+				interrupt-parent = <&saplic>;
+				spacemit,timer-broadcast;
+				spacemit,timer-counter-id = <0>;
+				status = "okay";
+			};
 		};
 	};
 };
