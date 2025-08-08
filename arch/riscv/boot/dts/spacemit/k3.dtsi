@@ -251,19 +251,11 @@
 			status = "okay";
 		};
 
-		pmx: pinmux@d401e000 {
-			compatible = "pinconf-single";
+		pinctrl: pinctrl@d401e000 {
+			compatible = "spacemit,k3-pinctrl";
 			reg = <0x0 0xd401e000 0x0 0x400>;
-			#address-cells = <2>;
-			#size-cells = <2>;
-			#pinctrl-cells = <1>;
-			#gpio-range-cells = <3>;
-			ranges;
-			pinctrl-single,register-width = <32>;
-			pinctrl-single,function-mask = <7>;
-			range: gpio-range {
-			#pinctrl-single,gpio-range-cells = <3>;
-			};
+			syscon-gpio = <&syscon_gpio>;
+			syscon-gpio-edge = <&syscon_gpio_edge>;
 		};
 
 		pdma0: pdma@d4000000 {
