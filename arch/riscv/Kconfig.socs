@@ -38,10 +38,7 @@ config ARCH_SOPHGO
 	  This enables support for Sophgo SoC platform hardware.
 
 config ARCH_SPACEMIT
-	bool "SpacemiT SoCs"
-	select PINCTRL
-	help
-	  This enables support for SpacemiT SoC platform hardware.
+	def_bool SOC_SPACEMIT
 
 config ARCH_STARFIVE
 	def_bool SOC_STARFIVE
@@ -97,6 +94,7 @@ config SOC_CANAAN_K210
 	select COMMON_CLK
 	help
 	  This enables support for Canaan Kendryte K210 SoC platform hardware.
+
 config SOC_SPACEMIT
 	bool "Spacemit SoCs"
 	select SIFIVE_PLIC
