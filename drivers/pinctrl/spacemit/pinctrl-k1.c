@@ -756,13 +756,13 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 
 	pctrl->rm_gpio = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 						      "gpio");
-	if (IS_ERR(pctrl->gpio))
-		return PTR_ERR(pctrl->gpio);
+	if (IS_ERR(pctrl->rm_gpio))
+		return PTR_ERR(pctrl->rm_gpio);
 
 	pctrl->rm_gpio_edge = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 							   "gpio_edge");
-	if (IS_ERR(pctrl->gpio_edge))
-		return PTR_ERR(pctrl->gpio_edge);
+	if (IS_ERR(pctrl->rm_gpio_edge))
+		return PTR_ERR(pctrl->rm_gpio_edge);
 
 	func_clk = devm_clk_get_enabled(dev, "func");
 	if (IS_ERR(func_clk))
