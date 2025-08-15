@@ -374,7 +374,7 @@ static int timer_set_next_event(unsigned long delta,
 	return 0;
 }
 
-int __init spacemit_timer_init(struct device_node *np, int tid, void __iomem *base,
+static int __init spacemit_timer_init(struct device_node *np, int tid, void __iomem *base,
 			  unsigned int flag, unsigned int fc_freq,
 			  unsigned int apb_freq, unsigned int freq)
 {
@@ -512,8 +512,7 @@ static int __init spacemit_timer_hw_init(struct spacemit_timer_evt *evt)
 	return 0;
 }
 
-
-int __init spacemit_timer_setup(struct spacemit_timer_evt *evt)
+static int __init spacemit_timer_setup(struct spacemit_timer_evt *evt)
 {
 	int broadcast = 0;
 	int ret;
