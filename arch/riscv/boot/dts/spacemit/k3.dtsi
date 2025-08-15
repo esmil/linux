@@ -161,18 +161,6 @@
 			clint,has-no-64bit-mmio;
 		};
 
-		saplic: interrupt-controller@e0804000 {
-			compatible = "riscv,aplic";
-			/* aplic config */
-			reg = <0x0 0xe0804000 0x0 0x4000>;
-			msi-parent = <&simsic>;
-			#interrupt-cells = <2>;
-			interrupt-controller;
-			/* the number of wired interrupt sources:512 */
-			riscv,num-sources = <512>;
-			status = "okay";
-		};
-
 		simsic: interrupt-controller@e0400000 {
 			compatible = "riscv,imsics";
 			interrupts-extended = <
@@ -221,6 +209,18 @@
 			 *   A100: no valid vs-level interrupt files.
 			 */
 			riscv,guest-index-bits = <6>;
+			status = "okay";
+		};
+
+		saplic: interrupt-controller@e0804000 {
+			compatible = "riscv,aplic";
+			/* aplic config */
+			reg = <0x0 0xe0804000 0x0 0x4000>;
+			msi-parent = <&simsic>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			/* the number of wired interrupt sources:512 */
+			riscv,num-sources = <512>;
 			status = "okay";
 		};
 
