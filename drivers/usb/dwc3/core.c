@@ -748,8 +748,13 @@ static int dwc3_hs_phy_setup(struct dwc3 *dwc, int index)
 	case USBPHY_INTERFACE_MODE_UTMIW:
 		reg &= ~(DWC3_GUSB2PHYCFG_PHYIF_MASK |
 		       DWC3_GUSB2PHYCFG_USBTRDTIM_MASK);
+#if CONFIG_SOC_SPACEMIT_K3_FPGA
+		reg |= DWC3_GUSB2PHYCFG_PHYIF(UTMI_PHYIF_16_BIT) |
+		       DWC3_GUSB2PHYCFG_USBTRDTIM_MASK;
+#else
 		reg |= DWC3_GUSB2PHYCFG_PHYIF(UTMI_PHYIF_16_BIT) |
 		       DWC3_GUSB2PHYCFG_USBTRDTIM(USBTRDTIM_UTMI_16_BIT);
+#endif
 		break;
 	default:
 		break;
@@ -776,6 +781,9 @@ static int dwc3_hs_phy_setup(struct dwc3 *dwc, int index)
 	if (dwc->ulpi_ext_vbus_drv)
 		reg |= DWC3_GUSB2PHYCFG_ULPIEXTVBUSDRV;
 
+#if CONFIG_SOC_SPACEMIT_K3
+	reg |= DWC3_GUSB2PHYCFG_TOUTCAL_MASK;
+#endif
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(index), reg);
 
 	return 0;
