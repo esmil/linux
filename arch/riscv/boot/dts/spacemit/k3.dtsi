@@ -6,6 +6,7 @@
 #include "k3-cpus.dtsi"
 #include <dt-bindings/reset/spacemit-k3-reset.h>
 #include <dt-bindings/clock/spacemit,k3-syscon.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 
 / {
 	#address-cells = <2>;
@@ -796,6 +797,56 @@
 				pool;
 			};
 		};
+
+		usb2_host: usb2@c0a00000 {
+			compatible = "spacemit,k1-dwc3";
+			reg = <0x0 0xc0a00000 0x0 0x10000>;
+			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apmu CLK_APMU_USB2_BUS>;
+			resets = <&reset RESET_USB2>;
+			maximum-speed = "high-speed";
+			status = "disabled";
+		};
+
+		usb3_porta: usb3@cad00000 {
+			compatible = "spacemit,k1-dwc3";
+			reg = <0x0 0xcad00000 0x0 0x10000>;
+			interrupts = <118 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
+			resets = <&reset RESET_USB3_PORTA>;
+			status = "disabled";
+		};
+
+		usb3_portb: usb3@815f0000 {
+			compatible = "spacemit,k1-dwc3";
+			reg = <0x0 0x815f0000 0x0 0x10000>;
+			interrupts = <125 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apmu CLK_APMU_USB3_PORTB_BUS>;
+			resets = <&reset RESET_USB3_PORTB>;
+			status = "disabled";
+		};
+
+		usb3_portc: usb3@818f0000 {
+			compatible = "spacemit,k1-dwc3";
+			reg = <0x0 0x818f0000 0x0 0x10000>;
+			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apmu CLK_APMU_USB3_PORTC_BUS>;
+			resets = <&reset RESET_USB3_PORTC>;
+			status = "disabled";
+		};
+
+		usb3_portd: usb3@81bf0000 {
+			compatible = "spacemit,k1-dwc3";
+			reg = <0x0 0x81bf0000 0x0 0x10000>;
+			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apmu CLK_APMU_USB3_PORTD_BUS>;
+			resets = <&reset RESET_USB3_PORTD>;
+			status = "disabled";
+		};
 	};
 };
-
