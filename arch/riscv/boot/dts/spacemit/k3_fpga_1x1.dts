@@ -19,3 +19,12 @@
 &qspi {
 	status = "disabled";
 };
+
+&usb3_porta {
+	status = "disabled";
+	maximum-speed = "high-speed";
+	dr_mode = "peripheral";
+	phy_type = "utmi_wide";
+	snps,dis_u2_susphy_quirk;
+	snps,dis_enblslpm_quirk;
+};
