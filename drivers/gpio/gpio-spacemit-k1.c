@@ -158,17 +158,6 @@ static struct irq_chip spacemit_gpio_chip = {
 	GPIOCHIP_IRQ_RESOURCE_HELPERS,
 };
 
-static bool spacemit_of_node_instance_match(struct gpio_chip *gc, unsigned int i)
-{
-	struct spacemit_gpio_bank *gb = gpiochip_get_data(gc);
-	struct spacemit_gpio *sg = gb->sg;
-
-	if (i >= SPACEMIT_NR_BANKS)
-		return false;
-
-	return (gc == &sg->sgb[i].chip.gc);
-}
-
 static int spacemit_gpio_add_bank(struct spacemit_gpio *sg,
 				  void __iomem *regs,
 				  int index, int irq)
@@ -214,7 +203,6 @@ static int spacemit_gpio_add_bank(struct spacemit_gpio *sg,
 	gc->ngpio		= SPACEMIT_NR_GPIOS_PER_BANK;
 	gc->base		= -1;
 	gc->of_gpio_n_cells	= 3;
-	gc->of_node_instance_match = spacemit_of_node_instance_match;
 
 	girq			= &gc->irq;
 	girq->threaded		= true;
