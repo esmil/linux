@@ -682,13 +682,13 @@ config GPIO_SNPS_CREG
 	  each GPIO line owns a field with different length and on/off value.
 
 config GPIO_SPACEMIT_K1
-	tristate "SPACEMIT K1 GPIO support"
+	tristate "SPACEMIT K1/K3 GPIO support"
 	depends on ARCH_SPACEMIT || COMPILE_TEST
 	depends on OF_GPIO
 	select GPIO_GENERIC
 	select GPIOLIB_IRQCHIP
 	help
-	  Say yes here to support the SpacemiT's K1 GPIO device.
+	  Say yes here to support the SpacemiT's K1/K3 GPIO device.
 
 config GPIO_SPEAR_SPICS
 	bool "ST SPEAr13xx SPI Chip Select as GPIO support"
