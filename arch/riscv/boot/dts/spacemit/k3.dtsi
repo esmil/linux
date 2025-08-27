@@ -409,6 +409,55 @@
 				spacemit,timer-broadcast;
 				spacemit,timer-counter-id = <0>;
 				status = "okay";
+		tcm: tcm@00000000 {
+			compatible = "spacemit,k1-tcm";
+			reg = <0x0 0 0x0 0x4000000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x0 0 0x4000000>;
+			no-memory-wc;
+			/* the first range 0x00000~0x180000 */
+			cluster0_tcm@0 {
+				reg = <0x00000 0x60000>;
+				cpus = <&cpu_8>, <&cpu_9>;
+				pool;
+			};
+			cluster0_tcm@60000 {
+				reg = <0x60000 0x60000>;
+				cpus = <&cpu_8>, <&cpu_9>;
+				pool;
+			};
+			cluster0_tcm@c0000 {
+				reg = <0xc0000 0x60000>;
+				cpus = <&cpu_10>, <&cpu_11>;
+				pool;
+			};
+			cluster0_tcm@120000 {
+				reg = <0x120000 0x60000>;
+				cpus = <&cpu_10>, <&cpu_11>;
+				pool;
+			};
+
+			/* the second range 0x2000000~0x2180000 */
+			cluster1_tcm@2000000 {
+				reg = <0x2000000 0x60000>;
+				cpus = <&cpu_12>, <&cpu_13>;
+				pool;
+			};
+			cluster1_tcm@2060000 {
+				reg = <0x2060000 0x60000>;
+				cpus = <&cpu_12>, <&cpu_13>;
+				pool;
+			};
+			cluster1_tcm@20c0000 {
+				reg = <0x20c0000 0x60000>;
+				cpus = <&cpu_14>, <&cpu_15>;
+				pool;
+			};
+			cluster1_tcm@2120000 {
+				reg = <0x2120000 0x60000>;
+				cpus = <&cpu_14>, <&cpu_15>;
+				pool;
 			};
 		};
 	};
