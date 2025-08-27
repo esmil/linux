@@ -291,6 +291,17 @@ config RVTRACE
 	  To compile this driver as a module, choose M here: the module
 	  will be called rvtrace.
 
+config RVTRACE_ATBBRIDGE
+	tristate "RISCV Trace ATB Bridge driver"
+	depends on RVTRACE
+	help
+	  This driver provides support for the ATB Bridge driver. The ATB
+	  Bridge allows sending RISC-V trace to Arm CoreSight infrastructure
+	  (instead of RISC-V compliant sink) as an ATB initiator.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace-atbbridge.
+
 config RVTRACE_FUNNEL
 	tristate "RISCV Trace Funnel driver"
 	depends on RVTRACE
@@ -306,6 +317,7 @@ config RVTRACE_ENCODER
 	tristate "RISCV Trace Encoder driver"
 	depends on RVTRACE
 	select RVTRACE_FUNNEL
+	select RVTRACE_ATBBRIDGE
 	help
 	  This driver provides support for the Trace Encoder module, tracing
 	  the instructions that a processor is executing. This is primarily

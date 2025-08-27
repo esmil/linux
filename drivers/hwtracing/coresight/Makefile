@@ -62,3 +62,4 @@ rvtrace-y := rvtrace-core.o
 obj-$(CONFIG_RVTRACE_ENCODER) += rvtrace-encoder.o
 rvtrace-encoder-y := rvtrace-encoder-core.o rvtrace-encoder-sysfs.o
 obj-$(CONFIG_RVTRACE_FUNNEL) += rvtrace-funnel.o
+obj-$(CONFIG_RVTRACE_ATBBRIDGE) += rvtrace-atbbridge.o
