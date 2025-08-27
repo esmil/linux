@@ -409,6 +409,8 @@
 				spacemit,timer-broadcast;
 				spacemit,timer-counter-id = <0>;
 				status = "okay";
+                        };
+                };
 		tcm: tcm@00000000 {
 			compatible = "spacemit,k1-tcm";
 			reg = <0x0 0 0x0 0x4000000>;
