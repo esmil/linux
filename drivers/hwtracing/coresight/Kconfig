@@ -291,9 +291,21 @@ config RVTRACE
 	  To compile this driver as a module, choose M here: the module
 	  will be called rvtrace.
 
+config RVTRACE_FUNNEL
+	tristate "RISCV Trace Funnel driver"
+	depends on RVTRACE
+	help
+	  his driver provides support for the Trace Funnel driver. The Funnel
+	  aggregates the trace from each of its inputs and sends the combined
+	  trace stream to its designated Trace Sink or ATB Bridge.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace-funnel.
+
 config RVTRACE_ENCODER
 	tristate "RISCV Trace Encoder driver"
 	depends on RVTRACE
+	select RVTRACE_FUNNEL
 	help
 	  This driver provides support for the Trace Encoder module, tracing
 	  the instructions that a processor is executing. This is primarily
