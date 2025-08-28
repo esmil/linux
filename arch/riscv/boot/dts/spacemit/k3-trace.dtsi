@@ -1,0 +1,799 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2026 Spacemit, Inc */
+
+/{
+	soc: soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		encoder0: encoder@d9002000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9002000 0x0 0x1000>;
+			cpus = <&cpu_0>;
+			out-ports {
+				port {
+					cluster0_encoder0_out_port: endpoint {
+						remote-endpoint = <&cluster0_bridge0_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge0: bridge@d9003000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9003000 0x0 0x1000>;
+			cpus = <&cpu_0>;
+			out-ports {
+				port {
+					cluster0_bridge0_out_port: endpoint {
+						remote-endpoint = <&cluster0_funnel_in_port0>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster0_bridge0_in_port: endpoint {
+						remote-endpoint = <&cluster0_encoder0_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder1: encoder@d9004000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9004000 0x0 0x1000>;
+			cpus = <&cpu_1>;
+			out-ports {
+				port {
+					cluster0_encoder1_out_port: endpoint {
+						remote-endpoint = <&cluster0_bridge1_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge1: bridge@d9005000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9005000 0x0 0x1000>;
+			cpus = <&cpu_1>;
+			out-ports {
+				port {
+					cluster0_bridge1_out_port: endpoint {
+						remote-endpoint = <&cluster0_funnel_in_port1>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster0_bridge1_in_port: endpoint {
+						remote-endpoint = <&cluster0_encoder1_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder2: encoder@d9006000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9006000 0x0 0x1000>;
+			cpus = <&cpu_2>;
+			out-ports {
+				port {
+					cluster0_encoder2_out_port: endpoint {
+						remote-endpoint = <&cluster0_bridge2_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge2: bridge@d9007000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9007000 0x0 0x1000>;
+			cpus = <&cpu_2>;
+			out-ports {
+				port {
+					cluster0_bridge2_out_port: endpoint {
+						remote-endpoint = <&cluster0_funnel_in_port2>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster0_bridge2_in_port: endpoint {
+						remote-endpoint = <&cluster0_encoder2_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder3: encoder@d9008000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9008000 0x0 0x1000>;
+			cpus = <&cpu_3>;
+			out-ports {
+				port {
+					cluster0_encoder3_out_port: endpoint {
+						remote-endpoint = <&cluster0_bridge3_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge3: bridge@d9009000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9009000 0x0 0x1000>;
+			cpus = <&cpu_3>;
+			out-ports {
+				port {
+					cluster0_bridge3_out_port: endpoint {
+						remote-endpoint = <&cluster0_funnel_in_port3>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster0_bridge3_in_port: endpoint {
+						remote-endpoint = <&cluster0_encoder3_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder4: encoder@d9012000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9012000 0x0 0x1000>;
+			cpus = <&cpu_4>;
+			out-ports {
+				port {
+					cluster1_encoder0_out_port: endpoint {
+						remote-endpoint = <&cluster1_bridge0_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge4: bridge@d9013000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9013000 0x0 0x1000>;
+			cpus = <&cpu_4>;
+			out-ports {
+				port {
+					cluster1_bridge0_out_port: endpoint {
+						remote-endpoint = <&cluster1_funnel_in_port0>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster1_bridge0_in_port: endpoint {
+						remote-endpoint = <&cluster1_encoder0_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder5: encoder@d9014000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9014000 0x0 0x1000>;
+			cpus = <&cpu_5>;
+			out-ports {
+				port {
+					cluster1_encoder1_out_port: endpoint {
+						remote-endpoint = <&cluster1_bridge1_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge5: bridge@d9015000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9015000 0x0 0x1000>;
+			cpus = <&cpu_5>;
+			out-ports {
+				port {
+					cluster1_bridge1_out_port: endpoint {
+						remote-endpoint = <&cluster1_funnel_in_port1>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster1_bridge1_in_port: endpoint {
+						remote-endpoint = <&cluster1_encoder1_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder6: encoder@d9016000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9016000 0x0 0x1000>;
+			cpus = <&cpu_6>;
+			out-ports {
+				port {
+					cluster1_encoder2_out_port: endpoint {
+						remote-endpoint = <&cluster1_bridge2_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge6: bridge@d9017000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9017000 0x0 0x1000>;
+			cpus = <&cpu_6>;
+			out-ports {
+				port {
+					cluster1_bridge2_out_port: endpoint {
+						remote-endpoint = <&cluster1_funnel_in_port2>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster1_bridge2_in_port: endpoint {
+						remote-endpoint = <&cluster1_encoder2_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder7: encoder@d9018000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9018000 0x0 0x1000>;
+			cpus = <&cpu_7>;
+			out-ports {
+				port {
+					cluster1_encoder3_out_port: endpoint {
+						remote-endpoint = <&cluster1_bridge3_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge7: bridge@d9019000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9019000 0x0 0x1000>;
+			cpus = <&cpu_7>;
+			out-ports {
+				port {
+					cluster1_bridge3_out_port: endpoint {
+						remote-endpoint = <&cluster1_funnel_in_port3>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster1_bridge3_in_port: endpoint {
+						remote-endpoint = <&cluster1_encoder3_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder8: encoder@d9022000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9022000 0x0 0x1000>;
+			cpus = <&cpu_8>;
+			out-ports {
+				port {
+					cluster2_encoder0_out_port: endpoint {
+						remote-endpoint = <&cluster2_bridge0_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge8: bridge@d9023000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9023000 0x0 0x1000>;
+			cpus = <&cpu_8>;
+			out-ports {
+				port {
+					cluster2_bridge0_out_port: endpoint {
+						remote-endpoint = <&cluster2_funnel_in_port0>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster2_bridge0_in_port: endpoint {
+						remote-endpoint = <&cluster2_encoder0_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder9: encoder@d9024000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9024000 0x0 0x1000>;
+			cpus = <&cpu_9>;
+			out-ports {
+				port {
+					cluster2_encoder1_out_port: endpoint {
+						remote-endpoint = <&cluster2_bridge1_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge9: bridge@d9025000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9025000 0x0 0x1000>;
+			cpus = <&cpu_9>;
+			out-ports {
+				port {
+					cluster2_bridge1_out_port: endpoint {
+						remote-endpoint = <&cluster2_funnel_in_port1>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster2_bridge1_in_port: endpoint {
+						remote-endpoint = <&cluster2_encoder1_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder10: encoder@d9026000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9026000 0x0 0x1000>;
+			cpus = <&cpu_10>;
+			out-ports {
+				port {
+					cluster2_encoder2_out_port: endpoint {
+						remote-endpoint = <&cluster2_bridge2_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge10: bridge@d9027000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9027000 0x0 0x1000>;
+			cpus = <&cpu_10>;
+			out-ports {
+				port {
+					cluster2_bridge2_out_port: endpoint {
+						remote-endpoint = <&cluster2_funnel_in_port2>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster2_bridge2_in_port: endpoint {
+						remote-endpoint = <&cluster2_encoder2_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder11: encoder@d9028000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9028000 0x0 0x1000>;
+			cpus = <&cpu_11>;
+			out-ports {
+				port {
+					cluster2_encoder3_out_port: endpoint {
+						remote-endpoint = <&cluster2_bridge3_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge11: bridge@d9029000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9029000 0x0 0x1000>;
+			cpus = <&cpu_11>;
+			out-ports {
+				port {
+					cluster2_bridge3_out_port: endpoint {
+						remote-endpoint = <&cluster2_funnel_in_port3>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster2_bridge3_in_port: endpoint {
+						remote-endpoint = <&cluster2_encoder3_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder12: encoder@d9032000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9032000 0x0 0x1000>;
+			cpus = <&cpu_12>;
+			out-ports {
+				port {
+					cluster3_encoder0_out_port: endpoint {
+						remote-endpoint = <&cluster3_bridge0_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge12: bridge@d9033000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9033000 0x0 0x1000>;
+			cpus = <&cpu_12>;
+			out-ports {
+				port {
+					cluster3_bridge0_out_port: endpoint {
+						remote-endpoint = <&cluster3_funnel_in_port0>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster3_bridge0_in_port: endpoint {
+						remote-endpoint = <&cluster3_encoder0_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder13: encoder@d9034000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9034000 0x0 0x1000>;
+			cpus = <&cpu_13>;
+			out-ports {
+				port {
+					cluster3_encoder1_out_port: endpoint {
+						remote-endpoint = <&cluster3_bridge1_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge13: bridge@d9035000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9035000 0x0 0x1000>;
+			cpus = <&cpu_13>;
+			out-ports {
+				port {
+					cluster3_bridge1_out_port: endpoint {
+						remote-endpoint = <&cluster3_funnel_in_port1>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster3_bridge1_in_port: endpoint {
+						remote-endpoint = <&cluster3_encoder1_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder14: encoder@d9036000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9036000 0x0 0x1000>;
+			cpus = <&cpu_14>;
+			out-ports {
+				port {
+					cluster3_encoder2_out_port: endpoint {
+						remote-endpoint = <&cluster3_bridge2_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge14: bridge@d9037000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9037000 0x0 0x1000>;
+			cpus = <&cpu_14>;
+			out-ports {
+				port {
+					cluster3_bridge2_out_port: endpoint {
+						remote-endpoint = <&cluster3_funnel_in_port2>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster3_bridge2_in_port: endpoint {
+						remote-endpoint = <&cluster3_encoder2_out_port>;
+					};
+				};
+			};
+		};
+
+		encoder15: encoder@d9038000 {
+			compatible = "riscv,trace-encoder";
+			reg = <0x0 0xd9038000 0x0 0x1000>;
+			cpus = <&cpu_15>;
+			out-ports {
+				port {
+					cluster3_encoder3_out_port: endpoint {
+						remote-endpoint = <&cluster3_bridge3_in_port>;
+					};
+				};
+			};
+		};
+
+		bridge15: bridge@d9039000 {
+			compatible = "riscv,trace-atbbridge";
+			reg = <0x0 0xd9039000 0x0 0x1000>;
+			cpus = <&cpu_15>;
+			out-ports {
+				port {
+					cluster3_bridge3_out_port: endpoint {
+						remote-endpoint = <&cluster3_funnel_in_port3>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					cluster3_bridge3_in_port: endpoint {
+						remote-endpoint = <&cluster3_encoder3_out_port>;
+					};
+				};
+			};
+		};
+
+		cluster0_funnel: funnel@d9000000 {
+			compatible = "riscv,trace-funnel";
+			reg = <0x0 0xd9000000 0x0 0x1000>;
+			cpus = <&cpu_0>, <&cpu_1>, <&cpu_2>, <&cpu_3>;
+			out-ports {
+				port {
+					cluster0_funnel_out_port: endpoint {
+						remote-endpoint = <&main_funnel_in_port0>;
+					};
+				};
+			};
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					cluster0_funnel_in_port0: endpoint {
+						remote-endpoint = <&cluster0_bridge0_out_port>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					cluster0_funnel_in_port1: endpoint {
+						remote-endpoint = <&cluster0_bridge1_out_port>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					cluster0_funnel_in_port2: endpoint {
+						remote-endpoint = <&cluster0_bridge2_out_port>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					cluster0_funnel_in_port3: endpoint {
+						remote-endpoint = <&cluster0_bridge3_out_port>;
+					};
+				};
+			};
+		};
+
+		cluster1_funnel: funnel@d9010000 {
+			compatible = "riscv,trace-funnel";
+			reg = <0x0 0xd9010000 0x0 0x1000>;
+			cpus = <&cpu_4>, <&cpu_5>, <&cpu_6>, <&cpu_7>;
+			out-ports {
+				port {
+					cluster1_funnel_out_port: endpoint {
+						remote-endpoint = <&main_funnel_in_port1>;
+					};
+				};
+			};
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					cluster1_funnel_in_port0: endpoint {
+						remote-endpoint = <&cluster1_bridge0_out_port>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					cluster1_funnel_in_port1: endpoint {
+						remote-endpoint = <&cluster1_bridge1_out_port>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					cluster1_funnel_in_port2: endpoint {
+						remote-endpoint = <&cluster1_bridge2_out_port>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					cluster1_funnel_in_port3: endpoint {
+						remote-endpoint = <&cluster1_bridge3_out_port>;
+					};
+				};
+			};
+		};
+
+		cluster2_funnel: funnel@d9020000 {
+			compatible = "riscv,trace-funnel";
+			reg = <0x0 0xd9020000 0x0 0x1000>;
+			cpus = <&cpu_8>, <&cpu_9>, <&cpu_10>, <&cpu_11>;
+			out-ports {
+				port {
+					cluster2_funnel_out_port: endpoint {
+						remote-endpoint = <&main_funnel_in_port2>;
+					};
+				};
+			};
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					cluster2_funnel_in_port0: endpoint {
+						remote-endpoint = <&cluster2_bridge0_out_port>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					cluster2_funnel_in_port1: endpoint {
+						remote-endpoint = <&cluster2_bridge1_out_port>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					cluster2_funnel_in_port2: endpoint {
+						remote-endpoint = <&cluster2_bridge2_out_port>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					cluster2_funnel_in_port3: endpoint {
+						remote-endpoint = <&cluster2_bridge3_out_port>;
+					};
+				};
+			};
+		};
+
+		cluster3_funnel: funnel@d9030000 {
+			compatible = "riscv,trace-funnel";
+			reg = <0x0 0xd9030000 0x0 0x1000>;
+			cpus = <&cpu_12>, <&cpu_13>, <&cpu_14>, <&cpu_15>;
+			out-ports {
+				port {
+					cluster3_funnel_out_port: endpoint {
+						remote-endpoint = <&main_funnel_in_port3>;
+					};
+				};
+			};
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					cluster3_funnel_in_port0: endpoint {
+						remote-endpoint = <&cluster3_bridge0_out_port>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					cluster3_funnel_in_port1: endpoint {
+						remote-endpoint = <&cluster3_bridge1_out_port>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					cluster3_funnel_in_port2: endpoint {
+						remote-endpoint = <&cluster3_bridge2_out_port>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					cluster3_funnel_in_port3: endpoint {
+						remote-endpoint = <&cluster3_bridge3_out_port>;
+					};
+				};
+			};
+		};
+
+		main_funnel: funnel@d9042000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0x0 0xd9042000 0x0 0x1000>;
+			clocks = <&dummy_clk>;
+			clock-names = "apb_pclk";
+			out-ports {
+				port {
+					main_funnel_out_port: endpoint {
+						remote-endpoint = <&etf_in_port>;
+					};
+				};
+			};
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					main_funnel_in_port0: endpoint {
+						remote-endpoint = <&cluster0_funnel_out_port>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					main_funnel_in_port1: endpoint {
+						remote-endpoint = <&cluster1_funnel_out_port>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					main_funnel_in_port2: endpoint {
+						remote-endpoint = <&cluster2_funnel_out_port>;
+					};
+				};
+
+				port@3 {
+					reg = <3>;
+					main_funnel_in_port3: endpoint {
+						remote-endpoint = <&cluster3_funnel_out_port>;
+					};
+				};
+			};
+		};
+
+		etf: etf@d9043000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x0 0xd9043000 0x0 0x1000>;
+			clocks = <&dummy_clk>;
+			clock-names = "apb_pclk";
+			out-ports {
+				port {
+					etf_out_port: endpoint {
+						remote-endpoint = <&etr_in_port>;
+					};
+				};
+			};
+			in-ports {
+				port {
+					etf_in_port: endpoint {
+						remote-endpoint = <&main_funnel_out_port>;
+					};
+				};
+			};
+		};
+
+		etr: etr@d9044000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x0 0xd9044000 0x0 0x1000>;
+			clocks = <&dummy_clk>;
+			clock-names = "apb_pclk";
+			arm,scatter-gather;
+			in-ports {
+				port {
+					etr_in_port: endpoint {
+						remote-endpoint = <&etf_out_port>;
+					};
+				};
+			};
+		};
+	};
+};
