@@ -4,7 +4,7 @@
 #
 menuconfig CORESIGHT
 	tristate "CoreSight Tracing Support"
-	depends on ARM || ARM64
+	depends on ARM || ARM64 || RISCV
 	depends on OF || ACPI
 	select ARM_AMBA
 	select PERF_EVENTS

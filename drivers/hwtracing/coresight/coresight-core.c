@@ -141,7 +141,11 @@ static void coresight_set_self_claim_tag_unlocked(struct coresight_device *csdev
 {
 	csdev_access_relaxed_write32(&csdev->access, CORESIGHT_CLAIM_SELF_HOSTED,
 				     CORESIGHT_CLAIMSET);
+#if defined(__riscv)
+	local_flush_icache_all();
+#else
 	isb();
+#endif
 }
 
 void coresight_clear_self_claim_tag(struct csdev_access *csa)
@@ -158,7 +162,11 @@ void coresight_clear_self_claim_tag_unlocked(struct csdev_access *csa)
 {
 	csdev_access_relaxed_write32(csa, CORESIGHT_CLAIM_SELF_HOSTED,
 				     CORESIGHT_CLAIMCLR);
+#if defined(__riscv)
+	local_flush_icache_all();
+#else
 	isb();
+#endif
 }
 EXPORT_SYMBOL_GPL(coresight_clear_self_claim_tag_unlocked);
 
