@@ -764,6 +764,12 @@ config XILINX_ZYNQMP_DPDMA
 	  driver provides the dmaengine required by the DisplayPort subsystem
 	  display driver.
 
+config SPACEMIT_HDMA
+	bool "spacemit hdma driver support"
+	depends on DMA_ENGINE || SOC_SPACEMIT
+	help
+	  Enable spacemit hdma(high-speed dma) driver
+
 # driver files
 source "drivers/dma/amd/Kconfig"
 
