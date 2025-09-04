@@ -195,9 +195,16 @@ static int pwm_probe(struct platform_device *pdev)
 	if (IS_ERR(pc->clk))
 		return dev_err_probe(dev, PTR_ERR(pc->clk), "Failed to get clock\n");
 
-	rst = devm_reset_control_get_optional_exclusive_deasserted(dev, NULL);
-	if (IS_ERR(rst))
-		return PTR_ERR(rst);
+	rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
+	if (IS_ERR(rst)) {
+		return dev_err_probe(&pdev->dev, PTR_ERR(rst), "failed to get reset control\n");
+	}
+
+	ret = reset_control_deassert(rst);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to deassert reset control: %d\n", ret);
+		return ret;
+	}
 
 	chip->ops = &pxa_pwm_ops;
 
