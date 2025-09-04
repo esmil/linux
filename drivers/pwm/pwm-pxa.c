@@ -54,6 +54,7 @@ struct pxa_pwm_chip {
 
 	struct clk	*clk;
 	void __iomem	*mmio_base;
+	bool dcr_fd_disabled;
 };
 
 static inline struct pxa_pwm_chip *to_pxa_pwm_chip(struct pwm_chip *chip)
@@ -88,10 +89,19 @@ static int pxa_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	if (prescale > 63)
 		return -EINVAL;
 
-	if (duty_ns == period_ns)
-		dc = PWMDCR_FD;
-	else
+	if (duty_ns == period_ns) {
+		if (pc->dcr_fd_disabled) {
+			dc = (pv + 1) * duty_ns / period_ns;
+			if (dc >= PWMDCR_FD) {
+				dc = PWMDCR_FD - 1;
+				pv = dc - 1;
+			}
+		} else {
+			dc = PWMDCR_FD;
+		}
+	} else {
 		dc = mul_u64_u64_div_u64(pv + 1, duty_ns, period_ns);
+	}
 
 	writel(prescale | PWMCR_SD, pc->mmio_base + offset + PWMCR);
 	writel(dc, pc->mmio_base + offset + PWMDCR);
@@ -176,6 +186,10 @@ static int pwm_probe(struct platform_device *pdev)
 	if (IS_ERR(chip))
 		return PTR_ERR(chip);
 	pc = to_pxa_pwm_chip(chip);
+
+	if (pdev->dev.of_node)
+		pc->dcr_fd_disabled = of_property_read_bool(pdev->dev.of_node,
+							    "k1,pwm-disable-fd");
 
 	pc->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(pc->clk))
