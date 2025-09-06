@@ -13,6 +13,10 @@
 
 #include <uapi/linux/sched/types.h>
 
+#ifdef CONFIG_SPACEMIT_HMP
+#include <linux/soc/spacemit/spacemit-hmp.h>
+#endif
+
 #include "sched.h"
 #include "autogroup.h"
 
@@ -1148,6 +1152,15 @@ int __sched_setaffinity(struct task_struct *p, struct affinity_context *ctx)
 {
 	int retval;
 	cpumask_var_t cpus_allowed, new_mask;
+
+#ifdef CONFIG_SPACEMIT_HMP
+	retval = hmp_cpu_affinity_restrict(p, ctx->new_mask);
+	if (retval) {
+		rcu_read_unlock();
+		return retval;
+	}
+#endif
+
 
 	if (!alloc_cpumask_var(&cpus_allowed, GFP_KERNEL))
 		return -ENOMEM;

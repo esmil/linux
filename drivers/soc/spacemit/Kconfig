@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config SPACEMIT_HMP
+	bool
+	default SOC_SPACEMIT
+	help
+	  Say y here to enable the HMP feature support.
+	  This feature categorizes the CPU cores within the
+	  SOC into two distinct types, each running different
+	  types of threads.

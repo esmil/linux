@@ -53,10 +53,13 @@ int riscv_v_setup_vsize(void)
 		return 0;
 	}
 
+	/* the different vsize is allowed on spacemit hmp architecture */
+#ifndef CONFIG_SPACEMIT_HMP
 	if (riscv_v_vsize != this_vsize) {
 		WARN(1, "RISCV_ISA_V only supports one vlenb on SMP systems");
 		return -EOPNOTSUPP;
 	}
+#endif
 
 	return 0;
 }

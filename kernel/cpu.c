@@ -43,6 +43,10 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/cpuhp.h>
 
+#ifdef CONFIG_SPACEMIT_HMP
+#include <linux/soc/spacemit/spacemit-hmp.h>
+#endif
+
 #include "smpboot.h"
 
 /**
@@ -1409,6 +1413,13 @@ static int __ref _cpu_down(unsigned int cpu, int tasks_frozen,
 		return -EINVAL;
 
 	cpus_write_lock();
+
+#ifdef CONFIG_SPACEMIT_HMP
+	if (!hmp_cpu_can_offline(cpu)) {
+		cpus_write_unlock();
+		return -EBUSY;
+	}
+#endif
 
 	cpuhp_tasks_frozen = tasks_frozen;
 

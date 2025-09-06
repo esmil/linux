@@ -1660,6 +1660,11 @@ struct task_struct {
 	/* CPU-specific state of this task: */
 	struct thread_struct		thread;
 
+#ifdef CONFIG_SPACEMIT_HMP
+	/* type of the task defined on HMP system */
+	unsigned long			thread_type;
+#endif
+
 	/*
 	 * New fields for task_struct should be added above here, so that
 	 * they are included in the randomized portion of task_struct.
