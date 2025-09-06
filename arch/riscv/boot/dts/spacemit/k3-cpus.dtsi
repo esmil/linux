@@ -267,6 +267,7 @@
 				reg = <8>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -298,6 +299,7 @@
 				reg = <9>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -329,6 +331,7 @@
 				reg = <10>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -360,6 +363,7 @@
 				reg = <11>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -391,6 +395,7 @@
 				reg = <12>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -422,6 +427,7 @@
 				reg = <13>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -453,6 +459,7 @@
 				reg = <14>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
@@ -484,6 +491,7 @@
 				reg = <15>;
 				status = "okay";
 				compatible = "riscv";
+				cpu-ai = "true";
 				riscv,isa = "rv64imafdcv";
 				riscv,isa-base = "rv64i";
 				riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "v",
