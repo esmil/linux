@@ -32,7 +32,7 @@
 #include <linux/uaccess.h>
 #include <linux/pm_runtime.h>
 #include <linux/ktime.h>
-
+#include <linux/iopoll.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 
@@ -1729,7 +1729,28 @@ void serial8250_tx_chars(struct uart_8250_port *up)
 }
 EXPORT_SYMBOL_GPL(serial8250_tx_chars);
 
-/* Caller holds uart port lock */
+#ifdef CONFIG_SOC_SPACEMIT
+/* Helper used by read_poll_timeout_atomic in fast CTS handling */
+static inline unsigned int serial8250_read_msr_and_sideeffects(struct uart_8250_port *up,
+					   struct uart_port *port)
+{
+	unsigned int s = serial_in(up, UART_MSR);
+	if (s & UART_MSR_TERI)
+		port->icount.rng++;
+	if (s & UART_MSR_DDSR)
+		port->icount.dsr++;
+	if (s & UART_MSR_DDCD)
+		uart_handle_dcd_change(port, s & UART_MSR_DCD);
+	return s;
+}
+
+/* Wrapper to fit read_poll_timeout_atomic(..., up) style */
+static inline unsigned int serial8250_read_msr_sideeffects_wrapper(struct uart_8250_port *up)
+{
+	return serial8250_read_msr_and_sideeffects(up, &up->port);
+}
+#endif
+
 unsigned int serial8250_modem_status(struct uart_8250_port *up)
 {
 	struct uart_port *port = &up->port;
@@ -1739,6 +1760,20 @@ unsigned int serial8250_modem_status(struct uart_8250_port *up)
 	up->msr_saved_flags = 0;
 	if (status & UART_MSR_ANY_DELTA && up->ier & UART_IER_MSI &&
 	    port->state != NULL) {
+#ifdef CONFIG_SOC_SPACEMIT
+	unsigned int dcts = 0;
+	if (status & UART_MSR_DCTS)
+		dcts = 1;
+
+	/* Use wrapper so the macro passes only (up) and wrapper supplies port */
+	read_poll_timeout_atomic(serial8250_read_msr_sideeffects_wrapper, status,
+				 !(status & UART_MSR_DCTS),
+				 1, 1000,
+				 false, up);
+
+	if (dcts)
+		uart_handle_cts_change(port, status & UART_MSR_CTS);
+#else
 		if (status & UART_MSR_TERI)
 			port->icount.rng++;
 		if (status & UART_MSR_DDSR)
@@ -1747,12 +1782,13 @@ unsigned int serial8250_modem_status(struct uart_8250_port *up)
 			uart_handle_dcd_change(port, status & UART_MSR_DCD);
 		if (status & UART_MSR_DCTS)
 			uart_handle_cts_change(port, status & UART_MSR_CTS);
-
+#endif
 		wake_up_interruptible(&port->state->port.delta_msr_wait);
 	}
 
 	return status;
 }
+
 EXPORT_SYMBOL_GPL(serial8250_modem_status);
 
 static bool handle_rx_dma(struct uart_8250_port *up, unsigned int iir)
