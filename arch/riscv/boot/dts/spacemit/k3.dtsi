@@ -416,6 +416,7 @@
 		uart0: serial@d4017000 {
 			compatible = "spacemit,pxa-uart";
 			reg = <0x0 0xd4017000 0x0 0x100>;
+			fifo-size = <256>;
 			interrupt-parent = <&saplic>;
 			interrupts = <42 4>;
 			clk-fpga = <14750000>;
