@@ -28,3 +28,71 @@
 	snps,dis_u2_susphy_quirk;
 	snps,dis_enblslpm_quirk;
 };
+
+&eth0 {
+	max-speed = <100>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii0>;
+	snps,reset-gpios = <&gpio 1 8 GPIO_ACTIVE_LOW>;
+
+	spacemit,wake-irq-enable;
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-reg;
+	spacemit,tx-phase = <0>;
+	spacemit,rx-phase = <0>;
+
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii0: phy@0 {
+			compatible = "ethernet-phy-id0.11a", "ethernet-phy-ieee802.3-c22";
+			reg = <0x0>;
+
+			motorcomm,clk-out-frequency-hz = <125000000>;
+			motorcomm,keep-pll-enabled;
+			motorcomm,auto-sleep-disabled;
+		};
+	};
+};
+
+&eth3 {
+	max-speed = <100>;
+	tx-fifo-depth = <4096>;
+	rx-fifo-depth = <4096>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii3>;
+	snps,reset-gpios = <&gpio 2 16 GPIO_ACTIVE_LOW>;
+
+	spacemit,wake-irq-enable;
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-reg;
+	spacemit,tx-phase = <0>;
+	spacemit,rx-phase = <0>;
+
+	status = "disabled";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii3: phy@3 {
+			compatible = "ethernet-phy-id0.11a", "ethernet-phy-ieee802.3-c22";
+			reg = <0x0>;
+
+			motorcomm,clk-out-frequency-hz = <125000000>;
+			motorcomm,keep-pll-enabled;
+			motorcomm,auto-sleep-disabled;
+		};
+	};
+};
