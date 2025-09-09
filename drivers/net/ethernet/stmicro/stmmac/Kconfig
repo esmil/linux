@@ -206,6 +206,15 @@ config DWMAC_SOPHGO
 	  for the stmmac device driver. This driver is used for the
 	  ethernet controllers on various Sophgo SoCs.
 
+config DWMAC_SPACEMIT_ETHQOS
+	tristate "Spacemit ETHQOS support"
+	depends on OF && (SOC_SPACEMIT || COMPILE_TEST)
+	help
+	  Support for the Spacemit ETHQOS core.
+
+	  This selects the Spacemit ETHQOS glue layer support for the
+	  stmmac device driver.
+
 config DWMAC_STARFIVE
 	tristate "StarFive dwmac support"
 	depends on OF && (ARCH_STARFIVE || COMPILE_TEST)
