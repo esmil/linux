@@ -3,3 +3,5 @@ perf-util-y += header.o
 
 perf-util-$(CONFIG_LIBTRACEEVENT) += kvm-stat.o
 perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+
+perf-util-$(CONFIG_AUXTRACE) += pmu.o
