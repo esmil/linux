@@ -537,7 +537,7 @@
 			firmware-name = "k3_rcpu0_esos.elf";
 			memory-region = <&rcpu0_pwr>, <&rcpu0_heap>, <&rcpu0_vdev0vring0>, <&rcpu0_vdev0buffer>,
 					<&rcpu0_vdev0vring1>, <&rcpu0_rsc_table>;
-			status = "okay";
+			status = "disabled";
 		};
 
 
