@@ -755,12 +755,12 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 		return PTR_ERR(pctrl->regs);
 
 	pctrl->rm_gpio = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
-						      "gpio");
+							 "syscon");
 	if (IS_ERR(pctrl->rm_gpio))
 		return PTR_ERR(pctrl->rm_gpio);
 
 	pctrl->rm_gpio_edge = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
-							   "gpio_edge");
+							      "syscon-edge");
 	if (IS_ERR(pctrl->rm_gpio_edge))
 		return PTR_ERR(pctrl->rm_gpio_edge);
 
