@@ -254,8 +254,8 @@
 		pinctrl: pinctrl@d401e000 {
 			compatible = "spacemit,k3-pinctrl";
 			reg = <0x0 0xd401e000 0x0 0x400>;
-			syscon-gpio = <&syscon_gpio>;
-			syscon-gpio-edge = <&syscon_gpio_edge>;
+			syscon = <&syscon_gpio>;
+			syscon-edge = <&syscon_gpio_edge>;
 		};
 
 		pdma0: pdma@d4000000 {
