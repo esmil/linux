@@ -2969,12 +2969,27 @@ static int serial8250_request_port(struct uart_port *port)
 	return serial8250_request_std_resource(up);
 }
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+/* K3 RX trigger level lookup table: ITL[8:6] index to bytes mapping */
+static const unsigned char k3_itl_bytes[] = {1, 8, 16, 32, 64, 128, 192};
+#endif
+
 static int fcr_get_rxtrig_bytes(struct uart_8250_port *up)
 {
 	const struct serial8250_config *conf_type = &uart_config[up->port.type];
 	unsigned char bytes;
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	/* K3-style RX trigger level extraction from ITL[8:6] */
+	unsigned int index = (up->fcr & UART_FCR_K3_R_ITL) >> UART_FCR_K3_R_ITL_SHIFT;
+
+	if (index >= sizeof(k3_itl_bytes) / sizeof(k3_itl_bytes[0]))
+		return -EOPNOTSUPP;
+
+	bytes = k3_itl_bytes[index];
+#else
 	bytes = conf_type->rxtrig_bytes[UART_FCR_R_TRIG_BITS(up->fcr)];
+#endif
 
 	return bytes ? bytes : -EOPNOTSUPP;
 }
@@ -2984,6 +2999,22 @@ static int bytes_to_fcr_rxtrig(struct uart_8250_port *up, unsigned char bytes)
 	const struct serial8250_config *conf_type = &uart_config[up->port.type];
 	int i;
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	const int k3_itl_max = sizeof(k3_itl_bytes) / sizeof(k3_itl_bytes[0]);
+
+	/* Check if K3 supports configurable FIFO trigger levels */
+	if (!k3_itl_bytes[0])
+		return -EOPNOTSUPP;
+
+	/* K3-style RX trigger level conversion: map bytes to ITL[8:6] values */
+	for (i = 0; i < k3_itl_max; i++) {
+		if (bytes <= k3_itl_bytes[i])
+			return i << UART_FCR_K3_R_ITL_SHIFT;
+	}
+
+	/* If requested bytes exceed maximum, use highest available trigger level */
+	return (k3_itl_max - 1) << UART_FCR_K3_R_ITL_SHIFT;
+#else
 	if (!conf_type->rxtrig_bytes[UART_FCR_R_TRIG_BITS(UART_FCR_R_TRIG_00)])
 		return -EOPNOTSUPP;
 
@@ -2994,6 +3025,7 @@ static int bytes_to_fcr_rxtrig(struct uart_8250_port *up, unsigned char bytes)
 	}
 
 	return UART_FCR_R_TRIG_11;
+#endif
 }
 
 static int do_get_rxtrig(struct tty_port *port)
@@ -3047,7 +3079,13 @@ static int do_set_rxtrig(struct tty_port *port, unsigned char bytes)
 		return rxtrig;
 
 	serial8250_clear_fifos(up);
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	/* K3-style RX trigger level setting: clear ITL[8:6] then set new value */
+	up->fcr &= ~UART_FCR_K3_R_ITL;
+#else
+	/* Original 8250 trigger level setting */
 	up->fcr &= ~UART_FCR_TRIGGER_MASK;
+#endif
 	up->fcr |= (unsigned char)rxtrig;
 	serial_out(up, UART_FCR, up->fcr);
 	return 0;
