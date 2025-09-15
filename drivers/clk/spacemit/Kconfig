@@ -12,8 +12,14 @@ if SPACEMIT_CCU
 
 config SPACEMIT_K1_CCU
 	tristate "Support for SpacemiT K1 SoC"
-	depends on ARCH_SPACEMIT || COMPILE_TEST
+	depends on SOC_SPACEMIT_K1 || COMPILE_TEST
 	help
 	  Support for clock controller unit in SpacemiT K1 SoC.
+
+config SPACEMIT_K3_CCU
+	tristate "Support for SpacemiT K3 SoC"
+	depends on SOC_SPACEMIT_K3 || COMPILE_TEST
+	help
+	  Support for clock controller unit in SpacemiT K3 SoC.
 
 endif
