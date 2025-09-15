@@ -19,6 +19,7 @@
  */
 struct ccu_gate_config {
 	u32 mask;
+	u32 flags;
 };
 
 struct ccu_factor_config {
@@ -48,6 +49,7 @@ struct ccu_mix {
 #define CCU_FACTOR_INIT(_div, _mul)	{ .div = _div, .mul = _mul }
 #define CCU_MUX_INIT(_shift, _width)	{ .shift = _shift, .width = _width }
 #define CCU_DIV_INIT(_shift, _width)	{ .shift = _shift, .width = _width }
+#define CCU_GATE_FLAGS_INIT(_mask, _flags)	{ .mask = _mask, .flags = _flags }
 
 #define CCU_PARENT_HW(_parent)		{ .hw = &_parent.common.hw }
 #define CCU_PARENT_NAME(_name)		{ .fw_name = #_name }
@@ -98,6 +100,15 @@ static struct ccu_mix _name = {							\
 	.common = {								\
 		.reg_ctrl	= _reg_ctrl,					\
 		CCU_MIX_INITHW(_name, _parent, spacemit_ccu_div_ops, _flags)	\
+	}									\
+}
+
+#define CCU_GATE_FLAGS_DEFINE(_name, _parent, _reg_ctrl, _mask_gate, _flags)		\
+static struct ccu_mix _name = {							\
+	.gate	= CCU_GATE_FLAGS_INIT(_mask_gate, _flags),					\
+	.common	= {								\
+		.reg_ctrl	= _reg_ctrl,					\
+		CCU_MIX_INITHW(_name, _parent, spacemit_ccu_gate_ops, _flags),	\
 	}									\
 }
 
@@ -201,6 +212,18 @@ static struct ccu_mix _name = {							\
 		.mask_fc	= _mask_fc,					\
 		CCU_MIX_INITHW_PARENTS(_name, _parents, spacemit_ccu_mux_ops,	\
 				       _flags)					\
+	},									\
+}
+
+#define CCU_DIV_FC_DEFINE(_name, _parent, _reg_ctrl, _mask_fc,	_mshift,	\
+			  _mwidth, _flags)					\
+static struct ccu_mix _name = {							\
+	.div	= CCU_DIV_INIT(_mshift, _mwidth),				\
+	.common = {								\
+		.reg_ctrl	= _reg_ctrl,					\
+		.reg_fc		= _reg_ctrl,					\
+		.mask_fc	= _mask_fc,					\
+		CCU_MIX_INITHW(_name, _parent, spacemit_ccu_div_ops, _flags)		\
 	},									\
 }
 

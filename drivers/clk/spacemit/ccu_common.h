@@ -9,6 +9,9 @@
 
 #include <linux/regmap.h>
 
+/* invert en-bit value of gate clock, 1: disable, 0: enable */
+#define CCU_GATE_INVERT_FLAG  BIT(31)
+
 struct ccu_common {
 	struct regmap *regmap;
 	struct regmap *lock_regmap;
