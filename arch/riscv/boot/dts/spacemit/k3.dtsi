@@ -5,6 +5,7 @@
 
 #include "k3-cpus.dtsi"
 #include <dt-bindings/reset/spacemit-k3-reset.h>
+#include <dt-bindings/clock/spacemit,k3-syscon.h>
 
 / {
 	#address-cells = <2>;
@@ -17,6 +18,50 @@
 	chosen {
 		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8 initcall_debug=1 memblock=debug";
 		stdout-path = "serial0:115200";
+	};
+
+	clocks {
+		vctcxo_1m: clock-1m {
+			compatible = "fixed-clock";
+			clock-frequency = <1000000>;
+			clock-output-names = "vctcxo_1m";
+			#clock-cells = <0>;
+		};
+
+		vctcxo_24m: clock-24m {
+			compatible = "fixed-clock";
+			clock-frequency = <24000000>;
+			clock-output-names = "vctcxo_24m";
+			#clock-cells = <0>;
+		};
+
+		vctcxo_3m: clock-3m {
+			compatible = "fixed-clock";
+			clock-frequency = <3000000>;
+			clock-output-names = "vctcxo_3m";
+			#clock-cells = <0>;
+		};
+
+		osc_32k: clock-32k {
+			compatible = "fixed-clock";
+			clock-frequency = <32000>;
+			clock-output-names = "osc_32k";
+			#clock-cells = <0>;
+		};
+
+		reserved_clk: clock-reserved {
+			compatible = "fixed-clock";
+			clock-frequency = <0>;
+			clock-output-names = "reserved_clk";
+			#clock-cells = <0>;
+		};
+
+		external_clk: clock-external {
+			compatible = "fixed-clock";
+			clock-frequency = <0>;
+			clock-output-names = "external_clk";
+			#clock-cells = <0>;
+		};
 	};
 
 	memory@102000000 {
@@ -222,6 +267,105 @@
 			/* the number of wired interrupt sources:512 */
 			riscv,num-sources = <512>;
 			status = "okay";
+		};
+
+		syscon_mpmu: system-controller@d4050000 {
+			compatible = "spacemit,k3-syscon-mpmu";
+			reg = <0x0 0xd4050000 0x0 0x10000>;
+			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>,
+				 <&vctcxo_24m>, <&reserved_clk>, <&external_clk>;
+			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+				      "reserved_clk", "external_clk";
+			#clock-cells = <1>;
+		};
+
+		pll: clock-controller@d4090000 {
+			compatible = "spacemit,k3-pll";
+			reg = <0x0 0xd4090000 0x0 0x10000>;
+			clocks = <&vctcxo_24m>;
+			spacemit,mpmu = <&syscon_mpmu>;
+			#clock-cells = <1>;
+		};
+
+		syscon_apmu: system-controller@d4282800 {
+			compatible = "spacemit,k3-syscon-apmu";
+			reg = <0x0 0xd4282800 0x0 0x400>;
+			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
+				 <&reserved_clk>, <&external_clk>;
+			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+				      "reserved_clk", "external_clk";
+			#clock-cells = <1>;
+			#power-domain-cells = <1>;
+		};
+
+		syscon_apbc: system-controller@d4015000 {
+			compatible = "spacemit,k3-syscon-apbc";
+			reg = <0x0 0xd4015000 0x0 0x1000>;
+			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
+				 <&reserved_clk>, <&external_clk>;
+			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+				      "reserved_clk", "external_clk";
+			#clock-cells = <1>;
+		};
+
+		syscon_apbc2: system-controller@f0610000 {
+			compatible = "spacemit,k3-syscon-apbc2";
+			reg = <0x0 0xf0610000 0x0 0x2000>;
+			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
+				 <&reserved_clk>, <&external_clk>;
+			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+				      "reserved_clk", "external_clk";
+			#clock-cells = <1>;
+		};
+
+		syscon_dciu: system-controller@d8440000 {
+			compatible = "spacemit,k3-syscon-dciu";
+			reg = <0x0 0xd8440000 0x0 0xc000>;
+			#clock-cells = <1>;
+		};
+
+		syscon_rcpu_sysctrl: system-controller@c0880000 {
+			compatible = "spacemit,k3-syscon-rcpu-sysctrl";
+			reg = <0x0 0xc0880000 0x0 0x1000>;
+			clocks = <&vctcxo_24m>, <&external_clk>;
+			clock-names = "vctcxo_24m", "external_clk";
+			#clock-cells = <1>;
+		};
+
+		syscon_rcpu_uartctrl: system-controller@c0881f00 {
+			compatible = "spacemit,k3-syscon-rcpu-uartctrl";
+			reg = <0x0 0xc0881f00 0x0 0x100>;
+			#clock-cells = <1>;
+		};
+
+		syscon_rcpu_i2sctrl: system-controller@c0882000 {
+			compatible = "spacemit,k3-syscon-rcpu-i2sctrl";
+			reg = <0x0 0xc0882000 0x0 0x1000>;
+			#clock-cells = <1>;
+		};
+
+		syscon_rcpu_spictrl: system-controller@c0885f00 {
+			compatible = "spacemit,k3-syscon-rcpu-spictrl";
+			reg = <0x0 0xc0885f00 0x0 0x100>;
+			#clock-cells = <1>;
+		};
+
+		syscon_rcpu_i2cctrl: system-controller@c0886f00 {
+			compatible = "spacemit,k3-syscon-rcpu-i2cctrl";
+			reg = <0x0 0xc0886f00 0x0 0x100>;
+			#clock-cells = <1>;
+		};
+
+		syscon_rpmu: system-controller@c088c000 {
+			compatible = "spacemit,k3-syscon-rpmu";
+			reg = <0x0 0xc088c000 0x0 0x800>;
+			#clock-cells = <1>;
+		};
+
+		syscon_rcpu_pwmctrl: system-controller@c088d000 {
+			compatible = "spacemit,k3-syscon-rcpu-pwmctrl";
+			reg = <0x0 0xc088d000 0x0 0x100>;
+			#clock-cells = <1>;
 		};
 
 		syscon_gpio: syscon-gpio{
