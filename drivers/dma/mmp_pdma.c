@@ -1244,8 +1244,8 @@ static int mmp_pdma_probe(struct platform_device *op)
 	if (IS_ERR(clk))
 		return PTR_ERR(clk);
 
-	rst = devm_reset_control_get_optional_exclusive_deasserted(pdev->dev,
-								   NULL);
+	rst = devm_reset_control_get_optional_exclusive_released(pdev->dev,
+								 NULL);
 	if (IS_ERR(rst))
 		return PTR_ERR(rst);
 
