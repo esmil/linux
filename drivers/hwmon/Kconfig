@@ -537,6 +537,17 @@ config SENSORS_CROS_EC
 	  This driver can also be built as a module. If so, the module
 	  will be called cros_ec_hwmon.
 
+config SENSORS_CTF2301
+	tristate "Sensylink CTF2301"
+	depends on I2C
+	select REGMAP
+	help
+	  If you say yes here you get support for Sensylink CTF2301
+	  sensor chip.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called ctf2301.
+
 config SENSORS_DRIVETEMP
 	tristate "Hard disk drives with temperature sensors"
 	depends on SCSI && ATA
