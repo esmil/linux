@@ -259,7 +259,7 @@
 		};
 
 		pdma0: pdma@d4000000 {
-			compatible = "spacemit,pdma-1.0";
+			compatible = "spacemit,k1-pdma";
 			reg = <0x0 0xd4000000 0x0 0x4000>;
 			interrupt-parent = <&saplic>;
 			interrupts = <72 4>;
