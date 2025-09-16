@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/hwmon/sensylink,ctf2301.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sensylink CTF2301 system-level thermal management solution chip
+
+maintainers:
+  - Troy Mitchell <troy.mitchell@linux.dev>
+
+allOf:
+  - $ref: hwmon-common.yaml#
+
+description: |
+  The CTF2301B is an I2C/SMBus compatible device featuring:
+    - One local temperature sensor with ±0.5°C accuracy and 0.0625°C resolution.
+    - One remote temperature sensor for external diode-connected transistors,
+      offering ±1°C accuracy and 0.125°C resolution.
+      (temperature range: -40°C to +125°C).
+    - An integrated PWM fan controller.
+    - A 1-channel fan speed monitor (TACH input) for RPM measurement.
+
+  Datasheets:
+    https://www.sensylink.com/upload/1/net.sensylink.portal/1689557281035.pdf
+
+properties:
+  compatible:
+    const: sensylink,ctf2301
+
+  reg:
+    maxItems: 1
+
+  sensylink,temp-signed:
+    description: Temperature value is signed
+    type: boolean
+
+  sensylink,pwm-freq:
+    description: |
+      The initial PWM output frequency.
+      This will likely only produce an approximation of the value you expect,
+      not the exact one.
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 360000
+    maximum: 5800
+
+required:
+  - compatible
+  - reg
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        ctf2301@4c {
+            compatible = "sensylink,ctf2301";
+            reg = <0x4c>;
+            sensylink,temp-signed;
+            sensylink,pwm-freq = <360000>;
+        };
+    };
