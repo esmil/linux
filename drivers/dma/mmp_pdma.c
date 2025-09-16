@@ -19,6 +19,7 @@
 #include <linux/reset.h>
 #include <linux/of_dma.h>
 #include <linux/of.h>
+#include <linux/delay.h>
 
 #include "dmaengine.h"
 
@@ -125,6 +126,7 @@ struct mmp_pdma_chan {
 	bool idle;			/* channel statue machine */
 	bool byte_align;
 
+	u32 bytes_residue;
 	struct dma_pool *desc_pool;	/* Descriptors pool */
 };
 
@@ -318,7 +320,7 @@ static void enable_chan(struct mmp_pdma_phy *phy)
 
 static void disable_chan(struct mmp_pdma_phy *phy)
 {
-	u32 reg, dcsr;
+	u32 reg, dcsr, cnt = 1000;
 
 	if (!phy)
 		return;
@@ -335,6 +337,19 @@ static void disable_chan(struct mmp_pdma_phy *phy)
 		/* If no vchan, just clear the RUN bit */
 		writel(dcsr & ~DCSR_RUN, phy->base + reg);
 	}
+
+	/* ensure dma is stopped. */
+	do {
+		u32 dcsr = readl(phy->base + reg);
+
+		if (dcsr & DCSR_STOPSTATE)
+			return;
+		udelay(10);
+	} while (--cnt);
+
+	if (!cnt)
+		dev_warn(phy->vchan ? phy->vchan->dev : NULL,
+			 "DMA channel %d failed to stop within timeout\n", phy->idx);
 }
 
 static int clear_chan_irq(struct mmp_pdma_phy *phy)
@@ -491,6 +506,7 @@ static void start_pending_queue(struct mmp_pdma_chan *chan)
 	pdev->ops->write_next_addr(chan->phy, desc->async_tx.phys);
 	enable_chan(chan->phy);
 	chan->idle = false;
+	chan->bytes_residue = 0;
 }
 
 
@@ -695,7 +711,7 @@ mmp_pdma_prep_slave_sg(struct dma_chan *dchan, struct scatterlist *sgl,
 	if ((sgl == NULL) || (sg_len == 0))
 		return NULL;
 
-	chan->byte_align = false;
+	chan->byte_align = true;
 
 	mmp_pdma_config_write(dchan, &chan->slave_config, dir);
 
@@ -919,6 +935,7 @@ static int mmp_pdma_terminate_all(struct dma_chan *dchan)
 	mmp_pdma_free_desc_list(chan, &chan->chain_running);
 	spin_unlock_irqrestore(&chan->desc_lock, flags);
 	chan->idle = true;
+	chan->bytes_residue = 0;
 
 	return 0;
 }
@@ -938,7 +955,7 @@ static unsigned int mmp_pdma_residue(struct mmp_pdma_chan *chan,
 	 * been completed. Therefore, its residue is 0.
 	 */
 	if (!chan->phy)
-		return 0;
+		return chan->bytes_residue; /* special case for EORIRQEN */
 
 	if (chan->dir == DMA_DEV_TO_MEM)
 		curr = pdev->ops->read_dst_addr(chan->phy);
@@ -1054,6 +1071,13 @@ static void dma_do_tasklet(struct tasklet_struct *t)
 
 	/* submit pending list; callback for each desc; free desc */
 	spin_lock_irqsave(&chan->desc_lock, flags);
+	list_for_each_entry(desc, &chan->chain_running, node) {
+		if (desc->desc.dcmd & DCMD_ENDIRQEN) {
+			chan->bytes_residue =
+				mmp_pdma_residue(chan, desc->async_tx.cookie);
+			break;
+		}
+	}
 
 	list_for_each_entry_safe(desc, _desc, &chan->chain_running, node) {
 		/*
@@ -1156,6 +1180,7 @@ static int mmp_pdma_chan_init(struct mmp_pdma_device *pdev, int idx, int irq)
 	INIT_LIST_HEAD(&chan->chain_pending);
 	INIT_LIST_HEAD(&chan->chain_running);
 
+	chan->bytes_residue = 0;
 	/* register virt channel to dma engine */
 	list_add_tail(&chan->chan.device_node, &pdev->device.channels);
 
@@ -1184,7 +1209,7 @@ static const struct mmp_pdma_ops spacemit_k1_pdma_ops = {
 	.set_desc_dst_addr = set_desc_dst_addr_64,
 	.get_desc_src_addr = get_desc_src_addr_64,
 	.get_desc_dst_addr = get_desc_dst_addr_64,
-	.run_bits = (DCSR_RUN | DCSR_LPAEEN),
+	.run_bits = (DCSR_RUN | DCSR_LPAEEN | DCSR_EORIRQEN | DCSR_EORSTOPEN),
 	.dma_mask = DMA_BIT_MASK(64),	/* force 64-bit DMA addr capability */
 };
 
