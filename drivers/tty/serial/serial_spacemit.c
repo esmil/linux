@@ -896,6 +896,7 @@ static void pxa_uart_receive_dma_cb(void *data)
 static void pxa_uart_transmit_dma_cb(void *data)
 {
 	struct uart_pxa_port *up = (struct uart_pxa_port *)data;
+	struct tty_port *tport = &up->port.state->port;
 	struct uart_pxa_dma *pxa_dma = &up->uart_dma;
 
 	if (up->from_resume)
@@ -924,6 +925,14 @@ static void pxa_uart_transmit_dma_cb(void *data)
 		up->port.icount.tx++;
 		up->port.x_char = 0;
 	}
+
+	if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS) {
+		uart_write_wakeup(&up->port);
+	}
+
+	if (!kfifo_is_empty(&tport->xmit_fifo)) {
+		tasklet_schedule(&pxa_dma->tklet);
+        }
 }
 
 static void pxa_uart_dma_init(struct uart_pxa_port *up)
