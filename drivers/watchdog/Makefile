@@ -201,6 +201,7 @@ obj-$(CONFIG_WATCHDOG_RTAS) += wdrtas.o
 
 # RISC-V Architecture
 obj-$(CONFIG_STARFIVE_WATCHDOG) += starfive-wdt.o
+obj-$(CONFIG_SPACEMIT_K1_WATCHDOG) += spacemit-k1-wdt.o
 
 # S390 Architecture
 obj-$(CONFIG_DIAG288_WATCHDOG) += diag288_wdt.o

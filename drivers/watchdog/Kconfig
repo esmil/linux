@@ -2141,6 +2141,20 @@ config STARFIVE_WATCHDOG
 	  Say Y here to support the watchdog of StarFive JH7100 and JH7110
 	  SoC. This driver can also be built as a module if choose M.
 
+config SPACEMIT_K1_WATCHDOG
+	tristate "Spacemit k1 Watchdog"
+	depends on SOC_SPACEMIT
+	select WATCHDOG_CORE
+	help
+	  Spacemit k1 SoC Watchdog timer. This will reboot your system when
+	  the timeout is reached.
+
+config SPACEMIT_K1_WDT_TEST
+	bool "Support K1 watchdog test"
+	depends on SOC_SPACEMIT && SPACEMIT_K1_WATCHDOG
+	help
+	  This will enable K1 watchdog timer test.
+
 # S390 Architecture
 
 config DIAG288_WATCHDOG
