@@ -472,6 +472,15 @@ config RC_XBOX_DVD
 	   To compile this driver as a module, choose M here: the module will be
 	   called xbox_remote.
 
+config IR_SPACEMIT_K1
+	tristate "SPACEMIT IR remote Recriver control"
+	depends on SOC_SPACEMIT
+	help
+	   Say Y if you want to use spacemit IR Controller
+
+	   To compile this driver as a module, choose M here: the module will be
+	   called spacemit-ir.
+
 source "drivers/media/rc/img-ir/Kconfig"
 
 endif #RC_DEVICES
