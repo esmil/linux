@@ -583,6 +583,24 @@
 			status = "disabled";
 		};
 
+		ircrx0: irc-rx0@d4017e00 {
+			compatible = "spacemit-k1,irc";
+			reg = <0x0 0xd4017e00 0x0 0x100>;
+			interrupts = <20>;
+			interrupt-parent = <&saplic>;
+			clock-frequency = <102400000>;
+			status = "disabled";
+		};
+
+		ircrx1: irc-rx1@d4017f00 {
+			compatible = "spacemit-k1,irc";
+			reg = <0x0 0xd4017f00 0x0 0x100>;
+			interrupts = <69>;
+			interrupt-parent = <&saplic>;
+			clock-frequency = <102400000>;
+			status = "disabled";
+		};
+
 		tcm: tcm@00000000 {
 			compatible = "spacemit,k1-tcm";
 			reg = <0x0 0 0x0 0x4000000>;
