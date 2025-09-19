@@ -240,7 +240,7 @@ static struct irq_chip spacemit_gpio_chip = {
 	GPIOCHIP_IRQ_RESOURCE_HELPERS,
 };
 
-static bool __maybe_unused spacemit_of_node_instance_match(struct gpio_chip *gc, unsigned int i)
+static bool spacemit_of_node_instance_match(struct gpio_chip *gc, unsigned int i)
 {
 	struct spacemit_gpio_bank *gb = gpiochip_get_data(gc);
 	struct spacemit_gpio *sg = gb->sg;
@@ -248,33 +248,6 @@ static bool __maybe_unused spacemit_of_node_instance_match(struct gpio_chip *gc,
 	if (i >= SPACEMIT_NR_BANKS)
 		return false;
 	return (gc == &sg->sgb[i].gc);
-}
-
-static int spacemit_gpio_xlate(struct gpio_chip *gc,
-			       const struct of_phandle_args *gpiospec,
-			       u32 *flags)
-{
-	struct spacemit_gpio_bank *gb = gpiochip_get_data(gc);
-	struct spacemit_gpio *sg = gb->sg;
-	int bank_index, gpio_index;
-
-	if (gpiospec->args_count < 2)
-		return -EINVAL;
-
-	bank_index = gpiospec->args[0];
-	gpio_index = gpiospec->args[1];
-
-	if (bank_index >= SPACEMIT_NR_BANKS || gpio_index >= SPACEMIT_NR_GPIOS_PER_BANK)
-		return -EINVAL;
-
-	/* Check if this is the correct bank */
-	if (gc != &sg->sgb[bank_index].gc)
-		return -EINVAL;
-
-	if (flags)
-		*flags = gpiospec->args[2];
-
-	return bank_index * SPACEMIT_NR_GPIOS_PER_BANK + gpio_index;
 }
 
 static int spacemit_gpio_get(struct gpio_chip *gc, unsigned int offset)
@@ -343,10 +316,7 @@ static int spacemit_gpio_add_bank(struct spacemit_gpio *sg,
 
 	gc->base		= index * SPACEMIT_NR_GPIOS_PER_BANK;
 	gc->of_gpio_n_cells	= 3;
-
-#ifdef CONFIG_OF_GPIO
-	gc->of_xlate = spacemit_gpio_xlate;
-#endif
+	gc->of_node_instance_match = spacemit_of_node_instance_match;
 
 	girq			= &gc->irq;
 	girq->threaded		= true;
