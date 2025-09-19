@@ -723,7 +723,6 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <21 4>, <22 4>;
 			interrupt-names = "rtc 1Hz", "rtc alarm";
-			clocks = <&ccu CLK_RTC>;
 			resets = <&reset RESET_RTC>;
 			status = "disabled";
 		};
