@@ -752,6 +752,7 @@
 			reg = <0x0 0xd4017e00 0x0 0x100>;
 			interrupts = <20>;
 			interrupt-parent = <&saplic>;
+			resets = <&reset RESET_IR0>;
 			clock-frequency = <102400000>;
 			status = "disabled";
 		};
@@ -761,6 +762,7 @@
 			reg = <0x0 0xd4017f00 0x0 0x100>;
 			interrupts = <69>;
 			interrupt-parent = <&saplic>;
+			resets = <&reset RESET_IR1>;
 			clock-frequency = <102400000>;
 			status = "disabled";
 		};
