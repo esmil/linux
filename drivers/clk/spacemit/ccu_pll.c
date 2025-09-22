@@ -192,16 +192,22 @@ static int ccu_plla_enable(struct clk_hw *hw)
 {
 	struct ccu_pll *pll = hw_to_ccu_pll(hw);
 	struct ccu_common *common = &pll->common;
+#ifndef CONFIG_SOC_SPACEMIT_K3_FPGA
 	unsigned int tmp;
+#endif
 
 	ccu_update(common, swcr2, PLLA_SWCR2_EN, PLLA_SWCR2_EN);
 
+#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
+	return 0;
+#else
 	/* check lock status */
 	return regmap_read_poll_timeout_atomic(common->lock_regmap,
 					       pll->config.reg_lock,
 					       tmp,
 					       tmp & pll->config.mask_lock,
 					       PLL_DELAY_US, PLL_TIMEOUT_US);
+#endif
 }
 
 static void ccu_plla_disable(struct clk_hw *hw)
