@@ -270,7 +270,7 @@
 		};
 
 		syscon_mpmu: system-controller@d4050000 {
-			compatible = "spacemit,k3-syscon-mpmu";
+			compatible = "spacemit,k3-syscon-mpmu", "syscon";
 			reg = <0x0 0xd4050000 0x0 0x10000>;
 			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>,
 				 <&vctcxo_24m>, <&reserved_clk>, <&external_clk>;
@@ -288,7 +288,7 @@
 		};
 
 		syscon_apmu: system-controller@d4282800 {
-			compatible = "spacemit,k3-syscon-apmu";
+			compatible = "spacemit,k3-syscon-apmu", "syscon";
 			reg = <0x0 0xd4282800 0x0 0x400>;
 			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
 				 <&reserved_clk>, <&external_clk>;
@@ -325,7 +325,7 @@
 		};
 
 		syscon_rcpu_sysctrl: system-controller@c0880000 {
-			compatible = "spacemit,k3-syscon-rcpu-sysctrl";
+			compatible = "spacemit,k3-syscon-rcpu-sysctrl", "syscon";
 			reg = <0x0 0xc0880000 0x0 0x1000>;
 			clocks = <&vctcxo_24m>, <&external_clk>;
 			clock-names = "vctcxo_24m", "external_clk";
@@ -357,7 +357,7 @@
 		};
 
 		syscon_rpmu: system-controller@c088c000 {
-			compatible = "spacemit,k3-syscon-rpmu";
+			compatible = "spacemit,k3-syscon-rpmu", "syscon";
 			reg = <0x0 0xc088c000 0x0 0x800>;
 			#clock-cells = <1>;
 		};
