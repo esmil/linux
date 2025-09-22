@@ -390,7 +390,7 @@
 			clock-names = "core", "bus";
 			gpio-controller;
 			#gpio-cells = <3>;
-			interrupts = <58 4>;
+			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			interrupt-controller;
 			#interrupt-cells = <3>;
@@ -426,7 +426,7 @@
 			compatible = "spacemit,k1-pdma";
 			reg = <0x0 0xd4000000 0x0 0x4000>;
 			interrupt-parent = <&saplic>;
-			interrupts = <72 4>;
+			interrupts = <72 IRQ_TYPE_LEVEL_HIGH>;
 			#dma-cells= <2>;
 			#dma-channels = <32>;
 			max-burst-size = <64>;
@@ -438,7 +438,7 @@
 			reg = <0x0 0xd4017000 0x0 0x100>;
 			fifo-size = <256>;
 			interrupt-parent = <&saplic>;
-			interrupts = <42 4>;
+			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
 			clk-fpga = <14750000>;
 			dmas = <&pdma0 4 1
 				&pdma0 3 1>;
@@ -622,7 +622,7 @@
 			spacemit,qspi-ahb-enable = <0>;
 			spacemit,qspi-freq = <26500000>;
 			spacemit,qspi-id = <4>;
-			interrupts = <117 4>;
+			interrupts = <117 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			spacemit,qspi-tx-dma = <1>;
 			spacemit,qspi-rx-dma = <1>;
@@ -635,7 +635,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac90000 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <210 4>;
+			interrupts = <210 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -644,7 +644,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac90400 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <212 4>;
+			interrupts = <212 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -653,7 +653,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac90800 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <214 4>;
+			interrupts = <214 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -662,7 +662,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac90c00 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <216 4>;
+			interrupts = <216 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -671,7 +671,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac91000 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <217 4>;
+			interrupts = <217 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -680,7 +680,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac91400 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <226 4>;
+			interrupts = <226 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -689,7 +689,7 @@
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac91800 0x0 0x400>;
 			interrupt-parent = <&saplic>;
-			interrupts = <227 4>;
+			interrupts = <227 IRQ_TYPE_LEVEL_HIGH>;
 			#mbox-cells = <1>;
 			status = "okay";
 		};
@@ -729,7 +729,7 @@
 
 			counter0 {
 				compatible = "spacemit,timer-match";
-				interrupts = <23 4>;
+				interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;
 				interrupt-parent = <&saplic>;
 				spacemit,timer-broadcast;
 				spacemit,timer-counter-id = <0>;
@@ -741,7 +741,7 @@
 			compatible = "mrvl,mmp-rtc";
 			reg = <0x0 0xd4010000 0x0 0x100>;
 			interrupt-parent = <&saplic>;
-			interrupts = <21 4>, <22 4>;
+			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>, <22 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rtc 1Hz", "rtc alarm";
 			resets = <&reset RESET_RTC>;
 			status = "disabled";
@@ -750,7 +750,7 @@
 		ircrx0: irc-rx0@d4017e00 {
 			compatible = "spacemit-k1,irc";
 			reg = <0x0 0xd4017e00 0x0 0x100>;
-			interrupts = <20 4>;
+			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			resets = <&reset RESET_IR0>;
 			clock-frequency = <102400000>;
@@ -760,7 +760,7 @@
 		ircrx1: irc-rx1@d4017f00 {
 			compatible = "spacemit-k1,irc";
 			reg = <0x0 0xd4017f00 0x0 0x100>;
-			interrupts = <69 4>;
+			interrupts = <69 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			resets = <&reset RESET_IR1>;
 			clock-frequency = <102400000>;
