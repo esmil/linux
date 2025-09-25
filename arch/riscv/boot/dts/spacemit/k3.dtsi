@@ -16,6 +16,21 @@
 
 	aliases {
 		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		serial4 = &uart4;
+		serial5 = &uart5;
+		serial6 = &uart6;
+		serial7 = &uart7;
+		serial8 = &uart8;
+		serial9 = &uart9;
+		serial10 = &r_uart0;
+		serial11 = &r_uart1;
+		serial12 = &r_uart2;
+		serial13 = &r_uart3;
+		serial14 = &r_uart4;
+		serial15 = &r_uart5;
 		mmc0 = &sdcard;
 		mmc1 = &sdio;
 		mmc2 = &emmc;
@@ -435,16 +450,237 @@
 		};
 
 		uart0: serial@d4017000 {
-			compatible = "spacemit,pxa-uart";
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
 			reg = <0x0 0xd4017000 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART0>,<&syscon_apbc CLK_APBC_UART0_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
 			fifo-size = <256>;
 			interrupt-parent = <&saplic>;
 			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
-			clk-fpga = <14750000>;
 			dmas = <&pdma0 4 1
 				&pdma0 3 1>;
 			dma-names = "rx", "tx";
 			status = "ok";
+		};
+
+		uart1: serial@f0612000 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xf0612000 0x0 0x100>;
+			clocks = <&syscon_apbc2 CLK_APBC2_SEC_UART1>,
+				 <&syscon_apbc2 CLK_APBC2_SEC_UART1_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <43 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart2: serial@d4017100 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017100 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART2>,<&syscon_apbc CLK_APBC_UART2_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <44 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart3: serial@d4017200 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017200 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART3>,<&syscon_apbc CLK_APBC_UART3_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <45 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart4: serial@d4017300 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017300 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART4>,<&syscon_apbc CLK_APBC_UART4_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <46 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart5: serial@d4017400 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017400 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART5>,<&syscon_apbc CLK_APBC_UART5_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <47 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart6: serial@d4017500 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017500 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART6>,<&syscon_apbc CLK_APBC_UART6_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <48 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart7: serial@d4017600 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017600 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART7>,<&syscon_apbc CLK_APBC_UART7_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <49 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart8: serial@d4017700 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017700 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART8>,<&syscon_apbc CLK_APBC_UART8_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <50 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		uart9: serial@d4017800 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xd4017800 0x0 0x100>;
+			clocks = <&syscon_apbc CLK_APBC_UART9>,<&syscon_apbc CLK_APBC_UART9_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <51 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		r_uart0: serial@c0881000 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xc0881000 0x0 0x100>;
+			clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART0>,
+				 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART0_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <251 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		r_uart1: serial@c0881100 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xc0881100 0x0 0x100>;
+			clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART1>,
+				 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART1_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <252 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		r_uart2: serial@c0881200 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xc0881200 0x0 0x100>;
+			clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART2>,
+				 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART2_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <253 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		r_uart3: serial@c0881300 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xc0881300 0x0 0x100>;
+			clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART3>,
+				 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART3_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <254 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		r_uart4: serial@c0881400 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xc0881400 0x0 0x100>;
+			clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART4>,
+				 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART4_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <255 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		r_uart5: serial@c0881500 {
+			compatible = "spacemit,k1-uart",
+				     "intel,xscale-uart";
+			reg = <0x0 0xc0881500 0x0 0x100>;
+			clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART5>,
+				 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART5_BUS>;
+			clock-names = "core", "bus";
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <256>;
+			interrupt-parent = <&saplic>;
+			interrupts = <256 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
 		};
 
 		pwm0: pwm@d401a000 {
