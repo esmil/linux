@@ -570,6 +570,7 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to request irq");
 
+#ifndef CONFIG_SOC_SPACEMIT_K3_FPGA
 	clk = devm_clk_get_enabled(dev, "func");
 	if (IS_ERR(clk))
 		return dev_err_probe(dev, PTR_ERR(clk), "failed to enable func clock");
@@ -577,7 +578,7 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	clk = devm_clk_get_enabled(dev, "bus");
 	if (IS_ERR(clk))
 		return dev_err_probe(dev, PTR_ERR(clk), "failed to enable bus clock");
-
+#endif
 	spacemit_i2c_reset(i2c);
 
 	i2c_set_adapdata(&i2c->adapt, i2c);
