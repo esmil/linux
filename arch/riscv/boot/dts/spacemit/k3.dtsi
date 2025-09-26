@@ -2114,5 +2114,14 @@
 			ref-clk-freq = <26000000>;
 			status = "disabled";
 		};
+
+		linlon-v5@c0500000 {
+			compatible = "arm china,linlon-v5";
+			reg = <0x0 0xc0500000 0x0 0x200000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <74 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&syscon_apmu RESET_APMU_VPU>;
+			status = "disabled";
+		};
 	};
 };
