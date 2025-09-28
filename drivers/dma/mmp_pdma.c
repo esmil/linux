@@ -1356,7 +1356,7 @@ static int mmp_pdma_probe(struct platform_device *op)
 	pdev->device.src_addr_widths = widths;
 	pdev->device.dst_addr_widths = widths;
 	pdev->device.directions = BIT(DMA_MEM_TO_DEV) | BIT(DMA_DEV_TO_MEM);
-	pdev->device.residue_granularity = DMA_RESIDUE_GRANULARITY_DESCRIPTOR;
+	pdev->device.residue_granularity = DMA_RESIDUE_GRANULARITY_BURST;
 
 	/* Set DMA mask based on ops->dma_mask, or OF/platform */
 	if (pdev->ops->dma_mask)
