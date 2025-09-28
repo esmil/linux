@@ -2360,7 +2360,11 @@ int serial8250_do_startup(struct uart_port *port)
 	 * enable until after the FIFOs are enabled; otherwise, an already-
 	 * active sender can swamp the interrupt handler with "too much work".
 	 */
-	up->ier = UART_IER_RLSI | UART_IER_RDI;
+
+	if (up->dma && port->type == PORT_XSCALE)
+		up->ier = UART_IER_DMAE;  /* DMA mode */
+	else
+		up->ier = UART_IER_RLSI | UART_IER_RDI;  /* Interrupts mode */
 
 	if (port->flags & UPF_FOURPORT) {
 		unsigned int icp;
@@ -2720,7 +2724,8 @@ static void serial8250_set_ier(struct uart_port *port, struct ktermios *termios)
 		up->ier |= UART_IER_MSI;
 	if (up->capabilities & UART_CAP_UUE)
 		up->ier |= UART_IER_UUE;
-	if (up->capabilities & UART_CAP_RTOIE)
+	/* Only add RTOIE in Interrupts mode; DMA mode uses DMAE instead */
+	if ((up->capabilities & UART_CAP_RTOIE) && !up->dma)
 		up->ier |= UART_IER_RTOIE;
 
 	serial_port_out(port, UART_IER, up->ier);

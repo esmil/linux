@@ -166,6 +166,17 @@ static int of_platform_serial_setup(struct platform_device *ofdev,
 	up->rs485_start_tx = serial8250_em485_start_tx;
 	up->rs485_stop_tx = serial8250_em485_stop_tx;
 
+#if IS_ENABLED(CONFIG_SERIAL_8250_DMA)
+	if (of_property_present(np, "dmas") || of_property_present(np, "dma-names")) {
+		if (!up->dma) {
+			up->dma = devm_kzalloc(dev, sizeof(*up->dma), GFP_KERNEL);
+			if (!up->dma)
+				goto err_pmruntime;
+			dev_dbg(dev, "DMA enabled via DT (rx/tx)\n");
+        }
+    }
+#endif
+
 	switch (type) {
 	case PORT_RT2880:
 		ret = rt288x_setup(port);

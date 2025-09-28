@@ -77,9 +77,13 @@ static void dma_rx_complete(void *param)
 	/*
 	 * Cannot be combined with the previous check because __dma_rx_complete()
 	 * changes dma->rx_running.
+	 *
+	 * Restart RX DMA immediately to ensure continuous reception and prevent
+	 * data loss, especially for small packets that might not trigger interrupts.
 	 */
-	if (!dma->rx_running && (serial_lsr_in(p) & UART_LSR_DR))
+	if (!dma->rx_running)
 		p->dma->rx_dma(p);
+
 	uart_port_unlock_irqrestore(&p->port, flags);
 }
 
@@ -290,6 +294,31 @@ int serial8250_request_dma(struct uart_8250_port *p)
 	}
 
 	dev_dbg_ratelimited(p->port.dev, "got both dma channels\n");
+
+	/* Configure FCR for XSCALE DMA mode */
+	if (p->port.type == PORT_XSCALE) {
+#if defined(CONFIG_SOC_SPACEMIT_K1)
+		/* K1: PXA-style FIFO configuration for DMA */
+		u8 fcr_val = UART_FCR_ENABLE_FIFO |
+			     UART_FCR_DMA_SELECT |  /* DMA Select */
+			     UART_FCR_PXA_TRAIL |   /* Trailing Bytes */
+			     UART_FCR_PXAR32;       /* 32-byte RX FIFO threshold */
+		serial_out(p, UART_FCR, fcr_val);
+
+#elif defined(CONFIG_SOC_SPACEMIT_K3)
+		/* K3: ITL-style FIFO configuration for DMA */
+		u8 fcr_val = UART_FCR_ENABLE_FIFO |
+			     UART_FCR_K3_TIL |      /* Transmitter Interrupt Level */
+			     UART_FCR_K3_TRAI |     /* Trailing Bytes enable */
+			     UART_FCR_K3_R_ITL_32B; /* 32-byte RX FIFO threshold */
+		serial_out(p, UART_FCR, fcr_val);
+#endif
+	}
+
+	/* Start RX DMA for K3/XSCALE to enable immediate reception */
+	if (p->port.type == PORT_XSCALE && dma->rx_dma) {
+		dma->rx_dma(p);
+	}
 
 	return 0;
 err:
