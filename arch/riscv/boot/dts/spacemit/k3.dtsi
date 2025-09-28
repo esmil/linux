@@ -438,13 +438,13 @@
 			syscon-edge = <&syscon_gpio_edge>;
 		};
 
-		pdma0: pdma@d4000000 {
+		pdma: pdma@d4000000 {
 			compatible = "spacemit,k1-pdma";
 			reg = <0x0 0xd4000000 0x0 0x4000>;
 			interrupt-parent = <&saplic>;
 			interrupts = <72 IRQ_TYPE_LEVEL_HIGH>;
-			#dma-cells= <2>;
-			#dma-channels = <32>;
+			#dma-cells= <1>;
+			#dma-channels = <16>;
 			max-burst-size = <64>;
 			status = "ok";
 		};
@@ -460,8 +460,8 @@
 			fifo-size = <256>;
 			interrupt-parent = <&saplic>;
 			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
-			dmas = <&pdma0 4 1
-				&pdma0 3 1>;
+			dmas = <&pdma 4
+				&pdma 3>;
 			dma-names = "rx", "tx";
 			status = "ok";
 		};
@@ -923,7 +923,7 @@
 			interrupt-parent = <&saplic>;
 			spacemit,qspi-tx-dma = <1>;
 			spacemit,qspi-rx-dma = <1>;
-			dmas = <&pdma0 45 1>;
+			dmas = <&pdma 45>;
 			dma-names = "tx-dma";
 			status = "disabled";
 		};
