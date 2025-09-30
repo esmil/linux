@@ -146,6 +146,10 @@
 #define CLK_MPMU_I2S4_SYSCLK     49
 #define CLK_MPMU_I2S5_SYSCLK     50
 
+/* MPMU resets */
+#define RESET_MPMU_WDT           0
+#define RESET_MPMU_RIPC          1
+
 /* APBC clocks */
 #define CLK_APBC_UART0           0
 #define CLK_APBC_UART2           1
@@ -290,6 +294,76 @@
 #define CLK_APBC_CAN3_BUS        140
 #define CLK_APBC_CAN4_BUS        141
 
+/* APBC resets */
+#define RESET_APBC_UART0         0
+#define RESET_APBC_UART2         1
+#define RESET_APBC_UART3         2
+#define RESET_APBC_UART4         3
+#define RESET_APBC_UART5         4
+#define RESET_APBC_UART6         5
+#define RESET_APBC_UART7         6
+#define RESET_APBC_UART8         7
+#define RESET_APBC_UART9         8
+#define RESET_APBC_UART10        9
+#define RESET_APBC_GPIO          10
+#define RESET_APBC_PWM0          11
+#define RESET_APBC_PWM1          12
+#define RESET_APBC_PWM2          13
+#define RESET_APBC_PWM3          14
+#define RESET_APBC_PWM4          15
+#define RESET_APBC_PWM5          16
+#define RESET_APBC_PWM6          17
+#define RESET_APBC_PWM7          18
+#define RESET_APBC_PWM8          19
+#define RESET_APBC_PWM9          20
+#define RESET_APBC_PWM10         21
+#define RESET_APBC_PWM11         22
+#define RESET_APBC_PWM12         23
+#define RESET_APBC_PWM13         24
+#define RESET_APBC_PWM14         25
+#define RESET_APBC_PWM15         26
+#define RESET_APBC_PWM16         27
+#define RESET_APBC_PWM17         28
+#define RESET_APBC_PWM18         29
+#define RESET_APBC_PWM19         30
+#define RESET_APBC_SPI0          31
+#define RESET_APBC_SPI1          32
+#define RESET_APBC_SPI3          33
+#define RESET_APBC_RTC           34
+#define RESET_APBC_TWSI0         35
+#define RESET_APBC_TWSI1         36
+#define RESET_APBC_TWSI2         37
+#define RESET_APBC_TWSI4         38
+#define RESET_APBC_TWSI5         39
+#define RESET_APBC_TWSI6         40
+#define RESET_APBC_TWSI8         41
+#define RESET_APBC_TIMERS0       42
+#define RESET_APBC_TIMERS1       43
+#define RESET_APBC_TIMERS2       44
+#define RESET_APBC_TIMERS3       45
+#define RESET_APBC_TIMERS4       46
+#define RESET_APBC_TIMERS5       47
+#define RESET_APBC_TIMERS6       48
+#define RESET_APBC_TIMERS7       49
+#define RESET_APBC_AIB           50
+#define RESET_APBC_ONEWIRE       51
+#define RESET_APBC_I2S0          52
+#define RESET_APBC_I2S1          53
+#define RESET_APBC_I2S2          54
+#define RESET_APBC_I2S3          55
+#define RESET_APBC_I2S4          56
+#define RESET_APBC_I2S5          57
+#define RESET_APBC_DRO           58
+#define RESET_APBC_IR0           59
+#define RESET_APBC_IR1           59
+#define RESET_APBC_TSEN          60
+#define RESET_IPC_AP2AUD         61
+#define RESET_APBC_CAN0          62
+#define RESET_APBC_CAN1          63
+#define RESET_APBC_CAN2          64
+#define RESET_APBC_CAN3          65
+#define RESET_APBC_CAN4          66
+
 /* APMU clocks */
 #define CLK_APMU_AXICLK          0
 #define CLK_APMU_CCI550          1
@@ -381,11 +455,99 @@
 #define CLK_APMU_ISIM_VCLK2      87
 #define CLK_APMU_ISIM_VCLK3      88
 
+/* APMU resets */
+#define RESET_APMU_CSI           0
+#define RESET_APMU_CCIC2PHY      1
+#define RESET_APMU_CCIC3PHY      2
+#define RESET_APMU_ISP_CIBUS     3
+#define RESET_APMU_DSI_ESC       4
+#define RESET_APMU_LCD           5
+#define RESET_APMU_V2D           6
+#define RESET_APMU_LCD_MCLK      7
+#define RESET_APMU_LCD_DSCCLK    8
+#define RESET_APMU_SC2_HCLK      9
+#define RESET_APMU_CCIC_4X       10
+#define RESET_APMU_CCIC1_PHY     11
+#define RESET_APMU_SDH_AXI       12
+#define RESET_APMU_SDH0          13
+#define RESET_APMU_SDH1          14
+#define RESET_APMU_SDH2          15
+#define RESET_APMU_USB2          16
+#define RESET_APMU_USB3_PORTA    17
+#define RESET_APMU_USB3_PORTB    18
+#define RESET_APMU_USB3_PORTC    19
+#define RESET_APMU_USB3_PORTD    20
+#define RESET_APMU_QSPI          21
+#define RESET_APMU_QSPI_BUS      22
+#define RESET_APMU_DMA           23
+#define RESET_APMU_AES_WTM       24
+#define RESET_APMU_MCB_DCLK      25
+#define RESET_APMU_MCB_ACLK      26
+#define RESET_APMU_VPU           27
+#define RESET_APMU_DTC           28
+#define RESET_APMU_GPU           29
+#define RESET_APMU_ALZO          30
+#define RESET_APMU_MC            31
+#define RESET_APMU_CPU0_POP      32
+#define RESET_APMU_CPU0_SW       33
+#define RESET_APMU_CPU1_POP      34
+#define RESET_APMU_CPU1_SW       35
+#define RESET_APMU_CPU2_POP      36
+#define RESET_APMU_CPU2_SW       37
+#define RESET_APMU_CPU3_POP      38
+#define RESET_APMU_CPU3_SW       39
+#define RESET_APMU_C0_MPSUB_SW   40
+#define RESET_APMU_CPU4_POP      41
+#define RESET_APMU_CPU4_SW       42
+#define RESET_APMU_CPU5_POP      43
+#define RESET_APMU_CPU5_SW       44
+#define RESET_APMU_CPU6_POP      45
+#define RESET_APMU_CPU6_SW       46
+#define RESET_APMU_CPU7_POP      47
+#define RESET_APMU_CPU7_SW       48
+#define RESET_APMU_C1_MPSUB_SW   49
+#define RESET_APMU_MPSUB_DBG     50
+#define RESET_APMU_UCIE          51
+#define RESET_APMU_RCPU          52
+#define RESET_APMU_DSI4LN2_ESCCLK     53
+#define RESET_APMU_DSI4LN2_LCD_SW     54
+#define RESET_APMU_DSI4LN2_LCD_MCLK   55
+#define RESET_APMU_DSI4LN2_LCD_DSCCLK 56
+#define RESET_APMU_DSI4LN2_DPU_ACLK   57
+#define RESET_APMU_DPU_ACLK      58
+#define RESET_APMU_UFS_ACLK      59
+#define RESET_APMU_EDP0          60
+#define RESET_APMU_EDP1          61
+#define RESET_APMU_PCIE_PORTA    62
+#define RESET_APMU_PCIE_PORTB    63
+#define RESET_APMU_PCIE_PORTC    64
+#define RESET_APMU_PCIE_PORTD    65
+#define RESET_APMU_PCIE_PORTE    66
+#define RESET_APMU_EMAC0         67
+#define RESET_APMU_EMAC1         68
+#define RESET_APMU_EMAC2         69
+#define RESET_APMU_ESPI_MCLK     70
+#define RESET_APMU_ESPI_SCLK     71
+
 /* DCIU clocks */
 #define CLK_DCIU_HDMA            0
 #define CLK_DCIU_DMA350          1
 #define CLK_DCIU_C2_TCM_PIPE     2
 #define CLK_DCIU_C3_TCM_PIPE     3
+
+/* DCIU resets*/
+#define RESET_DCIU_HDMA          0
+#define RESET_DCIU_DMA350        1
+#define RESET_DCIU_DMA350_0      2
+#define RESET_DCIU_DMA350_1      3
+#define RESET_DCIU_AXIDMA0       4
+#define RESET_DCIU_AXIDMA1       5
+#define RESET_DCIU_AXIDMA2       6
+#define RESET_DCIU_AXIDMA3       7
+#define RESET_DCIU_AXIDMA4       8
+#define RESET_DCIU_AXIDMA5       9
+#define RESET_DCIU_AXIDMA6       10
+#define RESET_DCIU_AXIDMA7       11
 
 /* RCPU SYSCTRL clocks */
 #define CLK_RCPU_SYSCTRL_RCAN0       0
@@ -409,6 +571,19 @@
 #define CLK_RCPU_SYSCTRL_RI2S0_SYSCLK   18
 #define CLK_RCPU_SYSCTRL_RI2S1_SYSCLK   19
 
+/* RCPU SYSCTRL resets */
+#define RESET_RCPU_SYSCTRL_RCAN0 0
+#define RESET_RCPU_SYSCTRL_RCAN1 1
+#define RESET_RCPU_SYSCTRL_RCAN2 2
+#define RESET_RCPU_SYSCTRL_RCAN3 3
+#define RESET_RCPU_SYSCTRL_RCAN4 4
+#define RESET_RCPU_SYSCTRL_RIRC0 5
+#define RESET_RCPU_SYSCTRL_RIRC1 6
+#define RESET_RCPU_SYSCTRL_RGMAC 7
+#define RESET_RCPU_SYSCTRL_RESPI 8
+#define RESET_RCPU_SYSCTRL_RI2S0_SYSCLK 9
+#define RESET_RCPU_SYSCTRL_RI2S1_SYSCLK 10
+
 /* RCPU UARTCTRL clocks */
 #define CLK_RCPU_UARTCTRL_RUART0 0
 #define CLK_RCPU_UARTCTRL_RUART1 1
@@ -423,6 +598,14 @@
 #define CLK_RCPU_UARTCTRL_RUART4_BUS 10
 #define CLK_RCPU_UARTCTRL_RUART5_BUS 11
 
+/* RCPU UARTCTRL resets */
+#define RESET_RCPU_UARTCTRL_RUART0 0
+#define RESET_RCPU_UARTCTRL_RUART1 1
+#define RESET_RCPU_UARTCTRL_RUART2 2
+#define RESET_RCPU_UARTCTRL_RUART3 3
+#define RESET_RCPU_UARTCTRL_RUART4 4
+#define RESET_RCPU_UARTCTRL_RUART5 5
+
 /* RCPU I2SCTRL clocks */
 #define CLK_RCPU_I2SCTRL_RI2S0      0
 #define CLK_RCPU_I2SCTRL_RI2S1      1
@@ -435,6 +618,14 @@
 #define CLK_RCPU_I2SCTRL_RI2S2_SYSCLK 8
 #define CLK_RCPU_I2SCTRL_RI2S3_SYSCLK 9
 
+/* RCPU I2SCTRL resets */
+#define RESET_RCPU_I2SCTRL_RI2S0 0
+#define RESET_RCPU_I2SCTRL_RI2S1 1
+#define RESET_RCPU_I2SCTRL_RI2S2 2
+#define RESET_RCPU_I2SCTRL_RI2S3 3
+#define RESET_RCPU_I2SCTRL_RI2S2_SYSCLK 4
+#define RESET_RCPU_I2SCTRL_RI2S3_SYSCLK 5
+
 /* RCPU SPICTRL clocks */
 #define CLK_RCPU_SPICTRL_RSPI0      0
 #define CLK_RCPU_SPICTRL_RSPI1      1
@@ -443,6 +634,11 @@
 #define CLK_RCPU_SPICTRL_RSPI1_BUS  4
 #define CLK_RCPU_SPICTRL_RSPI2_BUS  5
 
+/* RCPU SPICTRL resets */
+#define RESET_RCPU_SPICTRL_RSPI0 0
+#define RESET_RCPU_SPICTRL_RSPI1 1
+#define RESET_RCPU_SPICTRL_RSPI2 2
+
 /* RCPU I2CCTRL clocks */
 #define CLK_RCPU_I2CCTRL_RI2C0      0
 #define CLK_RCPU_I2CCTRL_RI2C1      1
@@ -450,6 +646,11 @@
 #define CLK_RCPU_I2CCTRL_RI2C0_BUS  3
 #define CLK_RCPU_I2CCTRL_RI2C1_BUS  4
 #define CLK_RCPU_I2CCTRL_RI2C2_BUS  5
+
+/* RCPU I2CCTRL resets */
+#define RESET_RCPU_I2CCTRL_RI2C0 0
+#define RESET_RCPU_I2CCTRL_RI2C1 1
+#define RESET_RCPU_I2CCTRL_RI2C2 2
 
 /* RMPU clocks */
 #define CLK_RPMU_RCPU_APB        0
@@ -470,6 +671,19 @@
 #define CLK_RPMU_RGPIO           15
 #define CLK_RPMU_RGPIO_EDGE      16
 #define CLK_RPMU_RGPIO_LP        17
+
+/* RMPU resets */
+#define RESET_RPMU_RTIMER1       0
+#define RESET_RPMU_RTIMER2       1
+#define RESET_RPMU_RTIMER3       2
+#define RESET_RPMU_RTIMER4       3
+#define RESET_RPMU_IPC2AP        4
+#define RESET_RPMU_IPC2CP        5
+#define RESET_RPMU_IPC2MSA       6
+#define RESET_RPMU_RT24_CORE0    7
+#define RESET_RPMU_RT24_CORE1    8
+#define RESET_RPMU_GPIO          9
+#define RESET_RPMU_GPIO_EDGE     10
 
 /* RCPU PWMCTRL clocks */
 #define CLK_RCPU_PWMCTRL_RPWM0   0
@@ -493,6 +707,18 @@
 #define CLK_RCPU_PWMCTRL_RPWM8_BUS 18
 #define CLK_RCPU_PWMCTRL_RPWM9_BUS 19
 
+/* RCPU PWMCTRL resets */
+#define RESET_RCPU_PWMCTRL_PWM0  0
+#define RESET_RCPU_PWMCTRL_PWM1  1
+#define RESET_RCPU_PWMCTRL_PWM2  2
+#define RESET_RCPU_PWMCTRL_PWM3  3
+#define RESET_RCPU_PWMCTRL_PWM4  4
+#define RESET_RCPU_PWMCTRL_PWM5  5
+#define RESET_RCPU_PWMCTRL_PWM6  6
+#define RESET_RCPU_PWMCTRL_PWM7  7
+#define RESET_RCPU_PWMCTRL_PWM8  8
+#define RESET_RCPU_PWMCTRL_PWM9  9
+
 /* APBC2 clocks */
 #define CLK_APBC2_SEC_UART1      0
 #define CLK_APBC2_SEC_UART1_BUS  1
@@ -507,5 +733,13 @@
 #define CLK_APBC2_SEC_TIMERS_BUS 10
 #define CLK_APBC2_SEC_GPIO       11
 #define CLK_APBC2_SEC_GPIO_BUS   12
+
+/* APBC2 resets */
+#define RESET_APBC2_SEC_UART1    0
+#define RESET_APBC2_SEC_SPI2     1
+#define RESET_APBC2_SEC_TWSI3    2
+#define RESET_APBC2_SEC_RTC      3
+#define RESET_APBC2_SEC_TIMERS   4
+#define RESET_APBC2_SEC_GPIO     5
 
 #endif /* _DT_BINDINGS_SPACEMIT_CCU_K3_H_ */
