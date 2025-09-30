@@ -155,6 +155,7 @@ to_spacemit_ccu_adev(struct auxiliary_device *adev)
 #define APMU_QSPI_CLK_RES_CTRL		0x060
 #define APMU_DMA_CLK_RES_CTRL		0x064
 #define APMU_AES_CLK_RES_CTRL		0x068
+#define APMU_MCB_CLK_RES_CTRL		0x06c
 #define APMU_VPU_CLK_RES_CTRL		0x0a4
 #define APMU_DTC_CLK_RES_CTRL		0x0ac
 #define APMU_GPU_CLK_RES_CTRL		0x0cc
@@ -192,6 +193,19 @@ to_spacemit_ccu_adev(struct auxiliary_device *adev)
 #define DCIU_DMASYS_SDMA_CLK_EN		0x238
 #define DCIU_C2_TCM_PIPE_CLK		0x244
 #define DCIU_C3_TCM_PIPE_CLK		0x248
+
+#define DCIU_DMASYS_S0_RSTN		0x204
+#define DCIU_DMASYS_S1_RSTN		0x208
+#define DCIU_DMASYS_A0_RSTN		0x20C
+#define DCIU_DMASYS_A1_RSTN		0x210
+#define DCIU_DMASYS_A2_RSTN		0x214
+#define DCIU_DMASYS_A3_RSTN		0x218
+#define DCIU_DMASYS_A4_RSTN		0x21C
+#define DCIU_DMASYS_A5_RSTN		0x220
+#define DCIU_DMASYS_A6_RSTN		0x224
+#define DCIU_DMASYS_A7_RSTN		0x228
+#define DCIU_DMASYS_RSTN		0x22C
+#define DCIU_DMASYS_SDMA_RSTN		0x230
 
 /* RCPU SYSCTRL register offsets */
 #define RCPU_CAN_CLK_RST		0x4c
@@ -243,6 +257,8 @@ to_spacemit_ccu_adev(struct auxiliary_device *adev)
 #define RCPU5_RCPU_BUS_CLK_CTRL		0xC0
 #define RCPU5_RT24_CORE0_CLK_CTRL	0xC4
 #define RCPU5_RT24_CORE1_CLK_CTRL	0xC8
+#define RCPU5_RT24_CORE0_SW_RESET	0xCC
+#define RCPU5_RT24_CORE1_SW_RESET	0xD0
 
 /* RCPU PWMCTRL register offsets */
 #define RCPU6_PWM0_CLK_RST		0x00
