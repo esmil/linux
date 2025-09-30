@@ -1036,7 +1036,7 @@ CCU_MUX_DIV_GATE_DEFINE(isim_vclk_out3, isim_vclk_parents, APMU_SNR_ISIM_VCLK_CT
 CCU_GATE_DEFINE(hdma_clk, CCU_PARENT_HW(axi_clk), DCIU_DMASYS_CLK_EN, BIT(0), 0);
 CCU_GATE_DEFINE(dma350_clk, CCU_PARENT_HW(axi_clk), DCIU_DMASYS_SDMA_CLK_EN, BIT(0), 0);
 CCU_GATE_DEFINE(c2_tcm_pipe_clk, CCU_PARENT_HW(axi_clk), DCIU_C2_TCM_PIPE_CLK, BIT(0), 0);
-CCU_GATE_DEFINE(c3_tcm_pipe_clk, CCU_PARENT_HW(axi_clk), DCIU_C2_TCM_PIPE_CLK, BIT(0), 0);
+CCU_GATE_DEFINE(c3_tcm_pipe_clk, CCU_PARENT_HW(axi_clk), DCIU_C3_TCM_PIPE_CLK, BIT(0), 0);
 /* DCIU clocks end */
 
 /* RPMU clocks start */
@@ -1728,7 +1728,7 @@ static struct clk_hw *k3_ccu_rcpu_sysctrl_hws[] = {
 };
 
 static const struct spacemit_ccu_data k3_ccu_rcpu_sysctrl_data = {
-	.reset_name	= "rcpu-sysctrl-reset",
+	.reset_name	= "rsysctrl-reset",
 	.hws		= k3_ccu_rcpu_sysctrl_hws,
 	.num		= ARRAY_SIZE(k3_ccu_rcpu_sysctrl_hws),
 };
@@ -1749,7 +1749,7 @@ static struct clk_hw *k3_ccu_rcpu_uartctrl_hws[] = {
 };
 
 static const struct spacemit_ccu_data k3_ccu_rcpu_uartctrl_data = {
-	.reset_name	= "rcpu-uartctrl-reset",
+	.reset_name	= "ruartctrl-reset",
 	.hws		= k3_ccu_rcpu_uartctrl_hws,
 	.num		= ARRAY_SIZE(k3_ccu_rcpu_uartctrl_hws),
 };
@@ -1768,7 +1768,7 @@ static struct clk_hw *k3_ccu_rcpu_i2sctrl_hws[] = {
 };
 
 static const struct spacemit_ccu_data k3_ccu_rcpu_i2sctrl_data = {
-	.reset_name	= "rcpu-i2sctrl-reset",
+	.reset_name	= "ri2sctrl-reset",
 	.hws		= k3_ccu_rcpu_i2sctrl_hws,
 	.num		= ARRAY_SIZE(k3_ccu_rcpu_i2sctrl_hws),
 };
@@ -1783,7 +1783,7 @@ static struct clk_hw *k3_ccu_rcpu_spictrl_hws[] = {
 };
 
 static const struct spacemit_ccu_data k3_ccu_rcpu_spictrl_data = {
-	.reset_name	= "rcpu-spictrl-reset",
+	.reset_name	= "rspictrl-reset",
 	.hws		= k3_ccu_rcpu_spictrl_hws,
 	.num		= ARRAY_SIZE(k3_ccu_rcpu_spictrl_hws),
 };
@@ -1798,7 +1798,7 @@ static struct clk_hw *k3_ccu_rcpu_i2cctrl_hws[] = {
 };
 
 static const struct spacemit_ccu_data k3_ccu_rcpu_i2cctrl_data = {
-	.reset_name	= "rcpu-i2cctrl-reset",
+	.reset_name	= "ri2cctrl-reset",
 	.hws		= k3_ccu_rcpu_i2cctrl_hws,
 	.num		= ARRAY_SIZE(k3_ccu_rcpu_i2cctrl_hws),
 };
@@ -1853,7 +1853,7 @@ static struct clk_hw *k3_ccu_rcpu_pwmctrl_hws[] = {
 	[CLK_RCPU_PWMCTRL_RPWM9_BUS]	= &rpwm9_bus_clk.common.hw,
 };
 static const struct spacemit_ccu_data k3_ccu_rcpu_pwmctrl_data = {
-	.reset_name	= "rcpu-pwmctrl-reset",
+	.reset_name	= "rpwmctrl-reset",
 	.hws		= k3_ccu_rcpu_pwmctrl_hws,
 	.num		= ARRAY_SIZE(k3_ccu_rcpu_pwmctrl_hws),
 };
