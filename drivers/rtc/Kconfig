@@ -2128,6 +2128,13 @@ config RTC_DRV_S32G
 	  This RTC module can be used as a wakeup source.
 	  Please note that it is not battery-powered.
 
+config RTC_DRV_RPMI
+	tristate "RTC driver based on RISC-V RPMI"
+	depends on SOC_SPACEMIT && RISCV_SBI_MPXY_MBOX
+	help
+	   Support for rtc based on the rtc service group expansioned by
+	   Spacemit.
+
 comment "HID Sensor RTC drivers"
 
 config RTC_DRV_HID_SENSOR_TIME
