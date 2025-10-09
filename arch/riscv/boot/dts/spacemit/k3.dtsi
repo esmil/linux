@@ -715,6 +715,12 @@
 			status = "disabled";
 		};
 
+		mpxy_mbox: mpxy_mbox@0 {
+			compatible = "riscv,sbi-mpxy-mbox";
+			#mbox-cells = <2>;
+			status = "disabled";
+		};
+
 		timer0: timer@d4014000 {
 			compatible = "spacemit,soc-timer";
 			reg = <0x0 0xd4014000 0x0 0xc8>;
