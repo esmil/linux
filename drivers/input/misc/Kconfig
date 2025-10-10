@@ -992,4 +992,11 @@ config INPUT_STPMIC1_ONKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called stpmic1_onkey.
 
+config INPUT_DRV_RPMI_PWRKEY
+	tristate "Pwrkey driver based on RISC-V RPMI"
+	depends on SOC_SPACEMIT && RISCV_SBI_MPXY_MBOX
+	help
+	   Support for pwrkey based on the pwrkey service group expansioned by
+	   Spacemit.
+
 endif
