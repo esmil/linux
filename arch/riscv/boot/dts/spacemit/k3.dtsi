@@ -729,6 +729,15 @@
 			status = "disabled";
 		};
 
+		rpmi_pwrkey: rpmi_pwrkey@0 {
+			compatible = "riscv,rpmi-pwrkey";
+			mboxes = <&mpxy_mbox 0xf 0x0>;
+			interrupt-parent = <&saplic>;
+			interrupts = <64 4>;
+			interrupt-names = "rpmi pwrkey";
+			status = "disabled";
+		};
+
 		timer0: timer@d4014000 {
 			compatible = "spacemit,soc-timer";
 			reg = <0x0 0xd4014000 0x0 0xc8>;
