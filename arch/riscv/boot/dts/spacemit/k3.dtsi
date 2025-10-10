@@ -703,7 +703,6 @@
 			status = "disabled";
 		};
 
-
 		rcpu1: rcpu_rproc1@1 {
 			compatible = "spacemit,k3-rproc";
 			reg =  <0 0 0 0>;
@@ -718,6 +717,15 @@
 		mpxy_mbox: mpxy_mbox@0 {
 			compatible = "riscv,sbi-mpxy-mbox";
 			#mbox-cells = <2>;
+			status = "disabled";
+		};
+
+		rpmi_rtc: rpmi_rtc@0 {
+			compatible = "riscv,rpmi-rtc";
+			mboxes = <&mpxy_mbox 0xe 0x0>;
+			interrupt-parent = <&saplic>;
+			interrupts = <64 4>;
+			interrupt-names = "rpmi rtc";
 			status = "disabled";
 		};
 
@@ -738,8 +746,8 @@
 				spacemit,timer-broadcast;
 				spacemit,timer-counter-id = <0>;
 				status = "okay";
-                        };
-                };
+			};
+		};
 
 		rtc: rtc@d4010000 {
 			compatible = "mrvl,mmp-rtc";
