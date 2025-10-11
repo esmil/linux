@@ -907,7 +907,7 @@
 			clocks = <&syscon_apmu CLK_APMU_EMAC0_BUS>,
 				 <&syscon_apmu CLK_APMU_EMAC0_1588>;
 			clock-names = "stmmaceth", "ptp_ref";
-			resets = <&reset RESET_EMAC0>;
+			resets = <&syscon_apmu RESET_APMU_EMAC0>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
 			interrupts = <131 4>, <276 4>;
@@ -926,7 +926,7 @@
 			clocks = <&syscon_apmu CLK_APMU_EMAC1_BUS>,
 				 <&syscon_apmu CLK_APMU_EMAC1_1588>;
 			clock-names = "stmmaceth", "ptp_ref";
-			resets = <&reset RESET_EMAC1>;
+			resets = <&syscon_apmu RESET_APMU_EMAC1>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
 			interrupts = <133 4>, <277 4>;
@@ -945,7 +945,7 @@
 			clocks = <&syscon_apmu CLK_APMU_EMAC2_BUS>,
 				 <&syscon_apmu CLK_APMU_EMAC2_1588>;
 			clock-names = "stmmaceth", "ptp_ref";
-			resets = <&reset RESET_EMAC2>;
+			resets = <&syscon_apmu RESET_APMU_EMAC2>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
 			interrupts = <130 4>, <278 4>;
@@ -964,7 +964,7 @@
 			clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_BUS>,
 				 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_1588>;
 			clock-names = "stmmaceth", "ptp_ref";
-			resets = <&reset RESET_RCPU_GMAC>;
+			resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RGMAC>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
 			interrupts = <237 4>, <236 4>;
