@@ -19,6 +19,7 @@
 #include <linux/firmware/imx/sci.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/reset.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
@@ -397,6 +398,24 @@ static const struct flexcan_devtype_data nxp_s32g2_devtype_data = {
 		FLEXCAN_QUIRK_SECONDARY_MB_IRQ,
 };
 
+#ifdef CONFIG_SOC_SPACEMIT
+static const struct flexcan_devtype_data spacemit_k1_devtype_data_can20 = {
+	.quirks = FLEXCAN_QUIRK_DISABLE_RXFG | FLEXCAN_QUIRK_ENABLE_EACEN_RRS |
+		FLEXCAN_QUIRK_DISABLE_MECR | FLEXCAN_QUIRK_BROKEN_PERR_STATE |
+		FLEXCAN_QUIRK_SUPPORT_RX_MAILBOX |
+		FLEXCAN_QUIRK_SUPPORT_RX_FIFO |
+		FLEXCAN_QUIRK_SUPPORT_ECC,
+};
+static const struct flexcan_devtype_data spacemit_k1_devtype_data_fd = {
+	.quirks = FLEXCAN_QUIRK_DISABLE_RXFG | FLEXCAN_QUIRK_ENABLE_EACEN_RRS |
+		FLEXCAN_QUIRK_DISABLE_MECR | FLEXCAN_QUIRK_BROKEN_PERR_STATE |
+		FLEXCAN_QUIRK_USE_RX_MAILBOX | FLEXCAN_QUIRK_SUPPORT_FD |
+		FLEXCAN_QUIRK_SUPPORT_RX_MAILBOX |
+		FLEXCAN_QUIRK_SUPPORT_RX_MAILBOX_RTR |
+		FLEXCAN_QUIRK_SUPPORT_ECC,
+};
+#endif
+
 static const struct can_bittiming_const flexcan_bittiming_const = {
 	.name = DRV_NAME,
 	.tseg1_min = 4,
@@ -634,13 +653,24 @@ static int flexcan_clks_enable(const struct flexcan_priv *priv)
 			clk_disable_unprepare(priv->clk_ipg);
 	}
 
+	if (priv->reset) {
+		err = reset_control_deassert(priv->reset);
+		if (err && priv->clk_ipg && priv->clk_per) {
+			clk_disable_unprepare(priv->clk_per);
+			clk_disable_unprepare(priv->clk_ipg);
+		}
+	}
 	return err;
 }
 
 static void flexcan_clks_disable(const struct flexcan_priv *priv)
 {
-	clk_disable_unprepare(priv->clk_per);
-	clk_disable_unprepare(priv->clk_ipg);
+	if (priv->reset)
+		reset_control_assert(priv->reset);
+	if (priv->clk_per)
+		clk_disable_unprepare(priv->clk_per);
+	if (priv->clk_ipg)
+		clk_disable_unprepare(priv->clk_ipg);
 }
 
 static inline int flexcan_transceiver_enable(const struct flexcan_priv *priv)
@@ -1354,6 +1384,49 @@ static void flexcan_set_bittiming(struct net_device *dev)
 		return flexcan_set_bittiming_ctrl(dev);
 }
 
+#ifdef CONFIG_SOC_SPACEMIT
+static void flexcan_ram_init(struct net_device *dev)
+{
+	struct flexcan_priv *priv = netdev_priv(dev);
+	struct flexcan_regs __iomem *regs = priv->regs;
+	u32 reg_ctrl2;
+	void __iomem *mb_addr;
+	u32 count;
+	u32 i;
+
+	/* 11.8.3.13 Detection and correction of memory errors:
+	 * CTRL2[WRMFRZ] grants write access to all memory positions
+	 * that require initialization, ranging from 0x080 to 0xADF
+	 * and from 0xF28 to 0xFFF when the CAN FD feature is enabled.
+	 * The RXMGMASK, RX14MASK, RX15MASK, and RXFGMASK registers
+	 * need to be initialized as well. MCR[RFEN] must not be set
+	 * during memory initialization.
+	 */
+	reg_ctrl2 = priv->read(&regs->ctrl2);
+	reg_ctrl2 |= FLEXCAN_CTRL2_WRMFRZ;
+	priv->write(reg_ctrl2, &regs->ctrl2);
+
+	/* use iowrite32 instead of memset_io on riscv */
+	mb_addr = &regs->mb[0][0];
+	count = offsetof(struct flexcan_regs, rx_smb1[3]) -
+		offsetof(struct flexcan_regs, mb[0][0]) + 0x4;
+	for (i = 0; i< count / 4; i++) {
+		priv->write(0, mb_addr + i * 4);
+	}
+
+	if (priv->can.ctrlmode & CAN_CTRLMODE_FD) {
+		mb_addr = &regs->tx_smb_fd[0];
+		count = offsetof(struct flexcan_regs, rx_smb1_fd[17]) -
+			offsetof(struct flexcan_regs, tx_smb_fd[0]) + 0x4;
+		for (i = 0; i< count / 4; i++) {
+			priv->write(0, mb_addr + i * 4);
+		}
+	}
+
+	reg_ctrl2 &= ~FLEXCAN_CTRL2_WRMFRZ;
+	priv->write(reg_ctrl2, &regs->ctrl2);
+}
+#else
 static void flexcan_ram_init(struct net_device *dev)
 {
 	struct flexcan_priv *priv = netdev_priv(dev);
@@ -1380,6 +1453,7 @@ static void flexcan_ram_init(struct net_device *dev)
 	reg_ctrl2 &= ~FLEXCAN_CTRL2_WRMFRZ;
 	priv->write(reg_ctrl2, &regs->ctrl2);
 }
+#endif
 
 static int flexcan_rx_offload_setup(struct net_device *dev)
 {
@@ -1876,6 +1950,18 @@ static int register_flexcandev(struct net_device *dev)
 	struct flexcan_regs __iomem *regs = priv->regs;
 	u32 reg, err;
 
+#if 1
+	static void __iomem *reg_base;
+	u32 pll3_ctl;
+	netdev_err(dev, "enter register_flexcandev\n");
+	reg_base = ioremap(0xD4050000,0x3000);
+	writel(0x1, reg_base + 0x10B4);
+	reg_base = ioremap(0xD4090000,0x0200);
+	pll3_ctl = readl(reg_base + 0x011C);
+	pll3_ctl |= (0x1<<4);
+	writel(pll3_ctl, reg_base + 0x011C);
+#endif
+
 	err = flexcan_clks_enable(priv);
 	if (err)
 		return err;
@@ -2071,6 +2157,10 @@ static const struct of_device_id flexcan_of_match[] = {
 	{ .compatible = "fsl,ls1021ar2-flexcan", .data = &fsl_ls1021a_r2_devtype_data, },
 	{ .compatible = "fsl,lx2160ar1-flexcan", .data = &fsl_lx2160a_r1_devtype_data, },
 	{ .compatible = "nxp,s32g2-flexcan", .data = &nxp_s32g2_devtype_data, },
+#ifdef CONFIG_SOC_SPACEMIT
+	{ .compatible = "spacemit,k1-flexcan", .data = &spacemit_k1_devtype_data_fd, },
+	{ .compatible = "spacemit,k1-flexcan-can2.0", .data = &spacemit_k1_devtype_data_can20, },
+#endif
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, flexcan_of_match);
@@ -2093,6 +2183,7 @@ static int flexcan_probe(struct platform_device *pdev)
 	struct regulator *reg_xceiver;
 	struct phy *transceiver;
 	struct clk *clk_ipg = NULL, *clk_per = NULL;
+	struct reset_control *reset;
 	struct flexcan_regs __iomem *regs;
 	struct flexcan_platform_data *pdata;
 	int err, irq;
@@ -2138,6 +2229,27 @@ static int flexcan_probe(struct platform_device *pdev)
 			return PTR_ERR(clk_per);
 		}
 		clock_freq = clk_get_rate(clk_per);
+	} else {
+		clk_per = devm_clk_get(&pdev->dev, "per");
+		if (IS_ERR(clk_per)) {
+			dev_err(&pdev->dev, "no per clock defined\n");
+			return PTR_ERR(clk_per);
+		}
+		clk_set_rate(clk_per, clock_freq);
+	}
+
+	if (!clk_ipg) {
+		clk_ipg = devm_clk_get(&pdev->dev, "ipg");
+		if (IS_ERR(clk_ipg)) {
+			dev_err(&pdev->dev, "no ipg clock defined\n");
+			return PTR_ERR(clk_ipg);
+		}
+	}
+
+	reset = devm_reset_control_get_optional(&pdev->dev,NULL);
+	if(IS_ERR(reset)) {
+		dev_err(&pdev->dev, "flexcan get reset failed\n");
+		return PTR_ERR(reset);
 	}
 
 	irq = platform_get_irq(pdev, 0);
@@ -2208,6 +2320,7 @@ static int flexcan_probe(struct platform_device *pdev)
 	priv->clk_ipg = clk_ipg;
 	priv->clk_per = clk_per;
 	priv->clk_src = clk_src;
+	priv->reset = reset;
 	priv->reg_xceiver = reg_xceiver;
 	priv->transceiver = transceiver;
 
