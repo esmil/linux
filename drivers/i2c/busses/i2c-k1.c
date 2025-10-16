@@ -10,6 +10,7 @@
  #include <linux/module.h>
  #include <linux/of_address.h>
  #include <linux/platform_device.h>
+ #include <linux/reset.h>
 
 /* spacemit i2c registers */
 #define SPACEMIT_ICR		 0x0		/* Control register */
@@ -113,6 +114,7 @@ struct spacemit_i2c_dev {
 	void __iomem *base;
 	int irq;
 	u32 clock_freq;
+	struct reset_control *resets;
 
 	struct i2c_msg *msgs;
 	u32 msg_num;
@@ -579,6 +581,19 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	if (IS_ERR(clk))
 		return dev_err_probe(dev, PTR_ERR(clk), "failed to enable bus clock");
 #endif
+
+	/* Get reset control */
+	i2c->resets = devm_reset_control_get_optional(dev, NULL);
+	if (IS_ERR(i2c->resets))
+		return dev_err_probe(dev, PTR_ERR(i2c->resets), "failed to get reset control");
+
+	/* Reset the I2C controller */
+	if (i2c->resets) {
+		reset_control_assert(i2c->resets);
+		udelay(200);
+		reset_control_deassert(i2c->resets);
+	}
+
 	spacemit_i2c_reset(i2c);
 
 	i2c_set_adapdata(&i2c->adapt, i2c);
@@ -607,6 +622,9 @@ static void spacemit_i2c_remove(struct platform_device *pdev)
 	struct spacemit_i2c_dev *i2c = platform_get_drvdata(pdev);
 
 	i2c_del_adapter(&i2c->adapt);
+
+	if (i2c->resets)
+		reset_control_assert(i2c->resets);
 }
 
 static const struct of_device_id spacemit_i2c_of_match[] = {
