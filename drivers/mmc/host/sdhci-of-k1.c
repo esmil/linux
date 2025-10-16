@@ -734,9 +734,21 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_pltfm;
 
-	ret = sdhci_add_host(host);
+	sdhst = sdhci_pltfm_priv(pltfm_host);
+	sdhst->reset = devm_reset_control_array_get_optional_shared(dev);
+	if (IS_ERR(sdhst->reset)) {
+		dev_err(dev, "failed to get reset control\n");
+		ret = PTR_ERR(sdhst->reset);
+		goto err_pltfm;
+	}
+
+	ret = reset_control_deassert(sdhst->reset);
 	if (ret)
 		goto err_pltfm;
+
+	ret = sdhci_add_host(host);
+	if (ret)
+		goto err_add_host;
 
 	if (!(host->mmc->caps2 & MMC_CAP2_NO_SDIO)) {
 		dev_notice(dev, "sdio host: 0x%p\n", host);
@@ -750,6 +762,8 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 
 	return 0;
 
+err_add_host:
+	reset_control_assert(sdhst->reset);
 err_pltfm:
 	sdhci_pltfm_free(pdev);
 	return ret;
@@ -761,14 +775,13 @@ static void spacemit_sdhci_remove(struct platform_device *pdev)
 	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 	int i;
 
-	sdhci_remove_host(host, 1);
-	reset_control_assert(sdhst->reset);
-
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		for (i = 0; i < ARRAY_SIZE(spacemit_sysfs_files); i++)
 			device_remove_file(&pdev->dev, &spacemit_sysfs_files[i]);
 	}
 
+	sdhci_remove_host(host, 1);
+	reset_control_assert(sdhst->reset);
 	sdhci_pltfm_free(pdev);
 }
 
