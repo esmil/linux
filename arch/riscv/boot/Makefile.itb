@@ -1,0 +1,39 @@
+#
+# arch/riscv/boot/Makefile.itb
+#
+# Custom ITB image build rules
+# This file is included when CONFIG_RISCV_BUILD_ITB_IMAGE is enabled
+#
+
+# Select .its template based on signature config
+ifeq ($(CONFIG_FIT_SIGNATURE),)
+its_template := $(srctree)/arch/riscv/generic/Image.its.S
+else
+its_template := $(srctree)/arch/riscv/generic/Image_sign.its.S
+endif
+
+# ITB image generation command
+quiet_cmd_itb-image = ITB     $@
+      cmd_itb-image = \
+	env PATH="$(objtree)/scripts/dtc:$(PATH)" \
+	$(BASH) $(MKIMAGE) \
+	-D "-I dts -O dtb -p 500 \
+		--include $(objtree)/arch/riscv \
+		--warning no-unit_address_vs_reg" \
+	-f $(2) $(3) $@
+
+# FIT signature support
+ifneq ($(CONFIG_FIT_SIGNATURE),)
+key_para := -k $(srctree)/arch/riscv/boot/key
+endif
+
+# Build Image.itb
+$(obj)/Image.itb: $(its_template) $(obj)/Image FORCE
+	$(call if_changed,itb-image,$<,$(key_para))
+
+# Build compressed Image.%.itb
+# NOT support compress image when enable signature
+ifeq ($(CONFIG_FIT_SIGNATURE),)
+$(obj)/Image.%.itb: $(its_template) $(obj)/Image.% FORCE
+	$(call if_changed,itb-image,$<,$(key_para))
+endif

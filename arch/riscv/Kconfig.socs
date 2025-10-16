@@ -120,4 +120,15 @@ config SOC_SPACEMIT_K3_FPGA
 	help
 	  This enable FPGA platform for K3 SoCs.
 
+config FIT_SIGNATURE
+	bool "Enable signature build for kernel FIT Images"
+	default n
+	help
+	  This option enables build signature for FIT Images,
+	  using a hash signed and verified using RSA.
+
+	  WARNING: When relying on signed FIT images with a required signature
+	  check the legacy image format is disabled by default, so that
+	  unsigned images can be loaded.
+
 endmenu # "SoC selection"

@@ -1323,6 +1323,30 @@ config BUILTIN_DTB_NAME
 	  for the DTS file that will be used to produce the DTB linked into the
 	  kernel.
 
+config RISCV_BUILD_ITB_IMAGE
+	bool "Build FIT Image (ITB) support"
+	default n
+	help
+	  Enable building Flattened Image Tree (FIT/ITB) format images.
+	  This format allows packaging kernel image with device trees and
+	  other data in a single file, with optional signing support.
+
+	  If you need to build Image.itb or signed boot images, say Y.
+	  Otherwise, say N.
+
+config FIT_SIGNATURE
+	bool "Enable FIT image signature support"
+	depends on RISCV_BUILD_ITB_IMAGE
+	default n
+	help
+	  Enable signature verification for FIT images. This requires
+	  RSA keys to be present in arch/riscv/boot/key directory.
+
+	  Compressed images (.gz, .bz2, etc.) are not supported when
+	  signature is enabled.
+
+	  If unsure, say N.
+
 endmenu # "Boot options"
 
 config PORTABLE

@@ -72,3 +72,8 @@ EFI_ZBOOT_BFD_TARGET	:= elf$(BITS)-littleriscv
 EFI_ZBOOT_MACH_TYPE	:= RISCV$(BITS)
 
 include $(srctree)/drivers/firmware/efi/libstub/Makefile.zboot
+
+# Include custom ITB image build rules if enabled
+ifdef CONFIG_RISCV_BUILD_ITB_IMAGE
+include $(src)/Makefile.itb
+endif
