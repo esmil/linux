@@ -53,6 +53,7 @@ struct pxa_pwm_chip {
 	struct device	*dev;
 
 	struct clk	*clk;
+	struct clk	*bus_clk;
 	void __iomem	*mmio_base;
 	bool dcr_fd_disabled;
 };
@@ -120,25 +121,46 @@ static int pxa_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	if (state->polarity != PWM_POLARITY_NORMAL)
 		return -EINVAL;
 
+	/* Enable bus clock first if available */
+	if (pc->bus_clk) {
+		err = clk_prepare_enable(pc->bus_clk);
+		if (err)
+			return err;
+	}
+
+	/* Enable functional clock */
 	err = clk_prepare_enable(pc->clk);
-	if (err)
+	if (err) {
+		if (pc->bus_clk)
+			clk_disable_unprepare(pc->bus_clk);
 		return err;
+	}
 
 	duty_cycle = state->enabled ? state->duty_cycle : 0;
 
 	err = pxa_pwm_config(chip, pwm, duty_cycle, state->period);
 	if (err) {
 		clk_disable_unprepare(pc->clk);
+		if (pc->bus_clk)
+			clk_disable_unprepare(pc->bus_clk);
 		return err;
 	}
 
 	if (state->enabled && !pwm->state.enabled)
 		return 0;
 
+	/* Disable functional clock first */
 	clk_disable_unprepare(pc->clk);
+	/* Then disable bus clock if available */
+	if (pc->bus_clk)
+		clk_disable_unprepare(pc->bus_clk);
 
-	if (!state->enabled && pwm->state.enabled)
+	if (!state->enabled && pwm->state.enabled) {
+		/* Need to disable clocks one more time */
 		clk_disable_unprepare(pc->clk);
+		if (pc->bus_clk)
+			clk_disable_unprepare(pc->bus_clk);
+	}
 
 	return 0;
 }
@@ -191,9 +213,21 @@ static int pwm_probe(struct platform_device *pdev)
 		pc->dcr_fd_disabled = of_property_read_bool(pdev->dev.of_node,
 							    "k1,pwm-disable-fd");
 
-	pc->clk = devm_clk_get(dev, NULL);
-	if (IS_ERR(pc->clk))
-		return dev_err_probe(dev, PTR_ERR(pc->clk), "Failed to get clock\n");
+	/* Get functional clock */
+	pc->clk = devm_clk_get(&pdev->dev, "func");
+	if (IS_ERR(pc->clk)) {
+		/* Fallback to unnamed clock for backward compatibility */
+		pc->clk = devm_clk_get(&pdev->dev, NULL);
+		if (IS_ERR(pc->clk))
+			return PTR_ERR(pc->clk);
+	}
+
+	/* Get bus clock (optional for new DT binding) */
+	pc->bus_clk = devm_clk_get(&pdev->dev, "bus");
+	if (IS_ERR(pc->bus_clk)) {
+		/* Bus clock is optional, set to NULL if not found */
+		pc->bus_clk = NULL;
+	}
 
 	rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
 	if (IS_ERR(rst)) {
