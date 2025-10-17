@@ -460,9 +460,6 @@
 			fifo-size = <256>;
 			interrupt-parent = <&saplic>;
 			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
-			dmas = <&pdma 4
-				&pdma 3>;
-			dma-names = "rx", "tx";
 			status = "ok";
 		};
 
