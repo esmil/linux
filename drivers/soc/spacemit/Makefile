@@ -3,4 +3,5 @@
 # Makefile for the Spacemit SOC specific device drivers.
 #
 obj-$(CONFIG_SPACEMIT_HMP) +=	hmp.o
+obj-$(CONFIG_SPACEMIT_PM_DOMAINS) += pm_domain/
 
