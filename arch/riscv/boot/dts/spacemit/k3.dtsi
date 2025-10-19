@@ -1154,6 +1154,22 @@
 			status = "disabled";
 		};
 
+		pmu: power-management@0 {
+			compatible = "simple-bus";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			power: power-controller {
+				compatible = "spacemit,power-controller";
+				mboxes = <&mpxy_mbox 0x9 0x0>;
+				#power-domain-cells = <1>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				spacemit,mpmu = <&syscon_mpmu>;
+			};
+		};
+
 		timer0: timer@d4014000 {
 			compatible = "spacemit,soc-timer";
 			reg = <0x0 0xd4014000 0x0 0xc8>;
