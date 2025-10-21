@@ -170,10 +170,6 @@ static void _spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 	struct spacemit_crtc *a_crtc = to_spacemit_crtc(encoder->crtc);
 	void __iomem *addr = (void __iomem *)ioremap(0xd421a1a8, 100);
 
-#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-	DRM_INFO("%s FPGA return panel\n", __func__);
-	return;
-#endif
 	if (!dsi->core || !dsi->core->dsi_open) {
 		DRM_ERROR("%s(), dsi->core is null!\n", __func__);
 		return;

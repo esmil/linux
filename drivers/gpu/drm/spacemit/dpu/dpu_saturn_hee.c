@@ -285,7 +285,7 @@ void saturn_hee_conf_scaler_x(struct drm_plane_state *state, struct cmdlist_regs
 	uint32_t hor_init_phase_h1b, ver_init_phase_h1b;
 	u32 module_base;
 	struct cmdlist_regs *cl_scl = NULL;
-	//cl_scl = alloc_cmdlist_regs(SCALER_X_REG);
+	cl_scl = alloc_cmdlist_regs(SCALER_X_REG);
 	struct spacemit_crtc *a_crtc = to_spacemit_crtc(state->crtc);
 	struct drm_crtc_state *crtc_state = a_crtc->crtc.state;
 	struct spacemit_crtc_state *spacemit_crtc_state = to_spacemit_crtc_state(crtc_state);
@@ -375,7 +375,7 @@ void saturn_hee_conf_scaler_coefs(struct drm_plane *plane, struct spacemit_plane
 	struct spacemit_crtc_state *spacemit_crtc_state = to_spacemit_crtc_state(crtc_state);
 
 	struct cmdlist_regs *scl_cl = NULL;
-	//scl_cl = alloc_cmdlist_regs(SCALER_X_REG);
+	scl_cl = alloc_cmdlist_regs(SCALER_X_REG);
 
 	if (!spacemit_crtc_state->post_scl_on) {
 		/* should never happen */
@@ -520,7 +520,7 @@ static void saturn_init_tmg(struct spacemit_crtc *a_crtc)
 
 	base = TMG_BASE_ADDR[a_crtc->dev_id];
 	if (base) {
-		dpu_write(hwdev, TMG_REG, base, disp_ready_man_en, 1);
+		dpu_write(hwdev, TMG_REG, base, disp_ready_man_en, 0);
 		dpu_write(hwdev, TMG_REG, base, background_r, 0);
 		dpu_write(hwdev, TMG_REG, base, background_g, 0x0);
 		dpu_write(hwdev, TMG_REG, base, background_b, 0xff);
@@ -679,6 +679,10 @@ static void spacemit_set_afbc_info(struct spacemit_plane_state *spacemit_plane_s
 	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _blend_sel, alpha_sel, cl_cmp, id * 7 + 14); \
 	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _layer_alpha, alpha, cl_cmp, id * 7 + 14); \
 	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _alpha_ratio, 0, cl_cmp, id * 7 + 14); \
+	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _area_left, crtc_x, cl_cmp, id * 7 + 8); \
+	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _area_top, crtc_y, cl_cmp, id * 7 + 9); \
+	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _area_right, crtc_x + crtc_w - 1,cl_cmp, id * 7 + 8); \
+	dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _area_bottom, crtc_y + crtc_h - 1,cl_cmp, id * 7 + 9); \
 	if (unlikely(solid_en)) { \
 		dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _solid_color_r, solid_r, cl_cmp, id * 7 + 10); \
 		dpu_write(hwdev, CMPS_X_REG, base, layer ## id_name ## _solid_color_g, solid_g, cl_cmp, id * 7 + 11); \
@@ -716,7 +720,7 @@ static void dpu_saturn_scaler_reuse_en(struct drm_plane *plane, bool enable)
 	struct drm_crtc_state *crtc_state = a_crtc->crtc.state;
 	struct spacemit_crtc_state *spacemit_crtc_state = to_spacemit_crtc_state(crtc_state);
 
-	//cl_dpuctl = alloc_cmdlist_regs(DPU_CTL_TOP_REG);
+	cl_dpuctl = alloc_cmdlist_regs(DPU_CTL_TOP_REG);
 	if (spacemit_crtc_state->post_scl_on) {
 		dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl1_reuse_en, enable, cl_dpuctl, 50);
 	} else {
@@ -781,6 +785,8 @@ void saturn_hee_plane_update_hw_channel(struct drm_plane *plane, int slice_id)
 		crtc_y = state->crtc_y;
 	}
 
+	DRM_DEBUG("crtc_x %u crtc_x %u\n", crtc_x, crtc_y);
+
 	if (rdma_id == RDMA_INVALID_ID)
 		solid_en = true;
 
@@ -801,16 +807,16 @@ void saturn_hee_plane_update_hw_channel(struct drm_plane *plane, int slice_id)
 		}
 		dpu_write(hwdev, RDMA_PATH_X_REG, base, is_two_layers, 0, cl_rdma, 1);
 
-//		dpu_write(hwdev, RDMA_PATH_X_REG, base, cmpsr_y_offset0, crtc_y, cl_rdma, 2);
-		dpu_writel(hwdev->base, base + 0x40, fb->width | fb->height << 16);
-		dpu_writel(hwdev->base, base + 0x44, src_x | src_x << 16);
-		dpu_writel(hwdev->base, base + 0x48, (src_x + src_w - 1) | (src_y + src_h - 1) << 16);
-		// dpu_write(hwdev, RDMA_PATH_X_REG, base, img_width_ly0 , fb->width, cl_rdma, 16);
-		// dpu_write(hwdev, RDMA_PATH_X_REG, base, img_height_ly0 , fb->height, cl_rdma, 16);
-		// dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_start_x_ly0 , src_x, cl_rdma, 17);
-		// dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_start_y_ly0 , src_y, cl_rdma, 17);
-		// dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_end_x_ly0 , src_x + src_w - 1, cl_rdma, 18);
-		// dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_end_y_ly0 , src_y + src_h - 1, cl_rdma, 18);
+		// dpu_write(hwdev, RDMA_PATH_X_REG, base, cmpsr_y_offset0, crtc_y, cl_rdma, 2);
+		// dpu_writel(hwdev->base, base + 0x40, fb->width | fb->height << 16);
+		// dpu_writel(hwdev->base, base + 0x44, src_x | src_x << 16);
+		// dpu_writel(hwdev->base, base + 0x48, (src_x + src_w - 1) | (src_y + src_h - 1) << 16);
+		dpu_write(hwdev, RDMA_PATH_X_REG, base, img_width_ly0 , fb->width, cl_rdma, 16);
+		dpu_write(hwdev, RDMA_PATH_X_REG, base, img_height_ly0 , fb->height, cl_rdma, 16);
+		dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_start_x_ly0 , src_x, cl_rdma, 17);
+		dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_start_y_ly0 , src_y, cl_rdma, 17);
+		dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_end_x_ly0 , src_x + src_w - 1, cl_rdma, 18);
+		dpu_write(hwdev, RDMA_PATH_X_REG, base, bbox_end_y_ly0 , src_y + src_h - 1, cl_rdma, 18);
 
 		saturn_write_fbcmem_regs(hwdev, state, rdma_id, base, cl_rdma);
 
@@ -908,7 +914,7 @@ void saturn_hee_plane_update_hw_channel(struct drm_plane *plane, int slice_id)
 		alpha_sel = 0x0;
 	}
 
-	//cl_cmp = alloc_cmdlist_regs(CMPS_X_REG);
+	cl_cmp = alloc_cmdlist_regs(CMPS_X_REG);
 
 	/* enable composer and bind RDMA */
 	base = CMP_BASE_ADDR[a_crtc->dev_id];
@@ -918,11 +924,11 @@ void saturn_hee_plane_update_hw_channel(struct drm_plane *plane, int slice_id)
 	} else {
 		dpu_write(hwdev, CMPS_X_REG, base, dst_w, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_w : mode->hdisplay, cl_cmp, 1);
 		dpu_write(hwdev, CMPS_X_REG, base, dst_h, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_h : mode->vdisplay, cl_cmp, 1);
-		dpu_writel(hwdev->base, base + 0x4, mode->hdisplay | mode->vdisplay << 16);
+		// dpu_writel(hwdev->base, base + 0x4, mode->hdisplay | mode->vdisplay << 16);
 	}
 
-	dpu_writel(hwdev->base, base + 0x1c4, 0 | ((crtc_x + crtc_w - 1) << 16));
-	dpu_writel(hwdev->base, base + 0x1c8, 0 | ((crtc_y + crtc_h - 1) << 16));
+	// dpu_writel(hwdev->base, base + 0x1c4, 0 | ((crtc_x + crtc_w - 1) << 16));
+	// dpu_writel(hwdev->base, base + 0x1c8, 0 | ((crtc_y + crtc_h - 1) << 16));
 	switch (spacemit_plane->hw_pid) {
 	case 0:
 		CONFIG_HW_COMPOSER_LAYER(00, 0);
@@ -991,7 +997,7 @@ void saturn_hee_plane_disable_hw_channel(struct drm_plane *plane, struct drm_pla
 	struct cmdlist_regs *cl_cmp = NULL;
 
 	trace_spacemit_plane_disable_hw_channel(p->hw_pid, rdma_id);
-	//cl_cmp = alloc_cmdlist_regs(CMPS_X_REG);
+	cl_cmp = alloc_cmdlist_regs(CMPS_X_REG);
 	switch (p->hw_pid) {
 	case 0:
 		dpu_write(hwdev, CMPS_X_REG, base, layer00_en, 0, cl_cmp, 14);
@@ -1090,12 +1096,12 @@ void saturn_hee_conf_dpuctrl(struct drm_crtc *crtc,
 	scl_en = saturn_conf_dpuctrl_scaling(a_crtc);
 
 	if (a_crtc->is_offline_mode == 0) {
-		//pp_cl = alloc_cmdlist_regs(POSTPIPE_REG);
+		pp_cl = alloc_cmdlist_regs(POSTPIPE_REG);
 		//postpipe should be configed no matter whether pq function is on or off
 		dpu_write(hwdev, POSTPIPE_REG, pp_base, value32[0], 0, pp_cl, 0);
-		dpu_writel(hwdev->base, pp_base + 0x34, mode->hdisplay | mode->vdisplay << 16);
-		// dpu_write(hwdev, POSTPIPE_REG, pp_base, m_inwidth, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_w : mode->hdisplay, pp_cl, 13);
-		// dpu_write(hwdev, POSTPIPE_REG, pp_base, m_inheight, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_h : mode->vdisplay, pp_cl, 13);
+		// dpu_writel(hwdev->base, pp_base + 0x34, mode->hdisplay | mode->vdisplay << 16);
+		dpu_write(hwdev, POSTPIPE_REG, pp_base, m_inwidth, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_w : mode->hdisplay, pp_cl, 13);
+		dpu_write(hwdev, POSTPIPE_REG, pp_base, m_inheight, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_h : mode->vdisplay, pp_cl, 13);
 
 		cmdlist_regs_packing(crtc_to_cl(crtc), CMDLIST_MOD_COMP, pp_cl);
 		free_cmdlist_regs(pp_cl);
@@ -1349,9 +1355,9 @@ void saturn_hee_wb_config(struct spacemit_crtc *a_crtc, struct spacemit_wb *wb, 
 		dpu_write(hwdev, WB_REG, wb_base, wb_in_width, a_crtc->slice_wb[slice_id].wb_in_w, cl_wb, 1);
 		dpu_write(hwdev, WB_REG, wb_base, wb_in_height, a_crtc->slice_wb[slice_id].wb_in_h, cl_wb, 1);
 	} else {
-		// dpu_write(hwdev, WB_REG, wb_base, wb_in_width, wb_width, cl_wb, 1);
-		// dpu_write(hwdev, WB_REG, wb_base, wb_in_height, wb_height, cl_wb, 1);
-		dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x04, wb_height | wb_width << 16);
+		dpu_write(hwdev, WB_REG, wb_base, wb_in_width, wb_width, cl_wb, 1);
+		dpu_write(hwdev, WB_REG, wb_base, wb_in_height, wb_height, cl_wb, 1);
+		// dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x04, wb_height | wb_width << 16);
 	}
 
 	if ((wb->in_w != wb->out_w) || (wb->in_h != wb->out_h))
@@ -1374,15 +1380,15 @@ void saturn_hee_wb_config(struct spacemit_crtc *a_crtc, struct spacemit_wb *wb, 
 		dpu_write(hwdev, WB_REG, wb_base, wb_scl_en, 0, cl_wb, 0);
 		dpu_write(hwdev, WB_REG, wb_base, wb_wdma_stride, wb_width*stride, cl_wb, 8);
 		if (a_crtc->is_slice_mode == 0) {
-			dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x08, wb_height | wb_width << 16);
-			dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x10, wb_height | wb_width << 16);
-			dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x0c, 0);
-			// dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_ori_width, wb_width, cl_wb, 2);
-			// dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_ori_height, wb_height, cl_wb, 2);
-			// dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_width, wb_width, cl_wb, 4);
-			// dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_height, wb_height, cl_wb, 4);
-			// dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_ltopx, 0, cl_wb, 3);
-			// dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_ltopy, 0, cl_wb, 3);
+			// dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x08, wb_height | wb_width << 16);
+			// dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x10, wb_height | wb_width << 16);
+			// dpu_writel(hwdev->base, WB0_TOP_BASE_ADDR + 0x0c, 0);
+			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_ori_width, wb_width, cl_wb, 2);
+			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_ori_height, wb_height, cl_wb, 2);
+			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_width, wb_width, cl_wb, 4);
+			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_height, wb_height, cl_wb, 4);
+			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_ltopx, 0, cl_wb, 3);
+			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_crop_ltopy, 0, cl_wb, 3);
 		} else {
 			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_ori_width, wb_width, cl_wb, 2);
 			dpu_write(hwdev, WB_REG, WB0_TOP_BASE_ADDR, wb_out_ori_height, wb_height, cl_wb, 2);
@@ -1576,11 +1582,11 @@ void saturn_hee_rdma_dmmu(struct spacemit_hw_device *hwdev, u8 tbu_id, struct tb
 	CONFIG_RDMA_ADDR_REG(hwdev, 2, rdma_id, tbu->tbu_va[2], cl_rdma);
 
 	base = RDMA_BASE_ADDR[rdma_id];
-	dpu_writel(hwdev->base, base + 0x3c, fb->pitches[0] | fb->pitches[1] << 16);
-	// dpu_write(hwdev, RDMA_PATH_X_REG, base, rdma_stride0_layer0, fb->pitches[0], cl_rdma, 15);
-	// dpu_write(hwdev, RDMA_PATH_X_REG, base, rdma_stride1_layer0, fb->pitches[1], cl_rdma, 15);
+	// dpu_writel(hwdev->base, base + 0x3c, fb->pitches[0] | fb->pitches[1] << 16);
+	dpu_write(hwdev, RDMA_PATH_X_REG, base, rdma_stride0_layer0, fb->pitches[0], cl_rdma, 15);
+	dpu_write(hwdev, RDMA_PATH_X_REG, base, rdma_stride1_layer0, fb->pitches[1], cl_rdma, 15);
 
-	//cl_tbu = alloc_cmdlist_regs(MMU_TBU_REG);
+	cl_tbu = alloc_cmdlist_regs(MMU_TBU_REG);
 	base = MMU_TBU_BASE_ADDR_ARRAY[tbu_id];
 	CONFIG_TBU_REGS(hwdev, base, 0, cl_tbu);
 	CONFIG_TBU_REGS(hwdev, base, 1, cl_tbu);
@@ -1596,7 +1602,7 @@ void saturn_hee_wb_dmmu(struct spacemit_hw_device *hwdev, u8 tbu_id, struct tbu_
 	u32 base;
 	struct cmdlist_regs *cl_tbu = NULL;
 	struct drm_crtc *crtc = &wb->a_crtc->crtc;
-	//cl_tbu = alloc_cmdlist_regs(MMU_TBU_REG);
+	cl_tbu = alloc_cmdlist_regs(MMU_TBU_REG);
 	CONFIG_WB_ADDR_REG(hwdev, 0, tbu->tbu_va[0], wb->cl_wb);
 	if (fbc_mode) {
 		CONFIG_WB_ADDR_REG(hwdev, 1, (tbu->tbu_va[0] + header_size), wb->cl_wb);
@@ -1630,7 +1636,7 @@ static u32 saturn_get_cl_cfg_rdy_addr(void)
 
 int saturn_hee_get_cl_rdma_buf(struct spacemit_crtc *a_crtc)
 {
-	//a_crtc->cl_rdma = alloc_cmdlist_regs(RDMA_PATH_X_REG);
+	a_crtc->cl_rdma = alloc_cmdlist_regs(RDMA_PATH_X_REG);
 	if (!a_crtc->cl_rdma)
 		return -ENOMEM;
 	else
@@ -1785,16 +1791,17 @@ void saturn_hee_cmdlist_fill_conf_row(struct cmdlist *cl, struct spacemit_hw_dev
 	if (size > PER_CMDLIST_SIZE)
 		DRM_ERROR("plane%d cmdlist occupies %d bytes!\n", zpos, size);
 }
+
 void saturn_hee_wb_cmdlist(struct cmdlist *cl, struct spacemit_hw_device *hwdev, struct spacemit_drm_private *priv, u8 crtc_id, u8 dev_id)
 {
 	u32 val = 0;
 
-	dpu_write_reg(hwdev, CMDLIST_REG, CMDLIST_BASE_ADDR, cmdlist_reg_48[hwdev->rdma_nums + crtc_id].cmdlist_ch_y_first, val);
+	dpu_write_reg(hwdev, CMDLIST_REG, CMDLIST_BASE_ADDR, cmdlist_reg_48[hwdev->rdma_nums + 2 + crtc_id].cmdlist_ch_y_first, val);
 
 	val = ((priv->cmdlist_groups[hwdev->rdma_nums + crtc_id]->pa) & CMDLIST_ADDRL_ALIGN_MASK) >> CMDLIST_ADDRL_ALIGN_BITS;
-	dpu_write_reg(hwdev, CMDLIST_REG, CMDLIST_BASE_ADDR, cmdlist_reg_0[hwdev->rdma_nums + crtc_id].cmdlist_ch_start_addrl, val);
+	dpu_write_reg(hwdev, CMDLIST_REG, CMDLIST_BASE_ADDR, cmdlist_reg_0[hwdev->rdma_nums + 2 + crtc_id].cmdlist_ch_start_addrl, val);
 	val = (priv->cmdlist_groups[hwdev->rdma_nums + crtc_id]->pa) >> 32;
-	dpu_write_reg(hwdev, CMDLIST_REG, CMDLIST_BASE_ADDR, cmdlist_reg_16[hwdev->rdma_nums + crtc_id].cmdlist_ch_start_addrh, val);
+	dpu_write_reg(hwdev, CMDLIST_REG, CMDLIST_BASE_ADDR, cmdlist_reg_16[hwdev->rdma_nums + 2 + crtc_id].cmdlist_ch_start_addrh, val);
 	dpu_write_reg(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR,
 					dpu_ctl_top_reg_10[dev_id].cmdlist_cmps_top_en, 1);
 	dpu_write_reg(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR,

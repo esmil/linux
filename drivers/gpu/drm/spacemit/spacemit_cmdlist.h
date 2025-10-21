@@ -53,6 +53,7 @@ typedef enum {
 
 #define CMDLIST_ADDRL_ALIGN_BITS               (4) //From cmdlist_reg_0[] in CMDLIST_REG
 #define CMDLIST_ADDRL_ALIGN_MASK               ((u32)(~(BIT(CMDLIST_ADDRL_ALIGN_BITS) - 1)))
+#define CONFIG_DRM_SPACEMIT_CMDLIST 1
 
 #ifdef CONFIG_DRM_SPACEMIT_CMDLIST
 #define alloc_cmdlist_regs(module_name) \

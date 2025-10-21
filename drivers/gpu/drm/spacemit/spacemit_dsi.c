@@ -35,10 +35,11 @@ static void spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 	struct spacemit_dphy_ctx *dphy_ctx = &spacemit_dphy->ctx;
 
 	DRM_INFO("%s()\n", __func__);
-#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		DRM_INFO("FPGA return panel\n");
-		return;
-#endif
+
+// #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
+// 		DRM_INFO("FPGA return panel\n");
+// 		return;
+// #endif
 
 	if (dsi->panel == NULL)
 		return;

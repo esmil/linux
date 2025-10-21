@@ -26,6 +26,7 @@
 #include "spacemit_dmmu.h"
 #include "sysfs/sysfs_display.h"
 #include "dpu/dpu_saturn.h"
+#include "dpu/saturn_regs/wb.h"
 
 static const u32 spacemit_wb_formats[] = {
 	DRM_FORMAT_XRGB8888,
@@ -138,7 +139,6 @@ int spacemit_wb_get_format(u32 format)
 	return SPACEMIT_WB_INVALID_FORMAT_ID;
 }
 
-void spacemit_wb_connector_atomic_commit(struct drm_connector *conn, struct drm_atomic_state *state);
 void spacemit_wb_connector_atomic_commit(struct drm_connector *conn, struct drm_atomic_state *state)
 {
 	struct drm_device *drm = conn->dev;
@@ -169,7 +169,7 @@ void spacemit_wb_connector_atomic_commit(struct drm_connector *conn, struct drm_
 	conn_state = wb_conn->base.state;
 	if (WARN_ON(!conn_state->writeback_job))
 		return;
-	//cl_wb = alloc_cmdlist_regs(WB_REG);
+	cl_wb = alloc_cmdlist_regs(WB_REG);
 
 	crtc = conn_state->crtc;
 	a_crtc = to_spacemit_crtc(crtc);

@@ -252,11 +252,8 @@ void cmdlist_atomic_commit(struct drm_crtc *crtc,
 			}
 			chy = cl_to_spacemit_pstate(first_cl)->state.crtc_y;
 			addrl = ((priv->cmdlist_groups[i]->pa) & CMDLIST_ADDRL_ALIGN_MASK) >> CMDLIST_ADDRL_ALIGN_BITS;
-// //#if defined (CONFIG_ARM64) || defined (CONFIG_ARM_LPAE)
-//			addrh = (priv->cmdlist_groups[i]->pa) >> 32;
-// // #else
-			addrh = 0;
-// #endif
+
+			addrh = (priv->cmdlist_groups[i]->pa) >> 32;
 			hwdev->cfg_cmdlist(hwdev, i, chy, addrl, addrh);
 			if (a_crtc->is_stopped == false)
 				hwdev->enable_cmdlist(a_crtc, hwdev, i, true);
