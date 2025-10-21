@@ -2976,7 +2976,7 @@ static const unsigned char k3_itl_bytes[] = {1, 8, 16, 32, 64, 128, 192};
 
 static int fcr_get_rxtrig_bytes(struct uart_8250_port *up)
 {
-	const struct serial8250_config *conf_type = &uart_config[up->port.type];
+	const struct serial8250_config *conf_type __maybe_unused = &uart_config[up->port.type];
 	unsigned char bytes;
 
 #ifdef CONFIG_SOC_SPACEMIT_K3
@@ -2996,7 +2996,7 @@ static int fcr_get_rxtrig_bytes(struct uart_8250_port *up)
 
 static int bytes_to_fcr_rxtrig(struct uart_8250_port *up, unsigned char bytes)
 {
-	const struct serial8250_config *conf_type = &uart_config[up->port.type];
+	const struct serial8250_config *conf_type __maybe_unused = &uart_config[up->port.type];
 	int i;
 
 #ifdef CONFIG_SOC_SPACEMIT_K3
