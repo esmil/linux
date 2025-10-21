@@ -1056,6 +1056,12 @@
 			status = "disabled";
 		};
 
+		rpmi_regulator: rpmi_regulator@0 {
+			compatible = "riscv,rpmi-regulator";
+			mboxes = <&mpxy_mbox 0x0007 0x0>;
+			status = "okay";
+		};
+
 		rpmi_rtc: rpmi_rtc@0 {
 			compatible = "riscv,rpmi-rtc";
 			mboxes = <&mpxy_mbox 0xe 0x0>;
