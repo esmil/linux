@@ -25,6 +25,7 @@
 struct of_serial_info {
 	struct clk *clk;
 	struct clk *bus_clk;
+	struct clk *gate_clk;	/* Gate clock for register access */
 	struct reset_control *rst;
 	int type;
 	int line;
@@ -124,22 +125,26 @@ static int of_platform_serial_setup(struct platform_device *ofdev,
 
 	/* Get clk rate through clk driver if present */
 	if (!port->uartclk) {
-		struct clk *bus_clk;
+		/* Get optional gate clock (required for some platforms like SPACEMIT) */
+		info->gate_clk = devm_clk_get_optional_enabled(dev, "gate");
+		if (IS_ERR(info->gate_clk)) {
+			ret = dev_err_probe(dev, PTR_ERR(info->gate_clk), "failed to get gate clock\n");
+			goto err_pmruntime;
+		}
 
-		bus_clk = devm_clk_get_optional_enabled(dev, "bus");
-		if (IS_ERR(bus_clk)) {
-			ret = dev_err_probe(dev, PTR_ERR(bus_clk), "failed to get bus clock\n");
+		info->bus_clk = devm_clk_get_optional_enabled(dev, "bus");
+		if (IS_ERR(info->bus_clk)) {
+			ret = dev_err_probe(dev, PTR_ERR(info->bus_clk), "failed to get bus clock\n");
 			goto err_pmruntime;
 		}
 
 		/* If the bus clock is required, core clock must be named */
-		info->clk = devm_clk_get_enabled(dev, bus_clk ? "core" : NULL);
+		info->clk = devm_clk_get_enabled(dev, info->bus_clk ? "core" : NULL);
 		if (IS_ERR(info->clk)) {
 			ret = dev_err_probe(dev, PTR_ERR(info->clk), "failed to get clock\n");
 			goto err_pmruntime;
 		}
 
-		info->bus_clk = bus_clk;
 		port->uartclk = clk_get_rate(info->clk);
 	}
 	/* If current-speed was set, then try not to change it. */
@@ -317,6 +322,7 @@ static int of_serial_suspend(struct device *dev)
 		pm_runtime_put_sync(dev);
 		clk_disable_unprepare(info->clk);
 		clk_disable_unprepare(info->bus_clk);
+		clk_disable_unprepare(info->gate_clk);
 	}
 	return 0;
 }
@@ -329,6 +335,7 @@ static int of_serial_resume(struct device *dev)
 
 	if (!uart_console(port) || console_suspend_enabled) {
 		pm_runtime_get_sync(dev);
+		clk_prepare_enable(info->gate_clk);
 		clk_prepare_enable(info->bus_clk);
 		clk_prepare_enable(info->clk);
 	}
