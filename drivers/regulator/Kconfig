@@ -1818,4 +1818,12 @@ config REGULATOR_QCOM_LABIBB
 	  boost regulator and IBB can be used as a negative boost regulator
 	  for LCD display panel.
 
+config REGULATOR_RPMI
+	tristate "Regulator driver based on RISC-V RPMI"
+	depends on MAILBOX
+	default RISCV
+	help
+	  Support for regulators base on the voltage service group defined by
+	  the RISC-V platform management interface (RPMI) specification.
+
 endif
