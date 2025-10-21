@@ -482,6 +482,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
 			status = "okay";
@@ -499,6 +500,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <43 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -516,6 +518,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <44 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -533,6 +536,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <45 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -550,6 +554,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <46 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -567,6 +572,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <47 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -584,6 +590,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <48 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -601,6 +608,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <49 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -618,6 +626,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <50 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -635,6 +644,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <51 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
@@ -652,6 +662,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			fifo-size = <256>;
+			tx-threshold = <32>;
 			interrupt-parent = <&saplic>;
 			interrupts = <281 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
