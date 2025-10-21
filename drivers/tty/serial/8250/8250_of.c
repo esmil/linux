@@ -240,6 +240,10 @@ static int of_platform_serial_probe(struct platform_device *ofdev)
 	if (port8250.port.fifosize)
 		port8250.capabilities = UART_CAP_FIFO;
 
+	/* Add XScale-specific capabilities when FIFO is enabled */
+	if (port_type == PORT_XSCALE && (port8250.capabilities & UART_CAP_FIFO))
+		port8250.capabilities |= UART_CAP_UUE | UART_CAP_RTOIE;
+
 	/* Check for TX FIFO threshold & set tx_loadsz */
 	if ((of_property_read_u32(ofdev->dev.of_node, "tx-threshold",
 				  &tx_threshold) == 0) &&
