@@ -322,12 +322,14 @@ void spacemit_dpu_power_enable(struct spacemit_crtc *a_crtc, bool enable)
 
 }
 
+#ifdef CONFIG_PM
 static void dpu_lpm_work_func(struct work_struct *work)
 {
 	struct spacemit_crtc *a_crtc = container_of(work, struct spacemit_crtc,
 						lpm_qos_work.work);
 	dpu_rpm_suspend(a_crtc);
 }
+#endif
 
 static void dpu_get_pipe_out_node(struct spacemit_crtc *a_crtc)
 {
@@ -1572,11 +1574,12 @@ static void dpu_rpm_suspend(struct spacemit_crtc *a_crtc)
 
 static void dpu_rpm_resume(struct spacemit_crtc *a_crtc)
 {
+#ifdef CONFIG_PM
 	if (a_crtc->lpm_work_pending && a_crtc->lpm_period) {
 		cancel_delayed_work_sync(&a_crtc->lpm_qos_work);
 		a_crtc->lpm_work_pending = false;
 	}
-
+#endif
 	if (a_crtc->rpm_status)
 		return;
 
@@ -1604,11 +1607,11 @@ static void dpu_rpm_resume(struct spacemit_crtc *a_crtc)
 
 static void dpu_begin(struct spacemit_crtc *a_crtc)
 {
-	if (a_crtc->out_mode == DPU_OUT_MODE_CMD && a_crtc->lpm_commit_qos) {
 #ifdef CONFIG_PM
+	if (a_crtc->out_mode == DPU_OUT_MODE_CMD && a_crtc->lpm_commit_qos) {
 		dpu_rpm_resume(a_crtc);
-#endif
 	}
+#endif
 }
 
 static struct dpu_core_ops dpu_saturn_ops = {

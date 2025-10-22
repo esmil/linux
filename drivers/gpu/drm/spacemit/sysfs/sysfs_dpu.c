@@ -18,6 +18,7 @@
 #include "../spacemit_mipi_panel.h"
 #include "sysfs_display.h"
 
+#ifdef CONFIG_PM
 static ssize_t spacemit_dpu_get_lpm_period(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
@@ -88,6 +89,7 @@ static ssize_t spacemit_dpu_set_enable_auto_fc(struct device *dev,
 
 	return count;
 }
+#endif
 
 static ssize_t spacemit_dpu_get_enable_dump_reg(struct device *dev,
 						struct device_attribute *attr,
@@ -149,8 +151,10 @@ static ssize_t spacemit_dpu_set_enable_dump_fps(struct device *dev,
 
 static DEVICE_ATTR(dpu_enable_dump_fps, S_IRUGO | S_IWUSR, spacemit_dpu_get_enable_dump_fps, spacemit_dpu_set_enable_dump_fps);
 static DEVICE_ATTR(dpu_enable_dump_reg, S_IRUGO | S_IWUSR, spacemit_dpu_get_enable_dump_reg, spacemit_dpu_set_enable_dump_reg);
+#ifdef CONFIG_PM
 static DEVICE_ATTR(dpu_enable_auto_fc, S_IRUGO | S_IWUSR, spacemit_dpu_get_enable_auto_fc, spacemit_dpu_set_enable_auto_fc);
 static DEVICE_ATTR(dpu_set_lpm_period, S_IRUGO | S_IWUSR, spacemit_dpu_get_lpm_period, spacemit_dpu_set_lpm_period);
+#endif
 
 int spacemit_dpu_sysfs_init(struct device *dev)
 {
@@ -168,7 +172,7 @@ int spacemit_dpu_sysfs_init(struct device *dev)
 		DRM_ERROR("failed to create device file: enable_dump_fps\n");
 	else
 		DRM_INFO("create device file enable_dump_fps\n");
-
+#ifdef CONFIG_PM
 	ret = device_create_file(dev, &dev_attr_dpu_enable_auto_fc);
 	if (ret)
 		DRM_ERROR("failed to create device file: enable_auto_fc\n");
@@ -180,7 +184,7 @@ int spacemit_dpu_sysfs_init(struct device *dev)
 		DRM_ERROR("failed to create device file: dpu_set_lpm_period\n");
 	else
 		DRM_INFO("create device file dpu_set_lpm_period\n");
-
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(spacemit_dpu_sysfs_init);
