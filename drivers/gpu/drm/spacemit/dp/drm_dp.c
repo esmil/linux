@@ -1,0 +1,278 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2025 Spacemit Co., Ltd.
+ *
+ */
+
+#include <linux/io.h>
+#include <linux/of.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/platform_device.h>
+#include <linux/component.h>
+#include <linux/proc_fs.h>
+#include <drm/drm_of.h>
+#include <drm/drm_device.h>
+#include <drm/drm_encoder.h>
+#include <drm/drm_connector.h>
+#include <drm/drm_drv.h>
+#include <drm/drm_edid.h>
+#include <drm/drm_modeset_helper_vtables.h>
+#include <drm/drm_gem_dma_helper.h>
+#include <drm/drm_probe_helper.h>
+#include <drm/drm_atomic_state_helper.h>
+
+#include "inno_conn.h"
+#include "inno_dp_api.h"
+
+struct dp_dev {
+	struct device *dev;
+
+	struct drm_device *drm;
+	struct drm_encoder encoder;
+	struct drm_connector connector;
+
+	struct proc_dir_entry *proc_irq;
+	enum drm_connector_status connector_status;
+
+	struct inno_conn_t *conn;
+};
+
+static enum drm_connector_status dp_conn_detect(struct drm_connector *connector, bool force)
+{
+	struct dp_dev *dp_dev = container_of(connector, struct dp_dev, connector);
+
+	return dp_dev->connector_status;
+}
+
+static const struct drm_connector_funcs dp_connector_funcs = {
+	.fill_modes = drm_helper_probe_single_connector_modes,
+	.destroy = drm_connector_cleanup,
+	.detect = dp_conn_detect,
+	.reset = drm_atomic_helper_connector_reset,
+	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
+	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+};
+
+static int dp_conn_get_modes(struct drm_connector *connector)
+{
+	int count;
+
+	count = drm_edid_connector_add_modes(connector);
+	return count;
+}
+
+static enum drm_mode_status dp_conn_mode_valid(struct drm_connector *connector,
+					       struct drm_display_mode *mode)
+{
+	return MODE_OK;
+}
+
+static const struct drm_connector_helper_funcs dp_conn_helper_funcs = {
+	.get_modes = dp_conn_get_modes,
+	.mode_valid = dp_conn_mode_valid,
+};
+
+static const struct drm_encoder_funcs dp_encoder_funcs = {
+	.destroy = drm_encoder_cleanup,
+};
+
+static void dp_encoder_enable(struct drm_encoder *encoder)
+{
+}
+
+static void dp_encoder_disable(struct drm_encoder *encoder)
+{
+}
+
+static int dp_encoder_atomic_check(struct drm_encoder *encoder,
+				   struct drm_crtc_state *crtc_state,
+				   struct drm_connector_state *conn_state)
+{
+	return 0;
+}
+
+static void dp_mode_set(struct drm_encoder *encoder,
+			 struct drm_display_mode *mode,
+			 struct drm_display_mode *adjusted_mode)
+{
+	struct dp_dev *dp_dev = container_of(encoder, struct dp_dev, encoder);
+
+	dp_dev->conn->is_enable = 0;
+	inno_do_display(dp_dev->conn, adjusted_mode);
+}
+
+static const struct drm_encoder_helper_funcs dp_encoder_helper_funcs = {
+	.enable = dp_encoder_enable,
+	.disable = dp_encoder_disable,
+	.atomic_check = dp_encoder_atomic_check,
+	.mode_set = dp_mode_set,
+};
+
+static ssize_t dp_irq_proc_write(struct file *filp, const char __user *buf,
+				 size_t count, loff_t *ppos)
+{
+	struct dp_dev *dp_dev = pde_data(file_inode(filp));
+	char write_status[2] = { 0 };
+
+	if (copy_from_user(write_status, buf, 1))
+		write_status[0] = '1';
+
+	if (write_status[0] == '1')
+		dp_dev->connector_status = connector_status_connected;
+	else if (write_status[0] == '0')
+		dp_dev->connector_status = connector_status_disconnected;
+	else
+		return -EINVAL;
+
+	drm_kms_helper_hotplug_event(dp_dev->drm);
+	return count;
+}
+
+static const struct proc_ops dp_irq_proc_ops = {
+	.proc_flags = PROC_ENTRY_PERMANENT,
+	.proc_write = dp_irq_proc_write,
+};
+
+static void dp_proc_irq_debug_init(struct dp_dev *dp_dev)
+{
+	dp_dev->proc_irq = proc_create_data(dp_dev->connector.name,
+					    S_IWUSR, NULL,
+					    &dp_irq_proc_ops, dp_dev);
+}
+
+static void dp_proc_irq_debug_exit(struct dp_dev *dp_dev)
+{
+	if (dp_dev->proc_irq)
+		proc_remove(dp_dev->proc_irq);
+	dp_dev->proc_irq = NULL;
+}
+
+static int dp_dev_resource_init(struct dp_dev *dp_dev,
+				struct platform_device *pdev)
+{
+	uint32_t i2c_id;
+	struct resource *res;
+
+	dp_dev->conn = inno_get_conn_module(INNO_CONN_DP0);
+
+	if (of_property_read_u32(pdev->dev.of_node, "i2c-id", &i2c_id)) {
+		dev_err(&pdev->dev, "i2c-id attribute is missing, default is 0.\n");
+		i2c_id = 0;
+	}
+
+	dp_dev->conn->phy_i2c_fd = i2c_get_adapter(i2c_id);
+	if (!dp_dev->conn->phy_i2c_fd) {
+		dev_err(&pdev->dev, "Failed to obtain i2c adapter, id = %d\n",
+			i2c_id);
+		return -ENODEV;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "Failed to obtain resource.\n");
+		return -EINVAL;
+	}
+
+	dp_dev->conn->reg_mmap_addr =
+		devm_ioremap(&pdev->dev, res->start, res->end - res->start + 1);
+	if (IS_ERR(dp_dev->conn->reg_mmap_addr)) {
+		dev_err(&pdev->dev, "mapping failed.\n");
+		return PTR_ERR(dp_dev->conn->reg_mmap_addr);
+	}
+
+	return 0;
+}
+
+static int inno_dp_bind(struct device *dev, struct device *master, void *data)
+{
+	int ret;
+	struct dp_dev *dp_dev;
+	struct drm_device *drm = (struct drm_device *)data;
+	struct platform_device *pdev = to_platform_device(dev);
+
+	dp_dev = devm_kmalloc(dev, sizeof(*dp_dev), GFP_KERNEL);
+	if (!dp_dev)
+		return -ENOMEM;
+	memset(dp_dev, 0, sizeof(*dp_dev));
+
+	dp_dev->dev = dev;
+	dp_dev->drm = drm;
+	dp_dev->proc_irq = NULL;
+	dp_dev->connector_status = connector_status_connected;
+
+	ret = drm_connector_init(drm, &dp_dev->connector,
+				 &dp_connector_funcs,
+				 DRM_MODE_CONNECTOR_DisplayPort);
+	if (ret) {
+		dev_err(dev, "Connector initialization failed.\n");
+		return ret;
+	}
+	drm_connector_helper_add(&dp_dev->connector,
+				 &dp_conn_helper_funcs);
+
+	ret = drm_encoder_init(drm, &dp_dev->encoder,
+			       &dp_encoder_funcs, DRM_MODE_ENCODER_NONE, NULL);
+	if (ret) {
+		dev_err(dev, "Encoder initialization failed.\n");
+		drm_connector_cleanup(&dp_dev->connector);
+		return ret;
+	}
+	drm_encoder_helper_add(&dp_dev->encoder,
+			       &dp_encoder_helper_funcs);
+
+	dp_dev->encoder.possible_crtcs =
+		drm_of_find_possible_crtcs(drm, dev->of_node);
+	drm_connector_attach_encoder(&dp_dev->connector,
+				     &dp_dev->encoder);
+
+	platform_set_drvdata(pdev, dp_dev);
+	dp_proc_irq_debug_init(dp_dev);
+
+	ret = dp_dev_resource_init(dp_dev, pdev);
+	if (ret) {
+		drm_connector_cleanup(&dp_dev->connector);
+		return ret;
+	}
+	return 0;
+}
+
+static void inno_dp_unbind(struct device *dev, struct device *master, void *data)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct dp_dev *dp_dev = platform_get_drvdata(pdev);
+
+	dp_proc_irq_debug_exit(dp_dev);
+	drm_encoder_cleanup(&dp_dev->encoder);
+	drm_connector_cleanup(&dp_dev->connector);
+}
+
+static const struct component_ops inno_dp_ops = {
+	.bind = inno_dp_bind,
+	.unbind = inno_dp_unbind,
+};
+
+static int inno_dp_probe(struct platform_device *pdev)
+{
+	return component_add(&pdev->dev, &inno_dp_ops);
+}
+
+static void inno_dp_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &inno_dp_ops);
+}
+
+static const struct of_device_id inno_dp_match[] = {
+	{ .compatible = "spacemit,inno-dp" },
+	{}
+};
+MODULE_DEVICE_TABLE(of, inno_dp_match);
+
+struct platform_driver inno_dp_driver = {
+	.probe = inno_dp_probe,
+	.remove = inno_dp_remove,
+	.driver = {
+		.name = "spacemit-innodp-drv",
+		.of_match_table = inno_dp_match,
+	},
+};

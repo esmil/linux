@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2025 Spacemit Co., Ltd.
+ *
+ */
+
+#ifndef __INNO_DP_H__
+#define __INNO_DP_H__
+
+#include "inno_conn.h"
+
+#define INNODP_PCLK_594_00M	(594000)
+#define INNODP_PCLK_534_00M	(533250)
+#define INNODP_PCLK_297_00M	(297000)
+#define INNODP_PCLK_241_50M	(241500)
+#define INNODP_PCLK_220_36M	(220364)
+#define INNODP_PCLK_162_00M	(162000)
+#define INNODP_PCLK_148_50M	(148500)
+#define INNODP_PCLK_154_12M	(154120)
+#define INNODP_PCLK_146_25M	(146250)
+#define INNODP_PCLK_121_75M	(121750)
+#define INNODP_PCLK_108_00M	(108000)
+#define INNODP_PCLK_106_50M	(106500)
+#define INNODP_PCLK_101_00M	(101000)
+#define INNODP_PCLK_85_50M	(85500)
+#define INNODP_PCLK_83_50M	(83500)
+#define INNODP_PCLK_75_00M	(75000)
+#define INNODP_PCLK_74_25M	(74250)
+#define INNODP_PCLK_72_00M	(72000)
+#define INNODP_PCLK_65_00M	(65000)
+#define INNODP_PCLK_40_00M	(40000)
+#define INNODP_PCLK_36_00M	(36000)
+#define INNODP_PCLK_27_00M	(27000)
+#define INNODP_PCLK_25_175M	(25175)
+#define INNODP_PCLK_AUTO_CALC	(0)
+
+#define INNODP_SYS_CLOCK	(50000)
+#define INNODP_REF_CLOCK	(50000)
+#define INNODP_REF_CLOCK_24M	(24000)
+#define INNODP_REF_CLOCK_27M	(27000)
+#define INNODP_REF_CLOCK_50M	(50000)
+
+#define DP_PLL_VIC		0
+#define DP_PLL_FBDIV		1
+#define DP_PLL_PREDIV		2
+#define DP_PLL_DIVA		3
+#define DP_PLL_DIVB		4
+#define DP_PLL_DIVC		5
+#define DP_PLL_FRAC		6
+
+#define INNODP_WAIT_AUX_REPLY_CNT	1000
+
+#endif /* __INNO_DP_H__ */
