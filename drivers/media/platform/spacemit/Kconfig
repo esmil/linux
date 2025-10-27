@@ -3,3 +3,5 @@
 comment "Spacemit media platform drivers"
 
 source "drivers/media/platform/spacemit/vpu_k3/Kconfig"
+
+source "drivers/media/platform/spacemit/camera/Kconfig"
