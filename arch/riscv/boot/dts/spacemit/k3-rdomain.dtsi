@@ -165,4 +165,124 @@
 		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RCAN4>;
 		status = "disabled";
 	};
+
+	rpwm0: pwm@c088d100 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d100 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM0>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM0_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM0>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm1: pwm@c088d200 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d200 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM1>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM1_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM1>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm2: pwm@c088d300 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d300 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM2>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM2_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM2>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm3: pwm@c088d400 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d400 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM3>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM3_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM3>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm4: pwm@c088d500 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d500 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM4>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM4_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM4>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm5: pwm@c088d600 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d600 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM5>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM5_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM5>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm6: pwm@c088d700 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d700 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM6>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM6_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM6>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm7: pwm@c088d800 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d800 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM7>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM7_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM7>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm8: pwm@c088d900 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088d900 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM8>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM8_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM8>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
+
+	rpwm9: pwm@c088da00 {
+		compatible = "spacemit,k1-pwm", "marvell,pxa910-pwm";
+		reg = <0x0 0xc088da00 0x0 0x10>;
+		clocks = <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM9>,
+			 <&syscon_rcpu_pwmctrl CLK_RCPU_PWMCTRL_RPWM9_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_pwmctrl RESET_RCPU_PWMCTRL_PWM9>;
+		#pwm-cells = <3>;
+		k1,pwm-disable-fd;
+		status = "disabled";
+	};
 };
