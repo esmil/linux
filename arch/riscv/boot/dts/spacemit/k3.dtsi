@@ -1039,6 +1039,66 @@
 			status = "disabled";
 		};
 
+		flexcan0: fdcan@d4028000 {
+			compatible = "spacemit,k1-flexcan";
+			reg = <0x0 0xd4028000 0x0 0x4000>;
+			interrupts = <161 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			fsl,clk-source = <0>;
+			clocks = <&syscon_apbc CLK_APBC_CAN0>,<&syscon_apbc CLK_APBC_CAN0_BUS>;
+			clock-names = "per","ipg";
+			resets = <&syscon_apbc RESET_APBC_CAN0>;
+			status = "disabled";
+		};
+
+		flexcan1: fdcan@d402c000 {
+			compatible = "spacemit,k1-flexcan";
+			reg = <0x0 0xd402c000 0x0 0x4000>;
+			interrupts = <163 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			fsl,clk-source = <0>;
+			clocks = <&syscon_apbc CLK_APBC_CAN1>,<&syscon_apbc CLK_APBC_CAN1_BUS>;
+			clock-names = "per","ipg";
+			resets = <&syscon_apbc RESET_APBC_CAN1>;
+			status = "disabled";
+		};
+
+		flexcan2: fdcan@d4034000 {
+			compatible = "spacemit,k1-flexcan";
+			reg = <0x0 0xd4034000 0x0 0x4000>;
+			interrupts = <165 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			fsl,clk-source = <0>;
+			clocks = <&syscon_apbc CLK_APBC_CAN2>,<&syscon_apbc CLK_APBC_CAN2_BUS>;
+			clock-names = "per","ipg";
+			resets = <&syscon_apbc RESET_APBC_CAN2>;
+			status = "disabled";
+		};
+
+		flexcan3: fdcan@d4038000 {
+			compatible = "spacemit,k1-flexcan";
+			reg = <0x0 0xd4038000 0x0 0x4000>;
+			interrupts = <167 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			fsl,clk-source = <0>;
+			clocks = <&syscon_apbc CLK_APBC_CAN3>,<&syscon_apbc CLK_APBC_CAN3_BUS>;
+			clock-names = "per","ipg";
+			resets = <&syscon_apbc RESET_APBC_CAN3>;
+			status = "disabled";
+		};
+
+		flexcan4: fdcan@d403c000 {
+			compatible = "spacemit,k1-flexcan";
+			reg = <0x0 0xd403c000 0x0 0x4000>;
+			interrupts = <169 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			fsl,clk-source = <0>;
+			clocks = <&syscon_apbc CLK_APBC_CAN4>,<&syscon_apbc CLK_APBC_CAN4_BUS>;
+			clock-names = "per","ipg";
+			resets = <&syscon_apbc RESET_APBC_CAN4>;
+			status = "disabled";
+		};
+
 		rcpu1: rcpu_rproc1@1 {
 			compatible = "spacemit,k3-rproc";
 			reg =  <0 0 0 0>;
