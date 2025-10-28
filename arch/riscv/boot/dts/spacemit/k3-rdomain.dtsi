@@ -100,4 +100,69 @@
 		interrupts = <256 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
 	};
+
+	r_flexcan0: fdcan@c0710000 {
+		compatible = "spacemit,k1-flexcan";
+		reg = <0x0 0xc0710000 0x0 0x4000>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN0>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN0_BUS>;
+		clock-names = "per","ipg";
+		interrupts = <241 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		fsl,clk-source = <0>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RCAN0>;
+		status = "disabled";
+	};
+
+	r_flexcan1: fdcan@c0720000 {
+		compatible = "spacemit,k1-flexcan";
+		reg = <0x0 0xc0720000 0x0 0x4000>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN1>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN1_BUS>;
+		clock-names = "per","ipg";
+		interrupts = <243 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		fsl,clk-source = <0>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RCAN1>;
+		status = "disabled";
+	};
+
+	r_flexcan2: fdcan@c0730000 {
+		compatible = "spacemit,k1-flexcan";
+		reg = <0x0 0xc0730000 0x0 0x4000>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN2>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN2_BUS>;
+		clock-names = "per","ipg";
+		interrupts = <245 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		fsl,clk-source = <0>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RCAN2>;
+		status = "disabled";
+	};
+
+	r_flexcan3: fdcan@c0740000 {
+		compatible = "spacemit,k1-flexcan";
+		reg = <0x0 0xc0740000 0x0 0x4000>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN3>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN3_BUS>;
+		clock-names = "per","ipg";
+		interrupts = <247 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		fsl,clk-source = <0>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RCAN3>;
+		status = "disabled";
+	};
+
+	r_flexcan4: fdcan@c0750000 {
+		compatible = "spacemit,k1-flexcan";
+		reg = <0x0 0xc0750000 0x0 0x4000>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN4>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RCAN4_BUS>;
+		clock-names = "per","ipg";
+		interrupts = <249 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		fsl,clk-source = <0>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RCAN4>;
+		status = "disabled";
+	};
 };
