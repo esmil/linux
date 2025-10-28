@@ -1353,6 +1353,19 @@
 			snps,blen = <256 128 64 32 16 0 0>;
 		};
 
+		imggpu: imggpu@cac00000 {
+			compatible = "img,rgx";
+			interrupt-names = "rgxirq";
+			interrupt-parent = <&saplic>;
+			interrupts = <75 4>;
+			reg = <0x0 0xcac00000 0x0 0x80000>;
+			reg-names = "rgxregs";
+			clocks = <&syscon_apmu CLK_APMU_GPU>;
+			clock-names = "clk_rgx";
+			resets = <&syscon_apmu RESET_APMU_GPU>;
+			status = "okay";
+		};
+
 		eth0: ethernet@cac80000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xcac80000 0x0 0x2000>;
