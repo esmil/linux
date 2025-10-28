@@ -159,11 +159,12 @@ static int regulator_rpmi_get_attrs(u32 id, struct rpmi_regulator *reg)
 static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg)
 {
 	struct rpmi_regulator_context *context = reg->context;
+	struct device *dev = context->dev;
 	struct rpmi_mbox_message msg;
 	struct rpmi_volt_get_sup_tx tx;
 	struct rpmi_volt_get_sup_rx rx;
 	struct regulator_desc *desc = reg->desc;
-	struct linear_range ranges[RPMI_REGULATOR_LINEAR_MAX_NUM];
+	struct linear_range *ranges;
 	int i, ret;
 
 	tx.domain_id = cpu_to_le32(id);
@@ -177,6 +178,9 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 		if (rx.status)
 			return rpmi_to_linux_error(rx.status);
 
+		ranges = devm_kzalloc(dev, rx.returned * sizeof(struct linear_range), GFP_KERNEL);
+		if (ranges == NULL)
+			return -ENOMEM;
 		for (i = 0; i < rx.returned; i++) {
 			ranges[i].min = rx.volt_level[3 * i];
 			ranges[i].step = rx.volt_level[3 * i + 2];
@@ -188,7 +192,7 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 					    / rx.volt_level[3 * i + 2]
 					    + ranges[i].min_sel;
 		}
-		desc->n_voltages = ranges[i].max_sel;
+		desc->n_voltages = ranges[i - 1].max_sel;
 		desc->linear_ranges = &ranges[0];
 		desc->n_linear_ranges = reg->num_levels;
 	} else
