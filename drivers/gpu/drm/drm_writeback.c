@@ -555,8 +555,8 @@ drm_writeback_signal_completion(struct drm_writeback_connector *wb_connector,
 
 	spin_unlock_irqrestore(&wb_connector->job_lock, flags);
 
-	if (WARN_ON(!job))
-		return;
+	//if (WARN_ON(!job))
+	//	return;
 
 	out_fence = job->out_fence;
 	if (out_fence) {

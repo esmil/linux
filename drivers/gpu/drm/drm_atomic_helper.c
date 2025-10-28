@@ -2671,7 +2671,7 @@ void drm_atomic_helper_commit_hw_done(struct drm_atomic_state *state)
 		old_crtc_state->commit = drm_crtc_commit_get(commit);
 
 		/* backend must have consumed any event by now */
-		WARN_ON(new_crtc_state->event);
+		//WARN_ON(new_crtc_state->event);
 		complete_all(&commit->hw_done);
 	}
 

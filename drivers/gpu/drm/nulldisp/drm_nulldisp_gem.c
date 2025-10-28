@@ -585,9 +585,9 @@ static int nulldisp_gem_object_create_priv(struct drm_file *file,
 
 	mapping = file_inode(obj->filp)->i_mapping;
 	mapping_set_gfp_mask(mapping, GFP_USER |
-#if !defined(NULLDISP_PHYS_BUS_WIDTH) || NULLDISP_PHYS_BUS_WIDTH <= 32
-				      __GFP_DMA32 |
-#endif
+//#if !defined(NULLDISP_PHYS_BUS_WIDTH) || NULLDISP_PHYS_BUS_WIDTH <= 32
+//				      __GFP_DMA32 |
+//#endif
 				      __GFP_NORETRY);
 
 	err = drm_gem_handle_create(file, obj, handle);
