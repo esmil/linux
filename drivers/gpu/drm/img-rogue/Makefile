@@ -151,18 +151,11 @@ pvrsrvkm-y += \
  dma_support.o \
  vmm_type_stub.o \
  spacemit/sysconfig.o \
- spacemit/spacemit_init.o
-pvrsrvkm-$(CONFIG_DRM_POWERVR_ROGUE_DEBUG) += \
- client_htbuffer_direct_bridge.o \
- server_htbuffer_bridge.o \
+ spacemit/spacemit_init.o \
  server_rgxkicksync_bridge.o \
- client_ri_direct_bridge.o \
- server_ri_bridge.o \
- htb_debug.o \
- htbserver.o \
- ri_server.o \
  rgxkicksync.o \
- htbuffer.o
+ pvr_sync_ioctl_common.o \
+ pvr_sync_ioctl_drm.o
 pvrsrvkm-$(CONFIG_ARM)   += osfunc_arm.o
 pvrsrvkm-$(CONFIG_ARM64) += osfunc_arm64.o
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += trace_events.o pvr_gputrace.o
