@@ -5,6 +5,8 @@
 #include "k3-rdomain.dtsi"
 #include "lcd_dsi_panel.dtsi"
 #include "lcd/lcd_gc9503v_mipi.dtsi"
+#include "k3-camera.dtsi"
+#include "k3-camera-sensor-fpga.dtsi"
 
 / {
 	compatible = "spacemit,k3-fpga";

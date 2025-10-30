@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2023 SPACEMIT Micro Limited
+ */
+#include <dt-bindings/gpio/gpio.h>
+
+&soc {
+	sensor0: cam_sensor@0 {
+		cell-index = <0>;
+		compatible = "spacemit,vcam-sensor";
+		clocks = <&syscon_apmu CLK_APMU_ISIM_VCLK2>;
+		clock-names = "cam_mclk0";
+		reg = <0x0 0x0 0x0 0x0>;
+		dphy-entries = <5>;
+		dphy-settings = <0x00000001 0xa2848888 0x00001500 0x000000ff 0x1001>;
+		pwdn-gpios = <&gpio 0 7 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio 0 6 GPIO_ACTIVE_HIGH>;
+		dptc-gpios = <&gpio 0 8 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
+	};
+	sensor1: cam_sensor@1 {
+		cell-index = <1>;
+		compatible = "spacemit,vcam-sensor";
+		clocks = <&syscon_apmu CLK_APMU_ISIM_VCLK2>;
+		clock-names = "cam_mclk1";
+		reg = <0x0 0x1 0x0 0x0>;
+		dphy-entries = <5>;
+		dphy-settings = <0x00000001 0xa2848888 0x00001500 0x000000ff 0x1001>;
+		pwdn-gpios = <&gpio 0 3 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio 0 2 GPIO_ACTIVE_HIGH>;
+		dptc-gpios = <&gpio 0 4 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
+	};
+};

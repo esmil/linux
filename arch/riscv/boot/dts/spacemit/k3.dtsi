@@ -2123,5 +2123,21 @@
 			resets = <&syscon_apmu RESET_APMU_VPU>;
 			status = "disabled";
 		};
+
+		ccic0: cam_ccic@d420a000 {
+			status = "disabled";
+		};
+
+		ccic1: cam_ccic@d420a800 {
+			status = "disabled";
+		};
+
+		ccic2: cam_ccic@d4206000 {
+			status = "disabled";
+		};
+
+		ccic3: cam_ccic@d4206800 {
+			status = "disabled";
+		};
 	};
 };
