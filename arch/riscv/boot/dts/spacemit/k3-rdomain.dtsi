@@ -285,4 +285,34 @@
 		k1,pwm-disable-fd;
 		status = "disabled";
 	};
+
+	r_i2c0: ri2c@c0886000 {
+		compatible = "spacemit,k1-i2c";
+		reg = <0x0 0xc0886000 0x0 0x38>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&saplic>;
+		interrupts = <272 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&syscon_rcpu_i2cctrl CLK_RCPU_I2CCTRL_RI2C0>,
+			 <&syscon_rcpu_i2cctrl CLK_RCPU_I2CCTRL_RI2C0_BUS>;
+		clock-names = "func", "bus";
+		clock-frequency = <400000>;
+		resets = <&syscon_rcpu_i2cctrl RESET_RCPU_I2CCTRL_RI2C0>;
+		status = "disabled";
+	};
+
+	r_i2c1: ri2c@c0886100 {
+		compatible = "spacemit,k1-i2c";
+		reg = <0x0 0xc0886100 0x0 0x38>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&saplic>;
+		interrupts = <273 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&syscon_rcpu_i2cctrl CLK_RCPU_I2CCTRL_RI2C1>,
+			 <&syscon_rcpu_i2cctrl CLK_RCPU_I2CCTRL_RI2C1_BUS>;
+		clock-names = "func", "bus";
+		clock-frequency = <400000>;
+		resets = <&syscon_rcpu_i2cctrl RESET_RCPU_I2CCTRL_RI2C1>;
+		status = "disabled";
+	};
 };
