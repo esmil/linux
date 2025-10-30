@@ -518,4 +518,14 @@ config PCIE_VISCONTI_HOST
 	  Say Y here if you want PCIe controller support on Toshiba Visconti SoC.
 	  This driver supports TMPV7708 SoC.
 
+config PCIE_SPACEMIT
+	bool "Spacemit PCIe Controller (Host Mode)"
+	depends on SOC_SPACEMIT
+	depends on PCI_MSI
+	depends on OF && HAS_IOMEM
+	select PCIE_DW_HOST
+	help
+	  Enables support for the PCIe controller in the K1X SoC to work in
+	  host mode.
+
 endmenu
