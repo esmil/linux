@@ -117,3 +117,131 @@
 	clock-frequency = <10000000>;
 	status = "disabled";
 };
+
+&rpmi_regulator {
+	p_5v0: p_5v0 {
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+	};
+
+	/* a100 */
+	leaf_a100: leaf_a100 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3450000>;
+	};
+
+	/* x100 */
+	leaf_x100: leaf_x100 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3450000>;
+	};
+
+	/* 3v3 */
+	exter_3v3: exter_3v3 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	/* 1v8 */
+	exter_1v8: exter_1v8 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	dcdc1_2: dcdc1_2 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3450000>;
+	};
+
+	dcdc3: dcdc3 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <1800000>;
+	};
+
+	dcdc4: dcdc4 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3300000>;
+	};
+
+	dcdc5: dcdc5 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3450000>;
+	};
+
+	dcdc6: dcdc6 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3450000>;
+	};
+
+	/* aldo */
+	ldo1: ldo1 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo2: ldo2 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo3: ldo3 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo4: ldo4 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	/* dldo */
+	ldo5: ldo5 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo6: ldo6 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo7: ldo7 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo8: ldo8 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo9: ldo9 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo10: ldo10 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo11: ldo11 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	pwr_x100: pwr_x100 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	pwr_a100: pwr_a100 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	pwr_ext: pwr_ext {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+};
