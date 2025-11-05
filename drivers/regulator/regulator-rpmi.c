@@ -40,6 +40,7 @@ struct rpmi_regulator {
 	u32 id;
 	u32 type;
 	u32 num_levels;
+	u32 trans_latency;
 	char name[RPMI_REGULATOR_NAME_LEN];
 	struct regulator_desc *desc;
 };
@@ -57,6 +58,7 @@ struct rpmi_volt_get_attr_rx {
 	u32 status;
 	u32 flags;
 	u32 num_levels;
+	/* used for get parent id */
 	u32 trans_latency;
 	char name[RPMI_REGULATOR_NAME_LEN];
 };
@@ -152,6 +154,7 @@ static int regulator_rpmi_get_attrs(u32 id, struct rpmi_regulator *reg)
 		return -EINVAL;
 	reg->type = format >> 1;
 	reg->num_levels = rx.num_levels;
+	reg->trans_latency = rx.trans_latency;
 
 	return 0;
 }
@@ -159,44 +162,55 @@ static int regulator_rpmi_get_attrs(u32 id, struct rpmi_regulator *reg)
 static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg)
 {
 	struct rpmi_regulator_context *context = reg->context;
-	struct device *dev = context->dev;
 	struct rpmi_mbox_message msg;
 	struct rpmi_volt_get_sup_tx tx;
 	struct rpmi_volt_get_sup_rx rx;
 	struct regulator_desc *desc = reg->desc;
 	struct linear_range *ranges;
-	int i, ret;
+	unsigned int max, num_voltages = 0;
+	int ret;
+
+	ranges = kmalloc(reg->num_levels * sizeof(struct linear_range), GFP_KERNEL);
+	if (ranges == NULL)
+		return -ENOMEM;
 
 	tx.domain_id = cpu_to_le32(id);
-	tx.volt_level_index = 0;
-	if (reg->type == RPMI_REGULATOR_LINEAR) {
-		rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_GET_SUPPORTED_LEVELS,
-						  &tx, sizeof(tx), &rx, context->max_msg_data_size);
-		ret = rpmi_mbox_send_message(context->chan, &msg);
-		if (ret)
-			return ret;
-		if (rx.status)
-			return rpmi_to_linux_error(rx.status);
 
-		ranges = devm_kzalloc(dev, rx.returned * sizeof(struct linear_range), GFP_KERNEL);
-		if (ranges == NULL)
-			return -ENOMEM;
-		for (i = 0; i < rx.returned; i++) {
-			ranges[i].min = rx.volt_level[3 * i];
-			ranges[i].step = rx.volt_level[3 * i + 2];
-			if (i == 0)
-				ranges[i].min_sel = 0;
+	for (int i = 0; i < reg->num_levels; ++i) {
+		tx.volt_level_index = i;
+
+		if (reg->type == RPMI_REGULATOR_LINEAR) {
+			rpmi_mbox_init_send_with_response(&msg,
+							  RPMI_REGULATOR_SRV_GET_SUPPORTED_LEVELS,
+							  &tx, sizeof(tx), &rx,
+							  context->max_msg_data_size);
+			ret = rpmi_mbox_send_message(context->chan, &msg);
+			if (ret)
+				return ret;
+
+			if (rx.status)
+				return rpmi_to_linux_error(rx.status);
+
+			ranges[i].min = rx.volt_level[0];
+			max = rx.volt_level[1];
+
+			ranges[i].step = rx.volt_level[2];
+			ranges[i].min_sel = (i == 0) ? 0 : (ranges[i - 1].max_sel + 1);
+
+			if (ranges[i].step == 0)
+				ranges[i].max_sel = ranges[i].min_sel;
 			else
-				ranges[i].min_sel = ranges[i - 1].max_sel;
-			ranges[i].max_sel = (rx.volt_level[3 * i + 1] - rx.volt_level[3 * i])
-					    / rx.volt_level[3 * i + 2]
-					    + ranges[i].min_sel;
-		}
-		desc->n_voltages = ranges[i - 1].max_sel;
-		desc->linear_ranges = &ranges[0];
-		desc->n_linear_ranges = reg->num_levels;
-	} else
-		return -EINVAL;
+				ranges[i].max_sel = ranges[i].min_sel +
+						(max - ranges[i].min) / ranges[i].step;
+
+			num_voltages += ranges[i].max_sel - ranges[i].min_sel + 1;
+		} else
+			return -EINVAL;
+	}
+
+	desc->n_voltages = num_voltages;
+	desc->linear_ranges = ranges;
+	desc->n_linear_ranges = reg->num_levels;
 
 	return 0;
 }
@@ -219,12 +233,15 @@ static int regulator_rpmi_get_voltage_sel(struct regulator_dev *reg)
 	ret = rpmi_mbox_send_message(context->chan, &msg);
 	if (ret)
 		return ret;
+
 	if (rx.status)
 		return rpmi_to_linux_error(rx.status);
 
-	uV = rx.volt_level * 1000;
+	uV = rx.volt_level;
 
-	return regulator_map_voltage_linear_range(reg, uV, uV);
+	ret = regulator_map_voltage_linear_range(reg, uV, uV);
+
+	return ret;
 }
 
 static int regulator_rpmi_set_voltage_sel(struct regulator_dev *reg, unsigned sel)
@@ -240,13 +257,14 @@ static int regulator_rpmi_set_voltage_sel(struct regulator_dev *reg, unsigned se
 
 	tx.domain_id = cpu_to_le32(desc->id);
 	uV = regulator_list_voltage_linear_range(reg, sel);
-	tx.volt_level = uV / 1000;
+	tx.volt_level = uV;
 
 	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_SET_LEVEL,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
 	ret = rpmi_mbox_send_message(context->chan, &msg);
 	if (ret)
 		return ret;
+
 	if (rx.status)
 		return rpmi_to_linux_error(rx.status);
 
@@ -334,21 +352,24 @@ static const struct regulator_ops regulator_rpmi_ops = {
 	.is_enabled		= regulator_rpmi_is_enabled,
 };
 
-static struct regulator_desc *rpmi_regulator_enumerate(struct rpmi_regulator_context *context, u32 id)
+static struct regulator_desc *rpmi_regulator_enumerate(struct rpmi_regulator_context *context,
+						       u32 id, struct rpmi_regulator **regptr)
 {
 	struct device *dev = context->dev;
 	struct regulator_desc *desc;
 	struct rpmi_regulator *reg;
 	int ret;
 
-	reg = devm_kzalloc(dev, sizeof(*reg), GFP_KERNEL);
+	reg = kzalloc(sizeof(*reg), GFP_KERNEL);
 	if (!reg)
 		return ERR_PTR(-ENOMEM);
+
 	reg->context = context;
 
-	reg->desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
+	reg->desc = kzalloc(sizeof(*desc), GFP_KERNEL);
 	if (!reg->desc)
 		return ERR_PTR(-ENOMEM);
+
 	desc = reg->desc;
 
 	ret = regulator_rpmi_get_attrs(id, reg);
@@ -364,6 +385,9 @@ static struct regulator_desc *rpmi_regulator_enumerate(struct rpmi_regulator_con
 	desc->ops = &regulator_rpmi_ops;
 	desc->owner = THIS_MODULE;
 	desc->name = reg->name;
+	desc->id = reg->id;
+
+	*regptr = reg;
 
 	return desc;
 }
@@ -374,9 +398,11 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 	struct rpmi_regulator_context *context;
 	struct rpmi_mbox_message msg;
 	struct regulator_dev *regulator_dev;
-	struct regulator_desc *desc;
+	struct regulator_desc **desc;
+	struct rpmi_regulator **regptr;
 	struct regulator_config config = {};
 	int ret, num_domains, i;
+	u32 parentid;
 
 	context = devm_kzalloc(dev, sizeof(*context), GFP_KERNEL);
 	if (!context)
@@ -400,6 +426,7 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 		dev_err_probe(dev, ret, "Failed to get spec version\n");
 		goto fail_free_channel;
 	}
+
 	if (msg.attr.value < RPMI_MKVER(1, 0)) {
 		ret = dev_err_probe(dev, -EINVAL,
 				    "msg protocol version mismatch, expected 0x%x, found 0x%x\n",
@@ -413,6 +440,7 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 		dev_err_probe(dev, ret, "Failed to get service group ID\n");
 		goto fail_free_channel;
 	}
+
 	if (msg.attr.value != RPMI_SRVGRP_REGULATOR) {
 		ret = dev_err_probe(dev, EINVAL,
 				    "service group match failed, expected 0x%x, found 0x%x\n",
@@ -440,6 +468,7 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 		dev_err_probe(dev, ret, "Failed to get max message data size\n");
 		goto fail_free_channel;
 	}
+
 	context->max_msg_data_size = msg.attr.value;
 
 	num_domains = regulator_rpmi_get_num(context);
@@ -447,17 +476,41 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 		ret = dev_err_probe(dev, -ENODEV, "No regulator found\n");
 		goto fail_free_channel;
 	}
-	desc = devm_kzalloc(dev, sizeof(*desc) * num_domains, GFP_KERNEL);
+
+	desc = devm_kzalloc(dev, sizeof(struct regulator_desc *) * num_domains, GFP_KERNEL);
 	if (desc == NULL) {
 		ret = -ENOMEM;
 		goto fail_free_channel;
 	}
 
+	regptr = devm_kzalloc(dev, sizeof(struct rpmi_regulator *) * num_domains, GFP_KERNEL);
+	if (regptr == NULL) {
+		ret = -ENOMEM;
+		goto fail_free_channel;
+	}
+
 	config.dev = &pdev->dev;
+	config.of_node = NULL;
+
+	/* get the desc */
+	for (i = 0; i < num_domains; i++)
+		desc[i] = rpmi_regulator_enumerate(context, i, &regptr[i]);
+
+	/* set regulator parent */
+	for (i = 0; i < num_domains; ++i) {
+		parentid = regptr[i]->trans_latency;
+		if (parentid == 0xffffffff) {
+			desc[i]->supply_name = NULL;
+			desc[i]->of_match = of_match_ptr(desc[i]->name);
+		} else {
+			desc[i]->supply_name = desc[parentid]->name;
+			desc[i]->of_match = of_match_ptr(desc[i]->name);
+		}
+	}
+
 	for (i = 0; i < num_domains; i++) {
-		desc = rpmi_regulator_enumerate(context, i);
 		regulator_dev = devm_regulator_register(&pdev->dev,
-					desc, &config);
+					desc[i], &config);
 		if (IS_ERR(regulator_dev)) {
 			pr_err("failed to register %d regulator\n", i);
 			return PTR_ERR(regulator_dev);
