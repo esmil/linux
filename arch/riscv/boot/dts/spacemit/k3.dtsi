@@ -1485,5 +1485,107 @@
 			reset-names = "sdh_axi", "sdh2";
 			status = "disabled";
 		};
+
+		ai_dmac0: hdma0@d8804000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd8804000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA0>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status  = "disabled";
+		};
+
+		ai_dmac1: hdma1@d8805000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd8805000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <8 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA1>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status = "disabled";
+		};
+
+		ai_dmac2: hdma2@d8806000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd8806000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <9 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA2>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status = "disabled";
+		};
+
+		ai_dmac3: hdma3@d8807000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd8807000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA3>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status = "disabled";
+		};
+
+		ai_dmac4: hdma4@d8808000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd8808000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA4>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status  = "disabled";
+		};
+
+		ai_dmac5: hdma5@d8809000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd8809000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA5>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status = "disabled";
+		};
+
+		ai_dmac6: hdma6@d880a000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd880a000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA6>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status = "disabled";
+		};
+
+		ai_dmac7: hdma7@d880b000 {
+			compatible = "spacemit-ai-dmac";
+			reg = <0x0 0xd880b000 0x0 0x1000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_dciu CLK_DCIU_HDMA>;
+			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA7>;
+			reset-names = "bus", "dma";
+			dma-coherent;
+			status = "disabled";
+		};
+
+		ai_dmadev: msi_test@0 {
+			compatible = "ai-dma-dev";
+			msi-parent = <&simsic>;
+			status = "disabled";
+		};
 	};
 };
