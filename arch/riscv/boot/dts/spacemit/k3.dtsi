@@ -2139,5 +2139,9 @@
 		ccic3: cam_ccic@d4206800 {
 			status = "disabled";
 		};
+
+		ccic_dma: cam_ccic_dma@d420f000 {
+			status = "disabled";
+		};
 	};
 };
