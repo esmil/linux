@@ -46,5 +46,11 @@ struct ccic_device {
 	struct vcam_clk_info clk4x;
 	struct vcam_clk_info ahb_clk;
 	struct vcam_clk_info axi_clk;
+
+	struct reset_control *csi_dphy_reset;
+	struct reset_control *csi_reset;
+	struct reset_control *ccic_4x_reset;
+	struct reset_control *sc2_hclk_reset;
+	struct reset_control *isp_cibus_reset;
 };
 #endif

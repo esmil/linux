@@ -47,17 +47,9 @@ struct ccic_dma_device {
 	struct vcam_clk_info ahb_clk;
 	struct vcam_clk_info axi_clk;
 
-	// struct vcam_reset_info *csi_reset;
-	// struct vcam_reset_info *ccic_4x_reset;
-	// struct vcam_reset_info *sc2_hclk_reset;
-	// struct vcam_reset_info *isp_cibus_reset;
-
 	struct reset_control *csi_reset;
 	struct reset_control *ccic_4x_reset;
 	struct reset_control *sc2_hclk_reset;
 	struct reset_control *isp_cibus_reset;
-
-	struct reset_control *isp_ci_reset;
-	struct reset_control *ahb_reset;
 };
 #endif

@@ -14,7 +14,6 @@
 #include <linux/gpio/consumer.h>
 #include <linux/pinctrl/consumer.h>
 
-//#define CONFIG_ARCH_SPACEMIT
 
 struct vcam_sensor_device {
 	struct platform_device *pdev;
@@ -24,13 +23,10 @@ struct vcam_sensor_device {
 
 	struct gpio_desc *gpio_pwdn;
 	struct gpio_desc *gpio_rst;
-//#ifdef CONFIG_ARCH_SPACEMIT
 	struct gpio_desc *gpio_afvdd;
 	struct gpio_desc *gpio_avdd;
 	struct gpio_desc *gpio_dvdd;
-//#else
 	struct gpio_desc *gpio_dptc;
-//#endif
 
 	struct regulator *supply_afvdd;
 	struct regulator *supply_avdd;

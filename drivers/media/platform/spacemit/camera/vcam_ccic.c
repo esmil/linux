@@ -107,14 +107,38 @@ static void vcamccic_local_reset(struct ccic_device *ccic_local)
 
 __maybe_unused static int vcam_ccic_init_clk(struct ccic_device *ccic_dev)
 {
-#ifdef CONFIG_ARCH_SPACEMIT
 	dev_info(ccic_dev->dev, "----------to init clk\n");
+
+	vcam_get_dt_reset_info(ccic_dev->dev, "csi_dphy_reset",
+				     &ccic_dev->csi_dphy_reset);
+	if (IS_ERR_OR_NULL(ccic_dev->csi_dphy_reset))
+		return PTR_ERR(ccic_dev->csi_dphy_reset);
+
+	vcam_get_dt_reset_info(ccic_dev->dev, "csi_reset",
+				     &ccic_dev->csi_reset);
+	if (IS_ERR_OR_NULL(ccic_dev->csi_reset))
+		return PTR_ERR(ccic_dev->csi_reset);
+
+	vcam_get_dt_reset_info(ccic_dev->dev, "ccic_4x_reset",
+				     &ccic_dev->ccic_4x_reset);
+	if (IS_ERR_OR_NULL(ccic_dev->ccic_4x_reset))
+		return PTR_ERR(ccic_dev->ccic_4x_reset);
+
+	vcam_get_dt_reset_info(ccic_dev->dev, "sc2_hclk_reset",
+				     &ccic_dev->sc2_hclk_reset);
+	if (IS_ERR_OR_NULL(ccic_dev->sc2_hclk_reset))
+		return PTR_ERR(ccic_dev->sc2_hclk_reset);
+
+	vcam_get_dt_reset_info(ccic_dev->dev, "isp_cibus_reset",
+				     &ccic_dev->isp_cibus_reset);
+	if (IS_ERR_OR_NULL(ccic_dev->isp_cibus_reset))
+		return PTR_ERR(ccic_dev->isp_cibus_reset);
+
 	vcam_get_dt_clk_info(ccic_dev->dev, "sc2_axi", &ccic_dev->axi_clk);
 	vcam_get_dt_clk_info(ccic_dev->dev, "sc2_ahb", &ccic_dev->ahb_clk);
 	vcam_get_dt_clk_info(ccic_dev->dev, "csi_dphy", &ccic_dev->dphy_clk);
 	vcam_get_dt_clk_info(ccic_dev->dev, "csi_func", &ccic_dev->csi_clk);
 	vcam_get_dt_clk_info(ccic_dev->dev, "ccic_func", &ccic_dev->clk4x);
-#endif
 
 	return 0;
 }

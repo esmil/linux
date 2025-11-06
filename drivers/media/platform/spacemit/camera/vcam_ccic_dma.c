@@ -106,34 +106,34 @@ static void vcamccic_dma_local_reset(struct ccic_dma_device *ccic_dma_local)
 __maybe_unused static int vcam_ccic_dma_init_clk(struct ccic_dma_device *ccic_dma_dev)
 {
 	pr_info("ccic dma to init clk\n");
-#ifdef CONFIG_ARCH_SPACEMIT
+
 	dev_info(ccic_dma_dev->dev, "---ccic dma to init clk\n");
 
 	vcam_get_dt_reset_info(ccic_dma_dev->dev, "csi_reset",
 				     &ccic_dma_dev->csi_reset);
-	if (IS_ERR_OR_NULL(ccic_dma_dev->ahb_reset))
-		return PTR_ERR(ccic_dma_dev->ahb_reset);
-
-	vcam_get_dt_reset_info(ccic_dma_dev->dev, "ccic_4x_reset",
-				     &ccic_dma_dev->ccic_4x_reset);
 	if (IS_ERR_OR_NULL(ccic_dma_dev->csi_reset))
 		return PTR_ERR(ccic_dma_dev->csi_reset);
 
-	vcam_get_dt_reset_info(ccic_dma_dev->dev, "sc2_hclk_reset",
-				     &ccic_dma_dev->sc2_hclk_reset);
+	vcam_get_dt_reset_info(ccic_dma_dev->dev, "ccic_4x_reset",
+				     &ccic_dma_dev->ccic_4x_reset);
 	if (IS_ERR_OR_NULL(ccic_dma_dev->ccic_4x_reset))
 		return PTR_ERR(ccic_dma_dev->ccic_4x_reset);
 
+	vcam_get_dt_reset_info(ccic_dma_dev->dev, "sc2_hclk_reset",
+				     &ccic_dma_dev->sc2_hclk_reset);
+	if (IS_ERR_OR_NULL(ccic_dma_dev->sc2_hclk_reset))
+		return PTR_ERR(ccic_dma_dev->sc2_hclk_reset);
+
 	vcam_get_dt_reset_info(ccic_dma_dev->dev, "isp_cibus_reset",
 				     &ccic_dma_dev->isp_cibus_reset);
-	if (IS_ERR_OR_NULL(ccic_dma_dev->isp_ci_reset))
-		return PTR_ERR(ccic_dma_dev->isp_ci_reset);
+	if (IS_ERR_OR_NULL(ccic_dma_dev->isp_cibus_reset))
+		return PTR_ERR(ccic_dma_dev->isp_cibus_reset);
 
 	vcam_get_dt_clk_info(ccic_dma_dev->dev, "sc2_axi", &ccic_dma_dev->axi_clk);
 	vcam_get_dt_clk_info(ccic_dma_dev->dev, "sc2_ahb", &ccic_dma_dev->ahb_clk);
 	vcam_get_dt_clk_info(ccic_dma_dev->dev, "csi_func", &ccic_dma_dev->csi_clk);
 	vcam_get_dt_clk_info(ccic_dma_dev->dev, "ccic_func", &ccic_dma_dev->clk4x);
-#endif
+
 	pr_info("ccic dma to init clk retun 0\n");
 	return 0;
 }

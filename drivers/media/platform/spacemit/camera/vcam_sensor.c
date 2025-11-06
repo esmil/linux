@@ -58,10 +58,8 @@ static int vcam_sensor_clock_enable(struct vcam_sensor_device *msnr_dev,
 {
 	int ret = 0;
 
-#ifndef CONFIG_ARCH_SPACEMIT
 	pr_info("sensor%d: needn't %s clock on current platform\n", msnr_dev->id, en ? "enable" : "disable");
 	return ret;
-#endif
 
 	if (IS_ERR_OR_NULL(msnr_dev->mclk))
 		return -EINVAL;
@@ -507,7 +505,6 @@ static int sensor_seq_gpio_set(struct vcam_sensor_device *msnr_dev,
 	case SENSOR_GPIO_PWDN:
 		gpio = msnr_dev->gpio_pwdn;
 		break;
-//#ifdef CONFIG_ARCH_SPACEMIT
 	case SENSOR_GPIO_AVDD:
 		gpio = msnr_dev->gpio_avdd;
 		break;
@@ -517,11 +514,9 @@ static int sensor_seq_gpio_set(struct vcam_sensor_device *msnr_dev,
 	case SENSOR_GPIO_AFVDD:
 		gpio = msnr_dev->gpio_afvdd;
 		break;
-//#else
 	case SENSOR_GPIO_DPTC:
 		gpio = msnr_dev->gpio_dptc;
 		break;
-//#endif
 	default:
 		pr_err("invalid gpio type %d\n", gpio_type);
 		return -EINVAL;
@@ -783,7 +778,6 @@ static int spacemit_snr_of_parse(struct vcam_sensor_device *sensor)
 	}
 
 	/* mclks */
-#ifdef CONFIG_ARCH_SPACEMIT
 	snprintf(mclk_name, sizeof(mclk_name), "cam_mclk%d", cell_id);
 	sensor->mclk = devm_clk_get(dev, mclk_name);
 	if (IS_ERR_OR_NULL(sensor->mclk)) {
@@ -791,7 +785,6 @@ static int spacemit_snr_of_parse(struct vcam_sensor_device *sensor)
 		ret = PTR_ERR(sensor->mclk);
 		goto st_err;
 	}
-#endif
 
 	/* gpios */
 	sensor->gpio_pwdn = devm_gpiod_get(dev, "pwdn", GPIOD_OUT_HIGH);
@@ -818,7 +811,6 @@ static int spacemit_snr_of_parse(struct vcam_sensor_device *sensor)
 		}
 	}
 
-#ifdef CONFIG_ARCH_SPACEMIT
 	/* afvdd28-gpios */
 	sensor->gpio_afvdd = devm_gpiod_get(dev, "afvdd28", GPIOD_OUT_HIGH);
 	if (IS_ERR(sensor->gpio_afvdd)) {
@@ -858,7 +850,6 @@ static int spacemit_snr_of_parse(struct vcam_sensor_device *sensor)
 			goto st_err;
 		}
 	}
-#endif
 
 	sensor->gpio_dptc = devm_gpiod_get(dev, "dptc", GPIOD_OUT_HIGH);
 	if (IS_ERR(sensor->gpio_dptc)) {
@@ -880,7 +871,6 @@ static int spacemit_snr_of_parse(struct vcam_sensor_device *sensor)
 
 
 	/* regulators */
-#ifdef CONFIG_ARCH_SPACEMIT
 	sensor->supply_afvdd = devm_regulator_get(dev, "af_2v8");
 	if (IS_ERR(sensor->supply_afvdd)) {
 		dev_info(dev, "no regulator af_2v8\n");
@@ -904,7 +894,6 @@ static int spacemit_snr_of_parse(struct vcam_sensor_device *sensor)
 		dev_info(dev, "no regulator dvdd_1v2\n");
 		sensor->supply_dvdd = NULL;
 	}
-#endif
 
 	/* dphy-settings */
 	ret = of_property_read_u32(of_node, "dphy-entries", &dphy_entries);
