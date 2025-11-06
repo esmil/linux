@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 config SPACEMIT_HMP
-	bool
+	bool "Spacemit HMP support"
 	default SOC_SPACEMIT
 	help
 	  Say y here to enable the HMP feature support.
