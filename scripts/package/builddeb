@@ -139,7 +139,13 @@ install_kernel_headers () {
 	pdir=debian/$1
 	version=${1#linux-headers-}
 
-	CC="${DEB_HOST_GNU_TYPE}-gcc" "${srctree}/scripts/package/install-extmod-build" "${pdir}/usr/src/linux-headers-${version}"
+	# Try DEB_HOST_GNU_TYPE-gcc first, fall back to riscv64-unknown-linux-gnu-gcc
+	if command -v "${DEB_HOST_GNU_TYPE}-gcc" >/dev/null 2>&1; then
+		CC="${DEB_HOST_GNU_TYPE}-gcc"
+	else
+		CC="riscv64-unknown-linux-gnu-gcc"
+	fi
+	CC="${CC}" "${srctree}/scripts/package/install-extmod-build" "${pdir}/usr/src/linux-headers-${version}"
 
 	mkdir -p $pdir/lib/modules/$version/
 	ln -s /usr/src/linux-headers-$version $pdir/lib/modules/$version/build
@@ -156,6 +162,34 @@ install_libc_headers () {
 	mv "$pdir/usr/include/asm" "$pdir/usr/include/${DEB_HOST_MULTIARCH}"
 }
 
+install_tools(){
+	pdir=debian/$1
+	version=$2
+
+	rm -rf $pdir
+
+	mkdir -p "$pdir/usr/lib/linux-tools/$version"
+	install -m755 $srctree/tools/perf/perf $pdir/usr/lib/linux-tools/$version
+}
+
+install_tools_common(){
+	pdir=debian/$1
+
+	rm -rf $pdir
+
+	toolsbin=$pdir/usr/bin
+	toolssbin=$pdir/usr/sbin
+	toolsman=$pdir/usr/share/man
+
+	install -d $toolsbin
+	install -d $toolssbin
+	install -d $toolsman/man1
+	install -d $toolsman/man8
+
+	install -m755 $srctree/scripts/package/generic $toolsbin/perf
+	install -m644 $srctree/tools/perf/Documentation/*.1 $toolsman/man1
+}
+
 package=$1
 
 case "${package}" in
@@ -167,4 +201,8 @@ linux-libc-dev)
 	install_libc_headers "${package}";;
 linux-headers-*)
 	install_kernel_headers "${package}";;
+linux-tools-common)
+	install_tools_common "${package}";;
+linux-tools-*)
+	install_tools "${package}" "${package#linux-tools-}";;
 esac

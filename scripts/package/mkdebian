@@ -165,6 +165,8 @@ else
 	packageversion=${upstream_version}-${debian_revision}
 fi
 sourcename=${KDEB_SOURCENAME:-linux-upstream}
+kernelgitver=$(git rev-parse --short HEAD)
+baseversion=$(echo $version | cut -d- -f1)
 
 if [ "$ARCH" = "um" ] ; then
 	packagename=user-mode-linux
@@ -214,12 +216,15 @@ Build-Depends-Arch: bc, bison, flex,
  libssl-dev:native, libssl-dev <!pkg.${sourcename}.nokernelheaders>,
  python3:native, rsync
 Homepage: https://www.kernel.org/
+XBS-Commit-Id: $kernelgitver
 
 Package: $packagename-${KERNELRELEASE}
 Architecture: $debarch
 Description: Linux kernel, version ${KERNELRELEASE}
  This package contains the Linux kernel, modules and corresponding other
  files, version: ${KERNELRELEASE}.
+Depends: spacemit-flash-dtbs
+Provides: linux-image-$baseversion
 EOF
 
 if [ "${SRCARCH}" != um ]; then
@@ -233,6 +238,27 @@ Description: Linux support headers for userspace development
  This package provides userspaces headers from the Linux kernel.  These headers
  are used by the installed headers for GNU glibc and other system libraries.
 Multi-Arch: same
+
+Package: linux-tools-$version
+Architecture: $debarch
+Section: devel
+Depends: linux-tools-common, libnuma-dev, libbabeltrace1, libpfm4, libtraceevent1
+Description: Linux kernel version specific tools for version $version
+ This package provides the architecture dependant parts for kernel
+ version locked tools (such as perf) for
+ version $version on
+ .
+Provides: linux-tools-$baseversion
+
+Package: linux-tools-common
+Architecture: all
+Multi-Arch: foreign
+Section: kernel
+Depends: lsb-release
+Description: Linux kernel version specific tools for version $version
+ This package provides the architecture independent parts for kernel
+ version locked tools (such as perf) for
+ version $version.
 EOF
 
 if is_enabled CONFIG_MODULES; then
@@ -245,6 +271,7 @@ Description: Linux kernel headers for ${KERNELRELEASE} on $debarch
  This package provides kernel header files for ${KERNELRELEASE} on $debarch
  .
  This is useful for people who need to build external modules
+Provides: linux-headers-$baseversion
 EOF
 fi
 fi
@@ -259,6 +286,7 @@ Build-Profiles: <!pkg.${sourcename}.nokerneldbg>
 Description: Linux kernel debugging symbols for ${KERNELRELEASE}
  This package will come in handy if you need to debug the kernel. It provides
  all the necessary debug symbols for the kernel and its modules.
+Provides: linux-image-$baseversion-dbg
 EOF
 fi
 
