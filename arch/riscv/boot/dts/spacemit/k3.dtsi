@@ -1002,6 +1002,20 @@
 			status = "disabled";
 		};
 
+		v2d: v2d@c0100000 {
+			compatible = "spacemit,v2d";
+			reg =  <0x0 0xc0100000 0x0 0x1000>;
+			reg-names = "v2dreg";
+			clocks = <&syscon_apmu CLK_APMU_LCD_MCLK>,
+				 <&syscon_apmu CLK_APMU_V2D>;
+			clock-names = "v2d-io", "v2d-core";
+			resets = <&syscon_apmu RESET_APMU_V2D>;
+			reset-names = "v2d_reset";
+			interrupt-parent = <&saplic>;
+			interrupts = <86 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
 		mailbox0: mailbox0@cac90000 {
 			compatible = "spacemit,k3-mailbox";
 			reg = <0x0 0xcac90000 0x0 0x400>;
