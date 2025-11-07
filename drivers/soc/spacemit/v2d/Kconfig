@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0
+config SPACEMIT_V2D
+        tristate "Spacemit V2D Engine Driver"
+        depends on SYNC_FILE
+        default m
+        help
+          This enables Spacemit V2D Engine driver
