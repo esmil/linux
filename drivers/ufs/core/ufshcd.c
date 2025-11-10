@@ -4512,6 +4512,13 @@ int ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 
 	ufshcd_vops_hibern8_notify(hba, UIC_CMD_DME_HIBER_ENTER, PRE_CHANGE);
 
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
+		ufshcd_disable_intr(hba, UIC_ERROR);
+		wmb();
+	}
+#endif
+
 	ret = ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
 	trace_ufshcd_profile_hibern8(hba, "enter",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
@@ -4521,7 +4528,14 @@ int ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 			__func__, ret);
 	else
 		ufshcd_vops_hibern8_notify(hba, UIC_CMD_DME_HIBER_ENTER,
-								POST_CHANGE);
+							POST_CHANGE);
+
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
+		ufshcd_enable_intr(hba, UIC_ERROR);
+		wmb();
+	}
+#endif
 
 	return ret;
 }
@@ -4537,6 +4551,13 @@ int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 
 	ufshcd_vops_hibern8_notify(hba, UIC_CMD_DME_HIBER_EXIT, PRE_CHANGE);
 
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
+		ufshcd_disable_intr(hba, UIC_ERROR);
+		wmb();
+	}
+#endif
+
 	ret = ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
 	trace_ufshcd_profile_hibern8(hba, "exit",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
@@ -4550,6 +4571,13 @@ int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 		hba->ufs_stats.last_hibern8_exit_tstamp = local_clock();
 		hba->ufs_stats.hibern8_exit_cnt++;
 	}
+
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
+		ufshcd_enable_intr(hba, UIC_ERROR);
+		wmb();
+	}
+#endif
 
 	return ret;
 }
@@ -6971,6 +6999,12 @@ static irqreturn_t ufshcd_check_errors(struct ufs_hba *hba, u32 intr_status)
 		retval = ufshcd_update_uic_error(hba);
 		if (hba->uic_error)
 			queue_eh_work = true;
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+		if (hba->pm_op_in_progress) {
+			queue_eh_work = false;
+			retval |= IRQ_HANDLED;
+		}
+#endif
 	}
 
 	if (hba->errors & UFSHCD_UIC_HIBERN8_MASK) {
@@ -9658,6 +9692,16 @@ static int ufshcd_set_dev_pwr_mode(struct ufs_hba *hba,
 	 * callbacks hence set the RQF_PM flag so that it doesn't resume the
 	 * already suspended childs.
 	 */
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	if ((pwr_mode == UFS_ACTIVE_PWR_MODE) && ufshcd_is_ufs_dev_active(hba)) {
+		printk(KERN_WARNING "ufs: ufshcd_set_dev_pwr_mode skip SSU cmd\n");
+		ret = 0;
+		hba->curr_dev_pwr_mode = pwr_mode;
+		scsi_device_put(sdp);
+		hba->host->eh_noresume = 0;
+		return ret;
+	}
+#endif
 	ret = ufshcd_execute_start_stop(sdp, pwr_mode, &sshdr);
 	if (ret) {
 		sdev_printk(KERN_WARNING, sdp,
@@ -10034,9 +10078,19 @@ static int __ufshcd_wl_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		if (!ret) {
 			ufshcd_set_link_active(hba);
 		} else {
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+			printk(KERN_WARNING "ufs: ufshcd_reset_and_restore for hibern8 exit\n");
+			ret = ufshcd_reset_and_restore(hba);
+			if (ret) {
+				dev_err(hba->dev, "%s: hibern8 exit failed %d\n",
+						__func__, ret);
+				goto vendor_suspend;
+			}
+#else
 			dev_err(hba->dev, "%s: hibern8 exit failed %d\n",
 					__func__, ret);
 			goto vendor_suspend;
+#endif
 		}
 	} else if (ufshcd_is_link_off(hba)) {
 		/*

@@ -116,6 +116,25 @@ config SCSI_UFS_TI_J721E
 	  Selects this if you have TI platform with UFS controller.
 	  If unsure, say N.
 
+config SCSI_UFS_SPACEMIT_K3
+	tristate "Spacemit K3 specific hooks to UFS controller platform driver"
+	depends on SCSI_UFSHCD_PLATFORM && ARCH_SPACEMIT
+	help
+	  This selects the Spacemit K3 specific additions to UFSHCD platform driver.
+
+	  Select this if you have UFS controller on Spacemit K3 chipset.
+	  If unsure, say N.
+
+config SPACEMIT_K3_UFS_CRYPTO_DEBUG
+	bool "Spacemit K3 UFS Crypto debugging"
+	depends on SCSI_UFS_SPACEMIT_K3 && SCSI_UFS_CRYPTO
+	help
+	  Enable UFS crypto key programming test code for debugging purposes.
+	  This will program test keys to crypto key slots during initialization.
+
+	  This is for debugging only and should not be enabled in production builds.
+	  Say N unless you are debugging UFS inline encryption functionality.
+
 config SCSI_UFS_EXYNOS
 	tristate "Exynos specific hooks to UFS controller platform driver"
 	depends on SCSI_UFSHCD_PLATFORM && (ARCH_EXYNOS || COMPILE_TEST)
