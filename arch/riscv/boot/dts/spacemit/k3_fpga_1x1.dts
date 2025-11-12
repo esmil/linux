@@ -126,8 +126,8 @@
 
 	/* a100 */
 	leaf_a100: leaf_a100 {
-		regulator-min-microvolt = <500000>;
-		regulator-max-microvolt = <3450000>;
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <800000>;
 	};
 
 	/* x100 */
