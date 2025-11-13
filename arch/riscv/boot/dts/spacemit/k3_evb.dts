@@ -1,0 +1,253 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2025 Spacemit, Inc */
+
+#include "k3.dtsi"
+#include "k3-rdomain.dtsi"
+
+/ {
+	compatible = "spacemit,k3-evb";
+	cpus: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <24000000>;
+	};
+
+	chosen {
+		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8";
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&qspi {
+	status = "disabled";
+};
+
+&usb3_porta {
+	status = "disabled";
+	maximum-speed = "high-speed";
+	dr_mode = "peripheral";
+	phy_type = "utmi_wide";
+	snps,dis_u2_susphy_quirk;
+	snps,dis_enblslpm_quirk;
+};
+
+&eth0 {
+	max-speed = <100>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii0>;
+	snps,reset-gpios = <&gpio 1 8 GPIO_ACTIVE_LOW>;
+
+	spacemit,wake-irq-enable;
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-reg;
+	spacemit,tx-phase = <0>;
+	spacemit,rx-phase = <0>;
+
+	status = "disabled";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii0: phy@0 {
+			compatible = "ethernet-phy-id0.11a", "ethernet-phy-ieee802.3-c22";
+			reg = <0x0>;
+
+			motorcomm,clk-out-frequency-hz = <125000000>;
+			motorcomm,keep-pll-enabled;
+			motorcomm,auto-sleep-disabled;
+		};
+	};
+};
+
+&eth3 {
+	max-speed = <100>;
+	tx-fifo-depth = <4096>;
+	rx-fifo-depth = <4096>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii3>;
+	snps,reset-gpios = <&gpio 2 16 GPIO_ACTIVE_LOW>;
+
+	spacemit,wake-irq-enable;
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-reg;
+	spacemit,tx-phase = <0>;
+	spacemit,rx-phase = <0>;
+
+	status = "disabled";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii3: phy@3 {
+			compatible = "ethernet-phy-id0.11a", "ethernet-phy-ieee802.3-c22";
+			reg = <0x0>;
+
+			motorcomm,clk-out-frequency-hz = <125000000>;
+			motorcomm,keep-pll-enabled;
+			motorcomm,auto-sleep-disabled;
+		};
+	};
+};
+
+&sdcard {
+	bus-width = <4>;
+	broken-cd;
+	cap-sd-highspeed;
+	no-mmc;
+	no-sdio;
+	clock-frequency = <10000000>;
+	status = "disabled";
+};
+
+&emmc {
+	bus-width = <8>;
+	non-removable;
+	cap-mmc-highspeed;
+	no-sd;
+	no-sdio;
+	clock-frequency = <10000000>;
+	status = "disabled";
+};
+
+&rpmi_regulator {
+	status = "disabled";
+
+	p_5v0: p_5v0 {
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+	};
+
+	/* a100 */
+	leaf_a100: leaf_a100 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3450000>;
+	};
+
+	/* x100 */
+	leaf_x100: leaf_x100 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3450000>;
+	};
+
+	/* 3v3 */
+	exter_3v3: exter_3v3 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	/* 1v8 */
+	exter_1v8: exter_1v8 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	dcdc1_2: dcdc1_2 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3450000>;
+	};
+
+	dcdc3: dcdc3 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <1800000>;
+	};
+
+	dcdc4: dcdc4 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3300000>;
+	};
+
+	dcdc5: dcdc5 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3450000>;
+	};
+
+	dcdc6: dcdc6 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3450000>;
+	};
+
+	/* aldo */
+	ldo1: ldo1 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo2: ldo2 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo3: ldo3 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo4: ldo4 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	/* dldo */
+	ldo5: ldo5 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo6: ldo6 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo7: ldo7 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo8: ldo8 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo9: ldo9 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo10: ldo10 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	ldo11: ldo11 {
+                regulator-min-microvolt = <500000>;
+                regulator-max-microvolt = <3400000>;
+	};
+
+	pwr_x100: pwr_x100 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	pwr_a100: pwr_a100 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+
+	pwr_ext: pwr_ext {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+};
