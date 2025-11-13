@@ -49,6 +49,7 @@ obj-$(CONFIG_SPI_COLDFIRE_QSPI)		+= spi-coldfire-qspi.o
 obj-$(CONFIG_SPI_CS42L43)		+= spi-cs42l43.o
 obj-$(CONFIG_SPI_DAVINCI)		+= spi-davinci.o
 obj-$(CONFIG_SPI_DLN2)			+= spi-dln2.o
+obj-$(CONFIG_SPI_K1)			+= spi-spacemit-k1.o
 obj-$(CONFIG_SPI_K1_QSPI)		+= spi-k1-qspi.o qspi-test.o
 obj-$(CONFIG_SPI_DESIGNWARE)		+= spi-dw.o
 spi-dw-y				:= spi-dw-core.o

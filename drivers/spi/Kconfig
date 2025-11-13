@@ -346,6 +346,12 @@ config SPI_DAVINCI
 	help
 	  SPI master controller for DaVinci/DA8x/OMAP-L/AM1x SPI modules.
 
+config SPI_K1
+	tristate "Spacemit K1 SPI Controller"
+	depends on SPI_MEM
+	help
+	  Enable support for the Spacemit K1 SPI controller.
+
 config SPI_K1_QSPI
 	tristate "Spacemit k1 QSPI Controller"
 	depends on SPI_MEM
