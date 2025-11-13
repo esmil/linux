@@ -1091,7 +1091,7 @@ static int lcd_tp_event_handler(struct notifier_block *nb, unsigned long event, 
 }
 
 #endif
-void spacemit_of_node_put(struct device_node *node);
+
 /* based on of_node_put */
 void spacemit_of_node_put(struct device_node *node)
 {
@@ -1146,7 +1146,6 @@ static void spacemit_devm_backlight_release(void *data)
 
 
 /* based on devm_of_find_backlight */
-struct backlight_device *spacemit_devm_of_find_backlight(struct device *dev);
 struct backlight_device *spacemit_devm_of_find_backlight(struct device *dev)
 {
 	struct backlight_device *bd;

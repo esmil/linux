@@ -77,7 +77,7 @@
 #define CMDLIST_ADDRL_ALIGN_BITS		(4) //From cmdlist_reg_0[] in CMDLIST_REG
 #define CMDLIST_ADDRL_ALIGN_MASK		((u32)(~(BIT(CMDLIST_ADDRL_ALIGN_BITS) - 1)))
 
-#define MAX_SCALER_NUMS		1
+#define MAX_SCALER_NUMS		4
 struct spacemit_crtc_scaler {
 	u32 rdma_id;
 	u32 in_use;
@@ -225,6 +225,7 @@ struct spacemit_crtc {
 	struct reset_control *lcd_reset;
 	struct reset_control *esc_reset;
 	struct reset_control *aclk_reset;
+	struct reset_control *dsc_reset;
 
 #ifdef CONFIG_SPACEMIT_DEBUG
 	bool (*is_dpu_running)(struct spacemit_crtc *a_crtc);

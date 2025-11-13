@@ -297,7 +297,7 @@ void saturn_hee_conf_scaler_x(struct drm_plane_state *state, struct cmdlist_regs
 		if (unlikely(spacemit_plane_state->scaler_id >= MAX_SCALER_NUMS))
 			DRM_ERROR("Invalid scaler id:%d\n", spacemit_plane_state->scaler_id);
 		/* Config SCALER scaling regs */
-		module_base = SCALER0_ONLINE_BASE_ADDR + spacemit_plane_state->scaler_id * SCALER_SIZE;
+		module_base = SCALER0_ONLINE_BASE_ADDR + spacemit_plane_state->rdma_id * SCALER_SIZE;
 	} else {
 		//LARK only SCALER1 can be used for POST SCALER
 		module_base = SCALER1_ONLINE_BASE_ADDR;
@@ -382,7 +382,7 @@ void saturn_hee_conf_scaler_coefs(struct drm_plane *plane, struct spacemit_plane
 		if (unlikely(spacemit_pstate->scaler_id >= MAX_SCALER_NUMS))
 			DRM_ERROR("Invalid scaler id:%d\n", spacemit_pstate->scaler_id);
 		/* Config SCALER scaling regs */
-		module_base = SCALER0_ONLINE_BASE_ADDR + spacemit_pstate->scaler_id * SCALER_SIZE;
+		module_base = SCALER0_ONLINE_BASE_ADDR + spacemit_pstate->rdma_id * SCALER_SIZE;
 	} else {
 		//LARK only SCALER1 can be used for POST SCALER
 		module_base = SCALER1_ONLINE_BASE_ADDR;
@@ -1068,6 +1068,8 @@ static u32 saturn_conf_dpuctrl_scaling(struct spacemit_crtc *a_crtc)
 		scaler = &(ac->scalers[i]);
 		DRM_DEBUG("scaler%d: in_use:0x%x rdma_id:%d\n", i, scaler->in_use, scaler->rdma_id);
 		trace_dpuctrl_scaling_setting(i, scaler->in_use, scaler->rdma_id);
+		if (scaler->in_use)
+			scl_en |= 1 << scaler->rdma_id;
 	}
 
 	DRM_DEBUG("scl_en:%d ac->post_scl_on %d\n", scl_en, ac->post_scl_on);

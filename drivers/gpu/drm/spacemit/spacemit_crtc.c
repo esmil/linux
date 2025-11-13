@@ -150,16 +150,6 @@ static int spacemit_crtc_atomic_check_scaling(struct drm_crtc *crtc,
 				if (scaler->in_use == 0x0 || scaler->rdma_id == spacemit_pstate->rdma_id) {
 					scaler->in_use |= (1 << plane->index);
 					scaler->rdma_id = spacemit_pstate->rdma_id;
-					/* post_scl_on case: one layer with scaling or layers with same scaling ratio */
-					if (ac->post_scl_on) {
-						if (is_rot_90_270(pstate->rotation)) {
-							ac->post_scaler_h = pstate->src_w >> 16;
-							ac->post_scaler_w = pstate->src_h >> 16;
-						} else {
-							ac->post_scaler_h = pstate->src_h >> 16;
-							ac->post_scaler_w = pstate->src_w >> 16;
-						}
-					}
 					break;
 				}
 			}
@@ -177,7 +167,7 @@ static int spacemit_crtc_atomic_check_scaling(struct drm_crtc *crtc,
 		if (spacemit_pstate->rdma_id != RDMA_INVALID_ID) {
 			for (i = 0; i < MAX_SCALER_NUMS; i++) {
 				scaler = &(ac->scalers[i]);
-				if (scaler->rdma_id == spacemit_pstate->rdma_id)
+				if (scaler->rdma_id == spacemit_pstate->rdma_id && scaler->in_use)
 					spacemit_pstate->scaler_id = i;
 			}
 		}
@@ -1517,6 +1507,9 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	a_crtc->aclk_reset = devm_reset_control_get_optional_shared(&pdev->dev, "aclk_reset");
 	if (IS_ERR_OR_NULL(a_crtc->aclk_reset))
 		DRM_DEV_DEBUG(dev, "not found aclk_reset\n");
+	a_crtc->dsc_reset = devm_reset_control_get_optional_shared(&pdev->dev, "dsc_reset");
+	if (IS_ERR_OR_NULL(a_crtc->dsc_reset))
+		DRM_DEV_DEBUG(dev, "not found dsc_reset\n");
 
 	if (of_property_read_u32(np, "pipeline-id", &dpu_id))
 		return -EINVAL;
@@ -1602,6 +1595,11 @@ static int dpu_rt_pm_resume(struct device *dev)
 		result = reset_control_deassert(a_crtc->aclk_reset);
 		if (result < 0)
 			DRM_INFO("Failed to deassert aclk_reset: %d\n", result);
+	}
+	if (!IS_ERR_OR_NULL(a_crtc->dsc_reset)) {
+			result = reset_control_deassert(a_crtc->dsc_reset);
+			if (result < 0)
+				DRM_INFO("Failed to deassert dsc_reset: %d\n", result);
 	}
 
 	if (a_crtc->core && a_crtc->core->enable_clk)
