@@ -10,6 +10,7 @@
 #include <dt-bindings/clock/spacemit,k3-syscon.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/pmu/k3_pmu.h>
+#include <dt-bindings/dma/k3-dmac.h>
 
 / {
 	#address-cells = <2>;
@@ -976,6 +977,82 @@
 			resets = <&syscon_apbc RESET_APBC_PWM19>;
 			#pwm-cells = <3>;
 			k1,pwm-disable-fd;
+			status = "disabled";
+		};
+
+		spi0: spi@d4040000 {
+			compatible = "spacemit,k3-spi";
+			reg = <0x0 0xd4040000 0x0 0x30>;
+			k1x,ssp-id = <0>;
+			k1x,ssp-clock-rate = <26000000>;
+			dmas = <&pdma DMA_SSP0_TX
+				&pdma DMA_SSP0_RX>;
+			dma-names = "rx", "tx";
+			interrupt-parent = <&saplic>;
+			interrupts = <283 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_apbc  CLK_APBC_SPI0>,
+				<&syscon_apbc CLK_APBC_SPI0_BUS>;
+			clock-names = "func", "bus";
+			resets = <&syscon_apbc RESET_APBC_SPI0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		spi1: spi@d4040800 {
+			compatible = "spacemit,k3-spi";
+			reg = <0x0 0xd4040800 0x0 0x30>;
+			k1x,ssp-id = <1>;
+			k1x,ssp-clock-rate = <26000000>;
+			dmas = <&pdma DMA_SSP1_TX
+				&pdma DMA_SSP1_RX>;
+			dma-names = "rx", "tx";
+			interrupt-parent = <&saplic>;
+			interrupts = <282 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_apbc  CLK_APBC_SPI1>,
+				<&syscon_apbc CLK_APBC_SPI1_BUS>;
+			clock-names = "func", "bus";
+			resets = <&syscon_apbc RESET_APBC_SPI1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		spi2: spi@f0613000 {
+			compatible = "spacemit,k3-spi";
+			reg = <0x0 0xf0613000 0x0 0x30>;
+			k1x,ssp-id = <2>;
+			k1x,ssp-clock-rate = <26000000>;
+			// dmas = <&pdma 19
+			// 	&pdma 20>;
+			// dma-names = "rx", "tx";
+			interrupt-parent = <&saplic>;
+			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_apbc CLK_APBC2_SEC_SPI2>,
+				<&syscon_apbc CLK_APBC2_SEC_SPI2_BUS>;
+			clock-names = "func", "bus";
+			resets = <&syscon_apbc RESET_APBC2_SEC_SPI2>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		spi3: spi@d401c000 {
+			compatible = "spacemit,k3-spi";
+			reg = <0x0 0xd401c000 0x0 0x30>;
+			k1x,ssp-id = <3>;
+			k1x,ssp-clock-rate = <26000000>;
+			dmas = <&pdma DMA_SSP3_TX
+				&pdma DMA_SSP3_RX>;
+			dma-names = "rx", "tx";
+			interrupt-parent = <&saplic>;
+			interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_apbc CLK_APBC_SPI3>,
+				<&syscon_apbc CLK_APBC_SPI3_BUS>;
+			clock-names = "func", "bus";
+			resets = <&syscon_apbc RESET_APBC_SPI3>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 			status = "disabled";
 		};
 
