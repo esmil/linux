@@ -200,6 +200,19 @@
 			reg = <0x1 0xe00000 0x0 0x4000>;
 			no-map;
 		};
+
+		/* reserved 5M for dpu, including mmu table and cmdlist */
+		dpu_resv0: dpu_reserved@101b00000 {
+			compatible = "shared-dma-pool";
+			reg = <0x1 0x01b00000 0x0 0x00280000>;
+			no-map;
+		};
+
+		dpu_resv1: dpu_reserved1@101d80000 {
+			compatible = "shared-dma-pool";
+			reg = <0x1 0x01d80000 0x0 0x00280000>;
+			no-map;
+		};
 	};
 
 	soc: soc {
