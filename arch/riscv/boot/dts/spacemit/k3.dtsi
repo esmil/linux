@@ -1441,6 +1441,13 @@
 			};
 		};
 
+		usb2_host_u2phy: phy@c0a20000 {
+			compatible = "spacemit,k3-usb2-phy";
+			reg = <0x0 0xc0a20000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
 		usb2_host: usb2@c0a00000 {
 			compatible = "spacemit,k1-dwc3";
 			reg = <0x0 0xc0a00000 0x0 0x10000>;
@@ -1448,7 +1455,32 @@
 			interrupt-parent = <&saplic>;
 			clocks = <&syscon_apmu CLK_APMU_USB2_BUS>;
 			resets = <&syscon_apmu RESET_APMU_USB2>;
+			phys = <&usb2_host_u2phy>;
+			phy-names = "usb2-phy";
+			phy_type = "utmi";
+			snps,dis_enblslpm_quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,dis-tx-ipgap-linecheck-quirk;
+			dr_mode = "host";
 			maximum-speed = "high-speed";
+			status = "disabled";
+		};
+
+		usb3_porta_u2phy: phy@cad20000 {
+			compatible = "spacemit,k3-usb2-phy";
+			reg = <0x0 0xcad20000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_porta_u3phy: phy@cad30000 {
+			compatible = "spacemit,k3-usb3-phy";
+			spacemit,syscon-apmu = <&syscon_apmu>;
+			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
+			reg = <0x0 0xcad30000 0x0 0x200>,
+			      <0x0 0xcad40000 0x0 0x200>;
+			#phy-cells = <0>;
 			status = "disabled";
 		};
 
@@ -1459,36 +1491,117 @@
 			interrupt-parent = <&saplic>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
 			resets = <&syscon_apmu RESET_APMU_USB3_PORTA>;
+			phys = <&usb3_porta_u2phy>, <&usb3_porta_u3phy>;
+			phy-names = "usb2-phy", "usb3-phy";
+			phy_type = "utmi";
+			snps,dis_enblslpm_quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis_u3_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,dis-tx-ipgap-linecheck-quirk;
+			snps,parkmode-disable-ss-quirk;
 			status = "disabled";
 		};
 
-		usb3_portb: usb3@815f0000 {
+		usb3_portb_u2phy: phy@81500000 {
+			compatible = "spacemit,k3-usb2-phy";
+			reg = <0x0 0x81500000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_portb_u3phy: phy@81f00000{
+			compatible = "spacemit,k3-usb3-phy";
+			reg = <0x0 0x81f00000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_portb: usb3@81400000 {
 			compatible = "spacemit,k1-dwc3";
-			reg = <0x0 0x815f0000 0x0 0x10000>;
+			reg = <0x0 0x81400000 0x0 0x10000>;
 			interrupts = <125 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTB_BUS>;
 			resets = <&syscon_apmu RESET_APMU_USB3_PORTB>;
+			phys = <&usb3_portb_u2phy>, <&usb3_portb_u3phy>;
+			phy-names = "usb2-phy", "usb3-phy";
+			phy_type = "utmi";
+			snps,dis_enblslpm_quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis_u3_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,dis-tx-ipgap-linecheck-quirk;
+			snps,parkmode-disable-ss-quirk;
+			dr_mode = "host";
 			status = "disabled";
 		};
 
-		usb3_portc: usb3@818f0000 {
+		usb3_portc_u2phy: phy@81800000 {
+			compatible = "spacemit,k3-usb2-phy";
+			reg = <0x0 0x81800000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_portc_u3phy: phy@82000000{
+			compatible = "spacemit,k3-usb3-phy";
+			reg = <0x0 0x82000000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_portc: usb3@81700000 {
 			compatible = "spacemit,k1-dwc3";
-			reg = <0x0 0x818f0000 0x0 0x10000>;
+			reg = <0x0 0x81700000 0x0 0x10000>;
 			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTC_BUS>;
 			resets = <&syscon_apmu RESET_APMU_USB3_PORTC>;
+			phys = <&usb3_portc_u2phy>, <&usb3_portc_u3phy>;
+			phy-names = "usb2-phy", "usb3-phy";
+			phy_type = "utmi";
+			snps,dis_enblslpm_quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis_u3_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,dis-tx-ipgap-linecheck-quirk;
+			snps,parkmode-disable-ss-quirk;
+			dr_mode = "host";
 			status = "disabled";
 		};
 
-		usb3_portd: usb3@81bf0000 {
+		usb3_portd_u2phy: phy@81b00000 {
+			compatible = "spacemit,k3-usb2-phy";
+			reg = <0x0 0x81b00000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_portd_u3phy: phy@82100000{
+			compatible = "spacemit,k3-usb3-phy";
+			reg = <0x0 0x82100000 0x0 0x200>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		usb3_portd: usb3@81a00000 {
 			compatible = "spacemit,k1-dwc3";
-			reg = <0x0 0x81bf0000 0x0 0x10000>;
+			reg = <0x0 0x81a00000 0x0 0x10000>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTD_BUS>;
 			resets = <&syscon_apmu RESET_APMU_USB3_PORTD>;
+			phys = <&usb3_portd_u2phy>, <&usb3_portd_u3phy>;
+			phy-names = "usb2-phy", "usb3-phy";
+			phy_type = "utmi";
+			snps,dis_enblslpm_quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis_u3_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,dis-tx-ipgap-linecheck-quirk;
+			snps,parkmode-disable-ss-quirk;
+			dr_mode = "host";
 			status = "disabled";
 		};
 
