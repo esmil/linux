@@ -1500,6 +1500,146 @@
 			status = "disabled";
 		};
 
+		i2s0: i2s0@d4026000 {
+			compatible = "spacemit,k1-i2s";
+			#sound-dai-cells = <0>;
+			reg = <0x0 0xD4026000 0x0 0x30>;
+			clocks = <&syscon_mpmu CLK_MPMU_I2S0_SYSCLK_DIV>,
+				 <&syscon_mpmu CLK_MPMU_I2S0_SYSCLK>,
+				 <&syscon_apbc CLK_APBC_I2S0_BCLK>,
+				 <&syscon_apbc CLK_APBC_I2S0_BUS>,
+				 <&syscon_apbc CLK_APBC_I2S0>;
+			clock-names = "sysclk_div", "sysclk",
+				      "bclk", "sspa_bus", "sspa";
+			resets = <&syscon_apbc RESET_APBC_I2S0>;
+			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
+					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
+					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S_BCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S0_SYSCLK_SEL>;
+			assigned-clock-rates = <307200000>, <307200000>,
+					       <12288000>, <1536000>, <614400000>;
+			dmas = <&pdma 22>, <&pdma 21>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
+		i2s1: i2s1@d4026800 {
+			compatible = "spacemit,k1-i2s";
+			#sound-dai-cells = <0>;
+			reg = <0x0 0xD4026800 0x0 0x30>;
+			clocks = <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>, /* must be 256fs */
+				 <&syscon_apbc CLK_APBC_I2S1_BCLK>,
+				 <&syscon_apbc CLK_APBC_I2S1_BUS>,
+				 <&syscon_apbc CLK_APBC_I2S1>;
+			clock-names = "sysclk", "bclk", "sspa_bus", "sspa";
+			resets = <&syscon_apbc RESET_APBC_I2S1>;
+			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
+					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
+					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
+			assigned-clock-rates = <307200000>, <307200000>, <12288000>, <1536000>;
+			dmas = <&pdma 24>, <&pdma 23>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
+		i2s2: i2s2@d4027000 {
+			compatible = "spacemit,k1-i2s";
+			#sound-dai-cells = <0>;
+			reg = <0x0 0xD4027000 0x0 0x30>;
+			clocks = <&syscon_mpmu CLK_MPMU_I2S2_SYSCLK_DIV>,
+				 <&syscon_mpmu CLK_MPMU_I2S2_SYSCLK>,
+				 <&syscon_apbc CLK_APBC_I2S2_BCLK>,
+				 <&syscon_apbc CLK_APBC_I2S2_BUS>,
+				 <&syscon_apbc CLK_APBC_I2S2>;
+			clock-names = "sysclk_div", "sysclk",
+				      "bclk", "sspa_bus", "sspa";
+			resets = <&syscon_apbc RESET_APBC_I2S2>;
+			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
+					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
+					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S_BCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S2_SYSCLK_SEL>;
+			assigned-clock-rates = <307200000>, <307200000>,
+					       <12288000>, <1536000>, <614400000>;
+			dmas = <&pdma 57>, <&pdma 56>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
+		i2s3: i2s3@d4027800 {
+			compatible = "spacemit,k1-i2s";
+			#sound-dai-cells = <0>;
+			reg = <0x0 0xD4027800 0x0 0x30>;
+			clocks = <&syscon_mpmu CLK_MPMU_I2S3_SYSCLK_DIV>,
+				 <&syscon_mpmu CLK_MPMU_I2S3_SYSCLK>,
+				 <&syscon_apbc CLK_APBC_I2S3_BCLK>,
+				 <&syscon_apbc CLK_APBC_I2S3_BUS>,
+				 <&syscon_apbc CLK_APBC_I2S3>;
+			clock-names = "sysclk_div", "sysclk",
+				      "bclk", "sspa_bus", "sspa";
+			resets = <&syscon_apbc RESET_APBC_I2S3>;
+			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
+					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
+					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S_BCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S3_SYSCLK_SEL>;
+			assigned-clock-rates = <307200000>, <307200000>,
+					       <12288000>, <1536000>, <614400000>;
+			dmas = <&pdma 59>, <&pdma 58>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
+		i2s4: i2s4@d4041000 {
+			compatible = "spacemit,k1-i2s";
+			#sound-dai-cells = <0>;
+			reg = <0x0 0xD4041000 0x0 0x30>;
+			clocks = <&syscon_mpmu CLK_MPMU_I2S4_SYSCLK_DIV>,
+				 <&syscon_mpmu CLK_MPMU_I2S4_SYSCLK>,
+				 <&syscon_apbc CLK_APBC_I2S4_BCLK>,
+				 <&syscon_apbc CLK_APBC_I2S4_BUS>,
+				 <&syscon_apbc CLK_APBC_I2S4>;
+			clock-names = "sysclk_div", "sysclk",
+				      "bclk", "sspa_bus", "sspa";
+			resets = <&syscon_apbc RESET_APBC_I2S4>;
+			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
+					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
+					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S_BCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S4_SYSCLK_SEL>;
+			assigned-clock-rates = <307200000>, <307200000>,
+					       <12288000>, <1536000>, <614400000>;
+			dmas = <&pdma 61>, <&pdma 60>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
+		i2s5: i2s5@d4041800 {
+			compatible = "spacemit,k1-i2s";
+			#sound-dai-cells = <0>;
+			reg = <0x0 0xD4041800 0x0 0x30>;
+			clocks = <&syscon_mpmu CLK_MPMU_I2S5_SYSCLK_DIV>,
+				 <&syscon_mpmu CLK_MPMU_I2S5_SYSCLK>,
+				 <&syscon_apbc CLK_APBC_I2S5_BCLK>,
+				 <&syscon_apbc CLK_APBC_I2S5_BUS>,
+				 <&syscon_apbc CLK_APBC_I2S5>;
+			clock-names = "sysclk_div", "sysclk",
+				      "bclk", "sspa_bus", "sspa";
+			resets = <&syscon_apbc RESET_APBC_I2S5>;
+			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
+					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
+					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S_BCLK>,
+					  <&syscon_mpmu CLK_MPMU_I2S5_SYSCLK_SEL>;
+			assigned-clock-rates = <307200000>, <307200000>,
+					       <12288000>, <1536000>, <614400000>;
+			dmas = <&pdma 63>, <&pdma 62>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
 		ai_dmac0: hdma0@d8804000 {
 			compatible = "spacemit-ai-dmac";
 			reg = <0x0 0xd8804000 0x0 0x1000>;
