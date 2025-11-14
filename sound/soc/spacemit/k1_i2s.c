@@ -12,6 +12,7 @@
 #define SSFCR			0x04	/* SPI/I2S FIFO control register */
 #define SSINTEN			0x08	/* SPI/I2S interrupt enable register */
 #define SSDATR			0x10	/* SPI/I2S data register */
+#define SSSTAT			0x14	/* SPI/I2S status register */
 #define SSPSP			0x18	/* SPI/I2S programmable serial protocol control register */
 #define SSRWT			0x24	/* SPI/I2S root control register */
 
@@ -50,6 +51,7 @@ struct spacemit_i2s_dev {
 
 	struct reset_control *reset;
 
+	struct clk *sysclk_div;
 	struct clk *sysclk;
 	struct clk *bclk;
 	struct clk *sspa_clk;
@@ -93,8 +95,8 @@ static void spacemit_i2s_init(struct spacemit_i2s_dev *i2s)
 	u32 sscr_val, sspsp_val, ssfcr_val, ssrwt_val;
 
 	sscr_val = SSCR_TRAIL | SSCR_FRF_PSP;
-	ssfcr_val = FIELD_PREP(SSFCR_FIELD_TFT, 5) |
-		    FIELD_PREP(SSFCR_FIELD_RFT, 5) |
+	ssfcr_val = FIELD_PREP(SSFCR_FIELD_TFT, 0xF) |
+		    FIELD_PREP(SSFCR_FIELD_RFT, 0xF) |
 		    SSFCR_RSRE | SSFCR_TSRE;
 	ssrwt_val = SSRWT_RWOT;
 	sspsp_val = SSPSP_SFRMP;
@@ -104,6 +106,38 @@ static void spacemit_i2s_init(struct spacemit_i2s_dev *i2s)
 	writel(sspsp_val, i2s->base + SSPSP);
 	writel(ssrwt_val, i2s->base + SSRWT);
 	writel(0, i2s->base + SSINTEN);
+}
+
+static int spacemit_i2s_startup(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *dai)
+{
+	struct spacemit_i2s_dev *i2s = snd_soc_dai_get_drvdata(dai);
+
+	switch (i2s->dai_fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
+	case SND_SOC_DAIFMT_I2S:
+		snd_pcm_hw_constraint_minmax(substream->runtime,
+					     SNDRV_PCM_HW_PARAM_CHANNELS,
+					     2, 2);
+		snd_pcm_hw_constraint_mask64(substream->runtime,
+					     SNDRV_PCM_HW_PARAM_FORMAT,
+					     SNDRV_PCM_FMTBIT_S16_LE);
+		break;
+	case SND_SOC_DAIFMT_DSP_A:
+	case SND_SOC_DAIFMT_DSP_B:
+		snd_pcm_hw_constraint_minmax(substream->runtime,
+					     SNDRV_PCM_HW_PARAM_CHANNELS,
+					     1, 1);
+		snd_pcm_hw_constraint_mask64(substream->runtime,
+					     SNDRV_PCM_HW_PARAM_FORMAT,
+					     SNDRV_PCM_FMTBIT_S32_LE);
+		break;
+	default:
+		dev_dbg(i2s->dev, "unexpected format type");
+		return -EINVAL;
+
+	}
+
+	return 0;
 }
 
 static int spacemit_i2s_hw_params(struct snd_pcm_substream *substream,
@@ -116,10 +150,6 @@ static int spacemit_i2s_hw_params(struct snd_pcm_substream *substream,
 	unsigned long bclk_rate;
 	u32 val;
 	int ret;
-
-	val = readl(i2s->base + SSCR);
-	if (val & SSCR_SSE)
-		return 0;
 
 	dma_data = &i2s->playback_dma_data;
 
@@ -157,28 +187,19 @@ static int spacemit_i2s_hw_params(struct snd_pcm_substream *substream,
 			dma_data->maxburst = 32;
 			dma_data->addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
 		}
-
-		snd_pcm_hw_constraint_minmax(substream->runtime,
-					     SNDRV_PCM_HW_PARAM_CHANNELS,
-					     1, 2);
-		snd_pcm_hw_constraint_mask64(substream->runtime,
-					     SNDRV_PCM_HW_PARAM_FORMAT,
-					     SNDRV_PCM_FMTBIT_S16_LE);
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 	case SND_SOC_DAIFMT_DSP_B:
-		snd_pcm_hw_constraint_minmax(substream->runtime,
-					     SNDRV_PCM_HW_PARAM_CHANNELS,
-					     1, 1);
-		snd_pcm_hw_constraint_mask64(substream->runtime,
-					     SNDRV_PCM_HW_PARAM_FORMAT,
-					     SNDRV_PCM_FMTBIT_S32_LE);
 		break;
 	default:
 		dev_dbg(i2s->dev, "unexpected format type");
 		return -EINVAL;
 
 	}
+
+	val = readl(i2s->base + SSCR);
+	if (val & SSCR_SSE)
+		return 0;
 
 	val = readl(i2s->base + SSCR);
 	val &= ~SSCR_DW_32BYTE;
@@ -200,9 +221,14 @@ static int spacemit_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 				   unsigned int freq, int dir)
 {
 	struct spacemit_i2s_dev *i2s = dev_get_drvdata(cpu_dai->dev);
+	int ret;
 
 	if (freq == 0)
 		return 0;
+
+	ret = clk_set_rate(i2s->sysclk_div, freq);
+	if (ret)
+		return ret;
 
 	return clk_set_rate(i2s->sysclk, freq);
 }
@@ -256,6 +282,14 @@ static int spacemit_i2s_trigger(struct snd_pcm_substream *substream,
 			writel(val, i2s->base + SSCR);
 		}
 		i2s->started_count++;
+
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSCR));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSFCR));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSINTEN));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSDATR));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSSTAT));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSPSP));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSRWT));
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -268,6 +302,13 @@ static int spacemit_i2s_trigger(struct snd_pcm_substream *substream,
 			val &= ~SSCR_SSE;
 			writel(val, i2s->base + SSCR);
 		}
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSCR));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSFCR));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSINTEN));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSDATR));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSSTAT));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSPSP));
+		dev_dbg(i2s->dev, "0x%08x", readl(i2s->base + SSRWT));
 		break;
 	default:
 		return -EINVAL;
@@ -303,6 +344,7 @@ static int spacemit_i2s_dai_remove(struct snd_soc_dai *dai)
 static const struct snd_soc_dai_ops spacemit_i2s_dai_ops = {
 	.probe = spacemit_i2s_dai_probe,
 	.remove = spacemit_i2s_dai_remove,
+	.startup = spacemit_i2s_startup,
 	.hw_params = spacemit_i2s_hw_params,
 	.set_sysclk = spacemit_i2s_set_sysclk,
 	.set_fmt = spacemit_i2s_set_fmt,
@@ -399,6 +441,11 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	i2s->dev = &pdev->dev;
+
+	i2s->sysclk_div = devm_clk_get_optional_enabled(i2s->dev, "sysclk_div");
+	if (IS_ERR(i2s->sysclk_div))
+		return dev_err_probe(i2s->dev, PTR_ERR(i2s->sysclk_div),
+				     "failed to enable sysbase clock-div\n");
 
 	i2s->sysclk = devm_clk_get_enabled(i2s->dev, "sysclk");
 	if (IS_ERR(i2s->sysclk))
