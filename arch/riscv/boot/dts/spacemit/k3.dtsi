@@ -9,6 +9,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/spacemit,k3-syscon.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pmu/k3_pmu.h>
 
 / {
 	#address-cells = <2>;
@@ -1203,7 +1204,31 @@
 				#power-domain-cells = <1>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				spacemit,mpmu = <&syscon_mpmu>;
+				status = "disabled";
+
+				vpu: vpu@0 {
+					#power-domain-cells = <0>;
+				};
+
+				gpu: gpu@1 {
+					#power-domain-cells = <0>;
+				};
+
+				audio: audio@2 {
+					#power-domain-cells = <0>;
+				};
+
+				lcd0: lcd@0 {
+					#power-domain-cells = <0>;
+				};
+
+				lcd1: lcd@1 {
+					#power-domain-cells = <0>;
+				};
+
+				dummy: dummy@0 {
+					#power-domain-cells = <0>;
+				};
 			};
 		};
 
