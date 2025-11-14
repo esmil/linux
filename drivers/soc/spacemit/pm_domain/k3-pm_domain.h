@@ -26,7 +26,6 @@ struct rpmi_domain {
 	struct rpmi_domain_context *context;
 	u32 id;
 	char name[RPMI_DOMAIN_NAME_LEN];
-	struct generic_pm_domain pd;
 };
 
 struct rpmi_get_num_pdomain_rx {
