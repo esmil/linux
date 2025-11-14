@@ -1,0 +1,131 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2025 Spacemit, Inc */
+
+&soc {
+
+	display: display-subsystem {
+		compatible = "spacemit,saturn-hee";
+		reg = <0 0xc0340000 0 0x54000>;
+		hw_ver = <2>;
+		ports = <&dpu_crtc0>, <&dpu_crtc1>;
+	};
+
+	dpu_crtc0: dpu_crtc0 {
+		compatible = "spacemit,dpu-saturn";
+		reg = <0 0xd421a800 0 0x300>;
+		interrupt-parent = <&saplic>;
+		interrupts = <90 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "ONLINE_IRQ";
+		clocks = <&syscon_apmu CLK_APMU_LCD_PXCLK>,
+			<&syscon_apmu CLK_APMU_LCD_MCLK>,
+			<&syscon_apmu CLK_APMU_LCD_HCLK>,
+			<&syscon_apmu CLK_APMU_DSI_ESC>,
+			<&syscon_apmu CLK_APMU_DPU_ACLK>,
+			<&syscon_apmu CLK_APMU_LCD_DSC>;
+		clock-names = "pxclk", "mclk", "hclk", "escclk", "aclk", "dscclk";
+		resets = <&syscon_apmu RESET_APMU_LCD_MCLK>,
+			<&syscon_apmu RESET_APMU_LCD>,
+			<&syscon_apmu RESET_APMU_DSI_ESC>,
+			<&syscon_apmu RESET_APMU_DPU_ACLK>,
+			<&syscon_apmu RESET_APMU_LCD_DSCCLK>;
+		reset-names= "mclk_reset", "lcd_reset", "esc_reset", "aclk_reset", "dsc_reset";
+		pipeline-id = <1>;
+		ip = "spacemit-saturn";
+		spacemit-dpu-min-mclk = <40960000>;
+		spacemit-dpu-dsipll;
+		status = "disabled";
+
+		dpu_crtc0_out0: endpoint@0 {
+			remote-endpoint = <&dsi0_in>;
+		};
+
+		dpu_crtc0_out1: endpoint@1 {
+			remote-endpoint = <&wb0_in0>;
+		};
+	};
+
+	dpu_crtc1: dpu_crtc1 {
+		compatible = "spacemit,dpu-saturn";
+		reg = <0 0xd421a800 0 0x300>;
+		interrupt-parent = <&saplic>;
+		interrupts = <89 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "OFFLINE_IRQ";
+		pipeline-id = <1>;
+		ip = "spacemit-saturn";
+		spacemit-dpu-min-mclk = <40960000>;
+		status = "disabled";
+
+		dpu_crtc1_out0: endpoint@0 {
+			remote-endpoint = <&wb0_in1>;
+		};
+	};
+
+	dsi0: dsi0@d421a800 {
+		compatible = "spacemit,dsi-host";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0 0xd421a800 0 0x200>;
+		interrupts = <79 IRQ_TYPE_LEVEL_HIGH>;
+		ip = "synopsys-dhost";
+		dev-id = <2>;
+		status = "disabled";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				dsi0_out: endpoint {
+					remote-endpoint = <&dphy0_in>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				dsi0_in: endpoint {
+					remote-endpoint = <&dpu_crtc0_out0>;
+				};
+			};
+		};
+	};
+
+	wb0 {
+		compatible = "spacemit,wb0";
+		dev-id = <0>;
+		status = "ok";
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			port@0 {
+				reg = <0>;
+				wb0_in0: endpoint {
+					remote-endpoint = <&dpu_crtc0_out1>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				wb0_in1: endpoint {
+					remote-endpoint = <&dpu_crtc1_out0>;
+				};
+			};
+		};
+	};
+
+	dphy0: dphy0@d421a800 {
+		compatible = "spacemit,dsi-phy";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0 0xd421a800 0 0x200>;
+		ip = "spacemit-dphy";
+		dev-id = <2>;
+		status = "ok";
+
+		port@0 {
+			reg = <0>;
+			dphy0_in: endpoint {
+				remote-endpoint = <&dsi0_out>;
+			};
+		};
+	};
+};

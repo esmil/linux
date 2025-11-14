@@ -3,6 +3,8 @@
 
 #include "k3.dtsi"
 #include "k3-rdomain.dtsi"
+#include "lcd_dsi_panel.dtsi"
+#include "lcd/lcd_gc9503v_mipi.dtsi"
 
 / {
 	compatible = "spacemit,k3-fpga";
@@ -250,4 +252,33 @@
 	max-link-speed = <1>;
 	num-lanes = <1>;
 	status = "okay";
+};
+
+
+&dpu_crtc0 {
+	memory-region = <&dpu_resv0>;
+	status = "disabled";
+};
+
+&dpu_crtc1 {
+	memory-region = <&dpu_resv1>;
+	status = "disabled";
+};
+
+&dsi0 {
+	status = "disabled";
+
+	panel0: panel0@0 {
+		status = "ok";
+		compatible = "spacemit,mipi-panel";
+		reg = <0>;
+		gpios-dc = <16 18>;
+		gpios-reset = <17>;
+		id = <2>;
+		force-attached = "lcd_gc9503v_mipi";
+	};
+};
+
+&lcds {
+	status = "disabled";
 };
