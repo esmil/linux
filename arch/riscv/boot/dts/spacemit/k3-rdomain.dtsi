@@ -367,4 +367,72 @@
 		#dma-channels = <2>;
 		status = "disabled";
 	};
+
+	ri2s0: ri2s0@c0883100 {
+		compatible = "spacemit,k3-ri2s";
+		#sound-dai-cells = <0>;
+		reg = <0x0 0xc0883100 0x0 0x300>,
+		      <0x0 0xc08d0400 0x0 0x4000>;
+		clocks = <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S0>,
+			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S0_BUS>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RI2S0_SYSCLK>;
+		clock-names = "func", "bus", "sysclk";
+		resets = <&syscon_rcpu_i2sctrl RESET_RCPU_I2SCTRL_RI2S0>,
+			 <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RI2S0_SYSCLK>;
+		reset-names = "reset", "reset-sys";
+		dmas = <&adma0 1>, <&adma0 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	ri2s1: ri2s1@c0883500 {
+		compatible = "spacemit,k3-ri2s";
+		#sound-dai-cells = <0>;
+		reg = <0x0 0xc0883500 0x0 0x300>,
+		      <0x0 0xc08d4400 0x0 0x4000>;
+		clocks = <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S1>,
+			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S1_BUS>,
+			 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RI2S1_SYSCLK>;
+		clock-names = "func", "bus", "sysclk";
+		resets = <&syscon_rcpu_i2sctrl RESET_RCPU_I2SCTRL_RI2S1>,
+			 <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RI2S1_SYSCLK>;
+		reset-names = "reset", "reset-sys";
+		dmas = <&adma1 1>, <&adma1 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	ri2s2: ri2s2@c0883900 {
+		compatible = "spacemit,k3-ri2s";
+		#sound-dai-cells = <0>;
+		reg = <0x0 0xc0883500 0x0 0x300>,
+		      <0x0 0xc08d8400 0x0 0x4000>;
+		clocks = <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S2>,
+			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S2_BUS>,
+			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S2_SYSCLK>;
+		clock-names = "func", "bus", "sysclk";
+		resets = <&syscon_rcpu_i2sctrl RESET_RCPU_I2SCTRL_RI2S2>,
+			 <&syscon_rcpu_i2sctrl RESET_RCPU_I2SCTRL_RI2S2_SYSCLK>;
+		reset-names = "reset", "reset-sys";
+		dmas = <&adma2 1>, <&adma2 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	ri2s3: ri2s1@c0883D00 {
+		compatible = "spacemit,k3-ri2s";
+		#sound-dai-cells = <0>;
+		reg = <0x0 0xc0883500 0x0 0x300>,
+		      <0x0 0xc08dc400 0x0 0x4000>;
+		clocks = <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S3>,
+			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S3_BUS>,
+			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S3_SYSCLK>;
+		clock-names = "func", "bus", "sysclk";
+		resets = <&syscon_rcpu_i2sctrl RESET_RCPU_I2SCTRL_RI2S3>,
+			 <&syscon_rcpu_i2sctrl RESET_RCPU_I2SCTRL_RI2S3_SYSCLK>;
+		reset-names = "reset", "reset-sys";
+		dmas = <&adma3 1>, <&adma3 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
 };
