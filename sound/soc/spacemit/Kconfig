@@ -12,4 +12,12 @@ config SND_SOC_K1_I2S
 	  K1 I2S controller. The device supports up to maximum of
 	  2 channels each for play and record.
 
+config SND_SOC_K3_RI2S
+	tristate "K3 RI2S Device Driver"
+	select SND_SOC_GENERIC_DMAENGINE_PCM
+	select SPACEMIT_ADMA
+	help
+	  Say Y or M if you want to add support RI2S driver for
+	  K3 RI2S controller.
+
 endmenu
