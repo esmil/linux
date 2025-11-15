@@ -315,4 +315,56 @@
 		resets = <&syscon_rcpu_i2cctrl RESET_RCPU_I2CCTRL_RI2C1>;
 		status = "disabled";
 	};
+
+	adma0: adma0@C0883000 {
+		compatible = "spacemit,k3-adma";
+		reg = <0x0 0xc0883000 0x0 0x100>,
+		      <0x0 0xc08d0000 0x0 0x100>;
+		reg-names = "adma_reg", "buf_addr";
+		interrupt-parent = <&saplic>;
+		interrupts = <257 IRQ_TYPE_LEVEL_HIGH>,
+			     <258 IRQ_TYPE_LEVEL_HIGH>;
+		#dma-cells= <1>;
+		#dma-channels = <2>;
+		status = "disabled";
+	};
+
+	adma1: adma1@C0883400 {
+		compatible = "spacemit,k3-adma";
+		reg = <0x0 0xc0883400 0x0 0x100>,
+		      <0x0 0xc08d0100 0x0 0x100>;
+		reg-names = "adma_reg", "buf_addr";
+		interrupt-parent = <&saplic>;
+		interrupts = <260 IRQ_TYPE_LEVEL_HIGH>,
+			     <261 IRQ_TYPE_LEVEL_HIGH>;
+		#dma-cells= <1>;
+		#dma-channels = <2>;
+		status = "disabled";
+	};
+
+	adma2: adma2@C0883800 {
+		compatible = "spacemit,k3-adma";
+		reg = <0x0 0xc0883800 0x0 0x100>,
+		      <0x0 0xc08d0200 0x0 0x100>;
+		reg-names = "adma_reg", "buf_addr";
+		interrupt-parent = <&saplic>;
+		interrupts = <263 IRQ_TYPE_LEVEL_HIGH>,
+			     <264 IRQ_TYPE_LEVEL_HIGH>;
+		#dma-cells= <1>;
+		#dma-channels = <2>;
+		status = "disabled";
+	};
+
+	adma3: adma3@C0883C00 {
+		compatible = "spacemit,k3-adma";
+		reg = <0x0 0xc0883C00 0x0 0x100>,
+		      <0x0 0xc08d0300 0x0 0x100>;
+		reg-names = "adma_reg", "buf_addr";
+		interrupt-parent = <&saplic>;
+		interrupts = <266 IRQ_TYPE_LEVEL_HIGH>,
+			     <267 IRQ_TYPE_LEVEL_HIGH>;
+		#dma-cells= <1>;
+		#dma-channels = <2>;
+		status = "disabled";
+	};
 };
