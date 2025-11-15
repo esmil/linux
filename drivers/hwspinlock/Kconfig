@@ -63,4 +63,10 @@ config HSEM_U8500
 
 	  If unsure, say N.
 
+config HWSPINLOCK_SPACEMIT
+	tristate "Spacemit Hardware Spinlock device"
+	depends on SOC_SPACEMIT_K3
+	help
+	  Say y here to support the Spacemit Hardware Spinlock device.
+
 endif # HWSPINLOCK
