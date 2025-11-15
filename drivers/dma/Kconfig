@@ -770,6 +770,12 @@ config SPACEMIT_HDMA
 	help
 	  Enable spacemit hdma(high-speed dma) driver
 
+config SPACEMIT_ADMA
+	tristate "Spacmit ADMA support"
+	depends on DMA_ENGINE && SOC_SPACEMIT
+	help
+	  Enable support for Spacemit Audio DMA Engine.
+
 # driver files
 source "drivers/dma/amd/Kconfig"
 

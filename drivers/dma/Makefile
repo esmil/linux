@@ -87,6 +87,7 @@ obj-$(CONFIG_ST_FDMA) += st_fdma.o
 obj-$(CONFIG_FSL_DPAA2_QDMA) += fsl-dpaa2-qdma/
 obj-$(CONFIG_INTEL_LDMA) += lgm/
 obj-$(CONFIG_SPACEMIT_HDMA) += ai_dma_ctrl.o ai_dma_dev.o
+obj-$(CONFIG_SPACEMIT_ADMA) += adma-spacemit.o
 
 obj-y += amd/
 obj-y += mediatek/
