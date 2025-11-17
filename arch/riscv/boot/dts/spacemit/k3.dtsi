@@ -132,12 +132,6 @@
 			no-map;
 		};
 
-		/* rcpu0's dtb */
-		rcpu0_dtb: rcpu0_dtb@c087c000 {
-			reg = <0x0 0xc087c000 0x0 0x4000>;
-			no-map;
-		};
-
 		/* the rcpu0's share memory buffer */
 		rcpu0_vdev0buffer: vdev0buffer@100700000 {
 			compatible = "shared-dma-pool";
@@ -179,12 +173,6 @@
 		/* vring1 */
 		rcpu1_vdev0vring1: vdev0vring1@c086f000 {
 			reg = <0x0 0xc086f000 0x0 0x3000>;
-			no-map;
-		};
-
-		/* rcpu1's dtb */
-		rcpu1_dtb: rcpu1_dtb@c0872000 {
-			reg = <0x0 0xc0872000 0x0 0x4000>;
 			no-map;
 		};
 
