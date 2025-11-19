@@ -92,8 +92,13 @@ static const struct linear_range p1_ldo_ranges[] = {
 #define P1_ALDO_DESC(_n) \
 	P1_REG_DESC(ALDO, aldo, _n, "vin", 0x5b, LDO_MASK, 117, p1_ldo_ranges)
 
+#ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
+#define P1_DLDO_DESC(_n) \
+	P1_REG_DESC(DLDO, dldo, _n, "buck4", 0x67, LDO_MASK, 117, p1_ldo_ranges)
+#else
 #define P1_DLDO_DESC(_n) \
 	P1_REG_DESC(DLDO, dldo, _n, "buck5", 0x67, LDO_MASK, 117, p1_ldo_ranges)
+#endif
 
 static const struct regulator_desc p1_regulator_desc[] = {
 	P1_BUCK_DESC(1),
