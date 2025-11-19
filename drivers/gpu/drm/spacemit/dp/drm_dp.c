@@ -181,6 +181,9 @@ static int dp_dev_resource_init(struct dp_dev *dp_dev,
 		return PTR_ERR(dp_dev->conn->reg_mmap_addr);
 	}
 
+	dev_set_drvdata(&pdev->dev, dp_dev->conn);
+	dp_dev->conn->dev = &pdev->dev;
+
 	return 0;
 }
 

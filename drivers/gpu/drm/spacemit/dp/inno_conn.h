@@ -52,6 +52,7 @@ struct inno_conn_t {
 
 	void *priv;
 	bool is_enable;
+	struct device *dev;
 };
 
 struct inno_conn_func_t {

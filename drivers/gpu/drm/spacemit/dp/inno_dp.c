@@ -13,6 +13,7 @@
 #include "inno_utils.h"
 #include "inno_dp_phy_board.h"
 #include "inno_parse_edid.h"
+#include "inno_dp_audio.h"
 
 #define MATCH_PRECISION			(100) /* kHz */
 
@@ -659,6 +660,7 @@ static int inno_dp_detect_ctx(struct inno_conn_t *conn)
 static int inno_dp_init(struct inno_conn_t *conn)
 {
 	struct dp_chip_t *inno = NULL;
+	int ret;
 
 	if (conn->priv) {
 		inno = conn->priv;
@@ -682,6 +684,10 @@ static int inno_dp_init(struct inno_conn_t *conn)
 	inno_dp_phy_reset(conn);
 	inno_dp_irq_enable(inno);
 
+	ret = inno_dp_audio_register(conn->dev);
+	if (ret)
+		return osal_printf_func("failed to register dp auido component\n");
+
 	return 0;
 }
 
@@ -701,6 +707,8 @@ static void inno_dp_exit(struct inno_conn_t *conn)
 		osal_free(conn->priv);
 		conn->priv = NULL;
 	}
+
+	inno_dp_audio_unregister(conn->dev);
 }
 
 static int inno_dp_get_edid(struct inno_conn_t *conn, uint8_t *buff)

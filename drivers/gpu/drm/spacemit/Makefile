@@ -29,6 +29,7 @@ spacemit-drm-y := 	spacemit_drm.o \
 spacemit-inno-dp-y := dp/drm_dp.o \
 			dp/inno_dp_api.o \
 			dp/inno_dp.o \
+			dp/inno_dp_audio.o \
 			dp/inno_dp_common.o \
 			dp/inno_dp_phy_board.o \
 			dp/inno_edid.o \
