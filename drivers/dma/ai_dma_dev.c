@@ -403,7 +403,7 @@ static irqreturn_t ai_dma_start_transfer(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
-static int __init ai_dmadev_probe(struct platform_device *pdev) {
+static int ai_dmadev_probe(struct platform_device *pdev) {
 	struct device *dev;
 	static unsigned char dma_major, dma_req, msi_major;
 	static struct class *dma_class, *req_class, *msi_class;
