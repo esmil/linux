@@ -67,6 +67,29 @@
 		vin-supply = <&aux_5v0>;
 		status = "disabled";
 	};
+
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+			mboxes = <&mpxy_mbox 0x1000 0x2>,
+				<&mpxy_mbox 0x1001 0x2>,
+				<&mpxy_mbox 0x1002 0x2>,
+				<&mpxy_mbox 0x1003 0x2>,
+				<&mpxy_mbox 0x1004 0x2>,
+				<&mpxy_mbox 0x1005 0x2>,
+				<&mpxy_mbox 0x1006 0x2>,
+				<&mpxy_mbox 0x1007 0x2>,
+				<&mpxy_mbox 0x1008 0x2>,
+				<&mpxy_mbox 0x1009 0x2>,
+				<&mpxy_mbox 0x100a 0x2>,
+				<&mpxy_mbox 0x100b 0x2>,
+				<&mpxy_mbox 0x100c 0x2>,
+				<&mpxy_mbox 0x100d 0x2>,
+				<&mpxy_mbox 0x100e 0x2>,
+				<&mpxy_mbox 0x100f 0x2>;
+		};
+	};
 };
 
 &uart0 {
