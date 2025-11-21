@@ -92,7 +92,7 @@
 		};
 	};
 
-	memory@101000000 {
+	memory@102000000 {
 		device_type = "memory";
 		reg = <0x1 0x02000000 0x0 0x7e000000>;
 	};
@@ -232,7 +232,6 @@
 				&cpu15_intc  3 &cpu15_intc  7
 			>;
 			reg = <0x0 0xe081c000 0x0 0x0004000>;
-			clint,has-no-64bit-mmio;
 		};
 
 		simsic: interrupt-controller@e0400000 {
@@ -450,7 +449,7 @@
 			#dma-cells= <1>;
 			#dma-channels = <16>;
 			max-burst-size = <64>;
-			status = "ok";
+			status = "okay";
 		};
 
 		uart0: serial@d4017000 {
@@ -467,7 +466,7 @@
 			fifo-size = <256>;
 			interrupt-parent = <&saplic>;
 			interrupts = <42 IRQ_TYPE_LEVEL_HIGH>;
-			status = "ok";
+			status = "okay";
 		};
 
 		uart1: serial@f0612000 {
@@ -1067,6 +1066,12 @@
 			spacemit,qspi-sfa2ad = <0x100000>;
 			spacemit,qspi-sfb1ad = <0x100000>;
 			spacemit,qspi-sfb2ad = <0x100000>;
+			clocks = <&syscon_apmu CLK_APMU_QSPI>,
+				 <&syscon_apmu CLK_APMU_QSPI_BUS>;
+			clock-names = "qspi_clk", "qspi_bus_clk";
+			resets = <&syscon_apmu RESET_APMU_QSPI>,
+				 <&syscon_apmu RESET_APMU_QSPI_BUS>;
+			reset-names = "qspi_reset", "qspi_bus_reset";
 			spacemit,qspi-pmuap-reg = <0xd4282860>;
 			spacemit,qspi-mpmu-acgr-reg = <0xd4051024>;
 			spacemit,qspi-ahb-enable = <0>;
@@ -1256,7 +1261,7 @@
 			compatible = "riscv,rpmi-rtc";
 			mboxes = <&mpxy_mbox 0xe 0x0>;
 			interrupt-parent = <&saplic>;
-			interrupts = <64 4>;
+			interrupts = <64 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rpmi rtc";
 			status = "disabled";
 		};
@@ -1265,7 +1270,7 @@
 			compatible = "riscv,rpmi-pwrkey";
 			mboxes = <&mpxy_mbox 0xf 0x0>;
 			interrupt-parent = <&saplic>;
-			interrupts = <64 4>;
+			interrupts = <64 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rpmi pwrkey";
 			status = "disabled";
 		};
@@ -1474,7 +1479,7 @@
 			compatible = "img,rgx";
 			interrupt-names = "rgxirq";
 			interrupt-parent = <&saplic>;
-			interrupts = <75 4>;
+			interrupts = <75 IRQ_TYPE_LEVEL_HIGH>;
 			reg = <0x0 0xcac00000 0x0 0x80000>;
 			reg-names = "rgxregs";
 			clocks = <&syscon_apmu CLK_APMU_GPU>;
@@ -1495,7 +1500,7 @@
 			resets = <&syscon_apmu RESET_APMU_EMAC0>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
-			interrupts = <131 4>, <276 4>;
+			interrupts = <131 IRQ_TYPE_LEVEL_HIGH>, <276 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
@@ -1514,7 +1519,7 @@
 			resets = <&syscon_apmu RESET_APMU_EMAC1>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
-			interrupts = <133 4>, <277 4>;
+			interrupts = <133 IRQ_TYPE_LEVEL_HIGH>, <277 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
@@ -1533,7 +1538,7 @@
 			resets = <&syscon_apmu RESET_APMU_EMAC2>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
-			interrupts = <130 4>, <278 4>;
+			interrupts = <130 IRQ_TYPE_LEVEL_HIGH>, <278 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
@@ -1552,7 +1557,7 @@
 			resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RGMAC>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
-			interrupts = <237 4>, <236 4>;
+			interrupts = <237 IRQ_TYPE_LEVEL_HIGH>, <236 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
