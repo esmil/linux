@@ -109,6 +109,21 @@ static const struct simple_mfd_data spacemit_p1 = {
 	.mfd_cell_size = ARRAY_SIZE(spacemit_p1_cells),
 };
 
+static const struct regmap_config spacemit_mpq8655_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 16,
+};
+
+static const struct mfd_cell spacemit_mpq8655_cells[] = {
+	{ .name = "spacemit,regulator,mpq8655", },
+};
+
+static const struct simple_mfd_data spacemit_mpq8655 = {
+	.regmap_config = &spacemit_mpq8655_regmap_config,
+	.mfd_cell = spacemit_mpq8655_cells,
+	.mfd_cell_size = ARRAY_SIZE(spacemit_mpq8655_cells),
+};
+
 static const struct of_device_id simple_mfd_i2c_of_match[] = {
 	{ .compatible = "fsl,ls1028aqds-fpga" },
 	{ .compatible = "fsl,lx2160aqds-fpga" },
@@ -119,6 +134,7 @@ static const struct of_device_id simple_mfd_i2c_of_match[] = {
 	{ .compatible = "maxim,max77705-battery", .data = &maxim_mon_max77705},
 	{ .compatible = "silergy,sy7636a", .data = &silergy_sy7636a},
 	{ .compatible = "spacemit,p1", .data = &spacemit_p1, },
+	{ .compatible = "spacemit,mpq8655", .data = &spacemit_mpq8655, },
 	{}
 };
 MODULE_DEVICE_TABLE(of, simple_mfd_i2c_of_match);

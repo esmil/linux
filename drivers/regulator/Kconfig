@@ -1465,6 +1465,17 @@ config REGULATOR_SPACEMIT_P1
 	  driver as a module, choose M here.  The module will be called
 	  "spacemit-pmic".
 
+config REGULATOR_SPACEMIT_MPQ8655
+	tristate "SpacemiT MPQ8655 regulators"
+	depends on ARCH_SPACEMIT || COMPILE_TEST
+	depends on I2C
+	select CONFIG_MFD_SIMPLE_MFD_I2C
+	default ARCH_SPACEMIT
+	help
+	  Enable support for regulators implemented by the SpacemiT MPQ8865
+	  power controller.  The MPQ8655 implements 1 high-efficiency buck
+	  converters.  To compile this driver as a module, choose M here.
+
 config REGULATOR_STM32_BOOSTER
 	tristate "STMicroelectronics STM32 BOOSTER"
 	depends on ARCH_STM32 || COMPILE_TEST
