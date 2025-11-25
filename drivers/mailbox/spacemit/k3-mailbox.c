@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/spinlock.h>
+#include <linux/of_address.h>
 #include "../mailbox.h"
 #include "k3_mailbox.h"
 
@@ -215,16 +216,12 @@ static const struct mbox_chan_ops spacemit_chan_ops = {
 	.peek_data    = spacemit_chan_peek_data,
 };
 
-static int __count;
-
 static int spacemit_mailbox_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mbox_chan *chans;
 	struct spacemit_mailbox *mbox;
 	int i, ret;
-
-	++__count;
 
 	mbox = devm_kzalloc(dev, sizeof(*mbox), GFP_KERNEL);
 	if (!mbox)
@@ -237,11 +234,7 @@ static int spacemit_mailbox_probe(struct platform_device *pdev)
 	for (i = 0; i < SPACEMIT_NUM_CHANNELS; ++i)
 		chans[i].con_priv = mbox;
 
-	if (__count == 2) {
-		mbox->regs = (mbox_reg_desc_t *)ioremap(0xcac90000, 0x400);
-	} else {
-		mbox->regs = (mbox_reg_desc_t *)devm_platform_ioremap_resource(pdev, 0);
-	}
+	mbox->regs = (mbox_reg_desc_t *)of_iomap(pdev->dev.of_node, 0);
 	if (IS_ERR(mbox->regs)) {
 		ret = PTR_ERR(mbox->regs);
 		dev_err(dev, "Failed to map MMIO resource: %d\n", ret);
