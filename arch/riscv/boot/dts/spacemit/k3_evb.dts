@@ -178,37 +178,33 @@
 
 &rpmi_regulator {
 	status = "disabled";
-
-	p_5v0: p_5v0 {
+/*
+	pvin: pvin {
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 	};
 
-	/* a100 */
-	leaf_a100: leaf_a100 {
+	edcdc2: edcdc2 {
 		regulator-min-microvolt = <500000>;
 		regulator-max-microvolt = <3450000>;
 	};
 
-	/* x100 */
-	leaf_x100: leaf_x100 {
+	edcdc1: edcdc1 {
 		regulator-min-microvolt = <500000>;
 		regulator-max-microvolt = <3450000>;
 	};
 
-	/* 3v3 */
-	exter_3v3: exter_3v3 {
+	p3v3: p3v3 {
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
 
-	/* 1v8 */
-	exter_1v8: exter_1v8 {
+	p1v8: p1v8 {
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
 
-	dcdc1_2: dcdc1_2 {
+	dcdc1: dcdc1 {
 		regulator-min-microvolt = <500000>;
 		regulator-max-microvolt = <3450000>;
 	};
@@ -233,7 +229,6 @@
                 regulator-max-microvolt = <3450000>;
 	};
 
-	/* aldo */
 	ldo1: ldo1 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
@@ -254,7 +249,6 @@
                 regulator-max-microvolt = <3400000>;
 	};
 
-	/* dldo */
 	ldo5: ldo5 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
@@ -304,6 +298,7 @@
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 	};
+*/
 };
 
 &i2c8 {
