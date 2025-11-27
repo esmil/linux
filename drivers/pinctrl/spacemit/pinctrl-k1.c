@@ -27,6 +27,7 @@
 #include "pinctrl-k1.h"
 
 /*
+ * For K1:
  * +---------+----------+-----------+--------+--------+----------+--------+
  * |   pull  |   drive  | schmitter |  slew  |  edge  |  strong  |   mux  |
  * | up/down | strength |  trigger  |  rate  | detect |   pull   |  mode  |
@@ -41,11 +42,37 @@
 #define PAD_EDGE_CLEAR		BIT(6)
 #define PAD_SLEW_RATE		GENMASK(12, 11)
 #define PAD_SLEW_RATE_EN	BIT(7)
-#define PAD_SCHMITT		GENMASK(9, 8)
-#define PAD_DRIVE		GENMASK(12, 10)
+#define PAD_SCHMITT_K1		GENMASK(9, 8)
+#define PAD_DRIVE_K1		GENMASK(12, 10)
 #define PAD_PULLDOWN		BIT(13)
 #define PAD_PULLUP		BIT(14)
 #define PAD_PULL_EN		BIT(15)
+
+/*
+ * For K3:
+ * +---------+----------+-----------+--------+--------+----------+--------+
+ * |   pull  |   drive  | schmitter |  slew  |  edge  |  strong  |   mux  |
+ * | up/down | strength |  trigger  |  rate  | detect |   pull   |  mode  |
+ * +---------+----------+-----------+--------+--------+----------+--------+
+ *   3 bits     4 bits     1 bits     1 bit    3 bits     1 bit    3 bits
+ */
+#define PAD_SCHMITT_K3		BIT(8)
+#define PAD_DRIVE_K3		GENMASK(12, 9)
+
+struct spacemit_pin_drv_strength {
+	u8		val;
+	u32		mA;
+};
+
+struct spacemit_pinctrl_variant {
+	u64				schmitt_mask;
+	u64				drive_mask;
+
+	struct spacemit_pin_drv_strength *ds_1v8_tbl;
+	size_t				 ds_1v8_tbl_num;
+	struct spacemit_pin_drv_strength *ds_3v3_tbl;
+	size_t				 ds_3v3_tbl_num;
+};
 
 struct spacemit_pin {
 	u16				pin;
@@ -68,20 +95,16 @@ struct spacemit_pinctrl {
 };
 
 struct spacemit_pinctrl_data {
-	const struct pinctrl_pin_desc   *pins;
-	const struct spacemit_pin	*data;
-	u16				npins;
-	unsigned int			(*pin_to_offset)(unsigned int pin);
+	const struct pinctrl_pin_desc		*pins;
+	const struct spacemit_pin		*data;
+	u16					npins;
+	unsigned int				(*pin_to_offset)(unsigned int pin);
+	struct spacemit_pinctrl_variant		variant;
 };
 
 struct spacemit_pin_mux_config {
 	const struct spacemit_pin	*pin;
 	u32				config;
-};
-
-struct spacemit_pin_drv_strength {
-	u8		val;
-	u32		mA;
 };
 
 /* map pin id to pinctrl register offset, refer MFPR definition */
@@ -199,14 +222,14 @@ static void spacemit_pctrl_dbg_show(struct pinctrl_dev *pctldev,
 }
 
 /* use IO high level output current as the table */
-static struct spacemit_pin_drv_strength spacemit_ds_1v8_tbl[4] = {
+static struct spacemit_pin_drv_strength spacemit_k1_ds_1v8_tbl[4] = {
 	{ 0, 11 },
 	{ 2, 21 },
 	{ 4, 32 },
 	{ 6, 42 },
 };
 
-static struct spacemit_pin_drv_strength spacemit_ds_3v3_tbl[8] = {
+static struct spacemit_pin_drv_strength spacemit_k1_ds_3v3_tbl[8] = {
 	{ 0,  7 },
 	{ 2, 10 },
 	{ 4, 13 },
@@ -215,6 +238,25 @@ static struct spacemit_pin_drv_strength spacemit_ds_3v3_tbl[8] = {
 	{ 3, 23 },
 	{ 5, 26 },
 	{ 7, 29 },
+};
+
+static struct spacemit_pin_drv_strength spacemit_k3_ds_tbl[16] = {
+	{ 0,  5 },
+	{ 1,  9 },
+	{ 2,  13 },
+	{ 3,  18 },
+	{ 4,  24 },
+	{ 5,  28 },
+	{ 6,  32 },
+	{ 7,  35 },
+	{ 8,  47 },
+	{ 9,  49 },
+	{ 10, 51 },
+	{ 11, 54 },
+	{ 12, 57 },
+	{ 13, 59 },
+	{ 14, 61 },
+	{ 15, 63 },
 };
 
 static inline u8 spacemit_get_ds_value(struct spacemit_pin_drv_strength *tbl,
@@ -242,16 +284,17 @@ static inline u32 spacemit_get_ds_mA(struct spacemit_pin_drv_strength *tbl,
 }
 
 static inline u8 spacemit_get_driver_strength(enum spacemit_pin_io_type type,
+					      const struct spacemit_pinctrl_variant *variant,
 					      u32 mA)
 {
 	switch (type) {
 	case IO_TYPE_1V8:
-		return spacemit_get_ds_value(spacemit_ds_1v8_tbl,
-					     ARRAY_SIZE(spacemit_ds_1v8_tbl),
+		return spacemit_get_ds_value(variant->ds_1v8_tbl,
+					     variant->ds_1v8_tbl_num,
 					     mA);
 	case IO_TYPE_3V3:
-		return spacemit_get_ds_value(spacemit_ds_3v3_tbl,
-					     ARRAY_SIZE(spacemit_ds_3v3_tbl),
+		return spacemit_get_ds_value(variant->ds_3v3_tbl,
+					     variant->ds_3v3_tbl_num,
 					     mA);
 	default:
 		return 0;
@@ -259,16 +302,17 @@ static inline u8 spacemit_get_driver_strength(enum spacemit_pin_io_type type,
 }
 
 static inline u32 spacemit_get_drive_strength_mA(enum spacemit_pin_io_type type,
+						 const struct spacemit_pinctrl_variant *variant,
 						 u32 value)
 {
 	switch (type) {
 	case IO_TYPE_1V8:
-		return spacemit_get_ds_mA(spacemit_ds_1v8_tbl,
-					  ARRAY_SIZE(spacemit_ds_1v8_tbl),
-					  value & 0x6);
+		return spacemit_get_ds_mA(variant->ds_1v8_tbl,
+					  variant->ds_1v8_tbl_num,
+					  value);
 	case IO_TYPE_3V3:
-		return spacemit_get_ds_mA(spacemit_ds_3v3_tbl,
-					  ARRAY_SIZE(spacemit_ds_3v3_tbl),
+		return spacemit_get_ds_mA(variant->ds_3v3_tbl,
+					  variant->ds_3v3_tbl_num,
 					  value);
 	default:
 		return 0;
@@ -515,6 +559,7 @@ static int spacemit_pinconf_get(struct pinctrl_dev *pctldev,
 #define ENABLE_DRV_STRENGTH	BIT(1)
 #define ENABLE_SLEW_RATE	BIT(2)
 static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
+					    const struct spacemit_pinctrl_variant *variant,
 					    unsigned long *configs,
 					    unsigned int num_configs,
 					    u32 *value)
@@ -552,8 +597,8 @@ static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 			drv_strength = arg;
 			break;
 		case PIN_CONFIG_INPUT_SCHMITT:
-			v &= ~PAD_SCHMITT;
-			v |= FIELD_PREP(PAD_SCHMITT, arg);
+			v &= ~variant->schmitt_mask;
+			v |= (arg << __ffs(variant->schmitt_mask)) & variant->schmitt_mask;
 			break;
 		case PIN_CONFIG_POWER_SOURCE:
 			voltage = arg;
@@ -589,10 +634,10 @@ static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 			}
 		}
 
-		val = spacemit_get_driver_strength(type, drv_strength);
+		val = spacemit_get_driver_strength(type, variant, drv_strength);
 
-		v &= ~PAD_DRIVE;
-		v |= FIELD_PREP(PAD_DRIVE, val);
+		v &= ~variant->drive_mask;
+		v |= (arg << __ffs(variant->drive_mask)) & variant->drive_mask;
 	}
 
 	if (flag & ENABLE_SLEW_RATE) {
@@ -642,7 +687,8 @@ static int spacemit_pinconf_set(struct pinctrl_dev *pctldev,
 	const struct spacemit_pin *spin = spacemit_get_pin(pctrl, pin);
 	u32 value;
 
-	if (spacemit_pinconf_generate_config(spin, configs, num_configs, &value))
+	if (spacemit_pinconf_generate_config(spin, &pctrl->data->variant,
+					     configs, num_configs, &value))
 		return -EINVAL;
 
 	return spacemit_pin_set_config(pctrl, pin, value);
@@ -664,7 +710,8 @@ static int spacemit_pinconf_group_set(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 
 	spin = spacemit_get_pin(pctrl, group->grp.pins[0]);
-	if (spacemit_pinconf_generate_config(spin, configs, num_configs, &value))
+	if (spacemit_pinconf_generate_config(spin, &pctrl->data->variant,
+					     configs, num_configs, &value))
 		return -EINVAL;
 
 	for (i = 0; i < group->grp.npins; i++)
@@ -698,6 +745,7 @@ static void spacemit_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 				      struct seq_file *seq, unsigned int pin)
 {
 	struct spacemit_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	const struct spacemit_pinctrl_variant *variant = &pctrl->data->variant;
 	const struct spacemit_pin *spin = spacemit_get_pin(pctrl, pin);
 	enum spacemit_pin_io_type type = spacemit_to_pin_io_type(spin);
 	void __iomem *reg = spacemit_pin_to_reg(pctrl, pin);
@@ -708,17 +756,17 @@ static void spacemit_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 
 	seq_printf(seq, ", io type (%s)", io_type_desc[type]);
 
-	tmp = FIELD_GET(PAD_DRIVE, value);
+	tmp = (value & variant->drive_mask) >> __ffs(variant->drive_mask);
 	if (type == IO_TYPE_1V8 || type == IO_TYPE_3V3) {
-		mA = spacemit_get_drive_strength_mA(type, tmp);
+		mA = spacemit_get_drive_strength_mA(type, variant, tmp);
 		seq_printf(seq, ", drive strength (%d mA)", mA);
 	}
 
 	/* drive strength depend on power source, so show all values */
 	if (type == IO_TYPE_EXTERNAL)
 		seq_printf(seq, ", drive strength (%d or %d mA)",
-			   spacemit_get_drive_strength_mA(IO_TYPE_1V8, tmp),
-			   spacemit_get_drive_strength_mA(IO_TYPE_3V3, tmp));
+			   spacemit_get_drive_strength_mA(IO_TYPE_1V8, variant, tmp),
+			   spacemit_get_drive_strength_mA(IO_TYPE_3V3, variant, tmp));
 
 	seq_printf(seq, ", register (0x%04x)", value);
 }
@@ -1066,6 +1114,14 @@ static const struct spacemit_pinctrl_data k1_pinctrl_data = {
 	.data = k1_pin_data,
 	.npins = ARRAY_SIZE(k1_pin_desc),
 	.pin_to_offset = spacemit_k1_pin_to_offset,
+	.variant = {
+		.drive_mask = PAD_DRIVE_K1,
+		.schmitt_mask = PAD_SCHMITT_K1,
+		.ds_1v8_tbl = spacemit_k1_ds_1v8_tbl,
+		.ds_1v8_tbl_num = ARRAY_SIZE(spacemit_k1_ds_1v8_tbl),
+		.ds_3v3_tbl = spacemit_k1_ds_3v3_tbl,
+		.ds_3v3_tbl_num = ARRAY_SIZE(spacemit_k1_ds_3v3_tbl),
+	}
 };
 
 static const struct pinctrl_pin_desc k3_pin_desc[] = {
@@ -1402,6 +1458,14 @@ static const struct spacemit_pinctrl_data k3_pinctrl_data = {
 	.data = k3_pin_data,
 	.npins = ARRAY_SIZE(k3_pin_desc),
 	.pin_to_offset = spacemit_k3_pin_to_offset,
+	.variant = {
+		.drive_mask = PAD_DRIVE_K3,
+		.schmitt_mask = PAD_SCHMITT_K3,
+		.ds_1v8_tbl = spacemit_k3_ds_tbl,
+		.ds_1v8_tbl_num = ARRAY_SIZE(spacemit_k3_ds_tbl),
+		.ds_3v3_tbl = spacemit_k3_ds_tbl,
+		.ds_3v3_tbl_num = ARRAY_SIZE(spacemit_k3_ds_tbl),
+	}
 };
 
 static const struct of_device_id k1_pinctrl_ids[] = {
