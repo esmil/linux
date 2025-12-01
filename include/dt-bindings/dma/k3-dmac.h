@@ -78,4 +78,14 @@
 #define DMA_QSPI_RX	84	/* DRCMR at 0x1000 + 0x50 */
 #define DMA_QSPI_TX	85	/* DRCMR at 0x1000 + 0x54 */
 
+/*
+ * Secure APBC2 DMA channels (secure domain, PDMA1)
+ */
+#define DMA_SEC_UART1_RX	3
+#define DMA_SEC_UART1_TX	4
+#define DMA_SEC_SSP2_RX	        5
+#define DMA_SEC_SSP2_TX	        6
+#define DMA_SEC_I2C3_TX	        7
+#define DMA_SEC_I2C3_RX	        8
+
 #endif /* __DTS_K3_DMAC_H */

@@ -454,6 +454,17 @@
 			status = "okay";
 		};
 
+		pdma1: pdma@f0600000 {
+			compatible = "spacemit,k1-pdma";
+			reg = <0x0 0xf0600000 0x0 0x4000>;
+			interrupt-parent = <&saplic>;
+			interrupts = <150 IRQ_TYPE_LEVEL_HIGH>;
+			#dma-cells= <1>;
+			#dma-channels = <16>;
+			max-burst-size = <64>;
+			status = "disabled";
+		};
+
 		uart0: serial@d4017000 {
 			compatible = "spacemit,k1-uart",
 				     "intel,xscale-uart";
