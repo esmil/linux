@@ -54,8 +54,10 @@ struct pxa_pwm_chip {
 
 	struct clk	*clk;
 	struct clk	*bus_clk;
+	struct reset_control	*reset;
 	void __iomem	*mmio_base;
 	bool dcr_fd_disabled;
+	bool rcpu_pwm;
 };
 
 static inline struct pxa_pwm_chip *to_pxa_pwm_chip(struct pwm_chip *chip)
@@ -194,7 +196,6 @@ static int pwm_probe(struct platform_device *pdev)
 	struct pwm_chip *chip;
 	struct pxa_pwm_chip *pc;
 	struct device *dev = &pdev->dev;
-	struct reset_control *rst;
 	int ret = 0;
 
 	if (IS_ENABLED(CONFIG_OF) && id == NULL)
@@ -229,16 +230,18 @@ static int pwm_probe(struct platform_device *pdev)
 		pc->bus_clk = NULL;
 	}
 
-	rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
-	if (IS_ERR(rst)) {
-		return dev_err_probe(&pdev->dev, PTR_ERR(rst), "failed to get reset control\n");
-	}
+	pc->reset = devm_reset_control_get_optional_exclusive_released(&pdev->dev, NULL);
+	if (IS_ERR(pc->reset))
+		return dev_err_probe(&pdev->dev, PTR_ERR(pc->reset),
+				     "failed to get reset control\n");
 
-	ret = reset_control_deassert(rst);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to deassert reset control: %d\n", ret);
-		return ret;
-	}
+	/* Check if PWM is in RCPU domain */
+	if (pdev->dev.of_node)
+		pc->rcpu_pwm = of_property_read_bool(pdev->dev.of_node, "rcpu-pwm");
+
+	/* Deassert reset */
+	if (pc->reset)
+		reset_control_deassert(pc->reset);
 
 	chip->ops = &pxa_pwm_ops;
 
@@ -256,9 +259,35 @@ static int pwm_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int pxa_pwm_suspend_noirq(struct device *dev)
+{
+	return 0;
+}
+
+static int pxa_pwm_resume_noirq(struct device *dev)
+{
+	struct pwm_chip *chip = dev_get_drvdata(dev);
+	struct pxa_pwm_chip *pc = to_pxa_pwm_chip(chip);
+
+	/* if pwm in rcpu domain, deassert reset first before apply the old state */
+	if (pc->rcpu_pwm && pc->reset)
+		reset_control_deassert(pc->reset);
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops pxa_pwm_pm_ops = {
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(pxa_pwm_suspend_noirq,
+			pxa_pwm_resume_noirq)
+};
+
 static struct platform_driver pwm_driver = {
 	.driver		= {
 		.name	= "pxa25x-pwm",
+#ifdef CONFIG_PM_SLEEP
+		.pm	= &pxa_pwm_pm_ops,
+#endif
 		.of_match_table = pwm_of_match,
 	},
 	.probe		= pwm_probe,
