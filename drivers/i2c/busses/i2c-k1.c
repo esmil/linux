@@ -654,6 +654,8 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	if (!i2c)
 		return -ENOMEM;
 
+	i2c->dev = &pdev->dev;
+
 	ret = of_property_read_u32(of_node, "clock-frequency", &i2c->clock_freq);
 	if (ret && ret != -EINVAL)
 		dev_warn(dev, "failed to read clock-frequency property: %d\n", ret);
@@ -669,8 +671,6 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 		i2c->mode = SPACEMIT_MODE_FAST;
 		i2c->clock_freq = SPACEMIT_I2C_MAX_FAST_MODE_FREQ;
 	}
-
-	i2c->dev = &pdev->dev;
 
 	i2c->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(i2c->base))
