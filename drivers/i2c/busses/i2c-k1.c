@@ -13,6 +13,7 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
+#include <linux/pm_runtime.h>
 
 /* spacemit i2c registers */
 #define SPACEMIT_ICR		 0x0		/* Control register */
@@ -127,6 +128,8 @@ struct spacemit_i2c_dev {
 
 	struct clk_hw scl_clk_hw;
 	struct clk *scl_clk;
+	struct clk *func_clk;
+	struct clk *bus_clk;
 	enum spacemit_i2c_mode mode;
 
 	/* hardware resources */
@@ -603,7 +606,44 @@ static void spacemit_i2c_calc_timeout(struct spacemit_i2c_dev *i2c)
 static int spacemit_i2c_xfer(struct i2c_adapter *adapt, struct i2c_msg *msgs, int num)
 {
 	struct spacemit_i2c_dev *i2c = i2c_get_adapdata(adapt);
+	bool clk_directly = false;
 	int ret;
+
+	ret = pm_runtime_get_sync(i2c->dev);
+	if (ret < 0) {
+		/*
+		 * During system suspend_late to system resume_early stage,
+		 * if PM runtime is suspended, we will get -EACCES return
+		 * value, so we need to enable clock directly, and disable after
+		 * i2c transfer is finished. During this stage, pmic onkey ISR
+		 * that invoked in an irq thread may use i2c interface if we have
+		 * onkey press action.
+		 */
+		if (ret == -EACCES) {
+			ret = clk_enable(i2c->func_clk);
+			if (ret) {
+				dev_err(i2c->dev,
+					"failed to enable func clock directly: %d\n",
+					ret);
+				pm_runtime_put_noidle(i2c->dev);
+				return ret;
+			}
+			ret = clk_enable(i2c->bus_clk);
+			if (ret) {
+				dev_err(i2c->dev,
+					"failed to enable bus clock directly: %d\n",
+					ret);
+				clk_disable(i2c->func_clk);
+				pm_runtime_put_noidle(i2c->dev);
+				return ret;
+			}
+			clk_directly = true;
+		} else {
+			dev_err(i2c->dev, "pm runtime sync error: %d\n", ret);
+			pm_runtime_put_noidle(i2c->dev);
+			return ret;
+		}
+	}
 
 	i2c->msgs = msgs;
 	i2c->msg_num = num;
@@ -628,6 +668,15 @@ static int spacemit_i2c_xfer(struct i2c_adapter *adapt, struct i2c_msg *msgs, in
 	if (ret == -ETIMEDOUT || ret == -EAGAIN)
 		dev_err(i2c->dev, "i2c transfer failed, ret %d err 0x%lx\n",
 			  ret, i2c->status & SPACEMIT_SR_ERR);
+
+	if (clk_directly) {
+		/* If clocks are enabled directly, here disable them */
+		clk_disable(i2c->func_clk);
+		clk_disable(i2c->bus_clk);
+	}
+
+	pm_runtime_mark_last_busy(i2c->dev);
+	pm_runtime_put_autosuspend(i2c->dev);
 
 	return ret < 0 ? ret : num;
 }
@@ -689,6 +738,8 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	if (IS_ERR(clk))
 		return dev_err_probe(dev, PTR_ERR(clk), "failed to enable func clock");
 
+	i2c->func_clk = clk;
+
 	i2c->scl_clk = spacemit_i2c_register_scl_clk(i2c, clk);
 	if (IS_ERR(i2c->scl_clk))
 		return dev_err_probe(&pdev->dev, PTR_ERR(i2c->scl_clk),
@@ -697,6 +748,8 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	clk = devm_clk_get_enabled(dev, "bus");
 	if (IS_ERR(clk))
 		return dev_err_probe(dev, PTR_ERR(clk), "failed to enable bus clock");
+
+	i2c->bus_clk = clk;
 
 	ret = clk_set_rate(i2c->scl_clk, i2c->clock_freq);
 	if (ret)
@@ -739,9 +792,18 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, i2c);
 
+	pm_runtime_set_autosuspend_delay(dev, MSEC_PER_SEC);
+	pm_runtime_use_autosuspend(dev);
+	pm_runtime_set_active(dev);
+	pm_suspend_ignore_children(dev, 1);
+	pm_runtime_enable(dev);
+
 	ret = i2c_add_numbered_adapter(&i2c->adapt);
-	if (ret)
+	if (ret) {
+		pm_runtime_disable(dev);
+		pm_runtime_set_suspended(dev);
 		return dev_err_probe(&pdev->dev, ret, "failed to add i2c adapter");
+	}
 
 	return 0;
 }
@@ -751,6 +813,9 @@ static void spacemit_i2c_remove(struct platform_device *pdev)
 	struct spacemit_i2c_dev *i2c = platform_get_drvdata(pdev);
 
 	i2c_del_adapter(&i2c->adapt);
+
+	pm_runtime_disable(i2c->dev);
+	pm_runtime_set_suspended(i2c->dev);
 
 	if (i2c->resets)
 		reset_control_assert(i2c->resets);
