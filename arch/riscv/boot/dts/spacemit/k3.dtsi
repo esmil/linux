@@ -446,6 +446,8 @@
 			reg = <0x0 0xd4000000 0x0 0x4000>;
 			interrupt-parent = <&saplic>;
 			interrupts = <72 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_apmu CLK_APMU_DMA>;
+			resets = <&syscon_apmu RESET_APMU_DMA>;
 			#dma-cells= <1>;
 			#dma-channels = <16>;
 			max-burst-size = <64>;
