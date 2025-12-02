@@ -190,6 +190,8 @@ struct mmp_pdma_device {
 	struct dma_device		device;
 	struct mmp_pdma_phy		*phy;
 	const struct mmp_pdma_ops	*ops;
+	struct clk			*clk;
+	struct reset_control		*rst;
 	spinlock_t phy_lock; /* protect alloc/free phy channels */
 };
 
@@ -1262,12 +1264,15 @@ static struct dma_chan *mmp_pdma_dma_xlate(struct of_phandle_args *dma_spec,
 	return chan;
 }
 
+static void mmp_pdma_reset_control_assert(void *data)
+{
+	reset_control_assert(data);
+}
+
 static int mmp_pdma_probe(struct platform_device *op)
 {
 	struct mmp_pdma_device *pdev;
 	struct mmp_dma_platdata *pdata = dev_get_platdata(&op->dev);
-	struct clk *clk;
-	struct reset_control *rst;
 	int i, ret, irq = 0;
 	int dma_channels = 0, irq_num = 0;
 	const enum dma_slave_buswidth widths =
@@ -1286,14 +1291,25 @@ static int mmp_pdma_probe(struct platform_device *op)
 	if (IS_ERR(pdev->base))
 		return PTR_ERR(pdev->base);
 
-	clk = devm_clk_get_optional_enabled(pdev->dev, NULL);
-	if (IS_ERR(clk))
-		return PTR_ERR(clk);
+	pdev->clk = devm_clk_get_optional_enabled(pdev->dev, NULL);
+	if (IS_ERR(pdev->clk))
+		return PTR_ERR(pdev->clk);
 
-	rst = devm_reset_control_get_optional_exclusive_released(pdev->dev,
-								 NULL);
-	if (IS_ERR(rst))
-		return PTR_ERR(rst);
+	pdev->rst = devm_reset_control_get_optional_exclusive(pdev->dev, NULL);
+	if (IS_ERR(pdev->rst))
+		return PTR_ERR(pdev->rst);
+
+	if (pdev->rst) {
+		ret = reset_control_deassert(pdev->rst);
+		if (ret)
+			return ret;
+
+		ret = devm_add_action_or_reset(pdev->dev,
+					       mmp_pdma_reset_control_assert,
+					       pdev->rst);
+		if (ret)
+			return ret;
+	}
 
 	pdev->ops = of_device_get_match_data(&op->dev);
 	if (!pdev->ops)
@@ -1396,9 +1412,42 @@ static const struct platform_device_id mmp_pdma_id_table[] = {
 	{ },
 };
 
+#ifdef CONFIG_PM_SLEEP
+static int mmp_pdma_suspend_noirq(struct device *dev)
+{
+	struct mmp_pdma_device *pdev = dev_get_drvdata(dev);
+
+	if (pdev->clk)
+		clk_disable_unprepare(pdev->clk);
+
+	return 0;
+}
+
+static int mmp_pdma_resume_noirq(struct device *dev)
+{
+	struct mmp_pdma_device *pdev = dev_get_drvdata(dev);
+	int ret;
+
+	if (pdev->clk) {
+		ret = clk_prepare_enable(pdev->clk);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static const struct dev_pm_ops mmp_pdma_pm_ops = {
+	NOIRQ_SYSTEM_SLEEP_PM_OPS(mmp_pdma_suspend_noirq, mmp_pdma_resume_noirq)
+};
+#endif
+
 static struct platform_driver mmp_pdma_driver = {
 	.driver		= {
 		.name	= "mmp-pdma",
+#ifdef CONFIG_PM_SLEEP
+		.pm	= &mmp_pdma_pm_ops,
+#endif
 		.of_match_table = mmp_pdma_dt_ids,
 	},
 	.id_table	= mmp_pdma_id_table,
