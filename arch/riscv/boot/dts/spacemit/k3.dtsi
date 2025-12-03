@@ -1750,6 +1750,12 @@
 			status = "disabled";
 		};
 
+		hwspinlock: hwspin@cac91c00 {
+			compatible = "spacemit,hwspinlock";
+			reg = <0x0 0xcac91c00 0x0 0x100>;
+			status = "disabled";
+		};
+
 		ai_dmac0: hdma0@d8804000 {
 			compatible = "spacemit-ai-dmac";
 			reg = <0x0 0xd8804000 0x0 0x1000>;
