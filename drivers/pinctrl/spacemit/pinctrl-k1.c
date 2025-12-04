@@ -40,7 +40,6 @@
 #define PAD_EDGE_RISE		BIT(4)
 #define PAD_EDGE_FALL		BIT(5)
 #define PAD_EDGE_CLEAR		BIT(6)
-#define PAD_SLEW_RATE		GENMASK(12, 11)
 #define PAD_SLEW_RATE_EN	BIT(7)
 #define PAD_SCHMITT_K1		GENMASK(9, 8)
 #define PAD_DRIVE_K1		GENMASK(12, 10)
@@ -547,36 +546,7 @@ static const struct pinmux_ops spacemit_pmx_ops = {
 	.strict			= true,
 };
 
-static int spacemit_pinconf_get(struct pinctrl_dev *pctldev,
-				unsigned int pin, unsigned long *config)
-{
-	struct spacemit_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
-	int param = pinconf_to_config_param(*config);
-	u32 value, arg = 0;
-
-	if (!pin)
-		return -EINVAL;
-
-	value = readl(spacemit_pin_to_reg(pctrl, pin));
-
-	switch (param) {
-	case PIN_CONFIG_SLEW_RATE:
-		if (FIELD_GET(PAD_SLEW_RATE_EN, value))
-			arg = FIELD_GET(PAD_SLEW_RATE, value) + 2;
-		else
-			arg = 0;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	*config = pinconf_to_config_packed(param, arg);
-
-	return 0;
-}
-
 #define ENABLE_DRV_STRENGTH	BIT(1)
-#define ENABLE_SLEW_RATE	BIT(2)
 static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 					    const struct spacemit_pinctrl_variant *variant,
 					    unsigned long *configs,
@@ -586,7 +556,7 @@ static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 	enum spacemit_pin_io_type type;
 	int i, param;
 	u32 v = 0, voltage = 0, arg, val;
-	u32 flag = 0, drv_strength, slew_rate;
+	u32 flag = 0, drv_strength;
 
 	if (!spin)
 		return -EINVAL;
@@ -622,15 +592,6 @@ static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 		case PIN_CONFIG_POWER_SOURCE:
 			voltage = arg;
 			break;
-		case PIN_CONFIG_SLEW_RATE:
-			if (arg) {
-				flag |= ENABLE_SLEW_RATE;
-				v |= PAD_SLEW_RATE_EN;
-				slew_rate = arg;
-			} else {
-				v &= ~PAD_SLEW_RATE_EN;
-			}
-			break;
 		default:
 			return -EINVAL;
 		}
@@ -657,21 +618,6 @@ static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 
 		v &= ~variant->drive_mask;
 		v |= (arg << __ffs(variant->drive_mask)) & variant->drive_mask;
-	}
-
-	if (flag & ENABLE_SLEW_RATE) {
-		/* check, driver strength & slew rate */
-		if (flag & ENABLE_DRV_STRENGTH) {
-			val = FIELD_GET(PAD_SLEW_RATE, v) + 2;
-			if (slew_rate > 1 && slew_rate != val) {
-				pr_err("slew rate conflict with drive strength\n");
-				return -EINVAL;
-			}
-		} else {
-			v &= ~PAD_SLEW_RATE;
-			slew_rate = slew_rate > 1 ? (slew_rate - 2) : 0;
-			v |= FIELD_PREP(PAD_SLEW_RATE, slew_rate);
-		}
 	}
 
 	*value = v;
@@ -791,7 +737,6 @@ static void spacemit_pinconf_dbg_show(struct pinctrl_dev *pctldev,
 }
 
 static const struct pinconf_ops spacemit_pinconf_ops = {
-	.pin_config_get			= spacemit_pinconf_get,
 	.pin_config_set			= spacemit_pinconf_set,
 	.pin_config_group_set		= spacemit_pinconf_group_set,
 	.pin_config_dbg_show		= spacemit_pinconf_dbg_show,
