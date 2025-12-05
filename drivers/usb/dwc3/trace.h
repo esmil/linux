@@ -86,6 +86,13 @@ DEFINE_EVENT(dwc3_log_event, dwc3_event,
 	TP_ARGS(event, dwc)
 );
 
+#ifdef CONFIG_SOC_SPACEMIT
+DEFINE_EVENT(dwc3_log_event, dwc3_gadget_event,
+	TP_PROTO(u32 event, struct dwc3 *dwc),
+	TP_ARGS(event, dwc)
+);
+#endif
+
 DECLARE_EVENT_CLASS(dwc3_log_ctrl,
 	TP_PROTO(struct usb_ctrlrequest *ctrl),
 	TP_ARGS(ctrl),
