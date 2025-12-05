@@ -619,6 +619,9 @@ static ssize_t dwc3_link_state_write(struct file *file,
 	u32			reg;
 	u8			speed;
 	int			ret;
+#ifdef CONFIG_SOC_SPACEMIT
+	bool			cp = false;
+#endif
 
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
 		return -EFAULT;
@@ -635,6 +638,10 @@ static ssize_t dwc3_link_state_write(struct file *file,
 		state = DWC3_LINK_STATE_CMPLY;
 	else if (!strncmp(buf, "Loopback", 8))
 		state = DWC3_LINK_STATE_LPBK;
+#ifdef CONFIG_SOC_SPACEMIT
+	else if (!strncmp(buf, "cp", 2))
+		cp = true;
+#endif
 	else
 		return -EINVAL;
 
@@ -644,6 +651,20 @@ static ssize_t dwc3_link_state_write(struct file *file,
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	reg = dwc3_readl(dwc->regs, DWC3_GSTS);
+
+#ifdef CONFIG_SOC_SPACEMIT
+	if (cp && DWC3_GSTS_CURMOD(reg) == DWC3_GSTS_CURMOD_HOST) {
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		reg &= ~DWC3_GUSB3PIPECTL_HSTPRTCMPL;
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+		reg |= DWC3_GUSB3PIPECTL_HSTPRTCMPL;
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+		spin_unlock_irqrestore(&dwc->lock, flags);
+		pm_runtime_put_sync(dwc->dev);
+		return count;
+	}
+#endif
+
 	if (DWC3_GSTS_CURMOD(reg) != DWC3_GSTS_CURMOD_DEVICE) {
 		spin_unlock_irqrestore(&dwc->lock, flags);
 		pm_runtime_put_sync(dwc->dev);
