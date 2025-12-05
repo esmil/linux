@@ -29,6 +29,10 @@
 
 #define DWC3_ALIGN_FRAME(d, n)	(((d)->frame_number + ((d)->interval * (n))) \
 					& ~((d)->interval - 1))
+#ifdef CONFIG_SOC_SPACEMIT
+static bool linksts_change_evt;
+module_param(linksts_change_evt, bool, 0644);
+#endif
 
 /**
  * dwc3_gadget_set_test_mode - enables usb2 test modes
@@ -2850,7 +2854,11 @@ static void dwc3_gadget_enable_irq(struct dwc3 *dwc)
 			DWC3_DEVTEN_USBRSTEN |
 			DWC3_DEVTEN_DISCONNEVTEN);
 
+#ifdef CONFIG_SOC_SPACEMIT
+	if (DWC3_VER_IS_PRIOR(DWC3, 250A) || linksts_change_evt)
+#else
 	if (DWC3_VER_IS_PRIOR(DWC3, 250A))
+#endif
 		reg |= DWC3_DEVTEN_ULSTCNGEN;
 
 	/* On 2.30a and above this bit enables U3/L2-L1 Suspend Events */
