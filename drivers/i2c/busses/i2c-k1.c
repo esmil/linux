@@ -709,6 +709,7 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	if (ret && ret != -EINVAL)
 		dev_warn(dev, "failed to read clock-frequency property: %d\n", ret);
 
+	i2c->dev = &pdev->dev;
 	/* For now, this driver doesn't support high-speed. */
 	if (i2c->clock_freq > SPACEMIT_I2C_MAX_STANDARD_MODE_FREQ &&
 	    i2c->clock_freq <= SPACEMIT_I2C_MAX_FAST_MODE_FREQ) {
