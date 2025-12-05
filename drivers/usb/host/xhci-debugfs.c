@@ -369,6 +369,20 @@ static ssize_t xhci_port_write(struct file *file,  const char __user *ubuf,
 		portsc |= PORT_LINK_STROBE | XDEV_COMP_MODE;
 		writel(portsc, port->addr);
 		spin_unlock_irqrestore(&xhci->lock, flags);
+#ifdef CONFIG_SOC_SPACEMIT
+	} else if (!strncmp(buf, "disable", 7)) {
+		spin_lock_irqsave(&xhci->lock, flags);
+		/* compliance mode can only be enabled on ports in RxDetect */
+		portsc = readl(port->addr);
+		if ((portsc & PORT_PLS_MASK) != XDEV_RXDETECT) {
+			spin_unlock_irqrestore(&xhci->lock, flags);
+			return -EPERM;
+		}
+		portsc = xhci_port_state_to_neutral(portsc);
+		portsc &= ~PORT_POWER;
+		writel(portsc, port->addr);
+		spin_unlock_irqrestore(&xhci->lock, flags);
+#endif
 	} else {
 		return -EINVAL;
 	}
