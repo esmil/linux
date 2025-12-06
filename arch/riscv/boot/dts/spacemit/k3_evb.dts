@@ -305,8 +305,8 @@
 };
 
 &i2c8 {
-	/* pinctrl-names = "default"; */
-	/* pinctrl-0 = <&pinctrl_i2c8>; */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c8_cfg>;
 	status = "disabled";
 
 	p1@41 {
