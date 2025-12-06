@@ -3,6 +3,7 @@
 
 #include "k3.dtsi"
 #include "k3-rdomain.dtsi"
+#include "k3-pinctrl.dtsi"
 
 / {
 	compatible = "spacemit,k3-evb";
@@ -72,6 +73,8 @@
 };
 
 &uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_0_cfg>;
 	status = "okay";
 };
 
