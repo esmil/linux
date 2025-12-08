@@ -551,7 +551,7 @@
 	i2c3_0_cfg: i2c3-0-cfg {
 		i2c3-0-pins {
 			pinmux = <K3_PADCONF(142, 5)>,	/* i2c3 scl */
-				 <K3_PADCONF(144, 5)>;	/* i2c3 sda */
+				 <K3_PADCONF(143, 5)>;	/* i2c3 sda */
 
 			bias-pull-up;			/* normal pull-up */
 			drive-strength = <47>;		/* DS8 */
@@ -1178,7 +1178,7 @@
 
 	pwm14_1_cfg: pwm14-1-cfg {
 		pwm14-0-pins {
-			pinmux = <K3_PADCONF(143, 4)>;	/* pwm14 */
+			pinmux = <K3_PADCONF(144, 4)>;	/* pwm14 */
 
 			bias-pull-up;			/* normal pull-up */
 			drive-strength = <47>;		/* DS8 */
@@ -1232,7 +1232,7 @@
 
 	pwm16_1_cfg: pwm16-1-cfg {
 		pwm16-0-pins {
-			pinmux = <K3_PADCONF(144, 4)>;	/* pwm16 */
+			pinmux = <K3_PADCONF(143, 4)>;	/* pwm16 */
 
 			bias-pull-up;			/* normal pull-up */
 			drive-strength = <47>;		/* DS8 */
@@ -1797,7 +1797,7 @@
 	rcan1_0_cfg: rcan1-0-cfg {
 		rcan1-0-pins {
 			pinmux = <K3_PADCONF(142, 2)>,	/* rcan1 rx */
-				 <K3_PADCONF(143, 2)>;	/* rcan1 tx */
+				 <K3_PADCONF(144, 2)>;	/* rcan1 tx */
 
 			bias-pull-up;			/* normal pull-up */
 			drive-strength = <47>;		/* DS8 */
@@ -2497,7 +2497,7 @@
 				 <K3_PADCONF(139, 0)>,	/* qspi dat1 */
 				 <K3_PADCONF(140, 0)>,	/* qspi dat2 */
 				 <K3_PADCONF(141, 0)>,	/* qspi dat3 */
-				 <K3_PADCONF(143, 0)>;	/* qspi clk */
+				 <K3_PADCONF(144, 0)>;	/* qspi clk */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <47>;		/* DS8 */
@@ -2505,7 +2505,7 @@
 
 		qspi-1-pins {
 			pinmux = <K3_PADCONF(142, 0)>,	/* qspi cs0 */
-				 <K3_PADCONF(144, 0)>;	/* qspi cs1 */
+				 <K3_PADCONF(143, 0)>;	/* qspi cs1 */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <47>;		/* DS8 */
