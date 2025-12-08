@@ -13,6 +13,8 @@
 #include <linux/dma-mapping.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
+#include <linux/platform_device.h>
+#include <linux/of.h>
 
 #define USE_DMA_MALLOC
 // #define DMA_CONFIG_DEBUG
@@ -22,7 +24,7 @@
 #define DMA_MEMCPY_CMD	_IOR(IOC_MAGIC, 0, int)
 #define DMA_VA_TO_PA	_IOR(IOC_MAGIC, 1, int)
 
-static unsigned char dma_major;
+static int dma_major;
 static struct class *dma_class;
 static struct dma_device *dma_dev;
 static struct dma_chan *dma_chan;
@@ -381,50 +383,89 @@ static const struct file_operations dma_fops = {
 	.unlocked_ioctl = dma_ioctl,
 };
 
-static int dma_init(void)
+static const struct of_device_id udma_of_match[] = {
+	{ .compatible = "spacemit,udma", },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, udma_of_match);
+
+static int udma_probe(struct platform_device *pdev)
 {
 	dma_cap_mask_t mask;
 	struct device *dev_ret;
 
-	dma_major = register_chrdev(0, DEVICE_NAME, &dma_fops);
-	if (dma_major < 0)
-		return dma_major;
-
-	dma_class = class_create(DEVICE_NAME);
-	if (IS_ERR(dma_class))
-		return -1;
-
-	dev_ret = device_create(dma_class, NULL, MKDEV(dma_major, 0), NULL, DEVICE_NAME);
-	if (IS_ERR(dev_ret))
-		return PTR_ERR(dev_ret);
-
 	dma_cap_zero(mask);
-	dma_cap_set(DMA_MEMCPY, mask);//direction:memory to memory
-	dma_chan = dma_request_channel(mask, NULL, NULL); //request a dma channel
+	dma_cap_set(DMA_MEMCPY, mask);
+	dma_chan = dma_request_channel(mask, NULL, NULL);
 	if (!dma_chan) {
-		dev_err(dma_dev->dev, "dma request failed\n");
-		return -1;
+		dev_dbg(&pdev->dev,
+			"no DMA MEMCPY channel, deferring probe\n");
+		return -EPROBE_DEFER;
 	}
 
 	dma_dev = dma_chan->device;
 	dma_set_mask(dma_dev->dev, DMA_BIT_MASK(32));
 
 	INIT_LIST_HEAD(&dmabuf_list);
-	dev_dbg(dma_dev->dev, "dma channel id = %d\n", dma_chan->chan_id);
 	mutex_init(&dma_mutex);
 
+	dma_major = register_chrdev(0, DEVICE_NAME, &dma_fops);
+	if (dma_major < 0) {
+		dev_err(&pdev->dev, "register_chrdev failed: %d\n", dma_major);
+		goto err_release_chan;
+	}
+
+	dma_class = class_create(DEVICE_NAME);
+	if (IS_ERR(dma_class)) {
+		dev_err(&pdev->dev, "class_create failed\n");
+		goto err_unregister_chrdev;
+	}
+
+	dev_ret = device_create(dma_class, NULL, MKDEV(dma_major, 0), NULL,
+				DEVICE_NAME);
+	if (IS_ERR(dev_ret)) {
+		dev_err(&pdev->dev, "device_create failed: %ld\n",
+			PTR_ERR(dev_ret));
+		goto err_destroy_class;
+	}
+
+	dev_dbg(dma_dev->dev, "dma channel id = %d\n", dma_chan->chan_id);
+
 	return 0;
+
+err_destroy_class:
+	class_destroy(dma_class);
+	dma_class = NULL;
+err_unregister_chrdev:
+	unregister_chrdev(dma_major, DEVICE_NAME);
+	dma_major = 0;
+err_release_chan:
+	dma_release_channel(dma_chan);
+	dma_chan = NULL;
+	dma_dev = NULL;
+
+	return -ENODEV;
 }
 
-static void dma_exit(void)
+static void udma_remove(struct platform_device *pdev)
 {
-	unregister_chrdev(dma_major, DEVICE_NAME);
 	device_destroy(dma_class, MKDEV(dma_major, 0));
 	class_destroy(dma_class);
+	unregister_chrdev(dma_major, DEVICE_NAME);
 	dma_release_channel(dma_chan);
+	dma_chan = NULL;
+	dma_dev = NULL;
 }
 
-module_init(dma_init);
-module_exit(dma_exit);
+static struct platform_driver udma_driver = {
+	.probe		= udma_probe,
+	.remove_new	= udma_remove,
+	.driver		= {
+		.name		= "udma",
+		.of_match_table = udma_of_match,
+	},
+};
+
+module_platform_driver(udma_driver);
 
 MODULE_LICENSE("GPL");
