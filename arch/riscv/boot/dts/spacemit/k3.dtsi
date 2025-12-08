@@ -465,6 +465,11 @@
 			status = "disabled";
 		};
 
+		udma: udma {
+			compatible = "spacemit,udma";
+			status = "okay";
+		};
+
 		uart0: serial@d4017000 {
 			compatible = "spacemit,k1-uart",
 				     "intel,xscale-uart";
