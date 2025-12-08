@@ -20,6 +20,7 @@
 #include <linux/types.h>
 
 #include "pcie-designware.h"
+#include "../../pci.h"
 
 #define PCI_VENDOR_ID_SPACEMIT		0x201f
 #define PCI_DEVICE_ID_SPACEMIT_K1	0x0001
@@ -201,7 +202,7 @@ static const struct dw_pcie_host_ops k1_pcie_host_ops = {
 	.deinit		= k1_pcie_deinit,
 };
 
-static bool k1_pcie_link_up(struct dw_pcie *pci)
+static int k1_pcie_link_up(struct dw_pcie *pci)
 {
 	struct k1_pcie *k1 = to_k1_pcie(pci);
 	u32 val;
