@@ -232,57 +232,57 @@
                 regulator-max-microvolt = <3450000>;
 	};
 
-	ldo1: ldo1 {
+	aldo1: aldo1 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo2: ldo2 {
+	aldo2: aldo2 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo3: ldo3 {
+	aldo3: aldo3 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo4: ldo4 {
+	aldo4: aldo4 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo5: ldo5 {
+	dldo1: dldo1 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo6: ldo6 {
+	dldo2: dldo2 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo7: ldo7 {
+	dldo3: dldo3 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo8: ldo8 {
+	dldo4: dldo4 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo9: ldo9 {
+	dldo5: dldo5 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo10: ldo10 {
+	dldo6: dldo6 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
 
-	ldo11: ldo11 {
+	dldo7: dldo7 {
                 regulator-min-microvolt = <500000>;
                 regulator-max-microvolt = <3400000>;
 	};
