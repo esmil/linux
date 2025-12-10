@@ -15,7 +15,7 @@
 #include <linux/soc/spacemit/spacemit-hmp.h>
 
 
-static bool system_suspending;
+static atomic_t system_suspending = ATOMIC_INIT(0);
 
 struct cpumask	regular_cpu_mask __read_mostly;
 EXPORT_SYMBOL_GPL(regular_cpu_mask);
@@ -25,22 +25,21 @@ EXPORT_SYMBOL_GPL(ai_cpu_mask);
 
 int hmp_cpu_affinity_restrict(struct task_struct *p, const struct cpumask *new_mask)
 {
-	if (system_suspending) {
+	const struct cpumask *allowed_mask;
+
+	if (atomic_read(&system_suspending)) {
 		/* should not bind thread when systemm suspending */
 		return -EINVAL;
 	}
 
-	if (p->thread_type == HMP_REGULAR_THREAD) {
-		if (!cpumask_subset(new_mask, &regular_cpu_mask) ||
-			cpumask_empty(new_mask)) {
-			return -EINVAL;
-		}
-	} else {
-		if (!cpumask_subset(new_mask, &ai_cpu_mask) ||
-			cpumask_empty(new_mask)) {
-			return -EINVAL;
-		}
-	}
+	if (cpumask_empty(new_mask))
+		return -EINVAL;
+
+	allowed_mask = (p->thread_type == HMP_REGULAR_THREAD) ?
+					&regular_cpu_mask : &ai_cpu_mask;
+
+	if (!cpumask_subset(new_mask, allowed_mask))
+		return -EINVAL;
 
 	return 0;
 }
@@ -65,7 +64,7 @@ bool hmp_cpu_can_offline(unsigned int cpu)
 	cpumask_t online_ai_cpus, online_regular_cpu_mask;
 	struct task_struct *g, *p;
 
-	if (system_suspending)
+	if (atomic_read(&system_suspending))
 		return true;
 
 	cpumask_and(&online_regular_cpu_mask, &regular_cpu_mask, cpu_online_mask);
@@ -109,8 +108,10 @@ void hmp_cpumask_init(void)
 
 	for_each_of_cpu_node(node) {
 		rc = riscv_of_processor_hartid(node, &hartid);
-		if (rc < 0)
+		if (rc < 0) {
+			pr_warn("Failed to get hartid for CPU node\n");
 			continue;
+		}
 
 		if (of_property_read_string(node, "cpu-ai", &cpu_ai)) {
 			cpumask_set_cpu(hartid, &regular_cpu_mask);
@@ -155,45 +156,39 @@ static bool is_per_cpu_kthread(struct task_struct *p)
  *
  * Returns: true if set cpumask set to ai_cpumask
  */
+
+ static inline void _set_cpumask(struct task_struct *p, const struct cpumask *allowed_mask)
+{
+    struct cpumask mask;
+
+    cpumask_and(&mask, allowed_mask, &p->cpus_mask);
+    if (WARN_ON(cpumask_empty(&mask)))
+        return;
+
+    cpumask_copy(&p->cpus_mask, &mask);
+    p->nr_cpus_allowed = cpumask_weight(&p->cpus_mask);
+    p->cpus_ptr = &p->cpus_mask;
+}
+
 bool hmp_set_default_cpumask(struct task_struct *p)
 {
-	struct cpumask mask;
-	bool is_percpu_kthread = false;
 
-	/* check if called from set ai task */
-	if (p->thread_type == HMP_AI_THREAD) {
-		cpumask_copy(&p->cpus_mask, &ai_cpu_mask);
-		p->nr_cpus_allowed = cpumask_weight(&p->cpus_mask);
-		p->cpus_ptr = &p->cpus_mask;
-		return true;
-	}
+    /* check if called from set ai task */
+    if (p->thread_type == HMP_AI_THREAD) {
+        _set_cpumask(p, &ai_cpu_mask);
+        return !cpumask_empty(&p->cpus_mask);
+    }
 
-	/* Check if this is a per-CPU kernel thread that should keep its binding */
-	if (p->flags & PF_KTHREAD)
-		is_percpu_kthread = is_per_cpu_kthread(p);
+    /* Check if this is a per-CPU kernel thread that should keep its binding */
+    if ((p->flags & PF_KTHREAD) && is_per_cpu_kthread(p))
+        return true;
 
-	/* All new threads default to regular cores unless it's a per-CPU kthread
+    /* All new threads default to regular cores unless it's a per-CPU kthread
 	 * AI thread property will be set explicitly via /proc/ai_threads
 	 */
-	if (!is_percpu_kthread) {
-		/* This should not fail for regular cores */
-		cpumask_and(&mask, &regular_cpu_mask, cpu_active_mask);
-
-		if (cpumask_empty(&mask)) {
-			/* there is none regular cpu core actively */
-			WARN_ON(cpumask_empty(&mask));
-			return false;
-		}
-
-		/* Initialize as non-AI thread by default */
-		p->thread_type = HMP_REGULAR_THREAD;
-
-		cpumask_copy(&p->cpus_mask, &regular_cpu_mask);
-		p->nr_cpus_allowed = cpumask_weight(&regular_cpu_mask);
-		p->cpus_ptr = &p->cpus_mask;
-	}
-
-	return true;
+    p->thread_type = HMP_REGULAR_THREAD;
+    _set_cpumask(p, &regular_cpu_mask);
+    return !cpumask_empty(&p->cpus_mask);
 }
 
 static int pm_callback(struct notifier_block *nb, unsigned long action, void *data)
@@ -201,12 +196,12 @@ static int pm_callback(struct notifier_block *nb, unsigned long action, void *da
 	switch (action) {
 	case PM_SUSPEND_PREPARE:
 		/* setup system suspending flag */
-		system_suspending = true;
+		atomic_set(&system_suspending, 1);
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
 		/* clear system suspending flag */
-		system_suspending = false;
+		atomic_set(&system_suspending, 0);
 		return NOTIFY_OK;
 
 	default:
@@ -228,8 +223,11 @@ static ssize_t proc_set_thread_type(struct file *file, const char __user *buf,
 	cpumask_t online_ai_cpus;
 	struct task_struct *t = NULL;
 
-	if (kstrtouint_from_user(buf, count, 10, &pid))
+	if (kstrtoint_from_user(buf, count, 10, &pid))
 		return -EINVAL;
+
+	if (pid < 0)
+        return -EINVAL;
 
 	/* enable one ai cpu core if none ai core enabled */
 	cpumask_and(&online_ai_cpus, &ai_cpu_mask, cpu_online_mask);
@@ -284,7 +282,7 @@ static int __init hmp_service_init(void)
 	/* register the platform suspend call-back for migrating
 	 * some thread from one type to the boot-core type.
 	 */
-	system_suspending = false;
+	atomic_set(&system_suspending, 0);
 	ret = register_pm_notifier(&pm_notifier);
 	if (ret) {
 		pr_err("Failed to register PM notifier: %d\n", ret);
