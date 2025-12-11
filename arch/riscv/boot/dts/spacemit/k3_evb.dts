@@ -160,22 +160,35 @@
 };
 
 &sdcard {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc1_cfg>;
 	bus-width = <4>;
 	broken-cd;
-	cap-sd-highspeed;
 	no-mmc;
 	no-sdio;
-	clock-frequency = <10000000>;
+	clock-frequency = <204800000>;
+	status = "disabled";
+};
+
+&sdio {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc2_cfg>;
+	bus-width = <4>;
+	non-removable;
+	no-mmc;
+	no-sd;
+	clock-frequency = <375000000>;
 	status = "disabled";
 };
 
 &emmc {
 	bus-width = <8>;
 	non-removable;
-	cap-mmc-highspeed;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
 	no-sd;
 	no-sdio;
-	clock-frequency = <10000000>;
+	clock-frequency = <375000000>;
 	status = "disabled";
 };
 
