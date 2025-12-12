@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0
+config DRM_SPACEMIT_SELFTEST
+	tristate "SPACEMIT self test"
+	depends on DRM_SPACEMIT
+	default n
+	help
+		Choose this option if you want to test fbc mem size cal API.

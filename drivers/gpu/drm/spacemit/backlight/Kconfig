@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+config DRM_SPACEMIT_BACKLIGHT
+	tristate "Support for DRM SPACEMIT backlight"
+	select BACKLIGHT_CLASS_DEVICE
+	default n
+	help
+	  Choose this option if you have an SPACEMIT Soc with SPACEMIT backlight.
+
+

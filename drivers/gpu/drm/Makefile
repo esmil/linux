@@ -234,6 +234,7 @@ obj-$(CONFIG_DRM_LOONGSON) += loongson/
 obj-$(CONFIG_DRM_POWERVR) += imagination/
 obj-y			+= img-rogue/
 obj-$(CONFIG_POWERVR_ROGUE_NULLDRMDISP) += nulldisp/
+obj-$(CONFIG_DRM_SPACEMIT) += spacemit/
 
 # Ensure drm headers are self-contained and pass kernel-doc
 hdrtest-files := \
