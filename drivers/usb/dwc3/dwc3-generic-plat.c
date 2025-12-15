@@ -149,7 +149,7 @@ static int dwc3_generic_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = devm_clk_bulk_get_all_enable(dwc3g->dev, &dwc3g->clks);
+	ret = devm_clk_bulk_get_all_enabled(dwc3g->dev, &dwc3g->clks);
 	if (ret < 0)
 		return dev_err_probe(dev, ret, "failed to get clocks\n");
 
