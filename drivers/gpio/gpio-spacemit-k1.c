@@ -247,7 +247,7 @@ static bool spacemit_of_node_instance_match(struct gpio_chip *gc, unsigned int i
 
 	if (i >= SPACEMIT_NR_BANKS)
 		return false;
-	return (gc == &sg->sgb[i].gc);
+	return (gc == &sg->sgb[i].chip.gc);
 }
 
 static int spacemit_gpio_get(struct gpio_chip *gc, unsigned int offset)
@@ -260,7 +260,7 @@ static int spacemit_gpio_get(struct gpio_chip *gc, unsigned int offset)
 	return !!(val & BIT(offset));
 }
 
-static void spacemit_gpio_set(struct gpio_chip *gc, unsigned int offset, int value)
+static int spacemit_gpio_set(struct gpio_chip *gc, unsigned int offset, int value)
 {
 	struct spacemit_gpio_bank *gb = gpiochip_get_data(gc);
 	u32 reg_offset;
@@ -270,7 +270,7 @@ static void spacemit_gpio_set(struct gpio_chip *gc, unsigned int offset, int val
 	else
 		reg_offset = gb->bank_offset + gb->sg->data->reg_offsets->gpcr;
 
-	regmap_write(gb->sg->rm_gpio, reg_offset, BIT(offset));
+	return regmap_write(gb->sg->rm_gpio, reg_offset, BIT(offset));
 }
 
 static int spacemit_gpio_direction_input(struct gpio_chip *gc, unsigned int offset)
@@ -296,7 +296,6 @@ static int spacemit_gpio_add_bank(struct spacemit_gpio *sg,
 				  int index, int irq)
 {
 	struct spacemit_gpio_bank *gb = &sg->sgb[index];
-	struct gpio_generic_chip_config config;
 	struct gpio_chip *gc = &gb->chip.gc;
 	struct device *dev = sg->dev;
 	struct gpio_irq_chip *girq;
