@@ -202,7 +202,7 @@ static const struct dw_pcie_host_ops k1_pcie_host_ops = {
 	.deinit		= k1_pcie_deinit,
 };
 
-static int k1_pcie_link_up(struct dw_pcie *pci)
+static bool k1_pcie_link_up(struct dw_pcie *pci)
 {
 	struct k1_pcie *k1 = to_k1_pcie(pci);
 	u32 val;

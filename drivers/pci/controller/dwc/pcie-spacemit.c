@@ -179,7 +179,7 @@ static int __init pcie_already_init(char *str)
 }
 __setup("pcie_init", pcie_already_init);
 
-static int spacemit_pcie_link_up(struct dw_pcie *pci)
+static bool spacemit_pcie_link_up(struct dw_pcie *pci)
 {
 	struct spacemit_pcie *pcie = to_spacemit_pcie(pci);
 	u32 reg = spacemit_pcie_phy_ahb_readl(pcie, SPACEMIT_PHY_AHB_LINK_STS);
