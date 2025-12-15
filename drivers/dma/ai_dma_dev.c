@@ -523,6 +523,6 @@ static struct platform_driver ai_dma_driver = {
 		.of_match_table = ai_dmadev_of_match,
 	},
 	.probe		= ai_dmadev_probe,
-	.remove_new	= ai_dmadev_remove,
+	.remove		= ai_dmadev_remove,
 };
 module_platform_driver(ai_dma_driver);

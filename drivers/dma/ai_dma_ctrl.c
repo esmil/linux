@@ -21,7 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
-#include <linux/fpga/adi-axi-common.h>
+#include <linux/adi-axi-common.h>
 
 #include "ai_dma.h"
 
