@@ -410,6 +410,34 @@ struct uart_ops {
 #define UART_CONFIG_TYPE	(1 << 0)
 #define UART_CONFIG_IRQ		(1 << 1)
 
+#ifdef CONFIG_SOC_SPACEMIT_K1
+#define UART_FCR_PXA_BUS32	(0x20)	/* 32-Bit Peripheral Bus */
+#define UART_FCR_PXA_TRAIL	(0x10)	/* Trailing Bytes */
+
+#endif /* CONFIG_SOC_SPACEMIT_K1 */
+
+#ifdef CONFIG_SOC_SPACEMIT_K3
+/* K3 FCR layout extensions */
+
+#define UART_FCR_K3_TIL		0x08   /* Transmitter Interrupt Level (bit3) */
+#define UART_FCR_K3_TRAI	0x10   /* Trailing Bytes enable (bit4) */
+#define UART_FCR_K3_BUS		0x20   /* 32-Bit Peripheral Bus (bit5) */
+
+/* Receive Interrupt Trigger Level ITL [8:6] */
+#define UART_FCR_K3_R_ITL_SHIFT	6
+#define UART_FCR_K3_R_ITL		(0x7 << UART_FCR_K3_R_ITL_SHIFT)
+
+/* RX ITL encoded values for K3 */
+#define UART_FCR_K3_R_ITL_1B	(0x0 << UART_FCR_K3_R_ITL_SHIFT)  /* >=1 byte (invalid in DMA) */
+#define UART_FCR_K3_R_ITL_8B	(0x1 << UART_FCR_K3_R_ITL_SHIFT)  /* >=8 bytes */
+#define UART_FCR_K3_R_ITL_16B	(0x2 << UART_FCR_K3_R_ITL_SHIFT) /* >=16 bytes */
+#define UART_FCR_K3_R_ITL_32B	(0x3 << UART_FCR_K3_R_ITL_SHIFT) /* >=32 bytes */
+#define UART_FCR_K3_R_ITL_64B	(0x4 << UART_FCR_K3_R_ITL_SHIFT) /* >=64 bytes */
+#define UART_FCR_K3_R_ITL_128B	(0x5 << UART_FCR_K3_R_ITL_SHIFT) /* >=128 bytes */
+#define UART_FCR_K3_R_ITL_192B	(0x6 << UART_FCR_K3_R_ITL_SHIFT) /* >=192 bytes */
+
+#endif /* CONFIG_SOC_SPACEMIT_K3 */
+
 struct uart_icount {
 	__u32	cts;
 	__u32	dsr;
