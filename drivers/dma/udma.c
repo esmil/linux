@@ -459,7 +459,7 @@ static void udma_remove(struct platform_device *pdev)
 
 static struct platform_driver udma_driver = {
 	.probe		= udma_probe,
-	.remove_new	= udma_remove,
+	.remove		= udma_remove,
 	.driver		= {
 		.name		= "udma",
 		.of_match_table = udma_of_match,
