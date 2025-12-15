@@ -275,7 +275,7 @@ const struct clk_ops spacemit_ccu_plla_ops = {
 	.disable	= ccu_plla_disable,
 	.set_rate	= ccu_plla_set_rate,
 	.recalc_rate	= ccu_plla_recalc_rate,
-	.round_rate	= ccu_pll_round_rate,
+	.determine_rate	= ccu_pll_determine_rate,
 	.is_enabled	= ccu_plla_is_enabled,
 };
 
