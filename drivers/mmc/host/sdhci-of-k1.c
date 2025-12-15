@@ -709,7 +709,7 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 
 	ret = mmc_of_parse(host->mmc);
 	if (ret)
-		goto err_pltfm;
+		return ret;
 
 	sdhci_get_of_property(pdev);
 	spacemit_sdhci_get_of_property(pdev, host);
@@ -732,19 +732,19 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 	pltfm_host = sdhci_priv(host);
 	ret = spacemit_sdhci_get_clocks(dev, pltfm_host);
 	if (ret)
-		goto err_pltfm;
+		return ret;
 
 	sdhst = sdhci_pltfm_priv(pltfm_host);
 	sdhst->reset = devm_reset_control_array_get_optional_shared(dev);
 	if (IS_ERR(sdhst->reset)) {
 		dev_err(dev, "failed to get reset control\n");
 		ret = PTR_ERR(sdhst->reset);
-		goto err_pltfm;
+		return ret;
 	}
 
 	ret = reset_control_deassert(sdhst->reset);
 	if (ret)
-		goto err_pltfm;
+		return ret;
 
 	ret = sdhci_add_host(host);
 	if (ret)
@@ -764,8 +764,7 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 
 err_add_host:
 	reset_control_assert(sdhst->reset);
-err_pltfm:
-	sdhci_pltfm_free(pdev);
+
 	return ret;
 }
 
@@ -782,7 +781,6 @@ static void spacemit_sdhci_remove(struct platform_device *pdev)
 
 	sdhci_remove_host(host, 1);
 	reset_control_assert(sdhst->reset);
-	sdhci_pltfm_free(pdev);
 }
 
 static struct platform_driver spacemit_sdhci_driver = {
@@ -791,7 +789,7 @@ static struct platform_driver spacemit_sdhci_driver = {
 		.of_match_table = spacemit_sdhci_of_match,
 	},
 	.probe		= spacemit_sdhci_probe,
-	.remove_new	= spacemit_sdhci_remove,
+	.remove		= spacemit_sdhci_remove,
 };
 module_platform_driver(spacemit_sdhci_driver);
 
