@@ -680,8 +680,7 @@ static int spa_wdt_probe(struct platform_device *pdev)
 	}
 
 	info->feed_timeout = ktime_set(SPACEMIT_WATCHDOG_FEED_TIMEOUT, 0);
-	hrtimer_init(&info->feed_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	info->feed_timer.function = spa_wdt_feed;
+	hrtimer_setup(&info->feed_timer, spa_wdt_feed, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	platform_set_drvdata(pdev, info);
 
