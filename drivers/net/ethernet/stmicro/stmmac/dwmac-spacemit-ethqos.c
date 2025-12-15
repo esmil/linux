@@ -45,7 +45,7 @@ struct spacemit_ethqos {
 	u8 clk_tuning_way;
 	struct clk *tx_clk;
 	struct clk *phy_clk;
-	unsigned int speed;
+	int speed;
 	bool clk_tuning_enable;
 	bool tx_clk_from_soc;
 	bool phy_clk_from_soc;
@@ -499,7 +499,7 @@ static void k3_release_dt(struct spacemit_ethqos *eqos)
 #endif
 }
 
-static void k3_fix_mac_speed(void *bsp_priv, unsigned int speed, unsigned int mode)
+static void k3_fix_mac_speed(void *bsp_priv, int speed, unsigned int mode)
 {
 	struct spacemit_ethqos *eqos = bsp_priv;
 	struct device *dev = &eqos->pdev->dev;
