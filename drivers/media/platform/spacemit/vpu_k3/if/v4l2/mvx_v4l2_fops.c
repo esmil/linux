@@ -30,6 +30,7 @@
  */
 
 #include <linux/fs.h>
+#include <linux/version.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-event.h>
 #include "mvx_ext_if.h"
@@ -65,7 +66,11 @@ int mvx_v4l2_open(struct file *file)
 
 	file->private_data = &session->fh;
 	v4l2_fh_init(&session->fh, &ctx->vdev);
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	v4l2_fh_add(&session->fh, file);
+#else
 	v4l2_fh_add(&session->fh);
+#endif
 
 	/* Set default port formats. */
 	fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
@@ -120,6 +125,11 @@ int mvx_v4l2_release(struct file *file)
 			vsession->port[i].q_set = false;
 		}
 
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	v4l2_fh_del(&vsession->fh, file);
+#else
+	v4l2_fh_del(&vsession->fh);
+#endif
 	ret = mvx_session_put(&vsession->session);
 	if (ret == 0)
 		mutex_unlock(&vsession->mutex);

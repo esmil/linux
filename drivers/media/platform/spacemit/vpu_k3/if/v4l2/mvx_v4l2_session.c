@@ -165,7 +165,6 @@ static void free_session(struct mvx_session *session)
 	if (IS_ENABLED(CONFIG_DEBUG_FS))
 		debugfs_remove_recursive(s->dentry);
 
-	v4l2_fh_del(&s->fh);
 	v4l2_fh_exit(&s->fh);
 	if (mutex_is_locked(&s->mutex)) {
 		mutex_unlock(&s->mutex);

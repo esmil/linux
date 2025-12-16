@@ -41,6 +41,7 @@
 #include <linux/sched.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
+#include <linux/timer.h>
 #include "mvx-v4l2-controls.h"
 #include "mvx_bitops.h"
 #include "mvx_firmware.h"
@@ -89,7 +90,11 @@ static void watchdog_stop(struct mvx_session *session)
 {
 	int ret;
 
+#if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
+	ret = timer_delete_sync(&session->watchdog_timer);
+#else
 	ret = del_timer_sync(&session->watchdog_timer);
+#endif
 
 	/* ret: 0=watchdog expired, 1=watchdog still running */
 	MVX_SESSION_DEBUG(session, "Watchdog stop. ret=%d", ret);
