@@ -94,13 +94,84 @@
 	status = "disabled";
 };
 
-&usb3_porta {
+&usb2_host_u2phy {
 	status = "disabled";
+};
+
+&usb2_host {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "disabled";
+
+	hub@1 {
+		/* FE1.1S USB2.0 hub (4 ports) */
+		compatible = "usb5e3,608";
+		reg = <1>;
+		vdd-supply = <&aux_3v3>;
+	};
+};
+
+&usb3_porta_u2phy {
+	status = "okay";
+};
+
+&usb3_porta_u3phy {
+	// Enabled but will do nop during init
+	status = "okay";
+};
+
+&usb3_porta {
+	dr_mode = "otg";
+	/* Bringup stage, only enable USB2 phy */
 	maximum-speed = "high-speed";
-	dr_mode = "peripheral";
-	phy_type = "utmi_wide";
-	snps,dis_u2_susphy_quirk;
-	snps,dis_enblslpm_quirk;
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	/* monitor-vbus; */
+	status = "okay";
+};
+
+&usb3_portb_u2phy {
+	status = "disabled";
+};
+
+&usb3_portb {
+	/* M2.B Socket, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portb_u2phy>;
+	phy-names = "usb2-phy";
+	status = "disabled";
+};
+
+&usb3_portc_u2phy {
+	status = "disabled";
+};
+
+&usb3_portc_u3phy {
+	status = "disabled";
+};
+
+&usb3_portc {
+	/* Bluetooth, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portc_u2phy>;
+	phy-names = "usb2-phy";
+	status = "disabled";
+};
+
+&usb3_portd_u2phy {
+	status = "disabled";
+};
+
+&usb3_portd_u3phy {
+	status = "disabled";
+};
+
+&usb3_portd {
+	status = "disabled";
 };
 
 &eth0 {
