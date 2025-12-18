@@ -106,9 +106,8 @@
 	status = "disabled";
 	maximum-speed = "high-speed";
 	dr_mode = "peripheral";
+	/delete-property/ phy_type;
 	phy_type = "utmi_wide";
-	snps,dis_u2_susphy_quirk;
-	snps,dis_enblslpm_quirk;
 };
 
 &eth0 {
