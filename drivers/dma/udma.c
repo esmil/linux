@@ -404,7 +404,6 @@ static int udma_probe(struct platform_device *pdev)
 	}
 
 	dma_dev = dma_chan->device;
-	dma_set_mask(dma_dev->dev, DMA_BIT_MASK(32));
 
 	INIT_LIST_HEAD(&dmabuf_list);
 	mutex_init(&dma_mutex);
