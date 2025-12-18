@@ -1357,6 +1357,10 @@ struct dwc3 {
 
 	unsigned		connected:1;
 	unsigned		softconnect:1;
+#ifdef CONFIG_SOC_SPACEMIT
+	bool			monitor_vbus:1;
+	bool			vbus_session:1;
+#endif
 	unsigned		delayed_status:1;
 	unsigned		ep0_bounced:1;
 	unsigned		ep0_expect_in:1;
