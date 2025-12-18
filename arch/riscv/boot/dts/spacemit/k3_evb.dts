@@ -85,6 +85,18 @@
 	};
 };
 
+&pinctrl {
+	usb30_drd_id_vbus_cfg: usb30_drd-id-vbus-cfg {
+		usb30_drd-pins {
+			pinmux = <K3_PADCONF(116, 2)>,	/* usb30 drd id */
+				 <K3_PADCONF(117, 2)>;	/* usb30 drd vbuson */
+
+			bias-pull-down;			/* normal pull-down */
+			drive-strength = <47>;		/* DS8 */
+		};
+	};
+};
+
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_0_cfg>;
@@ -95,13 +107,89 @@
 	status = "disabled";
 };
 
+&usb2_host_u2phy {
+	status = "okay";
+};
+
+&usb2_host {
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb20_host_drv_3_cfg>; /* GPIO103 */
+	status = "okay";
+};
+
+&usb3_porta_u2phy {
+	status = "okay";
+};
+
+&usb3_porta_u3phy {
+	// pinctrl-names = "default";
+	// pinctrl-0 = <&usb30_drd_int_1_cfg>, /* GPIO119 J12511 */
+	// 	    <&usb30_drd_dir_0_cfg>, /* GPIO86 J12512 */
+	// 	    <&usb30_drd_id_vbus_cfg>; /* GPIO116 J12602, GPIO117 J12515 */
+	status = "okay";
+};
+
 &usb3_porta {
-	status = "disabled";
+	dr_mode = "otg";
+	/* Bringup stage, only enable USB2 phy */
 	maximum-speed = "high-speed";
-	dr_mode = "peripheral";
-	phy_type = "utmi_wide";
-	snps,dis_u2_susphy_quirk;
-	snps,dis_enblslpm_quirk;
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	status = "okay";
+};
+
+&usb3_portb_u2phy {
+	status = "okay";
+};
+
+&usb3_portb_u3phy {
+	status = "disabled";
+};
+
+&usb3_portb {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portb_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
+};
+
+&usb3_portc_u2phy {
+	status = "okay";
+};
+
+&usb3_portc_u3phy {
+	status = "disabled";
+};
+
+&usb3_portc {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portc_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
+};
+
+&usb3_portd_u2phy {
+	status = "okay";
+};
+
+&usb3_portd_u3phy {
+	status = "disabled";
+};
+
+&usb3_portd {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portd_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
 };
 
 &eth0 {
