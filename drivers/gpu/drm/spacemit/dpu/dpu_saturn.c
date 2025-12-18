@@ -572,7 +572,7 @@ static unsigned int dpu_get_bpp(u32 format)
 }
 
 
-int dpu_calc_plane_mclk_bw(struct drm_plane *plane,
+static int dpu_calc_plane_mclk_bw(struct drm_plane *plane,
 		struct drm_plane_state *new_state)
 {
 	/* For some platform without aclk, mclk = max(aclk, mclk) */
@@ -1542,7 +1542,7 @@ static void dpu_disable_vsync(struct spacemit_crtc *a_crtc)
 	saturn_enable_vsync(a_crtc, false);
 }
 
-static void dpu_rpm_suspend(struct spacemit_crtc *a_crtc)
+static void __maybe_unused dpu_rpm_suspend(struct spacemit_crtc *a_crtc)
 {
 	if (!a_crtc->rpm_status)
 		return;
@@ -1572,7 +1572,7 @@ static void dpu_rpm_suspend(struct spacemit_crtc *a_crtc)
 	a_crtc->rpm_status = false;
 }
 
-static void dpu_rpm_resume(struct spacemit_crtc *a_crtc)
+static void __maybe_unused dpu_rpm_resume(struct spacemit_crtc *a_crtc)
 {
 #ifdef CONFIG_PM
 	if (a_crtc->lpm_work_pending && a_crtc->lpm_period) {

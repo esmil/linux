@@ -231,7 +231,7 @@ static struct sg_table *spacemit_gem_prime_get_sg_table(struct drm_gem_object *g
 	return __dup_sg_table(spacemit_obj->sgt);
 }
 
-int spacemit_gem_prime_vmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
+static int spacemit_gem_prime_vmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
 {
 	struct spacemit_gem_object *spacemit_obj = to_spacemit_obj(gem_obj);
 	struct sg_page_iter piter;
@@ -290,7 +290,7 @@ vmap_fail:
 	return ret;
 }
 
-void spacemit_gem_prime_vunmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
+static void spacemit_gem_prime_vunmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
 {
 	struct spacemit_gem_object *spacemit_obj = to_spacemit_obj(gem_obj);
 

@@ -126,7 +126,7 @@ static const struct spacemit_format_fb2wb spacemit_wb_format_fb2wb[] = {
 	{ DRM_FORMAT_P010, SPACEMIT_WB_FORMAT_YUV420_P2_10_VU},
 };
 
-int spacemit_wb_get_format(u32 format)
+static int spacemit_wb_get_format(u32 format)
 {
 	unsigned int i = 0;
 
@@ -139,7 +139,7 @@ int spacemit_wb_get_format(u32 format)
 	return SPACEMIT_WB_INVALID_FORMAT_ID;
 }
 
-void spacemit_wb_connector_atomic_commit(struct drm_connector *conn, struct drm_atomic_state *state)
+static void spacemit_wb_connector_atomic_commit(struct drm_connector *conn, struct drm_atomic_state *state)
 {
 	struct drm_device *drm = conn->dev;
 	struct spacemit_drm_private *priv = drm->dev_private;

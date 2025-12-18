@@ -313,6 +313,13 @@ int spacemit_crtc_run(struct drm_crtc *crtc,
 		struct drm_crtc_state *old_state);
 int spacemit_crtc_stop(struct spacemit_crtc *a_crtc);
 int spacemit_dpu_esd_restart(struct spacemit_crtc *a_crtc);
+bool dpu_mclk_exclusive_get(void);
+void dpu_mclk_exclusive_put(void);
+int dpu_max_mclk_notifier_register(struct notifier_block *nb);
+int dpu_max_mclk_notifier_unregister(struct notifier_block *nb);
+int dpu_max_mclk_notifier_call_chain(unsigned int mclk_rate);
+void spacemit_crtc_fill_slice(struct spacemit_crtc *a_crtc, u32 width, u32 height);
+int spacemit_crtc_calc_slices(struct spacemit_crtc *a_crtc, u32 width, u32 height);
 
 struct spacemit_plane {
 	struct drm_plane plane;

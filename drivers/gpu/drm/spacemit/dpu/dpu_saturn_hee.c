@@ -118,7 +118,7 @@ spacemit_yuv2rgb_coefs[DRM_COLOR_ENCODING_MAX][DRM_COLOR_RANGE_MAX][SPACEMIT_YUV
 	}
 };
 
-static dpu_hee_reg_dump_t dpu_reg_dump_array[] = {
+static dpu_hee_reg_dump_t __maybe_unused dpu_reg_dump_array[] = {
 	{E_DPU_TOP_REG, "DPU_TOP", DPU_TOP_BASE_ADDR, 45},
 	{E_DMA_TOP_CTRL_REG, "DPU_TOP_CTRL", DPU_CTRL_BASE_ADDR, 51},
 	{E_DPU_SCENE_CTRL1_REG, "SCENE_CTRL1", DPU_SCENE_CTRL1_BASE_ADDR, 15},
@@ -144,7 +144,7 @@ static dpu_hee_reg_dump_t dpu_reg_dump_array[] = {
 	{E_WB_TOP_0_REG, "WB0_TOP", WB0_TOP_BASE_ADDR, 55},
 };
 
-static dpu_hee_reg_enum SATURN_hee_DPU_REG_ENUM_LISTS[] = {
+static dpu_hee_reg_enum __maybe_unused SATURN_hee_DPU_REG_ENUM_LISTS[] = {
 	E_DPU_TOP_REG,
 	E_DPU_SCENE_CTRL1_REG,
 	E_DPU_SCENE_CTRL2_REG,
@@ -458,7 +458,7 @@ void saturn_hee_sw_start(struct spacemit_crtc *a_crtc, struct spacemit_hw_device
 	}
 }
 
-void saturn_hee_wb_fmt_cvt_matrix(struct spacemit_wb *wb, struct spacemit_hw_device *hwdev, int drm_color_encoding, int drm_color_range, struct cmdlist_regs *cl_wb)
+static void saturn_hee_wb_fmt_cvt_matrix(struct spacemit_wb *wb, struct spacemit_hw_device *hwdev, int drm_color_encoding, int drm_color_range, struct cmdlist_regs *cl_wb)
 {
 	u32 wb_base = 0;
 	int index = 13;
@@ -1210,7 +1210,7 @@ static int wb_stide_cal(int format)
 
 }
 
-void saturn_wb_scaler_config(struct spacemit_wb *wb, struct spacemit_hw_device *hwdev)
+static void saturn_wb_scaler_config(struct spacemit_wb *wb, struct spacemit_hw_device *hwdev)
 {
 #if 0
 	u8 wb_id = wb->ctx.id;

@@ -140,7 +140,7 @@ static int TWSI_REG_READ_DPTC(uint8_t i2c_no, uint8_t slaveaddress, uint8_t addr
 		return -1;
 }
 
-void dptc_top_write(uint32_t reg, uint32_t data)
+static void dptc_top_write(uint32_t reg, uint32_t data)
 {
 	int ret = 0;
 	uint32_t rd_data;
@@ -151,7 +151,7 @@ void dptc_top_write(uint32_t reg, uint32_t data)
 		pr_err("spacemitfb: %s failed,  [0x%x] = 0x%x ret %d\n", __func__, reg, data, ret);
 }
 
-uint32_t dptc_top_read(uint32_t reg)
+static uint32_t dptc_top_read(uint32_t reg)
 {
 	uint32_t data = 0;
 

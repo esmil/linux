@@ -813,7 +813,7 @@ static void spacemit_dsi_sw_sleep(struct spacemit_dsi_device *device_ctx, bool s
  * spacemit_dsi_update_vrr - update variable refresh rate parameters
  * @vrr_param: variable refresh rate parameters, for example：vrr_vfp.
  */
-void spacemit_dsi_update_vrr(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_vrr_param *vrr_param)
+static void spacemit_dsi_update_vrr(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_vrr_param *vrr_param)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
 	void __iomem *base_addr = device_ctx->base_addr;
@@ -835,7 +835,7 @@ void spacemit_dsi_update_vrr(struct spacemit_dsi_device *device_ctx, struct spac
 	mipi_info->vrr_param.vrr_vfp = vrr_param->vrr_vfp;
 }
 
-int spacemit_dsi_open(struct spacemit_dsi_device *device_ctx, bool ready)
+static int spacemit_dsi_open(struct spacemit_dsi_device *device_ctx, bool ready)
 {
 	int lane_number;
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
@@ -888,7 +888,7 @@ int spacemit_dsi_open(struct spacemit_dsi_device *device_ctx, bool ready)
 	return 0;
 }
 
-int spacemit_dsi_close(struct spacemit_dsi_device *device_ctx)
+static int spacemit_dsi_close(struct spacemit_dsi_device *device_ctx)
 {
 #ifdef LCD_IS_READY
 	return 0;
@@ -917,7 +917,7 @@ int spacemit_dsi_close(struct spacemit_dsi_device *device_ctx)
 	return 0;
 }
 
-int spacemit_dsi_ready_for_datatx(struct spacemit_dsi_device *device_ctx)
+static int spacemit_dsi_ready_for_datatx(struct spacemit_dsi_device *device_ctx)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
 
@@ -944,12 +944,12 @@ int spacemit_dsi_ready_for_datatx(struct spacemit_dsi_device *device_ctx)
 	return 0;
 }
 
-void spacemit_dsi_enable_irq(struct spacemit_dsi_device *device_ctx, bool enable)
+static void spacemit_dsi_enable_irq(struct spacemit_dsi_device *device_ctx, bool enable)
 {
 	dsi_enable_irq(device_ctx->base_addr, enable);
 }
 
-int spacemit_dsi_close_datatx(struct spacemit_dsi_device *device_ctx)
+static int spacemit_dsi_close_datatx(struct spacemit_dsi_device *device_ctx)
 {
 #ifdef LCD_IS_READY
 	return 0;
@@ -971,7 +971,7 @@ int spacemit_dsi_close_datatx(struct spacemit_dsi_device *device_ctx)
 	return 0;
 }
 
-int spacemit_dsi_write_cmds(struct spacemit_dsi_device *device_ctx,
+static int spacemit_dsi_write_cmds(struct spacemit_dsi_device *device_ctx,
 									struct spacemit_dsi_cmd_desc *cmds, int count)
 {
 #ifdef LCD_IS_READY
@@ -991,7 +991,7 @@ int spacemit_dsi_write_cmds(struct spacemit_dsi_device *device_ctx,
 	return dsi_write_cmd_array(device_ctx, cmds, count);
 }
 
-int spacemit_dsi_read_cmds(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_rx_buf *dbuf,
+static int spacemit_dsi_read_cmds(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_rx_buf *dbuf,
 								struct spacemit_dsi_cmd_desc *cmds, int count)
 {
 #ifdef LCD_IS_READY
@@ -1010,12 +1010,12 @@ int spacemit_dsi_read_cmds(struct spacemit_dsi_device *device_ctx, struct spacem
 	return dsi_read_cmd_array(device_ctx, dbuf, cmds, count);
 }
 
-int spacemit_dsi_parse_dt(struct spacemit_dsi_device *device_ctx, struct device_node *np)
+static int spacemit_dsi_parse_dt(struct spacemit_dsi_device *device_ctx, struct device_node *np)
 {
 	return 0;
 }
 
-int spacemit_dsi_isr(struct spacemit_dsi_device *device_ctx)
+static int spacemit_dsi_isr(struct spacemit_dsi_device *device_ctx)
 {
 	uint32_t irq_st;
 

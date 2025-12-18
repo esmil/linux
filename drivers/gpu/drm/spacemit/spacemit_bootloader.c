@@ -9,6 +9,7 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/mm.h>
 #include <linux/memblock.h>
+#include "spacemit_bootloader.h"
 
 bool spacemit_dpu_logo_booton;
 EXPORT_SYMBOL_GPL(spacemit_dpu_logo_booton);

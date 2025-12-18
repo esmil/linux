@@ -1365,6 +1365,7 @@ static int spacemit_dpu_bind(struct device *dev, struct device *master, void *da
 	struct drm_device *drm_dev = data;
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 	struct device_node *np = dev->of_node;
+	struct device_node *ports, *port;
 	struct drm_plane *plane;
 	int ret;
 #ifdef CONFIG_SPACEMIT_DEBUG
@@ -1414,7 +1415,22 @@ static int spacemit_dpu_bind(struct device *dev, struct device *master, void *da
 		goto err_destroy_workqueue;
 	}
 
-	ret = spacemit_crtc_bind_init(drm_dev, &a_crtc->crtc, plane, np);
+	ports = of_get_child_by_name(np, "ports");
+	if (!ports) {
+		DRM_ERROR("CRTC %pOF has no ports node\n", np);
+		ret = -EINVAL;
+		goto err_destroy_workqueue;
+	}
+
+	port = of_get_child_by_name(ports, "port");
+	if (!port) {
+		DRM_ERROR("CRTC %pOF has no port@X node\n", np);
+		of_node_put(ports);
+		ret = -EINVAL;
+		goto err_destroy_workqueue;
+	}
+
+	ret = spacemit_crtc_bind_init(drm_dev, &a_crtc->crtc, plane, port);
 	if (ret)
 		goto err_destroy_workqueue;
 
@@ -1559,7 +1575,7 @@ static void spacemit_dpu_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &dpu_component_ops);
 }
 
-static int dpu_rt_pm_suspend(struct device *dev)
+static int __maybe_unused dpu_rt_pm_suspend(struct device *dev)
 {
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 
@@ -1569,7 +1585,7 @@ static int dpu_rt_pm_suspend(struct device *dev)
 	return 0;
 }
 
-static int dpu_rt_pm_resume(struct device *dev)
+static int __maybe_unused dpu_rt_pm_resume(struct device *dev)
 {
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 	int result;

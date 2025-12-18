@@ -29,7 +29,7 @@
 #define DRIVER_MAJOR	1
 #define DRIVER_MINOR	0
 
-void spacemit_drm_atomic_commit_tail(struct drm_atomic_state *old_state)
+static void spacemit_drm_atomic_commit_tail(struct drm_atomic_state *old_state)
 {
 	struct drm_device *dev = old_state->dev;
 #ifdef CONFIG_SPACEMIT_DEBUG
@@ -83,7 +83,7 @@ static bool spacemit_drm_mode_match_timings_2(const struct drm_display_mode *mod
 }
 
 /* check whether only timing vfp not equal, based on drm_mode_equal */
-bool spacemit_drm_mode_equal(const struct drm_display_mode *mode1,
+static bool spacemit_drm_mode_equal(const struct drm_display_mode *mode1,
 		const struct drm_display_mode *mode2)
 {
 	int vfp1, vbp1, vfp2, vbp2;
@@ -116,7 +116,7 @@ bool spacemit_drm_mode_equal(const struct drm_display_mode *mode1,
 }
 
 /* based on drm_atomic_helper_check */
-int spacemit_drm_atomic_helper_check(struct drm_device *dev, struct drm_atomic_state *state)
+static int spacemit_drm_atomic_helper_check(struct drm_device *dev, struct drm_atomic_state *state)
 {
 	int ret;
 	struct drm_crtc *crtc;
@@ -392,11 +392,12 @@ static int compare_of(struct device *dev, void *data)
 	return dev->of_node == np;
 }
 
-int spacemit_drm_of_component_probe(struct device *dev,
+static int spacemit_drm_of_component_probe(struct device *dev,
 			   int (*compare_of)(struct device *, void *),
 			   const struct component_master_ops *m_ops)
 {
-	struct device_node *ep, *port, *remote;
+	struct device_node *crtc_np;
+	struct device_node *ports, *port, *ep, *remote;
 	struct component_match *match = NULL;
 	int i;
 
@@ -408,15 +409,15 @@ int spacemit_drm_of_component_probe(struct device *dev,
 	 * called from encoder's .bind callbacks works as expected
 	 */
 	for (i = 0; ; i++) {
-		port = of_parse_phandle(dev->of_node, "ports", i);
-		if (!port)
+		crtc_np = of_parse_phandle(dev->of_node, "ports", i);
+		if (!crtc_np)
 			break;
 
-		if (of_device_is_available(port->parent))
-			drm_of_component_match_add(dev, &match, compare_of,
-						   port);
+		if (of_device_is_available(crtc_np))
+			drm_of_component_match_add(dev, &match,
+						   compare_of, crtc_np);
 
-		of_node_put(port);
+		of_node_put(crtc_np);
 	}
 
 	if (i == 0) {
@@ -433,32 +434,37 @@ int spacemit_drm_of_component_probe(struct device *dev,
 	 * For bound crtcs, bind the encoders attached to their remote endpoint
 	 */
 	for (i = 0; ; i++) {
-		port = of_parse_phandle(dev->of_node, "ports", i);
-		if (!port)
+		crtc_np = of_parse_phandle(dev->of_node, "ports", i);
+		if (!crtc_np)
 			break;
 
-		if (!of_device_is_available(port->parent)) {
-			of_node_put(port);
-			continue;
-		}
+		if (!of_device_is_available(crtc_np))
+			goto next_crtc;
 
-		for_each_child_of_node(port, ep) {
-			remote = of_graph_get_remote_port_parent(ep);
-			if (!remote || !of_device_is_available(remote)) {
-				of_node_put(remote);
+		ports = of_get_child_by_name(crtc_np, "ports");
+		if (!ports)
+			goto next_crtc;
+
+		for_each_child_of_node(ports, port) {
+			if (!of_node_name_eq(port, "port"))
 				continue;
-			} else if (!of_device_is_available(remote->parent)) {
-				dev_warn(dev, "parent device of %pOF is not available\n",
-					 remote);
+			for_each_child_of_node(port, ep) {
+				if (!of_node_name_eq(ep, "endpoint"))
+					continue;
+				remote = of_graph_get_remote_port_parent(ep);
+				if (!remote)
+					continue;
+				if (of_device_is_available(remote)) {
+					drm_of_component_match_add(dev, &match, compare_of,
+								remote);
+				}
 				of_node_put(remote);
-				continue;
 			}
-
-			drm_of_component_match_add(dev, &match, compare_of,
-						   remote);
-			of_node_put(remote);
 		}
-		of_node_put(port);
+		of_node_put(ports);
+
+next_crtc:
+		of_node_put(crtc_np);
 	}
 
 	return component_master_add_with_match(dev, m_ops, match);
@@ -552,7 +558,7 @@ static const struct of_device_id drm_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, drm_match_table);
 
-static int spacemit_drm_suspend(struct device *dev)
+static int __maybe_unused spacemit_drm_suspend(struct device *dev)
 {
 	struct drm_device *drm;
 	struct spacemit_drm_private *priv;
@@ -563,7 +569,7 @@ static int spacemit_drm_suspend(struct device *dev)
 	return drm_mode_config_helper_suspend(drm);
 }
 
-static int spacemit_drm_resume(struct device *dev)
+static int __maybe_unused spacemit_drm_resume(struct device *dev)
 {
 	struct drm_device *drm;
 	struct spacemit_drm_private *priv;
