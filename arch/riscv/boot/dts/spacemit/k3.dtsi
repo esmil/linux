@@ -94,7 +94,7 @@
 
 	memory@102000000 {
 		device_type = "memory";
-		reg = <0x1 0x02000000 0x0 0x7e000000>;
+		reg = <0x1 0x02000000 0x1 0xfe000000>;
 	};
 
 	dummy_clk: apb-pclk {
