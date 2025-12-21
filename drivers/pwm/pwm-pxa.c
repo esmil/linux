@@ -230,7 +230,7 @@ static int pwm_probe(struct platform_device *pdev)
 		pc->bus_clk = NULL;
 	}
 
-	pc->reset = devm_reset_control_get_optional_exclusive_released(&pdev->dev, NULL);
+	pc->reset = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
 	if (IS_ERR(pc->reset))
 		return dev_err_probe(&pdev->dev, PTR_ERR(pc->reset),
 				     "failed to get reset control\n");
@@ -273,6 +273,7 @@ static int pxa_pwm_resume_noirq(struct device *dev)
 	/* if pwm in rcpu domain, deassert reset first before apply the old state */
 	if (pc->rcpu_pwm && pc->reset)
 		reset_control_deassert(pc->reset);
+
 	return 0;
 }
 #endif
