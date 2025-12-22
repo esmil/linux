@@ -10,8 +10,9 @@
 			     "intel,xscale-uart";
 		reg = <0x0 0xc0881000 0x0 0x100>;
 		clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART0>,
-			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART0_BUS>;
-		clock-names = "core", "bus";
+			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART0_BUS>,
+			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
+		clock-names = "core", "bus", "gate";
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART0>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -27,8 +28,9 @@
 			     "intel,xscale-uart";
 		reg = <0x0 0xc0881100 0x0 0x100>;
 		clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART1>,
-			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART1_BUS>;
-		clock-names = "core", "bus";
+			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART1_BUS>,
+			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
+		clock-names = "core", "bus", "gate";
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART1>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -44,8 +46,9 @@
 			     "intel,xscale-uart";
 		reg = <0x0 0xc0881200 0x0 0x100>;
 		clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART2>,
-			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART2_BUS>;
-		clock-names = "core", "bus";
+			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART2_BUS>,
+			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
+		clock-names = "core", "bus", "gate";
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART2>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -61,8 +64,9 @@
 			     "intel,xscale-uart";
 		reg = <0x0 0xc0881300 0x0 0x100>;
 		clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART3>,
-			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART3_BUS>;
-		clock-names = "core", "bus";
+			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART3_BUS>,
+			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
+		clock-names = "core", "bus", "gate";
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART3>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -78,8 +82,9 @@
 			     "intel,xscale-uart";
 		reg = <0x0 0xc0881400 0x0 0x100>;
 		clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART4>,
-			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART4_BUS>;
-		clock-names = "core", "bus";
+			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART4_BUS>,
+			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
+		clock-names = "core", "bus", "gate";
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART4>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -95,8 +100,9 @@
 			     "intel,xscale-uart";
 		reg = <0x0 0xc0881500 0x0 0x100>;
 		clocks = <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART5>,
-			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART5_BUS>;
-		clock-names = "core", "bus";
+			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART5_BUS>,
+			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
+		clock-names = "core", "bus", "gate";
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART5>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
