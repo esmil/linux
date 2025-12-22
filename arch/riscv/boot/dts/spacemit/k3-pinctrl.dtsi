@@ -2268,7 +2268,7 @@
 		};
 
 		ssp0-1-pins {
-			pinmux = <K3_PADCONF(84, 3)>;	/* ssp0 frm */
+			pinmux = <K3_PADCONF(84, 1)>;	/* ssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
 			drive-strength = <47>;		/* DS8 */
@@ -2286,7 +2286,7 @@
 		};
 
 		ssp0-1-pins {
-			pinmux = <K3_PADCONF(107, 3)>;	/* ssp0 frm */
+			pinmux = <K3_PADCONF(107, 1)>;	/* ssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
 			drive-strength = <47>;		/* DS8 */
