@@ -43,11 +43,6 @@
 		ethernet3 = &eth3;
 	};
 
-	chosen {
-		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8 initcall_debug=1 memblock=debug";
-		stdout-path = "serial0:115200";
-	};
-
 	clocks {
 		vctcxo_1m: clock-1m {
 			compatible = "fixed-clock";
@@ -104,7 +99,7 @@
 		clock-frequency = <14000000>;
 	};
 
-	reserved-memory {
+	resmem: reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
