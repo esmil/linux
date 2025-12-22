@@ -525,3 +525,13 @@
 		};
 	};
 };
+
+&ssp0_2_cfg {
+	ssp0-0-pins {
+		power-source = <3300>;
+	};
+
+	ssp0-1-pins {
+		power-source = <3300>;
+	};
+};
