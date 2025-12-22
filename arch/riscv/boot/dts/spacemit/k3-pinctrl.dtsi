@@ -9,7 +9,7 @@
 				 <K3_PADCONF(150, 2)>;	/* uart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -19,7 +19,7 @@
 				 <K3_PADCONF(133, 2)>;	/* uart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -29,7 +29,7 @@
 				 <K3_PADCONF(146, 5)>;	/* uart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -39,7 +39,7 @@
 				 <K3_PADCONF(43, 2)>;	/* uart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -49,7 +49,7 @@
 				 <K3_PADCONF(94, 3)>;	/* uart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -61,7 +61,7 @@
 				 <K3_PADCONF(98, 2)>;	/* uart1 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -73,7 +73,7 @@
 				 <K3_PADCONF(121, 1)>;	/* uart1 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -85,7 +85,7 @@
 				 <K3_PADCONF(137, 2)>;	/* uart2 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -95,7 +95,7 @@
 				 <K3_PADCONF(98, 1)>;	/* uart2 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -107,7 +107,7 @@
 				 <K3_PADCONF(29, 2)>;	/* uart3 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -119,7 +119,7 @@
 				 <K3_PADCONF(56, 2)>;	/* uart3 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -131,7 +131,7 @@
 				 <K3_PADCONF(91, 3)>;	/* uart4 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -143,7 +143,7 @@
 				 <K3_PADCONF(102, 3)>;	/* uart4 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -153,7 +153,7 @@
 				 <K3_PADCONF(146, 4)>;	/* uart5 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -165,7 +165,7 @@
 				 <K3_PADCONF(24, 2)>;	/* uart5 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -175,7 +175,7 @@
 				 <K3_PADCONF(83, 4)>;	/* uart5 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -187,7 +187,7 @@
 				 <K3_PADCONF(51, 2)>;	/* uart6 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -197,7 +197,7 @@
 				 <K3_PADCONF(123, 3)>;	/* uart6 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -209,7 +209,7 @@
 				 <K3_PADCONF(14, 2)>;	/* uart7 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -221,7 +221,7 @@
 				 <K3_PADCONF(26, 5)>;	/* uart7 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -231,7 +231,7 @@
 				 <K3_PADCONF(12, 5)>;	/* uart8 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -243,7 +243,7 @@
 				 <K3_PADCONF(79, 3)>;	/* uart8 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -253,7 +253,7 @@
 				 <K3_PADCONF(148, 4)>;	/* uart9 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -265,7 +265,7 @@
 				 <K3_PADCONF(85, 3)>;	/* uart9 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -277,7 +277,7 @@
 				 <K3_PADCONF(34, 2)>;	/* uart10 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -289,7 +289,7 @@
 				 <K3_PADCONF(47, 2)>;	/* uart10 rts */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -299,7 +299,7 @@
 				 <K3_PADCONF(133, 4)>;	/* ruart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -309,7 +309,7 @@
 				 <K3_PADCONF(146, 6)>;	/* ruart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -319,7 +319,7 @@
 				 <K3_PADCONF(110, 3)>;	/* ruart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -329,7 +329,7 @@
 				 <K3_PADCONF(123, 4)>;	/* ruart0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -341,7 +341,7 @@
 				 <K3_PADCONF(141, 2)>;	/* ruart1 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -354,7 +354,7 @@
 
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -364,7 +364,7 @@
 				 <K3_PADCONF(58, 2)>;	/* ruart2 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -374,7 +374,7 @@
 				 <K3_PADCONF(56, 4)>;	/* ruart3 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -384,7 +384,7 @@
 				 <K3_PADCONF(89, 3)>;	/* ruart3 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -394,7 +394,7 @@
 				 <K3_PADCONF(22, 5)>;	/* ruart4 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -404,7 +404,7 @@
 				 <K3_PADCONF(81, 3)>;	/* ruart4 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -414,7 +414,7 @@
 				 <K3_PADCONF(60, 2)>;	/* ruart5 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -424,7 +424,7 @@
 				 <K3_PADCONF(1, 6)>;	/* i2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -434,7 +434,7 @@
 				 <K3_PADCONF(43, 5)>;	/* i2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -444,7 +444,7 @@
 				 <K3_PADCONF(49, 5)>;	/* i2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -454,7 +454,7 @@
 				 <K3_PADCONF(77, 6)>;	/* i2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -464,7 +464,7 @@
 				 <K3_PADCONF(116, 4)>;	/* i2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -474,7 +474,7 @@
 				 <K3_PADCONF(3, 6)>;	/* i2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -484,7 +484,7 @@
 				 <K3_PADCONF(55, 5)>;	/* i2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -494,7 +494,7 @@
 				 <K3_PADCONF(79, 6)>;	/* i2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -504,7 +504,7 @@
 				 <K3_PADCONF(103, 6)>;	/* i2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -514,7 +514,7 @@
 				 <K3_PADCONF(6, 6)>;	/* i2c2 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -524,7 +524,7 @@
 				 <K3_PADCONF(47, 5)>;	/* i2c2 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -534,7 +534,7 @@
 				 <K3_PADCONF(81, 6)>;	/* i2c2 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -544,7 +544,7 @@
 				 <K3_PADCONF(121, 2)>;	/* i2c2 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -554,7 +554,7 @@
 				 <K3_PADCONF(143, 5)>;	/* i2c3 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -564,7 +564,7 @@
 				 <K3_PADCONF(37, 4)>;	/* i2c3 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -574,7 +574,7 @@
 				 <K3_PADCONF(83, 6)>;	/* i2c3 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -584,7 +584,7 @@
 				 <K3_PADCONF(106, 4)>;	/* i2c3 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -594,7 +594,7 @@
 				 <K3_PADCONF(137, 6)>;	/* i2c4 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -604,7 +604,7 @@
 				 <K3_PADCONF(12, 6)>;	/* i2c4 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -614,7 +614,7 @@
 				 <K3_PADCONF(51, 5)>;	/* i2c4 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -624,7 +624,7 @@
 				 <K3_PADCONF(112, 4)>;	/* i2c4 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -634,7 +634,7 @@
 				 <K3_PADCONF(26, 6)>;	/* i2c5 scl */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -644,7 +644,7 @@
 				 <K3_PADCONF(64, 5)>;	/* i2c5 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -654,7 +654,7 @@
 				 <K3_PADCONF(94, 5)>;	/* i2c5 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -664,7 +664,7 @@
 				 <K3_PADCONF(127, 4)>;	/* i2c5 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -674,7 +674,7 @@
 				 <K3_PADCONF(152, 2)>;	/* i2c6 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -704,7 +704,7 @@
 				 <K3_PADCONF(62, 5)>;	/* i2c6 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -714,7 +714,7 @@
 				 <K3_PADCONF(129, 0)>;	/* i2c8 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -724,7 +724,7 @@
 				 <K3_PADCONF(28, 6)>;	/* ri2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -734,7 +734,7 @@
 				 <K3_PADCONF(58, 5)>;	/* ri2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -744,7 +744,7 @@
 				 <K3_PADCONF(75, 6)>;	/* ri2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -754,7 +754,7 @@
 				 <K3_PADCONF(116, 6)>;	/* ri2c0 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -764,7 +764,7 @@
 				 <K3_PADCONF(34, 6)>;	/* ri2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -774,7 +774,7 @@
 				 <K3_PADCONF(40, 4)>;	/* ri2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -784,7 +784,7 @@
 				 <K3_PADCONF(60, 5)>;	/* ri2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -794,7 +794,7 @@
 				 <K3_PADCONF(106, 3)>;	/* ri2c1 sda */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -803,7 +803,7 @@
 			pinmux = <K3_PADCONF(0, 3)>;	/* pwm0 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -812,7 +812,7 @@
 			pinmux = <K3_PADCONF(42, 6)>;	/* pwm0 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -821,7 +821,7 @@
 			pinmux = <K3_PADCONF(1, 3)>;	/* pwm1 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -830,7 +830,7 @@
 			pinmux = <K3_PADCONF(43, 6)>;	/* pwm1 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -839,7 +839,7 @@
 			pinmux = <K3_PADCONF(95, 6)>;	/* pwm1 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -848,7 +848,7 @@
 			pinmux = <K3_PADCONF(2, 3)>;	/* pwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -857,7 +857,7 @@
 			pinmux = <K3_PADCONF(44, 6)>;	/* pwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -866,7 +866,7 @@
 			pinmux = <K3_PADCONF(96, 6)>;	/* pwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -875,7 +875,7 @@
 			pinmux = <K3_PADCONF(134, 4)>;	/* pwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -884,7 +884,7 @@
 			pinmux = <K3_PADCONF(3, 3)>;	/* pwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -893,7 +893,7 @@
 			pinmux = <K3_PADCONF(45, 6)>;	/* pwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -902,7 +902,7 @@
 			pinmux = <K3_PADCONF(97, 6)>;	/* pwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -911,7 +911,7 @@
 			pinmux = <K3_PADCONF(135, 4)>;	/* pwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -920,7 +920,7 @@
 			pinmux = <K3_PADCONF(4, 3)>;	/* pwm4 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -929,7 +929,7 @@
 			pinmux = <K3_PADCONF(46, 6)>;	/* pwm4 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -938,7 +938,7 @@
 			pinmux = <K3_PADCONF(136, 4)>;	/* pwm4 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -947,7 +947,7 @@
 			pinmux = <K3_PADCONF(5, 3)>;	/* pwm5 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -956,7 +956,7 @@
 			pinmux = <K3_PADCONF(47, 6)>;	/* pwm5 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -965,7 +965,7 @@
 			pinmux = <K3_PADCONF(137, 4)>;	/* pwm5 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -974,7 +974,7 @@
 			pinmux = <K3_PADCONF(6, 3)>;	/* pwm6 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -983,7 +983,7 @@
 			pinmux = <K3_PADCONF(145, 3)>;	/* pwm6 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -992,7 +992,7 @@
 			pinmux = <K3_PADCONF(48, 6)>;	/* pwm6 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1001,7 +1001,7 @@
 			pinmux = <K3_PADCONF(7, 3)>;	/* pwm7 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1010,7 +1010,7 @@
 			pinmux = <K3_PADCONF(146, 3)>;	/* pwm7 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1019,7 +1019,7 @@
 			pinmux = <K3_PADCONF(49, 6)>;	/* pwm7 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1028,7 +1028,7 @@
 			pinmux = <K3_PADCONF(8, 3)>;	/* pwm8 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1037,7 +1037,7 @@
 			pinmux = <K3_PADCONF(147, 3)>;	/* pwm8 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1046,7 +1046,7 @@
 			pinmux = <K3_PADCONF(50, 6)>;	/* pwm8 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1055,7 +1055,7 @@
 			pinmux = <K3_PADCONF(9, 3)>;	/* pwm9 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1064,7 +1064,7 @@
 			pinmux = <K3_PADCONF(148, 3)>;	/* pwm9 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1073,7 +1073,7 @@
 			pinmux = <K3_PADCONF(51, 6)>;	/* pwm9 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1082,7 +1082,7 @@
 			pinmux = <K3_PADCONF(10, 3)>;	/* pwm10 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1091,7 +1091,7 @@
 			pinmux = <K3_PADCONF(52, 6)>;	/* pwm10 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1100,7 +1100,7 @@
 			pinmux = <K3_PADCONF(141, 4)>;	/* pwm10 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1109,7 +1109,7 @@
 			pinmux = <K3_PADCONF(53, 6)>;	/* pwm11 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1118,7 +1118,7 @@
 			pinmux = <K3_PADCONF(140, 4)>;	/* pwm11 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1127,7 +1127,7 @@
 			pinmux = <K3_PADCONF(54, 6)>;	/* pwm12 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1136,7 +1136,7 @@
 			pinmux = <K3_PADCONF(139, 4)>;	/* pwm12 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1145,7 +1145,7 @@
 			pinmux = <K3_PADCONF(55, 6)>;	/* pwm13 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1154,7 +1154,7 @@
 			pinmux = <K3_PADCONF(138, 4)>;	/* pwm13 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1163,7 +1163,7 @@
 			pinmux = <K3_PADCONF(13, 3)>;	/* pwm13 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1172,7 +1172,7 @@
 			pinmux = <K3_PADCONF(56, 6)>;	/* pwm14 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1181,7 +1181,7 @@
 			pinmux = <K3_PADCONF(144, 4)>;	/* pwm14 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1190,7 +1190,7 @@
 			pinmux = <K3_PADCONF(14, 3)>;	/* pwm14 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1199,7 +1199,7 @@
 			pinmux = <K3_PADCONF(57, 6)>;	/* pwm15 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1208,7 +1208,7 @@
 			pinmux = <K3_PADCONF(142, 4)>;	/* pwm15 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1217,7 +1217,7 @@
 			pinmux = <K3_PADCONF(21, 3)>;	/* pwm15 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1226,7 +1226,7 @@
 			pinmux = <K3_PADCONF(58, 6)>;	/* pwm16 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1235,7 +1235,7 @@
 			pinmux = <K3_PADCONF(143, 4)>;	/* pwm16 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1244,7 +1244,7 @@
 			pinmux = <K3_PADCONF(22, 3)>;	/* pwm16 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1253,7 +1253,7 @@
 			pinmux = <K3_PADCONF(23, 3)>;	/* pwm17 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1262,7 +1262,7 @@
 			pinmux = <K3_PADCONF(59, 6)>;	/* pwm17 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1271,7 +1271,7 @@
 			pinmux = <K3_PADCONF(105, 6)>;	/* pwm17 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1280,7 +1280,7 @@
 			pinmux = <K3_PADCONF(24, 3)>;	/* pwm18 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1289,7 +1289,7 @@
 			pinmux = <K3_PADCONF(60, 6)>;	/* pwm18 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1298,7 +1298,7 @@
 			pinmux = <K3_PADCONF(106, 6)>;	/* pwm18 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1307,7 +1307,7 @@
 			pinmux = <K3_PADCONF(25, 3)>;	/* pwm19 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1316,7 +1316,7 @@
 			pinmux = <K3_PADCONF(61, 6)>;	/* pwm19 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1325,7 +1325,7 @@
 			pinmux = <K3_PADCONF(107, 6)>;	/* pwm19 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1334,7 +1334,7 @@
 			pinmux = <K3_PADCONF(15, 3)>;	/* rpwm0 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1343,7 +1343,7 @@
 			pinmux = <K3_PADCONF(27, 3)>;	/* rpwm0 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1352,7 +1352,7 @@
 			pinmux = <K3_PADCONF(64, 6)>;	/* rpwm0 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1361,7 +1361,7 @@
 			pinmux = <K3_PADCONF(16, 3)>;	/* rpwm1 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1370,7 +1370,7 @@
 			pinmux = <K3_PADCONF(28, 3)>;	/* rpwm1 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1379,7 +1379,7 @@
 			pinmux = <K3_PADCONF(65, 6)>;	/* rpwm1 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1388,7 +1388,7 @@
 			pinmux = <K3_PADCONF(17, 3)>;	/* rpwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1397,7 +1397,7 @@
 			pinmux = <K3_PADCONF(29, 3)>;	/* rpwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1406,7 +1406,7 @@
 			pinmux = <K3_PADCONF(66, 6)>;	/* rpwm2 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1415,7 +1415,7 @@
 			pinmux = <K3_PADCONF(18, 3)>;	/* rpwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1424,7 +1424,7 @@
 			pinmux = <K3_PADCONF(30, 3)>;	/* rpwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1433,7 +1433,7 @@
 			pinmux = <K3_PADCONF(67, 6)>;	/* rpwm3 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1442,7 +1442,7 @@
 			pinmux = <K3_PADCONF(19, 3)>;	/* rpwm4 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1451,7 +1451,7 @@
 			pinmux = <K3_PADCONF(31, 3)>;	/* rpwm4 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1460,7 +1460,7 @@
 			pinmux = <K3_PADCONF(93, 6)>;	/* rpwm4 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1469,7 +1469,7 @@
 			pinmux = <K3_PADCONF(20, 3)>;	/* rpwm5 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1478,7 +1478,7 @@
 			pinmux = <K3_PADCONF(32, 3)>;	/* rpwm5 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1487,7 +1487,7 @@
 			pinmux = <K3_PADCONF(92, 5)>;	/* rpwm5 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1496,7 +1496,7 @@
 			pinmux = <K3_PADCONF(33, 3)>;	/* rpwm6 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1505,7 +1505,7 @@
 			pinmux = <K3_PADCONF(94, 6)>;	/* rpwm6 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1514,7 +1514,7 @@
 			pinmux = <K3_PADCONF(109, 6)>;	/* rpwm6 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1523,7 +1523,7 @@
 			pinmux = <K3_PADCONF(34, 3)>;	/* rpwm7 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1532,7 +1532,7 @@
 			pinmux = <K3_PADCONF(110, 6)>;	/* rpwm7 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1541,7 +1541,7 @@
 			pinmux = <K3_PADCONF(35, 3)>;	/* rpwm8 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1550,7 +1550,7 @@
 			pinmux = <K3_PADCONF(111, 6)>;	/* rpwm8 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1559,7 +1559,7 @@
 			pinmux = <K3_PADCONF(36, 3)>;	/* rpwm9 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1568,7 +1568,7 @@
 			pinmux = <K3_PADCONF(112, 6)>;	/* rpwm9 */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1577,7 +1577,7 @@
 			pinmux = <K3_PADCONF(41, 5)>;	/* ir0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1586,7 +1586,7 @@
 			pinmux = <K3_PADCONF(108, 4)>;	/* ir0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1595,7 +1595,7 @@
 			pinmux = <K3_PADCONF(0, 4)>;	/* ir1 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1604,7 +1604,7 @@
 			pinmux = <K3_PADCONF(70, 4)>;	/* ir1 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1613,7 +1613,7 @@
 			pinmux = <K3_PADCONF(40, 5)>;	/* rir0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1622,7 +1622,7 @@
 			pinmux = <K3_PADCONF(71, 4)>;	/* rir0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1631,7 +1631,7 @@
 			pinmux = <K3_PADCONF(1, 4)>;	/* rir1 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1640,7 +1640,7 @@
 			pinmux = <K3_PADCONF(73, 4)>;	/* rir1 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1650,7 +1650,7 @@
 				 <K3_PADCONF(12, 3)>;	/* can0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1660,7 +1660,7 @@
 				 <K3_PADCONF(45, 3)>;	/* can0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1670,7 +1670,7 @@
 				 <K3_PADCONF(77, 4)>;	/* can0 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1680,7 +1680,7 @@
 				 <K3_PADCONF(49, 3)>;	/* can1 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1690,7 +1690,7 @@
 				 <K3_PADCONF(89, 6)>;	/* can1 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1700,7 +1700,7 @@
 				 <K3_PADCONF(110, 4)>;	/* can1 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1710,7 +1710,7 @@
 				 <K3_PADCONF(51, 3)>;	/* can2 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1720,7 +1720,7 @@
 				 <K3_PADCONF(87, 4)>;	/* can2 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1730,7 +1730,7 @@
 				 <K3_PADCONF(81, 4)>;	/* can3 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1740,7 +1740,7 @@
 				 <K3_PADCONF(104, 4)>;	/* can3 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1750,7 +1750,7 @@
 				 <K3_PADCONF(41, 6)>;	/* can4 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1760,7 +1760,7 @@
 				 <K3_PADCONF(102, 4)>;	/* can4 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1770,7 +1770,7 @@
 				 <K3_PADCONF(121, 4)>;	/* can4 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1780,7 +1780,7 @@
 				 <K3_PADCONF(58, 3)>;	/* rcan0 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1790,7 +1790,7 @@
 				 <K3_PADCONF(91, 6)>;	/* rcan0 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1800,7 +1800,7 @@
 				 <K3_PADCONF(144, 2)>;	/* rcan1 tx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1810,7 +1810,7 @@
 				 <K3_PADCONF(100, 4)>;	/* rcan2 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1820,7 +1820,7 @@
 				 <K3_PADCONF(121, 3)>;	/* rcan3 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1830,7 +1830,7 @@
 				 <K3_PADCONF(108, 3)>;	/* rcan4 rx */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1843,7 +1843,7 @@
 				 <K3_PADCONF(85, 2)>;	/* sspa0 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1856,7 +1856,7 @@
 				 <K3_PADCONF(115, 2)>;	/* sspa0 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1869,7 +1869,7 @@
 				 <K3_PADCONF(19, 2)>;	/* sspa1 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1882,7 +1882,7 @@
 				 <K3_PADCONF(126, 2)>;	/* sspa1 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1895,7 +1895,7 @@
 				 <K3_PADCONF(80, 2)>;	/* sspa2 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1908,7 +1908,7 @@
 				 <K3_PADCONF(103, 2)>;	/* sspa3 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1921,7 +1921,7 @@
 				 <K3_PADCONF(73, 2)>;	/* sspa4 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1934,7 +1934,7 @@
 				 <K3_PADCONF(4, 2)>;	/* sspa5 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1947,7 +1947,7 @@
 				 <K3_PADCONF(10, 2)>;	/* rsspa0 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1960,7 +1960,7 @@
 				 <K3_PADCONF(80, 1)>;	/* rsspa0 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1973,7 +1973,7 @@
 				 <K3_PADCONF(40, 2)>;	/* rsspa1 sysclk */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1984,7 +1984,7 @@
 				 <K3_PADCONF(44, 4)>;	/* pcie0 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -1995,7 +1995,7 @@
 				 <K3_PADCONF(81, 5)>;	/* pcie0 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2006,7 +2006,7 @@
 				 <K3_PADCONF(110, 5)>;	/* pcie0 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2017,7 +2017,7 @@
 				 <K3_PADCONF(23, 4)>;	/* pcie1 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2028,7 +2028,7 @@
 				 <K3_PADCONF(90, 4)>;	/* pcie1 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2039,7 +2039,7 @@
 				 <K3_PADCONF(115, 5)>;	/* pcie1 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2050,7 +2050,7 @@
 				 <K3_PADCONF(14, 4)>;	/* pcie2 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2061,7 +2061,7 @@
 				 <K3_PADCONF(27, 4)>;	/* pcie2 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2072,7 +2072,7 @@
 				 <K3_PADCONF(60, 4)>;	/* pcie2 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2083,7 +2083,7 @@
 				 <K3_PADCONF(5, 4)>;	/* pcie3 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2094,7 +2094,7 @@
 				 <K3_PADCONF(107, 5)>;	/* pcie3 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2105,7 +2105,7 @@
 				 <K3_PADCONF(126, 3)>;	/* pcie3 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2116,7 +2116,7 @@
 				 <K3_PADCONF(33, 4)>;	/* pcie4 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2127,7 +2127,7 @@
 				 <K3_PADCONF(78, 5)>;	/* pcie4 clkreq */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2156,7 +2156,7 @@
 				 <K3_PADCONF(20, 1)>;	/* gmac0 clk ref */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2185,7 +2185,7 @@
 				 <K3_PADCONF(41, 1)>;	/* gmac1 clk ref */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2210,7 +2210,7 @@
 				 <K3_PADCONF(58, 1)>;	/* gmac2 pps */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2235,7 +2235,7 @@
 				 <K3_PADCONF(75, 1)>;	/* rgmac0 pps */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2246,14 +2246,14 @@
 				 <K3_PADCONF(55, 3)>;	/* ssp0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp0-1-pins {
 			pinmux = <K3_PADCONF(56, 3)>;	/* ssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2264,14 +2264,14 @@
 				 <K3_PADCONF(83, 1)>;	/* ssp0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp0-1-pins {
 			pinmux = <K3_PADCONF(84, 1)>;	/* ssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2282,14 +2282,14 @@
 				 <K3_PADCONF(106, 1)>;	/* ssp0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp0-1-pins {
 			pinmux = <K3_PADCONF(107, 1)>;	/* ssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2300,14 +2300,14 @@
 				 <K3_PADCONF(34, 5)>;	/* ssp1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp1-1-pins {
 			pinmux = <K3_PADCONF(35, 5)>;	/* ssp1 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2318,14 +2318,14 @@
 				 <K3_PADCONF(113, 1)>;	/* ssp1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp1-1-pins {
 			pinmux = <K3_PADCONF(114, 1)>;	/* ssp1 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2336,14 +2336,14 @@
 				 <K3_PADCONF(30, 5)>;	/* ssp2 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp2-1-pins {
 			pinmux = <K3_PADCONF(31, 5)>;	/* ssp2 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2354,14 +2354,14 @@
 				 <K3_PADCONF(106, 2)>;	/* ssp2 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp2-1-pins {
 			pinmux = <K3_PADCONF(107, 2)>;	/* ssp2 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2372,14 +2372,14 @@
 				 <K3_PADCONF(70, 6)>;	/* ssp3 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp3-1-pins {
 			pinmux = <K3_PADCONF(71, 6)>;	/* ssp3 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2390,14 +2390,14 @@
 				 <K3_PADCONF(101, 1)>;	/* ssp3 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp3-1-pins {
 			pinmux = <K3_PADCONF(102, 1)>;	/* ssp3 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2408,14 +2408,14 @@
 				 <K3_PADCONF(62, 3)>;	/* rssp0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp0-1-pins {
 			pinmux = <K3_PADCONF(63, 3)>;	/* rssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2426,14 +2426,14 @@
 				 <K3_PADCONF(88, 1)>;	/* rssp0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		rssp0-1-pins {
 			pinmux = <K3_PADCONF(89, 1)>;	/* rssp0 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2444,14 +2444,14 @@
 				 <K3_PADCONF(66, 3)>;	/* rssp1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		ssp1-1-pins {
 			pinmux = <K3_PADCONF(67, 3)>;	/* rssp1 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2462,14 +2462,14 @@
 				 <K3_PADCONF(116, 1)>;	/* rssp1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		rssp1-1-pins {
 			pinmux = <K3_PADCONF(117, 1)>;	/* rssp1 frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2480,14 +2480,14 @@
 				 <K3_PADCONF(149, 0)>;	/* pwr ssp clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		pwr_ssp-1-pins {
 			pinmux = <K3_PADCONF(150, 0)>;	/* pwr ssp frm */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2500,7 +2500,7 @@
 				 <K3_PADCONF(144, 0)>;	/* qspi clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		qspi-1-pins {
@@ -2508,7 +2508,7 @@
 				 <K3_PADCONF(143, 0)>;	/* qspi cs1 */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2523,14 +2523,14 @@
 				 <K3_PADCONF(7, 5)>;	/* espi0 alert */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		espi0-1-pins {
 			pinmux = <K3_PADCONF(5, 5)>;	/* espi0 clk */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2545,14 +2545,14 @@
 				 <K3_PADCONF(75, 3)>;	/* espi0 alert */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		espi0-1-pins {
 			pinmux = <K3_PADCONF(73, 3)>;	/* espi0 clk */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2567,14 +2567,14 @@
 				 <K3_PADCONF(98, 4)>;	/* espi0 alert */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		espi0-1-pins {
 			pinmux = <K3_PADCONF(96, 4)>;	/* espi0 clk */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2589,14 +2589,14 @@
 				 <K3_PADCONF(93, 2)>;	/* respi0 alert */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		respi0-1-pins {
 			pinmux = <K3_PADCONF(91, 2)>;	/* respi0 clk */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2609,14 +2609,14 @@
 				 <K3_PADCONF(136, 0)>;	/* mmc1 cmd */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		mmc1-1-pins {
 			pinmux = <K3_PADCONF(137, 0)>;	/* mmc1 clk */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2629,14 +2629,14 @@
 				 <K3_PADCONF(126, 1)>;	/* mmc2 cmd */
 
 			bias-pull-up;			/* normal pull-up */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 
 		mmc2-1-pins {
 			pinmux = <K3_PADCONF(127, 1)>;	/* mmc2 clk */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2645,7 +2645,7 @@
 			pinmux = <K3_PADCONF(13, 5)>;	/* cam0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2654,7 +2654,7 @@
 			pinmux = <K3_PADCONF(46, 3)>;	/* cam0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2663,7 +2663,7 @@
 			pinmux = <K3_PADCONF(75, 2)>;	/* cam0 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2672,7 +2672,7 @@
 			pinmux = <K3_PADCONF(34, 4)>;	/* cam1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2681,7 +2681,7 @@
 			pinmux = <K3_PADCONF(47, 3)>;	/* cam1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2690,7 +2690,7 @@
 			pinmux = <K3_PADCONF(74, 2)>;	/* cam1 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2699,7 +2699,7 @@
 			pinmux = <K3_PADCONF(35, 4)>;	/* cam2 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2708,7 +2708,7 @@
 			pinmux = <K3_PADCONF(52, 5)>;	/* cam2 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2717,7 +2717,7 @@
 			pinmux = <K3_PADCONF(85, 1)>;	/* cam2 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2726,7 +2726,7 @@
 			pinmux = <K3_PADCONF(43, 3)>;	/* cam3 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2735,7 +2735,7 @@
 			pinmux = <K3_PADCONF(67, 4)>;	/* cam3 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2744,7 +2744,7 @@
 			pinmux = <K3_PADCONF(99, 6)>;	/* cam3 clk */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2753,7 +2753,7 @@
 			pinmux = <K3_PADCONF(13, 6)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2762,7 +2762,7 @@
 			pinmux = <K3_PADCONF(38, 6)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2771,7 +2771,7 @@
 			pinmux = <K3_PADCONF(69, 5)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2780,7 +2780,7 @@
 			pinmux = <K3_PADCONF(72, 5)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2789,7 +2789,7 @@
 			pinmux = <K3_PADCONF(84, 6)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2798,7 +2798,7 @@
 			pinmux = <K3_PADCONF(90, 1)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2807,7 +2807,7 @@
 			pinmux = <K3_PADCONF(92, 6)>;	/* dsi te */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2817,7 +2817,7 @@
 			pinmux = <K3_PADCONF(30, 6)>;	/* edp0 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2826,7 +2826,7 @@
 			pinmux = <K3_PADCONF(57, 4)>;	/* edp0 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2835,7 +2835,7 @@
 			pinmux = <K3_PADCONF(31, 6)>;	/* edp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2845,7 +2845,7 @@
 			pinmux = <K3_PADCONF(9, 6)>;	/* dp0 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2854,7 +2854,7 @@
 			pinmux = <K3_PADCONF(23, 6)>;	/* dp0 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2863,7 +2863,7 @@
 			pinmux = <K3_PADCONF(97, 5)>;	/* dp0 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2872,7 +2872,7 @@
 			pinmux = <K3_PADCONF(124, 4)>;	/* dp0 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2881,7 +2881,7 @@
 			pinmux = <K3_PADCONF(10, 6)>;	/* dp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2890,7 +2890,7 @@
 			pinmux = <K3_PADCONF(24, 6)>;	/* dp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2899,7 +2899,7 @@
 			pinmux = <K3_PADCONF(69, 4)>;	/* dp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2908,7 +2908,7 @@
 			pinmux = <K3_PADCONF(72, 4)>;	/* dp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2917,7 +2917,7 @@
 			pinmux = <K3_PADCONF(98, 5)>;	/* dp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2926,7 +2926,7 @@
 			pinmux = <K3_PADCONF(125, 4)>;	/* dp1 hpd */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2935,7 +2935,7 @@
 			pinmux = <K3_PADCONF(16, 6)>;	/* usb20 host drive */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2944,7 +2944,7 @@
 			pinmux = <K3_PADCONF(39, 5)>;	/* usb20 host drive */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2953,7 +2953,7 @@
 			pinmux = <K3_PADCONF(73, 5)>;	/* usb20 host drive */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2962,7 +2962,7 @@
 			pinmux = <K3_PADCONF(103, 3)>;	/* usb20 host drive */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2971,7 +2971,7 @@
 			pinmux = <K3_PADCONF(108, 2)>;	/* usb20 host drive */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2982,7 +2982,7 @@
 				 <K3_PADCONF(19, 6)>;	/* usb30 drd drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -2993,7 +2993,7 @@
 				 <K3_PADCONF(97, 3)>;	/* usb30 drd drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3004,7 +3004,7 @@
 				 <K3_PADCONF(118, 2)>;	/* usb30 drd drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3013,7 +3013,7 @@
 			pinmux = <K3_PADCONF(111, 5)>;	/* usb30 drd int */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3022,7 +3022,7 @@
 			pinmux = <K3_PADCONF(119, 2)>;	/* usb30 drd int */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3031,7 +3031,7 @@
 			pinmux = <K3_PADCONF(84, 4)>;	/* usb30 b drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3040,7 +3040,7 @@
 			pinmux = <K3_PADCONF(85, 4)>;	/* usb30 c drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3049,7 +3049,7 @@
 			pinmux = <K3_PADCONF(127, 6)>;	/* usb30 c drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3058,7 +3058,7 @@
 			pinmux = <K3_PADCONF(20, 6)>;	/* usb30 d drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3067,7 +3067,7 @@
 			pinmux = <K3_PADCONF(27, 5)>;	/* usb30 d drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3076,7 +3076,7 @@
 			pinmux = <K3_PADCONF(112, 5)>;	/* usb30 d drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3085,7 +3085,7 @@
 			pinmux = <K3_PADCONF(74, 5)>;	/* usb30h-1 drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3094,7 +3094,7 @@
 			pinmux = <K3_PADCONF(104, 3)>;	/* usb30h-1 drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3103,7 +3103,7 @@
 			pinmux = <K3_PADCONF(75, 5)>;	/* usb30h-2 drv */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3112,7 +3112,7 @@
 			pinmux = <K3_PADCONF(86, 6)>;	/* usb30 drd dir */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
@@ -3121,7 +3121,7 @@
 			pinmux = <K3_PADCONF(107, 4)>;	/* usb30 drd dir */
 
 			bias-pull-down;			/* normal pull-down */
-			drive-strength = <47>;		/* DS8 */
+			drive-strength = <25>;		/* DS8 */
 		};
 	};
 };
