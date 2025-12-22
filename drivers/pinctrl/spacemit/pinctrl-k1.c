@@ -617,7 +617,7 @@ static int spacemit_pinconf_generate_config(const struct spacemit_pin *spin,
 		val = spacemit_get_driver_strength(type, variant, drv_strength);
 
 		v &= ~variant->drive_mask;
-		v |= (arg << __ffs(variant->drive_mask)) & variant->drive_mask;
+		v |= (val << __ffs(variant->drive_mask)) & variant->drive_mask;
 	}
 
 	*value = v;
