@@ -6,7 +6,7 @@
 #define PVRSRV_MODNAME "pvrsrvkm"
 #define PVRSYNC_MODNAME "pvr_sync"
 #define SUPPORT_RGX 1
-#define DISPLAY_CONTROLLER drm_nulldisp
+#define DISPLAY_CONTROLLER drm_spacemit
 #define PVRSRV_MAX_DEVICES 8
 #define PVRSRV_HWPERF_COUNTERS_PERBLK 12
 #define RELEASE
