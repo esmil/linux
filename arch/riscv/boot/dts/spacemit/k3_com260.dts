@@ -83,13 +83,68 @@
 	status = "disabled";
 };
 
-&usb3_porta {
+&usb2_host_u2phy {
 	status = "disabled";
+};
+
+&usb2_host {
+	status = "disabled";
+};
+
+&usb3_porta_u2phy {
+	status = "okay";
+};
+
+&usb3_porta_u3phy {
+	// Enabled but will do nop during init
+	status = "okay";
+};
+
+&usb3_porta {
+	dr_mode = "otg";
+	/* Bringup stage, only enable USB2 phy */
 	maximum-speed = "high-speed";
-	dr_mode = "peripheral";
-	phy_type = "utmi_wide";
-	snps,dis_u2_susphy_quirk;
-	snps,dis_enblslpm_quirk;
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	status = "okay";
+};
+
+&usb3_portb_u2phy {
+	status = "okay";
+};
+
+&usb3_portb_u3phy {
+	status = "disabled";
+};
+
+&usb3_portb {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portb_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* VL817 USB2.0 hub (4 ports) */
+	hub_2_0: hub@1 {
+		compatible = "usb2109,2817";
+		reg = <1>;
+		peer-hub = <&hub_3_0>;
+		/* GPIO53(MIPI_CSI3_PWDN) for HUB 3V3 RST */
+		reset-gpio = <&gpio 1 21 GPIO_ACTIVE_LOW>;
+	};
+
+	/* VL817 USB3.0 hub (4 ports) */
+	hub_3_0: hub@2 {
+		compatible = "usb2109,817";
+		reg = <2>;
+		peer-hub = <&hub_2_0>;
+		/* GPIO53(MIPI_CSI3_PWDN) for HUB 3V3 RST */
+		reset-gpio = <&gpio 1 21 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &rpmi_regulator {
