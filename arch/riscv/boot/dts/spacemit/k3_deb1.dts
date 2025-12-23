@@ -107,7 +107,6 @@
 		/* FE1.1S USB2.0 hub (4 ports) */
 		compatible = "usb5e3,608";
 		reg = <1>;
-		vdd-supply = <&aux_3v3>;
 	};
 };
 
