@@ -136,7 +136,6 @@ pvrsrvkm-y += \
  uniq_key_splay_tree.o \
  rgx_hwperf_table.o \
  interrupt_support.o \
- pci_support.o \
  sysconfig_cmn.o \
  dma_support.o \
  vmm_type_stub.o \
