@@ -718,6 +718,16 @@
 		};
 	};
 
+	i2c8_cfg_rcpu: i2c8-cfg-rcpu {
+		i2c8-pins-rcpu {
+			pinmux = <K3_PADCONF(128, 1)>,	/* ri2c2 scl */
+				 <K3_PADCONF(129, 1)>;	/* ri2c2 sda */
+
+			bias-pull-up;			/* normal pull-up */
+			drive-strength = <25>;		/* DS8 */
+		};
+	};
+
 	ri2c0_0_cfg: ri2c0-0-cfg {
 		ri2c0-0-pins {
 			pinmux = <K3_PADCONF(27, 6)>,	/* ri2c0 scl */
