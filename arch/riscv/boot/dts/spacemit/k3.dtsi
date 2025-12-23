@@ -1272,7 +1272,7 @@
 		mpxy_mbox: mpxy_mbox@0 {
 			compatible = "riscv,sbi-mpxy-mbox";
 			#mbox-cells = <2>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		rpmi_regulator: rpmi_regulator@0 {
