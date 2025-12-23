@@ -13,6 +13,7 @@
 		timebase-frequency = <24000000>;
 	};
 
+/*
 	p12v: p12v {
 		compatible = "regulator-fixed";
 		regulator-name = "p12v";
@@ -66,7 +67,7 @@
 		vin-supply = <&p12v>;
 		status = "disabled";
 	};
-
+*/
 	chosen {
 		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8";
 		stdout-path = "serial0:115200";
@@ -205,8 +206,10 @@
 };
 
 &rpmi_regulator {
-	status = "disabled";
-/*
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c8_cfg_rcpu>;
+
 	pvin: pvin {
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
@@ -372,9 +375,9 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
-*/
 };
 
+/*
 &i2c8 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c8_cfg>;
@@ -390,7 +393,6 @@
 		regulators {
 			compatible = "spacemit-p1-regulator";
 
-			/* buck */
 			buck1: buck1 {
 				regulator-min-microvolt = <1050000>;
 				regulator-max-microvolt = <1050000>;
@@ -439,7 +441,6 @@
 				regulator-boot-on;
 			};
 
-			/* aldo */
 			aldo1: aldo1 {
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
@@ -466,7 +467,6 @@
 				regulator-boot-on;
 			};
 
-			/* dldo */
 			dldo1: dldo1 {
 				regulator-min-microvolt = <1200000>;
 				regulator-max-microvolt = <1200000>;
@@ -537,6 +537,7 @@
 		};
 	};
 };
+*/
 
 &ssp0_2_cfg {
 	ssp0-0-pins {
