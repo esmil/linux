@@ -43,6 +43,7 @@ struct dwc3_generic {
 	int			num_clocks;
 	struct reset_control	*resets;
 #ifdef CONFIG_SOC_SPACEMIT
+	struct phy *usb3_phy;
 	bool reset_on_resume;
 	void *priv;
 #endif
@@ -158,6 +159,11 @@ static int dwc3_generic_probe(struct platform_device *pdev)
 		device_property_read_bool(dev, "reset-on-resume");
 
 	if (of_device_is_compatible(dev->of_node, "spacemit,k1-dwc3")) {
+		dwc3g->usb3_phy = devm_phy_optional_get(dev, "usb3-phy");
+		if (IS_ERR(dwc3g->usb3_phy))
+			return dev_err_probe(dev, PTR_ERR(dwc3g->usb3_phy), "get phy failed\n");
+		phy_set_speed(dwc3g->usb3_phy, usb_get_maximum_speed(dev));
+
 		if (device_property_read_bool(dev, "wakeup-source")) {
 			if (dwc3g->reset_on_resume)
 				return dev_err_probe(
