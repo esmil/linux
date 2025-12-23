@@ -356,14 +356,14 @@
 #define RESET_APBC_I2S5          57
 #define RESET_APBC_DRO           58
 #define RESET_APBC_IR0           59
-#define RESET_APBC_IR1           59
-#define RESET_APBC_TSEN          60
-#define RESET_IPC_AP2AUD         61
-#define RESET_APBC_CAN0          62
-#define RESET_APBC_CAN1          63
-#define RESET_APBC_CAN2          64
-#define RESET_APBC_CAN3          65
-#define RESET_APBC_CAN4          66
+#define RESET_APBC_IR1           60
+#define RESET_APBC_TSEN          61
+#define RESET_APBC_IPC_AP2AUD    62
+#define RESET_APBC_CAN0          63
+#define RESET_APBC_CAN1          64
+#define RESET_APBC_CAN2          65
+#define RESET_APBC_CAN3          66
+#define RESET_APBC_CAN4          67
 
 /* APMU clocks */
 #define CLK_APMU_AXICLK          0
