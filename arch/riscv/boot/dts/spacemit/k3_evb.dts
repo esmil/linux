@@ -86,6 +86,16 @@
 };
 
 &pinctrl {
+	ssp0_2_cfg {
+		ssp0-0-pins {
+			power-source = <3300>;
+		};
+
+		ssp0-1-pins {
+			power-source = <3300>;
+		};
+	};
+
 	usb30_drd_id_vbus_cfg: usb30_drd-id-vbus-cfg {
 		usb30_drd-pins {
 			pinmux = <K3_PADCONF(116, 2)>,	/* usb30 drd id */
@@ -626,13 +636,3 @@
 	};
 };
 */
-
-&ssp0_2_cfg {
-	ssp0-0-pins {
-		power-source = <3300>;
-	};
-
-	ssp0-1-pins {
-		power-source = <3300>;
-	};
-};
