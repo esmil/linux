@@ -32,10 +32,10 @@ BUILD_DEB_CMD="make $CONFIG_FILE &&
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_PARENT_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
-DOCKER_REPO="${DOCKER_REPO:-harbor.spacemit.com/bianbu-linux}"
-IMAGE_NAME="${IMAGE_NAME:-bianbu-linux-builder:latest}"
+DOCKER_REPO="${DOCKER_REPO:-harbor.spacemit.com/bianbu}"
+IMAGE_NAME="${IMAGE_NAME:-k3-bsp-builder:latest}"
 CROSS_COMPILE="${CROSS_COMPILE:-riscv64-unknown-linux-gnu-}"
-TOOLCHAIN_PATH="${TOOLCHAIN_PATH:-/opt/spacemit-toolchain-linux-glibc-x86_64-v1.0.0/bin}"
+TOOLCHAIN_PATH="${TOOLCHAIN_PATH:-/opt/spacemit-toolchain-linux-glibc-x86_64-v1.2.2/bin}"
 DIRECT_BUILD="${DIRECT_BUILD:-0}"
 
 CLEAN=false
