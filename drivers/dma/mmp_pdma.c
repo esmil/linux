@@ -1046,10 +1046,13 @@ static enum dma_status mmp_pdma_tx_status(struct dma_chan *dchan,
 {
 	struct mmp_pdma_chan *chan = to_mmp_pdma_chan(dchan);
 	enum dma_status ret;
+	unsigned long flags;
 
+	spin_lock_irqsave(&chan->desc_lock, flags);
 	ret = dma_cookie_status(dchan, cookie, txstate);
 	if (likely(ret != DMA_ERROR))
 		dma_set_residue(txstate, mmp_pdma_residue(chan, cookie));
+	spin_unlock_irqrestore(&chan->desc_lock, flags);
 
 	return ret;
 }
