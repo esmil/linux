@@ -17,6 +17,17 @@
 #define RPMI_REGULATOR_DISCRETE_MAX_NUM		16
 #define RPMI_REGULATOR_LINEAR_MAX_NUM		2
 
+/**
+ * reuse trans_latency：
+ * 0~15: parentid
+ * 16~31: min_sel of each buck & ldo, this field is not yet used!!
+ */
+#define PARENT_ID_MASK		0xffff
+#define MIN_SEL_MASK		0xffff0000
+
+#define PARENT_ID_OFFSET	(0)
+#define MIN_SEL_OFFSET		(16)
+
 enum rpmi_regulator_config {
 	RPMI_REGULATOR_DISABLE = 0,
 	RPMI_REGULATOR_ENABLE,
@@ -198,7 +209,7 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 			ranges[i].min_sel = (i == 0) ? 0 : (ranges[i - 1].max_sel + 1);
 
 			if (ranges[i].step == 0)
-				ranges[i].max_sel = ranges[i].min_sel;
+				ranges[i].max_sel = ranges[i].min_sel = 0;
 			else
 				ranges[i].max_sel = ranges[i].min_sel +
 						(max - ranges[i].min) / ranges[i].step;
@@ -499,11 +510,11 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 	/* set regulator parent */
 	for (i = 0; i < num_domains; ++i) {
 		parentid = regptr[i]->trans_latency;
-		if (parentid == 0xffffffff) {
+		if ((parentid & PARENT_ID_MASK) == 0xffff) {
 			desc[i]->supply_name = NULL;
 			desc[i]->of_match = of_match_ptr(desc[i]->name);
 		} else {
-			desc[i]->supply_name = desc[parentid]->name;
+			desc[i]->supply_name = desc[parentid & PARENT_ID_MASK]->name;
 			desc[i]->of_match = of_match_ptr(desc[i]->name);
 		}
 	}
