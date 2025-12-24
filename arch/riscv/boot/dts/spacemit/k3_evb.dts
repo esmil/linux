@@ -4,6 +4,7 @@
 #include "k3.dtsi"
 #include "k3-rdomain.dtsi"
 #include "k3-pinctrl.dtsi"
+#include "k3_opp_table.dtsi"
 
 / {
 	compatible = "spacemit,k3-evb";

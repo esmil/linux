@@ -4,6 +4,7 @@
 #include "k3.dtsi"
 #include "k3-rdomain.dtsi"
 #include "k3-pinctrl.dtsi"
+#include "k3_opp_table.dtsi"
 
 / {
 	compatible = "spacemit,k3-com260";
@@ -230,7 +231,7 @@
 	};
 
 	edcdc1: edcdc1 {
-		regulator-min-microvolt = <600000>;
+		regulator-min-microvolt = <534000>;
 		regulator-max-microvolt = <1000000>;
 		regulator-always-on;
 		regulator-boot-on;
