@@ -36,11 +36,6 @@ static void spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 
 	DRM_INFO("%s()\n", __func__);
 
-// #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-// 		DRM_INFO("FPGA return panel\n");
-// 		return;
-// #endif
-
 	if (dsi->panel == NULL)
 		return;
 
@@ -368,18 +363,11 @@ static void spacemit_dsi_get_mipi_info(struct device_node *lcd_node, struct spac
 	else
 		mipi_info->lane_number = val;
 
-	ret = of_property_read_u32(lcd_node, "phy-bit-clock", &val);
+	ret = of_property_read_u32(lcd_node, "phy-freq", &val);
 	if (ret)
-		mipi_info->phy_bit_clock = DPHY_BITCLK_DEFAULT;
+		DRM_ERROR("of get mipi phy-freq failed\n");
 	else
-		mipi_info->phy_bit_clock = val;
-
-
-	ret = of_property_read_u32(lcd_node, "phy-esc-clock", &val);
-	if (ret)
-		mipi_info->phy_esc_clock = DPHY_ESCCLK_DEFAULT;
-	else
-		mipi_info->phy_esc_clock = val;
+		mipi_info->phy_freq = val;
 
 	ret = of_property_read_u32(lcd_node, "split-enable", &val);
 	if (ret)
@@ -674,7 +662,7 @@ static enum drm_mode_status
 spacemit_dsi_connector_mode_valid(struct drm_connector *connector,
 			 struct drm_display_mode *mode)
 {
-	DRM_INFO("%s()\n", __func__);
+	DRM_DEBUG("%s()\n", __func__);
 
 	return MODE_OK;
 }
@@ -900,10 +888,17 @@ static int spacemit_dsi_context_init(struct spacemit_dsi *dsi, struct device_nod
 		DRM_ERROR("parse dsi ctrl reg base failed\n");
 		return -ENODEV;
 	}
-	ctx->base_addr = (void __iomem *)ioremap(r.start, resource_size(&r));
-	if (ctx->base_addr == NULL) {
-		DRM_ERROR("dsi ctrl reg base ioremap failed\n");
+
+	ctx->base_addr_dsi0 = (void __iomem *)ioremap(r.start, resource_size(&r));
+	if (ctx->base_addr_dsi0 == NULL) {
+		DRM_ERROR("dsi0 ctrl reg base ioremap failed\n");
 		return -ENODEV;
+	}
+	ctx->base_addr = ctx->base_addr_dsi0;
+
+	ctx->base_addr_dsi1 = (void __iomem *)ioremap(DSI1_BASE_ADDR, 200);
+	if (ctx->base_addr_dsi1 == NULL) {
+		DRM_ERROR("dsi1 ctrl reg base ioremap failed\n");
 	}
 
 	ctx->dsi_subconnector = SPACEMIT_DSI_SUBCONNECTOR_MIPI_DSI;
@@ -913,7 +908,7 @@ static int spacemit_dsi_context_init(struct spacemit_dsi *dsi, struct device_nod
 	if (!of_property_read_u32(np, "dev-id", &tmp))
 		ctx->id = tmp;
 
-	ctx->version = DSI_VERSION_1;
+	ctx->version = DSI_VERSION_2;
 	if (!of_property_read_u32(np, "dsi-version", &tmp))
 		ctx->version = tmp;
 
@@ -972,6 +967,7 @@ static void spacemit_dsi_remove(struct platform_device *pdev)
 
 static const struct of_device_id spacemit_dsi_of_match[] = {
 	{ .compatible = "spacemit,dsi-host" },
+	{ .compatible = "asr,dsi-fake" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, spacemit_dsi_of_match);

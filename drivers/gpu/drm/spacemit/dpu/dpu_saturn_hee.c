@@ -544,6 +544,12 @@ static void saturn_init_tmg(struct spacemit_crtc *a_crtc)
 		dpu_write(hwdev, TMG_REG, base, fm_timing_en, 1);
 		dpu_write(hwdev, TMG_REG, base, user, a_crtc->out_format);
 	}
+
+	if (a_crtc->split_en) {
+		dpu_write(hwdev, TMG_REG, base, split_en, 1);
+		dpu_write(hwdev, TMG_REG, base, split_overlap, 0);
+		dpu_write(hwdev, TMG_REG, base, h_active, (mode->hdisplay / 2));
+	}
 }
 
 static void saturn_init_regs(struct spacemit_crtc *a_crtc)
@@ -1100,7 +1106,11 @@ void saturn_hee_conf_dpuctrl(struct drm_crtc *crtc,
 	if (a_crtc->is_offline_mode == 0) {
 		pp_cl = alloc_cmdlist_regs(POSTPIPE_REG);
 		//postpipe should be configed no matter whether pq function is on or off
-		dpu_write(hwdev, POSTPIPE_REG, pp_base, value32[0], 0, pp_cl, 0);
+		if (a_crtc->split_en) {
+			dpu_write(hwdev, POSTPIPE_REG, pp_base, value32[0], 0x20, pp_cl, 0);
+		} else {
+			dpu_write(hwdev, POSTPIPE_REG, pp_base, value32[0], 0, pp_cl, 0);
+		}
 		// dpu_writel(hwdev->base, pp_base + 0x34, mode->hdisplay | mode->vdisplay << 16);
 		dpu_write(hwdev, POSTPIPE_REG, pp_base, m_inwidth, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_w : mode->hdisplay, pp_cl, 13);
 		dpu_write(hwdev, POSTPIPE_REG, pp_base, m_inheight, spacemit_crtc_state->post_scl_on ? spacemit_crtc_state->post_scaler_h : mode->vdisplay, pp_cl, 13);

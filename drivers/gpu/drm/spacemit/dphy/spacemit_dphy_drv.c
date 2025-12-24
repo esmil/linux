@@ -36,40 +36,40 @@ static void dphy_set_power(void __iomem *base_addr, bool poweron)
 static void dphy_set_cont_clk(void __iomem *base_addr, bool cont_clk)
 {
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		uint32_t tmp;
+	uint32_t tmp;
 
-		if (cont_clk) {
-			tmp = dptc_dsi_read(0x04);
-			tmp |= CFG_DPHY_CONT_CLK;
-			//dptc_dsi_write(0x04, tmp);
-		} else {
-			tmp = dptc_dsi_read(0x04);
-			tmp &= (~CFG_DPHY_CONT_CLK);
-			//dptc_dsi_write(0x04, tmp);
-		}
-		dptc_dsi_write(0x04, 0x30001);
+	if (cont_clk) {
+		tmp = dptc_dsi_read(0x04);
+		tmp |= CFG_DPHY_CONT_CLK;
+		//dptc_dsi_write(0x04, tmp);
+	} else {
+		tmp = dptc_dsi_read(0x04);
+		tmp &= (~CFG_DPHY_CONT_CLK);
+		//dptc_dsi_write(0x04, tmp);
+	}
+	dptc_dsi_write(0x04, 0x30001);
 #else
-		if (cont_clk)
-			dsi_set_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_CONT_CLK);
-		else
-			dsi_clear_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_CONT_CLK);
+	if (cont_clk)
+		dsi_set_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_CONT_CLK);
+	else
+		dsi_clear_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_CONT_CLK);
 
-		dsi_set_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_ADD_VALID);
-		dsi_set_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_VDD_VALID);
+	dsi_set_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_ADD_VALID);
+	dsi_set_bits(base_addr, DSI_PHY_CTRL_1, CFG_DPHY_VDD_VALID);
 #endif
 }
 
 static void dphy_set_lane_num(void __iomem *base_addr, uint32_t lane_num)
 {
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		uint32_t tmp;
+	uint32_t tmp;
 
-		tmp = dptc_dsi_read(0x08);
-		tmp &= ~CFG_DPHY_LANE_EN_MASK;
-		tmp |= spacemit_dphy_lane[lane_num] << CFG_DPHY_LANE_EN_SHIFT;
-		dptc_dsi_write(0x08, 0);
-		tmp = dptc_dsi_read(0x08);
-		dptc_dsi_write(0x08, 0x30);
+	tmp = dptc_dsi_read(0x08);
+	tmp &= ~CFG_DPHY_LANE_EN_MASK;
+	tmp |= spacemit_dphy_lane[lane_num] << CFG_DPHY_LANE_EN_SHIFT;
+	dptc_dsi_write(0x08, 0);
+	tmp = dptc_dsi_read(0x08);
+	dptc_dsi_write(0x08, 0x30);
 #endif
 	dsi_write_bits(base_addr, DSI_PHY_CTRL_2,
 		CFG_DPHY_LANE_EN_MASK, spacemit_dphy_lane[lane_num] << CFG_DPHY_LANE_EN_SHIFT);
@@ -78,21 +78,20 @@ static void dphy_set_lane_num(void __iomem *base_addr, uint32_t lane_num)
 static void dphy_set_bit_clk_src(void __iomem *base_addr, uint32_t bit_clk_src,
 	uint32_t half_pll5)
 {
-	uint32_t tmp;
-
 	if (bit_clk_src >= DPHY_BIT_CLK_SRC_MAX) {
 		DRM_ERROR("%s: Invalid bit clk src (%d)\n", __func__, bit_clk_src);
 		return;
 	}
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		tmp = dptc_dsi_read(0x68);
-		tmp &= ~CFG_CLK_SEL;
-		dptc_dsi_write(0x68, tmp);
+	uint32_t tmp;
+	tmp = dptc_dsi_read(0x68);
+	tmp &= ~CFG_CLK_SEL;
+	dptc_dsi_write(0x68, tmp);
 
-		tmp = dptc_dsi_read(0x68);
-		tmp &= ~CFG_CLK_DIV2;
-		dptc_dsi_write(0x68, tmp);
+	tmp = dptc_dsi_read(0x68);
+	tmp &= ~CFG_CLK_DIV2;
+	dptc_dsi_write(0x68, tmp);
 #endif
 }
 
@@ -166,9 +165,9 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	DRM_DEBUG("%s: dphy timing 0 :0x%x\n", __func__, reg);
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		dptc_dsi_write(0x40, 0x01000000);
+	dptc_dsi_write(0x40, 0x01000000);
 #else
-		dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_0, reg);
+	dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_0, reg);
 #endif
 	reg = (ta_get << CFG_DPHY_TIME_TA_GET_SHIFT)
 		| (ta_go << CFG_DPHY_TIME_TA_GO_SHIFT)
@@ -177,9 +176,9 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	DRM_DEBUG("%s: dphy timing 1 :0x%x\n", __func__, reg);
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		dptc_dsi_write(0x44, 0x0403001F);
+	dptc_dsi_write(0x44, 0x0403001F);
 #else
-		dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_1, reg);
+	dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_1, reg);
 #endif
 	reg = (ck_exit << CFG_DPHY_TIME_CLK_EXIT_SHIFT)
 		| (ck_trail << CFG_DPHY_TIME_CLK_TRAIL_SHIFT)
@@ -189,9 +188,9 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	DRM_DEBUG("%s: dphy timing 2 :0x%x\n", __func__, reg);
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		dptc_dsi_write(0x48, 0x02010500);
+	dptc_dsi_write(0x48, 0x02010500);
 #else
-		dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_2, reg);
+	dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_2, reg);
 #endif
 	reg = (lpx_clk << CFG_DPHY_TIME_LPX_SHIFT)
 		| phy_timing->req_ready << CFG_DPHY_TIME_REQRDY_SHIFT;
@@ -199,9 +198,9 @@ static void dphy_set_timing(struct spacemit_dphy_ctx *dphy_ctx)
 	DRM_DEBUG("%s: dphy timing 3 :0x%x\n", __func__, reg);
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		dptc_dsi_write(0x4c, 0x001F);
+	dptc_dsi_write(0x4c, 0x001F);
 #else
-		dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_3, reg);
+	dsi_write(dphy_ctx->base_addr, DSI_PHY_TIME_3, reg);
 #endif
 	/* calculated timing on brownstone:
 	 * DSI_PHY_TIME_0 0x06080204

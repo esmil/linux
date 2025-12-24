@@ -50,7 +50,8 @@ enum saturn_hw_version {
 	SATURN_LED,			//lark M
 	SATURN_LEE,			//dove NR
 	SATURN_MEA,			//lark pro
-	SATURN_HEE,			//lark pro
+	SATURN_HEE,			//1st dpu
+	SATURN_EDP,			//2rd dpu
 	/* keep the next entry last */
 	SPACEMIT_DP_MAX_DEVICES
 };

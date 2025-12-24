@@ -56,7 +56,7 @@ enum {
 
 #define TOTAL_RDMA_MEMSIZE	(68 * 1024) /* 68KB */
 #define DSC_COMP_COEF	(3) /* dsc compression coefficient */
-
+#define DSI_PHY_ANA_CTRL1 0x1E8
 //RDMA_FMT_YUV_420_P1_8, RDMA_FMT_YUV_420_P1_10 not support by hardware, has checked with asic
 //rdma hardware support RDMA_FMT_BGRA_16161616/RDMA_FMT_RGBA_16161616 formats are not  support by fourcc
 static const struct dpu_format_id primary_fmts[] = {
@@ -150,6 +150,73 @@ struct spacemit_hw_device spacemit_dp_devices[SPACEMIT_DP_MAX_DEVICES] = {
 		.etm_size = 65,
 		.acad_num = 149,
 		.is_acad_on = false,
+		.is_bl_save_on = false,
+		.dpu_version = SATURN_HEE,
+		.conf_dpuctrl_color_matrix = saturn_hee_conf_dpuctrl_color_matrix,
+		.check_end_matrix = saturn_hee_check_end_matrix,
+		.conf_dpuctrl_acad = saturn_hee_conf_dpuctrl_acad,
+		.conf_ee = saturn_hee_conf_dpuctrl_ee,
+		.update_csc_matrix = saturn_hee_update_csc_matrix,
+		.update_hdr_matrix = saturn_hee_update_hdr_matrix,
+		.conf_scaler_coefs = saturn_hee_conf_scaler_coefs,
+		.conf_scaler_x = saturn_hee_conf_scaler_x,
+		.enable_vsync = saturn_hee_enable_vsync,
+		.enable_cfg_irq = saturn_hee_enable_cfg_irq,
+		.cfg_ready = saturn_hee_cfg_ready,
+		.sw_start = saturn_hee_sw_start,
+		.irq_enable = saturn_hee_irq_enable,
+		.dpu_init = saturn_hee_dpu_init,
+		.conf_gamma_table = saturn_hee_conf_dpuctrl_pp_gamma,
+		.plane_update_hw_channel = saturn_hee_plane_update_hw_channel,
+		.plane_disable_hw_channel = saturn_hee_plane_disable_hw_channel,
+		.conf_dpuctrl = saturn_hee_conf_dpuctrl,
+		.wb_config = saturn_hee_wb_config,
+		.wb_disable = saturn_hee_wb_disable,
+		.is_wb_en = saturn_hee_is_wb_en,
+		.get_cfg_rdy = saturn_hee_get_cfg_rdy,
+		.get_int_sts = saturn_hee_get_int_sts,
+		.get_irq_bit = saturn_hee_get_irq_bit,
+		.clr_int_sts = saturn_hee_clr_int_sts,
+		.dpu_disable = saturn_hee_dpu_disable,
+		.dpu_restart = saturn_hee_dpu_restart,
+		.dpu_stop_check = saturn_hee_dpu_stop_check,
+		.enable_cmdlist = saturn_hee_enable_cmdlist,
+		.cfg_cmdlist = saturn_hee_cfg_cmdlist,
+		.rdma_contig_mem = saturn_hee_rdma_contig_mem,
+		.rdma_dmmu = saturn_hee_rdma_dmmu,
+		.wb_dmmu = saturn_hee_wb_dmmu,
+		.get_cl_rdma_buf = saturn_hee_get_cl_rdma_buf,
+		.cmdlist_fill_data_row = saturn_hee_cmdlist_fill_data_row,
+		.cmdlist_fill_conf_row = saturn_hee_cmdlist_fill_conf_row,
+		.wb_cmdlist = saturn_hee_wb_cmdlist,
+		.cmdlist_dump_node = saturn_hee_cmdlist_dump_node,
+#ifdef CONFIG_SPACEMIT_DEBUG
+		.dpu_dump_rdma_status = hee_dpu_dump_rdma_status,
+		.dpu_dump_reg = hee_dpu_dump_reg,
+#endif
+	},
+	[SATURN_EDP] = {
+		.base = NULL,		/* Parsed by dts */
+		.phy_addr = 0x0,	/* Parsed by dts */
+		.plane_nums = 16,
+		.offline_plane_nums = 1,
+		.crtc_nums = 2,
+		.rdma_nums = ARRAY_SIZE(saturn_hee_rdmas),
+		.rdmas = saturn_hee_rdmas,
+		.n_formats = ARRAY_SIZE(primary_fmts),
+		.formats = primary_fmts,
+		.n_fbcmems = ARRAY_SIZE(saturn_hee_fbcmem_sizes),
+		.fbcmem_sizes = saturn_hee_fbcmem_sizes,
+		.solid_color_shift = 0,
+		.hdr_coef_size = 135,
+		.hor_scale_coef_size = 48,
+		.ver_scale_coef_size = 48,
+		.scaler_num = 1,
+		.gamma_size = 257,
+		.etm_size = 65,
+		.acad_num = 149,
+		.is_acad_on = false,
+		.is_edp =true,
 		.is_bl_save_on = false,
 		.dpu_version = SATURN_HEE,
 		.conf_dpuctrl_color_matrix = saturn_hee_conf_dpuctrl_color_matrix,
@@ -333,36 +400,72 @@ static void dpu_lpm_work_func(struct work_struct *work)
 
 static void dpu_get_pipe_out_node(struct spacemit_crtc *a_crtc)
 {
-	struct device_node *child = NULL;
-	struct device_node *ep_child = NULL;
-	struct device_node *remote = NULL;
-	struct device_node *parent = a_crtc->dev->of_node;
-	uint32_t reg;
+	struct device_node *ports, *port, *ep;
+	struct device_node *remote; /* dsi */
+	struct device_node *child;  /* panel candidate */
+	u32 reg;
 
-	for_each_child_of_node(parent, child) {
-		remote = of_graph_get_remote_port_parent(child);
+	a_crtc->dsi_node = NULL;
+	a_crtc->panel_node = NULL;
+
+	ports = of_get_child_by_name(a_crtc->dev->of_node, "ports");
+	if (!ports) {
+		DRM_ERROR("no ports under %pOF\n", a_crtc->dev->of_node);
+		return;
+	}
+
+	for_each_child_of_node(ports, port) {
+		if (of_property_read_u32(port, "reg", &reg))
+			continue;
+		if (reg != 0)
+			continue;
+
+		ep = of_graph_get_endpoint_by_regs(
+				a_crtc->dev->of_node, reg, 0);
+		if (!ep)
+			continue;
+
+		remote = of_graph_get_remote_port_parent(ep);
 		if (!remote || !of_device_is_available(remote)) {
+			of_node_put(ep);
 			of_node_put(remote);
 			continue;
 		}
 
-		for_each_child_of_node(remote, ep_child) {
-			if (!of_property_read_u32(ep_child, "reg", &reg)) {
-				if (reg == 0) {
-					a_crtc->panel_node = ep_child;
-					a_crtc->dsi_node = remote;
-					break;
-				}
-			}
+		a_crtc->dsi_node = remote;
+
+		DRM_DEBUG(" found dsi node: %pOF\n", remote);
+
+		for_each_child_of_node(remote, child) {
+
+			if (of_node_name_eq(child, "ports"))
+				continue;
+
+			if (!of_device_is_available(child))
+				continue;
+
+			if (!of_property_read_bool(child, "compatible"))
+				continue;
+
+			DRM_DEBUG(" found panel node: %pOF\n", child);
+			a_crtc->panel_node = child;
+			break;
 		}
 
-		if (a_crtc->panel_node && a_crtc->dsi_node)
-			break;
-		of_node_put(remote);
+		of_node_put(ep);
+
+		if (!a_crtc->panel_node) {
+			DRM_ERROR("no panel found under dsi %pOF\n", remote);
+		} else {
+			DRM_DEBUG("SUCCESS: crtc %pOF -> dsi %pOF -> panel %pOF\n",
+				 a_crtc->dev->of_node,
+				 a_crtc->dsi_node,
+				 a_crtc->panel_node);
+		}
+		return;
 	}
 
-	if (!a_crtc->panel_node || !a_crtc->dsi_node)
-		DRM_ERROR("failed to get dsi/panel node\n");
+	DRM_ERROR("failed to get dsi/panel node\n");
 }
 
 static void dpu_parse_panel_dt(struct spacemit_crtc *a_crtc)
@@ -429,6 +532,9 @@ static void dpu_parse_panel_dt(struct spacemit_crtc *a_crtc)
 	if (!of_property_read_u32(lcd_node, "spacemit-dsi-escclk", &value))
 		a_crtc->escclk = value;
 
+	if (!of_property_read_u32(lcd_node, "split-enable", &value))
+		a_crtc->split_en = value;
+
 	if (a_crtc->dsipll_valid) {
 		if (of_property_read_u32(lcd_node, "spacemit-dpu-dsipll-reg0", &a_crtc->dsipll_reg0))
 			a_crtc->dsipll_reg0 = DPU_DSIPLL_REG0_DEFAULT;
@@ -449,7 +555,7 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 	struct platform_device *pdev = to_platform_device(a_crtc->dev);
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		return 0;
+	return 0;
 #endif
 	clk_ctx->pxclk = of_clk_get_by_name(np, "pxclk");
 	if (IS_ERR(clk_ctx->pxclk)) {
@@ -469,16 +575,19 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 		return PTR_ERR(clk_ctx->hclk);
 	}
 
-	clk_ctx->escclk = of_clk_get_by_name(np, "escclk");
-	if (IS_ERR(clk_ctx->escclk)) {
-		pr_err("%s, read escclk failed from dts!\n", __func__);
-		return PTR_ERR(clk_ctx->escclk);
-	}
-
-	clk_ctx->bitclk = of_clk_get_by_name(np, "bitclk");
-	if (IS_ERR(clk_ctx->bitclk)) {
-		clk_ctx->bitclk = NULL;
-		DRM_INFO("%s, read bitclk failed from dts!\n", __func__);
+	if (!a_crtc->is_edp) {
+		clk_ctx->escclk = of_clk_get_by_name(np, "escclk");
+		if (IS_ERR(clk_ctx->escclk)) {
+			pr_err("%s, read escclk failed from dts!\n", __func__);
+			return PTR_ERR(clk_ctx->escclk);
+		}
+		clk_ctx->bitclk = of_clk_get_by_name(np, "bitclk");
+		if (IS_ERR(clk_ctx->bitclk)) {
+			clk_ctx->bitclk = NULL;
+			DRM_INFO("%s, read bitclk failed from dts!\n", __func__);
+		}
+		if (of_property_read_u32(np, "spacemit-dsi-escclk", &a_crtc->escclk))
+			a_crtc->escclk = DPU_ESCCLK_DEFAULT;
 	}
 
 	clk_ctx->aclk = of_clk_get_by_name(np, "aclk");
@@ -500,15 +609,13 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 			(a_crtc->max_mclk > DPU_MCLK_MAX))
 		a_crtc->max_mclk = DPU_MCLK_MAX;
 
-	if (of_property_read_bool(np, "spacemit-dpu-auto-fc"))
-		a_crtc->enable_auto_fc = 1;
-
-	if (of_property_read_u32(np, "spacemit-dsi-escclk", &a_crtc->escclk))
-		a_crtc->escclk = DPU_ESCCLK_DEFAULT;
+	// if (of_property_read_bool(np, "spacemit-dpu-auto-fc"))
+	// 	a_crtc->enable_auto_fc = 1;
 
 	if (of_property_read_bool(np, "spacemit-dpu-dsipll"))
 		a_crtc->dsipll_valid = true;
 
+	//crtc is_offline_mode dts
 	if (a_crtc->dsipll_valid)
 		a_crtc->is_offline_mode = 0;
 	else
@@ -739,9 +846,10 @@ static int dpu_update_clocks(struct spacemit_crtc *a_crtc, uint64_t mclk)
 	int ret = 0;
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		return 0;
+	return 0;
 #endif
-	if (!a_crtc->dsipll_valid || !clk_ctx->mclk)
+	//offline does not change clk
+	if (a_crtc->is_offline_mode || !clk_ctx->mclk)
 		return 0;
 
 	trace_u64_data("update mclk", mclk);
@@ -767,7 +875,7 @@ static int dpu_update_bw(struct spacemit_crtc *a_crtc, uint64_t bw)
 	uint64_t __maybe_unused tmp;
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		return 0;
+	return 0;
 #endif
 	trace_u64_data("update bw", bw);
 	if (a_crtc->cur_bw == bw)
@@ -791,13 +899,13 @@ static int dpu_update_bw(struct spacemit_crtc *a_crtc, uint64_t bw)
 #define PLL_CTRL_REG3   0xcc
 #define PLL_CTRL_STATUS 0x230
 
-#define PLL_LK          BIT(0)
+#define PLL_LK          BIT(29)
 #define PLL_UP          BIT(31)
 #define PLL_DIV_EN      (0xf << 4)
 static void dpu_disable_dsipll(struct spacemit_crtc *a_crtc)
 {
 	/* disable pu */
-	writel(0, a_crtc->dsipll_base + PLL_CTRL_REG1);
+	writel(0, a_crtc->dsipll_base + PLL_CTRL_REG2);
 }
 
 static void dpu_enable_dsipll(struct spacemit_crtc *a_crtc)
@@ -806,29 +914,42 @@ static void dpu_enable_dsipll(struct spacemit_crtc *a_crtc)
 	unsigned int timeout = 100;
 
 	/* not touch reg if running */
-	if (readl(a_crtc->dsipll_base + PLL_CTRL_REG1) & PLL_UP)
+	if (readl(a_crtc->dsipll_base + PLL_CTRL_REG2) & PLL_UP)
 		return;
 
 	/* cfg reg5 - 8 */
-	writel(a_crtc->dsipll_reg0, a_crtc->dsipll_base + PLL_CTRL_REG0);
-
+	// writel(a_crtc->dsipll_reg0, a_crtc->dsipll_base + PLL_CTRL_REG0);
+	writel((0|(0<<8) | (0<<16)|(0x34<<24)), a_crtc->dsipll_base + PLL_CTRL_REG0);
+	/* cfg PLL_DIV */
+	// value = a_crtc->dsipll_reg1;
+	a_crtc->dsipll_reg1 = 0x4581810b;
+	value = 0x4581810b;
+	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG1);
 	/* cfg PLL_EN_DIV */
-	value = a_crtc->dsipll_reg2;
+	// value = a_crtc->dsipll_reg2;
+	value = 0xa00010a0;
 	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG2);
 
 	/* cfg PLL_DIV */
-	value = a_crtc->dsipll_reg1;
-	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG1);
+	// value = a_crtc->dsipll_reg1;
+	// DRM_INFO("Writing dsipll_reg1: 0x%08x to REG1\n", value);
+	// writel(value, a_crtc->dsipll_base + PLL_CTRL_REG1);
+	/* dsi phy clk select, ANA_CTRL1.bit28 = (div1 ? 0 : 1) */
+	if ((a_crtc->dsipll_reg1 & (BIT(29) | BIT(30))) != 0)
+		dpu_set_bit(a_crtc->dsipll_base, DSI_PHY_ANA_CTRL1, BIT(28));
+	else
+		dpu_clr_bit(a_crtc->dsipll_base, DSI_PHY_ANA_CTRL1, BIT(28));
+
 
 	/* pu */
 	value |= PLL_UP;
-	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG1);
+	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG2);
 
 	/* wait pll lock */
 	while (true) {
 		value = readl(a_crtc->dsipll_base + PLL_CTRL_REG3);
 
-		if ((value & PLL_LK) == 1) {
+		if (value & PLL_LK) {
 			DRM_DEBUG("bitclk pll locked\n");
 			break;
 		}
@@ -858,9 +979,9 @@ static int dpu_enable_clocks(struct spacemit_crtc *a_crtc)
 	bool dpu_online_enabled = false;
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		return 0;
+	return 0;
 #endif
-	if (!a_crtc->dsipll_valid)
+	if (a_crtc->is_offline_mode)
 		dpu_online_enabled = __clk_is_enabled(clk_ctx->pxclk);
 
 	if (clk_ctx->hclk)
@@ -925,6 +1046,8 @@ static int dpu_enable_clocks(struct spacemit_crtc *a_crtc)
 
 		clk_val = clk_get_rate(clk_ctx->aclk);
 		set_clk_val = a_crtc->aclk;
+		DRM_INFO("Current aclk rate: %llu, Target: %llu\n", clk_val, set_clk_val);
+
 		if (clk_val != set_clk_val) {
 			clk_val = clk_round_rate(clk_ctx->aclk, set_clk_val);
 			clk_set_rate(clk_ctx->aclk, clk_val);
@@ -961,7 +1084,7 @@ static int dpu_disable_clocks(struct spacemit_crtc *a_crtc)
 	struct dpu_clk_context *clk_ctx = &a_crtc->clk_ctx;
 
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
-		return 0;
+	return 0;
 #endif
 	trace_dpu_disable_clocks(a_crtc->dev_id);
 

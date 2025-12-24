@@ -51,6 +51,8 @@
 #define DSC_MIN_BPP	(6)
 #define DSC_MAX_BPP	(15)
 
+#define DSI1_BASE_ADDR	0xD421AA00
+
 enum spacemit_mipi_burst_mode {
 	DSI_BURST_MODE_NON_BURST_SYNC_PULSE = 0,
 	DSI_BURST_MODE_NON_BURST_SYNC_EVENT = 1,
@@ -183,8 +185,7 @@ struct spacemit_mipi_info {
 	unsigned int work_mode; /*command_mode, video_mode*/
 	unsigned int rgb_mode;
 	unsigned int lane_number;
-	unsigned int phy_bit_clock;
-	unsigned int phy_esc_clock;
+	unsigned int phy_freq;
 	unsigned int split_enable;
 	unsigned int eotp_enable;
 
@@ -240,6 +241,8 @@ struct spacemit_dsi_device {
 	uint16_t id;
 	uint16_t version; /* lark：DSI_VERSION_1, dovenr:DSI_VERSION_2 */
 	void __iomem *base_addr;
+	void __iomem *base_addr_dsi0;
+	void __iomem *base_addr_dsi1;
 	struct regmap *apmu_base;
 	struct spacemit_dsi_advanced_setting adv_setting;
 	struct spacemit_mipi_info mipi_info;

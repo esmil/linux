@@ -7,6 +7,7 @@
 #include <drm/drm_atomic_helper.h>
 #include <linux/atomic.h>
 #include <linux/gpio.h>
+#include <linux/gpio/consumer.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/delay.h>
@@ -1183,6 +1184,7 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 	struct spacemit_panel *panel;
 	struct device *dev = &slave->dev;
 	u32 tmp;
+	struct gpio_desc *gpiod;
 
 	panel = devm_kzalloc(&slave->dev, sizeof(*panel), GFP_KERNEL);
 	if (!panel)
@@ -1224,42 +1226,53 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 			DRM_ERROR("enable lcd regulator vdd_1v2 failed\n");
 	}
 
-	ret = of_property_read_u32(dev->of_node, "gpios-reset", &panel->gpio_reset);
-	if (ret || !gpio_is_valid(panel->gpio_reset)) {
-		dev_err(dev, "Missing dt property: gpios-reset\n");
-		// return -EINVAL;
-	} else {
-		ret = gpio_request(panel->gpio_reset, NULL);
-		if (ret) {
-			pr_err("gpio_reset request fail\n");
+	gpiod = devm_gpiod_get(dev, "reset", GPIOD_ASIS);
+	if (IS_ERR(gpiod)) {
+		ret = PTR_ERR(gpiod);
+		if (ret != -ENOENT) {
+			dev_err(dev, "Failed to get reset-gpios: %d\n", ret);
 			return ret;
 		}
+		dev_warn(dev, "reset-gpios not specified\n");
+		panel->gpio_reset = INVALID_GPIO;
+	} else {
+		panel->gpio_reset = desc_to_gpio(gpiod);
 	}
 
-	ret = of_property_read_u32(dev->of_node, "gpios-bl", &panel->gpio_bl);
-	if (ret || !gpio_is_valid(panel->gpio_bl)) {
-		dev_dbg(dev, "Missing dt property: gpios-bl\n");
+	gpiod = devm_gpiod_get(dev, "bl", GPIOD_ASIS);
+	if (IS_ERR(gpiod)) {
+		ret = PTR_ERR(gpiod);
+		if (ret != -ENOENT) {
+			dev_err(dev, "Failed to get bl-gpios: %d\n", ret);
+			return ret;
+		}
 		panel->gpio_bl = INVALID_GPIO;
 	} else {
-		ret = gpio_request(panel->gpio_bl, NULL);
-		if (ret) {
-			pr_err("gpio_bl request fail\n");
-			return ret;
-		}
+		panel->gpio_bl = desc_to_gpio(gpiod);
 	}
 
-	ret = of_property_read_u32_array(dev->of_node, "gpios-dc", panel->gpio_dc, 2);
-	if (ret || !gpio_is_valid(panel->gpio_dc[0]) || !gpio_is_valid(panel->gpio_dc[1])) {
-		dev_dbg(dev, "Missing dt property: gpios-dc\n");
-		panel->gpio_dc[0] = INVALID_GPIO;
-		panel->gpio_dc[1] = INVALID_GPIO;
-	} else {
-		ret = gpio_request(panel->gpio_dc[0], NULL);
-		ret |= gpio_request(panel->gpio_dc[1], NULL);
-		if (ret) {
-			pr_err("gpio_dc request fail\n");
+	gpiod = devm_gpiod_get(dev, "dc0", GPIOD_ASIS);
+	if (IS_ERR(gpiod)) {
+		ret = PTR_ERR(gpiod);
+		if (ret != -ENOENT) {
+			dev_err(dev, "Failed to get dc0-gpios: %d\n", ret);
 			return ret;
 		}
+		panel->gpio_dc[0] = INVALID_GPIO;
+	} else {
+		panel->gpio_dc[0] = desc_to_gpio(gpiod);
+	}
+
+	gpiod = devm_gpiod_get(dev, "dc1", GPIOD_ASIS);
+	if (IS_ERR(gpiod)) {
+		ret = PTR_ERR(gpiod);
+		if (ret != -ENOENT) {
+			dev_err(dev, "Failed to get dc1-gpios: %d\n", ret);
+			return ret;
+		}
+		panel->gpio_dc[1] = INVALID_GPIO;
+	} else {
+		panel->gpio_dc[1] = desc_to_gpio(gpiod);
 	}
 
 #if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
@@ -1331,11 +1344,9 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 		ret = spacemit_drm_panel_of_backlight(&panel->base, &slave->dev);
 		if (ret || panel->base.backlight == NULL) {
 			DRM_ERROR("panel device get backlight failed\n");
-#ifndef CONFIG_SOC_SPACEMIT_K3_FPGA
-				/* not return to support oled backlight */
-				if (!panel->info.is_oled)
-					return ret;
-#endif
+			/* not return to support oled backlight */
+			// if (!panel->info.is_oled)
+				// return ret;
 		}
 	}
 

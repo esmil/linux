@@ -39,6 +39,8 @@ LIST_HEAD(dpu_core_head);
 
 static int spacemit_crtc_init(struct spacemit_crtc *a_crtc);
 static int spacemit_crtc_uninit(struct spacemit_crtc *a_crtc);
+static int dpu_pm_suspend(struct device *dev);
+static int dpu_pm_resume(struct device *dev);
 
 static atomic_t mclk_cnt = ATOMIC_INIT(0);
 bool dpu_mclk_exclusive_get(void)
@@ -424,10 +426,12 @@ static void spacemit_crtc_atomic_enable(struct drm_crtc *crtc,
 	trace_spacemit_crtc_atomic_enable(a_crtc->dev_id);
 
 	/* If bootloader logo is boot on, release its resources first */
-	if (unlikely(spacemit_dpu_logo_booton))
+	if (unlikely(spacemit_dpu_logo_booton)) {
 		spacemit_dpu_free_bootloader_mem();
-	else
+	} else {
 		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(a_crtc->dev);
+	}
 
 #ifdef CONFIG_SPACEMIT_DEBUG
 	a_crtc->is_working = true;
@@ -455,6 +459,7 @@ static void spacemit_crtc_atomic_disable(struct drm_crtc *crtc,
 #ifdef CONFIG_SPACEMIT_DEBUG
 	a_crtc->is_working = false;
 #endif
+	dpu_pm_suspend(a_crtc->dev);
 	spacemit_dpu_power_enable(a_crtc, false);
 
 	spin_lock_irq(&drm->event_lock);
@@ -1240,7 +1245,7 @@ static int spacemit_dpu_irqs_init(struct spacemit_crtc *a_crtc,
 	if ((irq_online < 0) && (irq_offline < 0)) {
 		DRM_ERROR("failed to get ONLINE irq number %d\n", irq_online);
 		DRM_ERROR("failed to get OFFLINE irq number %d\n", irq_offline);
-		return -EINVAL;
+		// return -EINVAL;
 	}
 	DRM_DEBUG("dpu online_irq = %d\n", irq_online);
 	DRM_DEBUG("dpu offline_irq = %d\n", irq_offline);
@@ -1372,10 +1377,12 @@ static int spacemit_dpu_bind(struct device *dev, struct device *master, void *da
 	struct dpu_clk_context *clk_ctx = NULL;
 #endif
 	DRM_INFO("%s()\n", __func__);
-	if (!a_crtc->dsipll_valid)
+	if (a_crtc->is_offline_mode){
+		dpu_pm_suspend(a_crtc->dev);
 		spacemit_dpu_power_enable(a_crtc, false);
-	else
+	} else {
 		dpu_parse_dsi_ops(a_crtc);
+	}
 
 	ret = spacemit_dpu_irqs_init(a_crtc, np, pdev);
 	if (ret)
@@ -1496,6 +1503,7 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 #endif
 	const char *str;
 	u32 dpu_id;
+	u32 is_edp;
 	u32 dpu_out_format;
 	DRM_INFO("%s()\n", __func__);
 	if (!dev->of_node) {
@@ -1531,6 +1539,10 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 		return -EINVAL;
 	a_crtc->dev_id = dpu_id;
 
+	if (of_property_read_u32(np, "is_edp", &is_edp))
+		return -EINVAL;
+	a_crtc->is_edp = is_edp ? true : false;
+
 	if (of_property_read_u32(np, "out-format", &dpu_out_format))
 		dpu_out_format = OUTFMT_RGB888;
 	a_crtc->out_format = dpu_out_format;
@@ -1564,8 +1576,10 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	 * on/off lcd power domain before/after probe func.
 	 */
 	pm_runtime_enable(&pdev->dev);
-	if (spacemit_dpu_logo_booton)
+	if (spacemit_dpu_logo_booton) {
 		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(&pdev->dev);
+	}
 
 	return component_add(dev, &dpu_component_ops);
 }
@@ -1575,17 +1589,44 @@ static void spacemit_dpu_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &dpu_component_ops);
 }
 
-static int __maybe_unused dpu_rt_pm_suspend(struct device *dev)
+static int __maybe_unused dpu_pm_suspend(struct device *dev)
 {
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
+	int result;
 
 	if (a_crtc->core && a_crtc->core->disable_clk)
 		a_crtc->core->disable_clk(a_crtc);
 
+	if (!IS_ERR_OR_NULL(a_crtc->lcd_reset)) {
+		result = reset_control_assert(a_crtc->lcd_reset);
+		if (result < 0)
+			DRM_INFO("Failed to assert lcd_reset: %d\n", result);
+	}
+	if (!IS_ERR_OR_NULL(a_crtc->esc_reset)) {
+		result = reset_control_assert(a_crtc->esc_reset);
+		if (result < 0)
+			DRM_INFO("Failed to assert esc_reset: %d\n", result);
+	}
+	if (!IS_ERR_OR_NULL(a_crtc->mclk_reset)) {
+		result = reset_control_assert(a_crtc->mclk_reset);
+		if (result < 0)
+			DRM_INFO("Failed to assert mclk_reset: %d\n", result);
+	}
+	if (!IS_ERR_OR_NULL(a_crtc->aclk_reset)) {
+		result = reset_control_assert(a_crtc->aclk_reset);
+		if (result < 0)
+			DRM_INFO("Failed to assert aclk_reset: %d\n", result);
+	}
+	if (!IS_ERR_OR_NULL(a_crtc->dsc_reset)) {
+			result = reset_control_assert(a_crtc->dsc_reset);
+			if (result < 0)
+				DRM_INFO("Failed to assert dsc_reset: %d\n", result);
+	}
+
 	return 0;
 }
 
-static int __maybe_unused dpu_rt_pm_resume(struct device *dev)
+static int __maybe_unused dpu_pm_resume(struct device *dev)
 {
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 	int result;
@@ -1620,6 +1661,24 @@ static int __maybe_unused dpu_rt_pm_resume(struct device *dev)
 
 	if (a_crtc->core && a_crtc->core->enable_clk)
 		a_crtc->core->enable_clk(a_crtc);
+
+	return 0;
+}
+
+static int __maybe_unused dpu_rt_pm_suspend(struct device *dev)
+{
+	// struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
+
+	DRM_INFO("%s() \n", __func__);
+
+	return 0;
+}
+
+static int __maybe_unused dpu_rt_pm_resume(struct device *dev)
+{
+	// struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
+
+	DRM_INFO("%s() \n", __func__);
 
 	return 0;
 }

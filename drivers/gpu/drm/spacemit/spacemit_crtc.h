@@ -174,6 +174,7 @@ struct spacemit_crtc {
 	s32 lpm_bl_qos;
 #endif
 	int dev_id;
+	bool is_edp;
 	struct timer_list cfg_rdy_timer;
 	int wb_id;
 	struct slice_cfg slice_wb[MAX_SLICE];
@@ -244,6 +245,7 @@ struct spacemit_crtc {
 	unsigned int is_offline_mode;
 	unsigned int is_slice_mode;
 	unsigned int slice_num;
+	unsigned int split_en;
 	struct drm_property *offline_mode_property;
 	struct drm_property *post_scaler_property;
 	struct drm_property *acad_status_property;
@@ -434,6 +436,7 @@ struct spacemit_hw_device {
 	enum drm_color_encoding color_encoding;
 	enum drm_color_range color_range;
 	int etm_size;
+	bool is_edp;
 	bool is_acad_on;
 	bool is_bl_save_on;
 	void (*conf_ee)(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);

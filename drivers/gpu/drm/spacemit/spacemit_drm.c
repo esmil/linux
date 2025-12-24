@@ -17,6 +17,9 @@
 #include <linux/of_graph.h>
 #include <linux/of_platform.h>
 #include <linux/kernel.h>
+#include <drm/drm_fbdev_dma.h>
+#include <drm/drm_gem_dma_helper.h>
+// #include <drm/drm_fbdev_shmem.h>
 
 #include "spacemit_drm.h"
 #include "spacemit_dmmu.h"
@@ -346,6 +349,7 @@ static int spacemit_drm_bind(struct device *dev)
 	err = drm_dev_register(drm, 0);
 	if (err < 0)
 		goto err_kms_helper_poll_fini;
+	// drm_fbdev_dma_setup(drm, 0);
 
 	return 0;
 
@@ -477,7 +481,7 @@ static int spacemit_drm_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct resource *r;
 
-	DRM_DEBUG("%s()\n", __func__);
+	DRM_INFO("%s()\n", __func__);
 
 	ret = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (ret)
@@ -552,6 +556,10 @@ static const struct of_device_id drm_match_table[] = {
 	{
 		.compatible = "spacemit,saturn-hee",
 		.data = &spacemit_dp_devices[SATURN_HEE],
+	},
+	{
+		.compatible = "spacemit,saturn-edp",
+		.data = &spacemit_dp_devices[SATURN_EDP],
 	},
 	{},
 
