@@ -6,6 +6,10 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
+		clocks = <&syscon_apmu CLK_APMU_CCI550>;
+		clock-names = "cci";
+		cci-hz = /bits/ 64 <614500000>;
+
 		opp2202000000 {
 			opp-hz = /bits/ 64 <2202000000>, /bits/ 64 <2202000000>;
 			opp-microvolt = <850000>;
