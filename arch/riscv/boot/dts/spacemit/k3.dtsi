@@ -1313,7 +1313,7 @@
 				#power-domain-cells = <1>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				status = "disabled";
+				status = "okay";
 
 				vpu: vpu@0 {
 					#power-domain-cells = <0>;
