@@ -15,7 +15,7 @@ CLEAN_CMD="make distclean && make -C tools/perf clean &&
     rm -f ../linux-tools-common_*_all.deb &&
     rm -f ../${PACKAGE_SRC_NAME}_*_riscv64.*
 "
-BUILD_CMD="make $CONFIG_FILE && make -j\$(nproc)"
+BUILD_CMD="make $CONFIG_FILE && make -j\${JOBS:-\$(nproc)}"
 BUILD_DEB_CMD="make $CONFIG_FILE &&
     sed -i '/CONFIG_INITRAMFS_SOURCE=/d' arch/riscv/configs/$CONFIG_FILE
     VERSION=\$(grep -oP '^VERSION\\s*=\\s*\\K\\d+' Makefile)
@@ -26,7 +26,7 @@ BUILD_DEB_CMD="make $CONFIG_FILE &&
     KDEB_SOURCENAME=$PACKAGE_SRC_NAME \\
     KDEB_PKGVERSION=\$KERNELRELEASE-\$(TZ=Asia/Shanghai date +\"%Y%m%d%H%M%S\") \\
     KDEB_CHANGELOG_DIST=resolute-porting \\
-    make -j\$(nproc) bindeb-pkg
+    make -j\${JOBS:-\$(nproc)} bindeb-pkg
 "
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,6 +37,7 @@ IMAGE_NAME="${IMAGE_NAME:-k3-bsp-builder:latest}"
 CROSS_COMPILE="${CROSS_COMPILE:-riscv64-unknown-linux-gnu-}"
 TOOLCHAIN_PATH="${TOOLCHAIN_PATH:-/opt/spacemit-toolchain-linux-glibc-x86_64-v1.2.2/bin}"
 DIRECT_BUILD="${DIRECT_BUILD:-0}"
+JOBS=""
 
 CLEAN=false
 BUILD_DEB=false
@@ -130,6 +131,7 @@ usage() {
     echo "  -c, --clean          Clean build (CLEAN_CMD before BUILD[_DEB]_CMD)"
     echo "  -d, --deb            Build DEB packages (BUILD_DEB_CMD)"
     echo "  -h, --help           Show this help message"
+    echo "  -j, --jobs NUM       Number of parallel jobs (default: nproc)"
     echo "  -x, --debug          Enable debug output (show docker command)"
     echo ""
     echo "Commands (run inside container):"
@@ -157,6 +159,10 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
+        -j|--jobs)
+            JOBS="$2"
+            shift 2
+            ;;
         -x|--debug)
             DEBUG=true
             shift
@@ -172,6 +178,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ -n "$JOBS" && ! "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid jobs value: $JOBS (must be a positive integer)"
+    exit 1
+fi
 
 # Check if Docker is available
 if [ -z "$DIRECT_BUILD" ] || [ "$DIRECT_BUILD" = "0" ]; then
@@ -202,6 +213,9 @@ if [ -z "$DEBFULLNAME" ]; then
 fi
 
 CONTAINER_ENV=("-e" "ARCH=riscv" "-e" "CROSS_COMPILE=$CROSS_COMPILE" "-e" "PATH=$TOOLCHAIN_PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" "-e" "DEBEMAIL=$DEBEMAIL" "-e" "DEBFULLNAME=$DEBFULLNAME")
+if [[ -n "$JOBS" ]]; then
+    CONTAINER_ENV+=("-e" "JOBS=$JOBS")
+fi
 
 # Function to create user permission files for container
 create_user_files() {
@@ -269,6 +283,9 @@ run_command() {
         (echo "Install cross compile and add to PATH" && exit 1)
         export ARCH=riscv
         export CROSS_COMPILE=riscv64-unknown-linux-gnu-
+        if [[ -n "$JOBS" ]]; then
+            export JOBS
+        fi
         bash -c "$cmd"
     else
         [ "$DEBUG" = true ] && echo "Building in container..."
