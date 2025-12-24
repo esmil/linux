@@ -253,6 +253,15 @@ config CPUFREQ_DT_PLATDEV
 
 	  If in doubt, say N.
 
+config SPACEMIT_K3_CPUFREQ
+	tristate "CPU frequency scaling driver for Spacemit K1X"
+	depends on OF && COMMON_CLK
+	select CPUFREQ_DT
+	select CPUFREQ_DT_PLATDEV
+	help
+	  This adds the CPUFreq driver support for Spacemit K3 SoC
+	  which are capable of changing the CPU's frequency dynamically.
+
 if X86
 source "drivers/cpufreq/Kconfig.x86"
 endif
