@@ -1,0 +1,202 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2023 Spacemit, Inc */
+
+&cpus {
+	clst_core_opp_table0_x100: opp_table0_x100 {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp2202000000 {
+			opp-hz = /bits/ 64 <2202000000>, /bits/ 64 <2202000000>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1500000000 {
+			opp-hz = /bits/ 64 <1500000000>, /bits/ 64 <1500000000>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1229000000 {
+			opp-hz = /bits/ 64 <1229000000>, /bits/ 64 <1229000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1100000000 {
+			opp-hz = /bits/ 64 <1100000000>, /bits/ 64 <1100000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1000000000 {
+			opp-hz = /bits/ 64 <1000000000>, /bits/ 64 <1000000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp819000000 {
+			opp-hz = /bits/ 64 <819200000>, /bits/ 64 <819200000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp614500000 {
+			opp-hz = /bits/ 64 <614500000>, /bits/ 64 <614500000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+	};
+
+	clst_core_opp_table0_a100: opp_table0_a100 {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp2200000000 {
+			opp-hz = /bits/ 64 <2200000000>, /bits/ 64 <2200000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1500000000 {
+			opp-hz = /bits/ 64 <1500000000>, /bits/ 64 <1500000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1229000000 {
+			opp-hz = /bits/ 64 <1229000000>, /bits/ 64 <1229000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1100000000 {
+			opp-hz = /bits/ 64 <1100000000>, /bits/ 64 <1100000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp1000000000 {
+			opp-hz = /bits/ 64 <1000000000>, /bits/ 64 <1000000000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp819000000 {
+			opp-hz = /bits/ 64 <819200000>, /bits/ 64 <819200000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp614500000 {
+			opp-hz = /bits/ 64 <614500000>, /bits/ 64 <614500000>;
+			opp-microvolt = <800000>;
+			clock-latency-ns = <200000>;
+		};
+	};
+};
+
+&cpu_0 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_1 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_2 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_3 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_4 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_5 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_6 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_7 {
+	clst-supply = <&edcdc1>;
+	clocks = <&syscon_apmu CLK_APMU_CPU_C0_CORE>, <&syscon_apmu CLK_APMU_CPU_C1_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_x100>;
+};
+
+&cpu_8 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_9 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_10 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_11 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_12 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_13 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_14 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
+
+&cpu_15 {
+	clocks = <&syscon_apmu CLK_APMU_CPU_C2_CORE>, <&syscon_apmu CLK_APMU_CPU_C3_CORE>;
+	clock-names = "cls0", "cls1";
+	operating-points-v2 = <&clst_core_opp_table0_a100>;
+};
