@@ -96,6 +96,12 @@
 		};
 	};
 
+	usb20_host_drv_3_cfg {
+		usb20_host_drv-pins {
+			power-source  = <1800>;
+		};
+	};
+
 	usb30_drd_id_vbus_cfg: usb30_drd-id-vbus-cfg {
 		usb30_drd-pins {
 			pinmux = <K3_PADCONF(116, 2)>,	/* usb30 drd id */
