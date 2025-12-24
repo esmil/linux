@@ -324,7 +324,7 @@
 		};
 
 		syscon_apbc: system-controller@d4015000 {
-			compatible = "spacemit,k3-syscon-apbc";
+			compatible = "spacemit,k3-syscon-apbc", "syscon";
 			reg = <0x0 0xd4015000 0x0 0x1000>;
 			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
 				 <&reserved_clk>, <&external_clk>;
@@ -431,9 +431,11 @@
 
 		pinctrl: pinctrl@d401e000 {
 			compatible = "spacemit,k3-pinctrl";
-			reg = <0x0 0xd401e000 0x0 0x400>;
+			reg = <0x0 0xd401e000 0x0 0x400>,
+			      <0x0 0xd401e800 0x0 0x34>;
 			syscon = <&syscon_gpio>;
 			syscon-edge = <&syscon_gpio_edge>;
+			spacemit,apbc = <&syscon_apbc 0x50>;
 		};
 
 		pdma: pdma@d4000000 {
