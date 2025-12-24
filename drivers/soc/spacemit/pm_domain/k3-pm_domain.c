@@ -126,7 +126,7 @@ static int rpmi_domain_handle_state(struct spacemit_pm_domain *spd, bool enable)
 	if (ret)
 		return ret;
 
-	if (rx.status)
+	if (rx.status && (rx.status != RPMI_ERR_ALREADY))
 		return rpmi_to_linux_error(rx.status);
 
 	return 0;
@@ -456,7 +456,7 @@ static int spacemit_pm_add_one_domain(struct spacemit_pmu *pmu, struct device_no
 	pd->genpd.dev_ops.stop = spacemit_genpd_stop;
 	pd->genpd.dev_ops.start = spacemit_genpd_start;
 
-	pm_genpd_init(&pd->genpd, NULL, false);
+	pm_genpd_init(&pd->genpd, NULL, true);
 
 	pmu->domains[num] = pd;
 
