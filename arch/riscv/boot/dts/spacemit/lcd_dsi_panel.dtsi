@@ -31,6 +31,7 @@
 		reset-names= "mclk_reset", "lcd_reset", "esc_reset", "aclk_reset", "dsc_reset";
 		power-domains = <&power K3_PMU_LCD0_PWR_DOMAIN>;
 		pipeline-id = <1>;
+		is_edp = <0>;
 		ip = "spacemit-saturn";
 		spacemit-dpu-min-mclk = <40960000>;
 		spacemit-dpu-dsipll;
@@ -39,14 +40,14 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		
+
 			port@0 {
 				reg = <0>;
 				dpu_crtc0_out0: endpoint@0 {
 					remote-endpoint = <&dsi0_in>;
 				};
 			};
-			
+
 			port@1 {
 				reg = <1>;
 				dpu_crtc0_out1: endpoint@1 {
@@ -62,14 +63,15 @@
 		interrupt-parent = <&saplic>;
 		interrupts = <89 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "OFFLINE_IRQ";
-		pipeline-id = <1>;
+		pipeline-id = <2>;
+		is_edp = <1>;
 		ip = "spacemit-saturn";
 		spacemit-dpu-min-mclk = <40960000>;
 		status = "disabled";
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
-		
+
 			port@0 {
 				reg = <0>;
 				dpu_crtc1_out0: endpoint@0 {
