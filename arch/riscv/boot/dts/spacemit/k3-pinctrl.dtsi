@@ -2142,57 +2142,130 @@
 	};
 
 	gmac0_cfg: gmac0-cfg {
-		gmac0-pins {
-			pinmux = <K3_PADCONF(0, 1)>,	/* gmac0 rxdv */
+		/* Base pins: - Used by RMII directly */
+		gmac0_base_pins: gmac0-0-pins {
+			pinmux = <K3_PADCONF(0, 1)>,	/* gmac0 rxdv / crs_dv / rx_ctl (mode dependent) */
 				 <K3_PADCONF(1, 1)>,	/* gmac0 rx d0 */
-				 <K3_PADCONF(2, 1)>,	/* gmac0 rx d1*/
-				 <K3_PADCONF(3, 1)>,	/* gmac0 rx clk */
-				 <K3_PADCONF(4, 1)>,	/* gmac0 rx d2 */
-				 <K3_PADCONF(5, 1)>,	/* gmac0 rx d3 */
+				 <K3_PADCONF(2, 1)>,	/* gmac0 rx d1 */
+				 <K3_PADCONF(3, 1)>,	/* gmac0 rxc / rx clk / ref_clk (mode dependent) */
 				 <K3_PADCONF(6, 1)>,	/* gmac0 tx d0 */
 				 <K3_PADCONF(7, 1)>,	/* gmac0 tx d1 */
+				 <K3_PADCONF(11, 1)>,	/* gmac0 tx en / tx_ctl (mode dependent) */
+				 <K3_PADCONF(12, 1)>,	/* gmac0 mdc */
+				 <K3_PADCONF(13, 1)>;	/* gmac0 mdio */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* RGMII extra pins: add on top of base pins */
+		gmac0_rgmii_add_pins: gmac0-1-pins {
+			pinmux = <K3_PADCONF(4, 1)>,	/* gmac0 rx d2 */
+				 <K3_PADCONF(5, 1)>,	/* gmac0 rx d3 */
 				 <K3_PADCONF(8, 1)>,	/* gmac0 tx clk */
 				 <K3_PADCONF(9, 1)>,	/* gmac0 tx d2 */
-				 <K3_PADCONF(10, 1)>,	/* gmac0 tx d3 */
-				 <K3_PADCONF(11, 1)>,	/* gmac0 tx en */
-				 <K3_PADCONF(12, 1)>,	/* gmac0 mdc */
-				 <K3_PADCONF(13, 1)>,	/* gmac0 mdio */
-				 <K3_PADCONF(14, 1)>,	/* gmac0 int */
-				 <K3_PADCONF(15, 1)>,	/* gmac0 rxer */
+				 <K3_PADCONF(10, 1)>;	/* gmac0 tx d3 */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* MII extra pins: add on top of (base + rgmii extra pins) */
+		gmac0_mii_add_pins: gmac0-2-pins {
+			pinmux = <K3_PADCONF(15, 1)>,	/* gmac0 rxer */
 				 <K3_PADCONF(16, 1)>,	/* gmac0 txer */
 				 <K3_PADCONF(17, 1)>,	/* gmac0 crs */
-				 <K3_PADCONF(18, 1)>,	/* gmac0 col */
-				 <K3_PADCONF(19, 1)>,	/* gmac0 pps */
-				 <K3_PADCONF(20, 1)>;	/* gmac0 clk ref */
+				 <K3_PADCONF(18, 1)>;	/* gmac0 col */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional int pins */
+		gmac0_int_pins: gmac0-3-pins {
+			pinmux = <K3_PADCONF(14, 1)>;	/* gmac0 int (from phy) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional pps pins */
+		gmac0_pps_pins: gmac0-4-pins {
+			pinmux = <K3_PADCONF(19, 1)>;	/* gmac0 pps (tsn/1588) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional reference clock output */
+		gmac0_refclk_pins: gmac0-5-pins {
+			pinmux = <K3_PADCONF(20, 1)>;	/* gmac0 clk ref */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
+
 	gmac1_cfg: gmac1-cfg {
-		gmac0-pins {
-			pinmux = <K3_PADCONF(21, 1)>,	/* gmac1 rxdv */
+		/* Base pins: - Used by RMII directly */
+		gmac1_base_pins: gmac1-0-pins {
+			pinmux = <K3_PADCONF(21, 1)>,	/* gmac1 rxdv / crs_dv / rx_ctl (mode dependent) */
 				 <K3_PADCONF(22, 1)>,	/* gmac1 rx d0 */
-				 <K3_PADCONF(23, 1)>,	/* gmac1 rx d1*/
-				 <K3_PADCONF(24, 1)>,	/* gmac1 rx clk */
-				 <K3_PADCONF(25, 1)>,	/* gmac1 rx d2 */
-				 <K3_PADCONF(26, 1)>,	/* gmac1 rx d3 */
+				 <K3_PADCONF(23, 1)>,	/* gmac1 rx d1 */
+				 <K3_PADCONF(24, 1)>,	/* gmac1 rxc / rx clk / ref_clk (mode dependent) */
 				 <K3_PADCONF(27, 1)>,	/* gmac1 tx d0 */
 				 <K3_PADCONF(28, 1)>,	/* gmac1 tx d1 */
+				 <K3_PADCONF(32, 1)>,	/* gmac1 tx en / tx_ctl (mode dependent) */
+				 <K3_PADCONF(33, 1)>,	/* gmac1 mdc */
+				 <K3_PADCONF(34, 1)>;	/* gmac1 mdio */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* RGMII extra pins: add on top of base pins */
+		gmac1_rgmii_add_pins: gmac1-1-pins {
+			pinmux = <K3_PADCONF(25, 1)>,	/* gmac1 rx d2 */
+				 <K3_PADCONF(26, 1)>,	/* gmac1 rx d3 */
 				 <K3_PADCONF(29, 1)>,	/* gmac1 tx clk */
 				 <K3_PADCONF(30, 1)>,	/* gmac1 tx d2 */
-				 <K3_PADCONF(31, 1)>,	/* gmac1 tx d3 */
-				 <K3_PADCONF(32, 1)>,	/* gmac1 tx en */
-				 <K3_PADCONF(33, 1)>,	/* gmac1 mdc */
-				 <K3_PADCONF(34, 1)>,	/* gmac1 mdio */
-				 <K3_PADCONF(35, 1)>,	/* gmac1 int */
-				 <K3_PADCONF(36, 1)>,	/* gmac1 rxer */
+				 <K3_PADCONF(31, 1)>;	/* gmac1 tx d3 */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* MII extra pins: add on top of (base + rgmii extra pins) */
+		gmac1_mii_add_pins: gmac1-2-pins {
+			pinmux = <K3_PADCONF(36, 1)>,	/* gmac1 rxer */
 				 <K3_PADCONF(37, 1)>,	/* gmac1 txer */
 				 <K3_PADCONF(38, 1)>,	/* gmac1 crs */
-				 <K3_PADCONF(39, 1)>,	/* gmac1 col */
-				 <K3_PADCONF(40, 1)>,	/* gmac1 pps */
-				 <K3_PADCONF(41, 1)>;	/* gmac1 clk ref */
+				 <K3_PADCONF(39, 1)>;	/* gmac1 col */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional int pins */
+		gmac1_int_pins: gmac1-3-pins {
+			pinmux = <K3_PADCONF(35, 1)>;	/* gmac1 int (from phy) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional pps pins */
+		gmac1_pps_pins: gmac1-4-pins {
+			pinmux = <K3_PADCONF(40, 1)>;	/* gmac1 pps (tsn/1588) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional reference clock output */
+		gmac1_refclk_pins: gmac1-5-pins {
+			pinmux = <K3_PADCONF(41, 1)>;	/* gmac1 clk ref */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
@@ -2200,49 +2273,107 @@
 	};
 
 	gmac2_cfg: gmac2-cfg {
-		gmac0-pins {
-			pinmux = <K3_PADCONF(42, 1)>,	/* gmac2 rxdv */
+		/* Base pins: - Used by RMII directly */
+		gmac2_base_pins: gmac2-0-pins {
+			pinmux = <K3_PADCONF(42, 1)>,	/* gmac2 rxdv / crs_dv / rx_ctl (mode dependent) */
 				 <K3_PADCONF(43, 1)>,	/* gmac2 rx d0 */
-				 <K3_PADCONF(44, 1)>,	/* gmac2 rx d1*/
-				 <K3_PADCONF(45, 1)>,	/* gmac2 rx clk */
-				 <K3_PADCONF(46, 1)>,	/* gmac2 rx d2 */
-				 <K3_PADCONF(47, 1)>,	/* gmac2 rx d3 */
+				 <K3_PADCONF(44, 1)>,	/* gmac2 rx d1 */
+				 <K3_PADCONF(45, 1)>,	/* gmac2 rxc / rx clk / ref_clk (mode dependent) */
 				 <K3_PADCONF(48, 1)>,	/* gmac2 tx d0 */
 				 <K3_PADCONF(49, 1)>,	/* gmac2 tx d1 */
+				 <K3_PADCONF(53, 1)>,	/* gmac2 tx en / tx_ctl (mode dependent) */
+				 <K3_PADCONF(54, 1)>,	/* gmac2 mdc */
+				 <K3_PADCONF(55, 1)>;	/* gmac2 mdio */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* RGMII extra pins: add on top of base pins */
+		gmac2_rgmii_add_pins: gmac2-1-pins {
+			pinmux = <K3_PADCONF(46, 1)>,	/* gmac2 rx d2 */
+				 <K3_PADCONF(47, 1)>,	/* gmac2 rx d3 */
 				 <K3_PADCONF(50, 1)>,	/* gmac2 tx clk */
 				 <K3_PADCONF(51, 1)>,	/* gmac2 tx d2 */
-				 <K3_PADCONF(52, 1)>,	/* gmac2 tx d3 */
-				 <K3_PADCONF(53, 1)>,	/* gmac2 tx en */
-				 <K3_PADCONF(54, 1)>,	/* gmac2 mdc */
-				 <K3_PADCONF(55, 1)>,	/* gmac2 mdio */
-				 <K3_PADCONF(56, 1)>,	/* gmac2 int */
-				 <K3_PADCONF(57, 1)>,	/* gmac2 clk ref */
-				 <K3_PADCONF(58, 1)>;	/* gmac2 pps */
+				 <K3_PADCONF(52, 1)>;	/* gmac2 tx d3 */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional int pins */
+		gmac2_int_pins: gmac2-2-pins {
+			pinmux = <K3_PADCONF(56, 1)>;	/* gmac2 int (from phy) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional pps pins */
+		gmac2_pps_pins: gmac2-3-pins {
+			pinmux = <K3_PADCONF(58, 1)>;	/* gmac2 pps (tsn/1588) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional reference clock output */
+		gmac2_refclk_pins: gmac2-4-pins {
+			pinmux = <K3_PADCONF(57, 1)>;	/* gmac2 clk ref */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
 		};
 	};
 
-	rgmac0_cfg: rgmac0-cfg {
-		rgmac0-pins {
-			pinmux = <K3_PADCONF(59, 1)>,	/* rgmac0 rxdv */
-				 <K3_PADCONF(60, 1)>,	/* rgmac0 rx d0 */
-				 <K3_PADCONF(61, 1)>,	/* rgmac0 rx d1*/
-				 <K3_PADCONF(62, 1)>,	/* rgmac0 rx clk */
-				 <K3_PADCONF(63, 1)>,	/* rgmac0 rx d2 */
-				 <K3_PADCONF(64, 1)>,	/* rgmac0 rx d3 */
-				 <K3_PADCONF(65, 1)>,	/* rgmac0 tx d0 */
-				 <K3_PADCONF(66, 1)>,	/* rgmac0 tx d1 */
-				 <K3_PADCONF(67, 1)>,	/* rgmac0 tx clk */
-				 <K3_PADCONF(68, 1)>,	/* rgmac0 tx d2 */
-				 <K3_PADCONF(69, 1)>,	/* rgmac0 tx d3 */
-				 <K3_PADCONF(70, 1)>,	/* rgmac0 tx en */
-				 <K3_PADCONF(71, 1)>,	/* rgmac0 mdc */
-				 <K3_PADCONF(72, 1)>,	/* rgmac0 mdio */
-				 <K3_PADCONF(73, 1)>,	/* rgmac0 int */
-				 <K3_PADCONF(74, 1)>,	/* rgmac0 clk ref */
-				 <K3_PADCONF(75, 1)>;	/* rgmac0 pps */
+	gmac3_cfg: gmac3-cfg {
+		/* Base pins: - Used by RMII directly */
+		gmac3_base_pins: gmac3-0-pins {
+			pinmux = <K3_PADCONF(59, 1)>,	/* gmac3 rxdv / crs_dv / rx_ctl (mode dependent) */
+				 <K3_PADCONF(60, 1)>,	/* gmac3 rx d0 */
+				 <K3_PADCONF(61, 1)>,	/* gmac3 rx d1 */
+				 <K3_PADCONF(62, 1)>,	/* gmac3 rxc / rx clk / ref_clk (mode dependent) */
+				 <K3_PADCONF(65, 1)>,	/* gmac3 tx d0 */
+				 <K3_PADCONF(66, 1)>,	/* gmac3 tx d1 */
+				 <K3_PADCONF(70, 1)>,	/* gmac3 tx en / tx_ctl (mode dependent) */
+				 <K3_PADCONF(71, 1)>,	/* gmac3 mdc */
+				 <K3_PADCONF(72, 1)>;	/* gmac3 mdio */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* RGMII extra pins: add on top of base pins */
+		gmac3_rgmii_add_pins: gmac3-1-pins {
+			pinmux = <K3_PADCONF(63, 1)>,	/* gmac3 rx d2 */
+				 <K3_PADCONF(64, 1)>,	/* gmac3 rx d3 */
+				 <K3_PADCONF(67, 1)>,	/* gmac3 tx clk */
+				 <K3_PADCONF(68, 1)>,	/* gmac3 tx d2 */
+				 <K3_PADCONF(69, 1)>;	/* gmac3 tx d3 */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional int pins */
+		gmac3_int_pins: gmac3-2-pins {
+			pinmux = <K3_PADCONF(73, 1)>;	/* gmac3 int (from phy) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional pps pins */
+		gmac3_pps_pins: gmac3-3-pins {
+			pinmux = <K3_PADCONF(75, 1)>;	/* gmac3 pps (tsn/1588) */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+
+		/* Optional reference clock output */
+		gmac3_refclk_pins: gmac3-4-pins {
+			pinmux = <K3_PADCONF(74, 1)>;	/* gmac3 clk ref */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
