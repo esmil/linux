@@ -36,6 +36,7 @@ struct private_data {
 
 static LIST_HEAD(priv_list);
 
+#ifndef CONFIG_SOC_SPACEMIT
 static struct private_data *cpufreq_dt_find_data(int cpu)
 {
 	struct private_data *priv;
@@ -47,6 +48,24 @@ static struct private_data *cpufreq_dt_find_data(int cpu)
 
 	return NULL;
 }
+#else
+struct private_data *cpufreq_dt_find_data(int cpu)
+{
+	struct private_data *priv;
+
+	list_for_each_entry(priv, &priv_list, node) {
+		if (cpumask_test_cpu(cpu, priv->cpus))
+			return priv;
+	}
+
+	return NULL;
+}
+
+void cpufreq_dt_add_data(struct private_data *priv)
+{
+	list_add(&priv->node, &priv_list);
+}
+#endif
 
 static int set_target(struct cpufreq_policy *policy, unsigned int index)
 {

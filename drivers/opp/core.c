@@ -763,8 +763,13 @@ EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_exact_indexed);
 static noinline struct dev_pm_opp *_find_freq_ceil(struct opp_table *opp_table,
 						   unsigned long *freq)
 {
+#ifndef CONFIG_SOC_SPACEMIT
 	return _opp_table_find_key_ceil(opp_table, freq, 0, true, _read_freq,
 					assert_single_clk);
+#else
+	return _opp_table_find_key_ceil(opp_table, freq, 0, true, _read_freq,
+					NULL);
+#endif
 }
 
 /**
@@ -788,7 +793,11 @@ static noinline struct dev_pm_opp *_find_freq_ceil(struct opp_table *opp_table,
 struct dev_pm_opp *dev_pm_opp_find_freq_ceil(struct device *dev,
 					     unsigned long *freq)
 {
+#ifndef CONFIG_SOC_SPACEMIT
 	return _find_key_ceil(dev, freq, 0, true, _read_freq, assert_single_clk);
+#else
+	return _find_key_ceil(dev, freq, 0, true, _read_freq, NULL);
+#endif
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_ceil);
 
