@@ -5,6 +5,8 @@
 #include "k3-rdomain.dtsi"
 #include "k3-pinctrl.dtsi"
 #include "k3_opp_table.dtsi"
+#include "lcd_dsi_panel.dtsi"
+#include "lcd/lcd_icnl9911c_mipi.dtsi"
 
 / {
 	compatible = "spacemit,k3-evb";
@@ -636,3 +638,33 @@
 	};
 };
 */
+
+&dpu_crtc0 {
+	memory-region = <&dpu_resv0>;
+	status = "okay";
+};
+
+&dpu_crtc1 {
+	memory-region = <&dpu_resv1>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+
+	panel0: panel0@0 {
+		status = "ok";
+		compatible = "spacemit,mipi-panel";
+		reg = <0>;
+		reset-gpios = <&gpio 1 31 GPIO_ACTIVE_HIGH>;
+		bl-gpios = <&gpio 1 29 GPIO_ACTIVE_HIGH>;
+		dc0-gpios = <&gpio 1 24 GPIO_ACTIVE_HIGH>;
+		dc1-gpios = <&gpio 1 25 GPIO_ACTIVE_HIGH>;
+		id = <2>;
+		force-attached = "lcd_icnl9911c_mipi";
+	};
+};
+
+&lcds {
+	status = "okay";
+};
