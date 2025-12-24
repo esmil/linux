@@ -596,6 +596,8 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 	struct stmmac_resources stmmac_res;
 	struct plat_stmmacenet_data *plat_dat;
 	const struct spacemit_ethqos_ops *ops;
+	struct net_device *ndev;
+	struct stmmac_priv *priv;
 	int ret;
 
 	ops = of_device_get_match_data(dev);
@@ -619,6 +621,14 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 		spacemit_glue_deinit(pdev, plat_dat, ops);
 		return ret;
 	}
+
+	/*
+	 * At present, enabling EEE on some board may cause TX timeouts.
+	 * This is expected to be improved in future revisions.
+	 */
+	ndev = platform_get_drvdata(pdev);
+	priv = netdev_priv(ndev);
+	priv->dma_cap.eee = 0;
 
 	return 0;
 }
