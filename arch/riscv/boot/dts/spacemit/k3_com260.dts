@@ -108,6 +108,22 @@
 	status = "disabled";
 };
 
+&sdcard {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc1_cfg>;
+	bus-width = <4>;
+	wp-inverted;
+	broken-cd;
+	//cd-gpios = <&gpio 0 5 GPIO_ACTIVE_LOW>;
+	//vmmc-supply = <&dcdc_4>;
+	vqmmc-supply = <&aldo1>;
+	no-mmc;
+	no-sdio;
+	clock-frequency = <204800000>;
+	spacemit,tx_delaycode = <0x9f>;
+	status = "okay";
+};
+
 &usb2_host_u2phy {
 	status = "disabled";
 };
