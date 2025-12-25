@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/version.h>
 #include "power.h"
+#include "sysconfig.h"
 #include "spacemit_init.h"
 #include "pvrsrv_device.h"
 #include "syscommon.h"
@@ -328,7 +329,7 @@ struct st_context *RgxStInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 		goto fail;
 	}
 
-	clk_set_rate(platform->gpu_clk, 409600000);
+	clk_set_rate(platform->gpu_clk, RGX_ST_CORE_CLOCK_SPEED);
 
 	if (psRGXData && psRGXData->psRGXTimingInfo)
 	{

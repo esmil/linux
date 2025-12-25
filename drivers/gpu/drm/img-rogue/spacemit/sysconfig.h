@@ -49,9 +49,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define SYS_RGX_ACTIVE_POWER_LATENCY_MS (100)
 //for st soc
-#define RGX_ST_CORE_CLOCK_SPEED (100*1000*1000)
+#define RGX_ST_CORE_CLOCK_SPEED (819*1000*1000)
 #define ST_GPU_PBASE        0xcac00000
-#define ST_GPU_SIZE         0x10000
+#define ST_GPU_SIZE         0x80000
 #define ST_IRQ_GPU          59
 /*****************************************************************************
  * system specific data structures
