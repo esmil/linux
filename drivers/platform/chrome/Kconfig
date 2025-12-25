@@ -5,7 +5,7 @@
 
 menuconfig CHROME_PLATFORMS
 	bool "Platform support for Chrome hardware"
-	depends on X86 || ARM || ARM64 || COMPILE_TEST
+	depends on X86 || ARM || ARM64 || RISCV || COMPILE_TEST
 	help
 	  Say Y here to get to see options for platform support for
 	  various Chromebooks and Chromeboxes. This option alone does
@@ -75,7 +75,7 @@ config CHROMEOS_OF_HW_PROBER
 config CROS_EC
 	tristate "ChromeOS Embedded Controller"
 	select CROS_EC_PROTO
-	depends on X86 || ARM || ARM64 || COMPILE_TEST
+	depends on X86 || ARM || ARM64 || RISCV || COMPILE_TEST
 	help
 	  If you say Y here you get support for the ChromeOS Embedded
 	  Controller (EC) providing keyboard, battery and power services.
@@ -156,7 +156,7 @@ config CROS_EC_LPC
 
 config CROS_EC_ESPI
 	tristate "ChromeOS Embedded Controller (eSPI)"
-	depends on CROS_EC && (X86 || ARM || ARM64 || COMPILE_TEST)
+	depends on CROS_EC && (X86 || ARM || ARM64 || RISCV || COMPILE_TEST)
 	help
 	  If you say Y here, you get support for talking to the ChromeOS EC
 	  over an eSPI bus using shared memory access. This driver converts
