@@ -248,13 +248,11 @@ static int clk_phase_rgmii_set(struct spacemit_ethqos *eqos, bool is_tx)
 
 	case CLK_TUNING_BY_DLINE:
 		if (is_tx) {
-			mask = EMAC_TX_DLINE_CODE_MASK | EMAC_TX_DLINE_EN;
-			val  = FIELD_PREP(EMAC_TX_DLINE_CODE_MASK, eqos->tx_clk_phase) |
-			       EMAC_TX_DLINE_EN;
+			mask = EMAC_TX_DLINE_CODE_MASK;
+			val  = FIELD_PREP(EMAC_TX_DLINE_CODE_MASK, eqos->tx_clk_phase);
 		} else {
-			mask = EMAC_RX_DLINE_CODE_MASK | EMAC_RX_DLINE_EN;
-			val  = FIELD_PREP(EMAC_RX_DLINE_CODE_MASK, eqos->rx_clk_phase) |
-			       EMAC_RX_DLINE_EN;
+			mask = EMAC_RX_DLINE_CODE_MASK;
+			val  = FIELD_PREP(EMAC_RX_DLINE_CODE_MASK, eqos->rx_clk_phase);
 		}
 		ret = regmap_update_bits(eqos->apmu, eqos->dline_off, mask, val);
 		break;
@@ -283,6 +281,20 @@ static int clk_phase_set(struct spacemit_ethqos *eqos, bool is_tx)
 		return clk_phase_rgmii_set(eqos, is_tx);
 	else
 		return clk_phase_rmii_set(eqos, is_tx);
+}
+
+static int spacemit_rgmii_dline_enable(struct spacemit_ethqos *eqos)
+{
+	u32 mask = EMAC_TX_DLINE_EN | EMAC_RX_DLINE_EN;
+	int ret;
+
+	ret = regmap_update_bits(eqos->apmu, eqos->dline_off,
+				 mask, mask);
+	if (ret)
+		dev_err(&eqos->pdev->dev,
+			"failed to enable RGMII delayline\n");
+
+	return ret;
 }
 
 static int k3_eqos_iface_config(struct spacemit_ethqos *eqos)
@@ -576,7 +588,22 @@ static int k3_bind_plat_ops(struct spacemit_ethqos *eqos)
 
 static int k3_setup_plat(struct spacemit_ethqos *eqos)
 {
-	return k3_eqos_iface_config(eqos);
+	int ret;
+
+	ret = k3_eqos_iface_config(eqos);
+	if (ret)
+		return ret;
+
+	/*
+	 * On k3 platforms, the delayline must be enabled during probe;
+	 * otherwise the GMAC will fail to operate.
+	 * Runtime phase tuning only updates the delay value.
+	 */
+	if (!eqos->clk_tuning_enable ||
+	    eqos->clk_tuning_way != CLK_TUNING_BY_DLINE)
+		return 0;
+
+	return spacemit_rgmii_dline_enable(eqos);
 }
 
 static const struct spacemit_ethqos_ops k3_gmac_ops = {
