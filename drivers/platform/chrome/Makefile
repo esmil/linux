@@ -25,6 +25,7 @@ endif
 obj-$(CONFIG_CROS_EC_TYPEC)		+= cros-ec-typec.o
 
 obj-$(CONFIG_CROS_EC_LPC)		+= cros_ec_lpcs.o
+obj-$(CONFIG_CROS_EC_ESPI)		+= cros_ec_espi.o
 cros-ec-proto-objs			:= cros_ec_proto.o cros_ec_trace.o
 obj-$(CONFIG_CROS_EC_PROTO)		+= cros-ec-proto.o
 obj-$(CONFIG_CROS_KBD_LED_BACKLIGHT)	+= cros_kbd_led_backlight.o

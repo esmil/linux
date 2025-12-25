@@ -154,6 +154,22 @@ config CROS_EC_LPC
 	  To compile this driver as a module, choose M here: the
 	  module will be called cros_ec_lpcs.
 
+config CROS_EC_ESPI
+	tristate "ChromeOS Embedded Controller (eSPI)"
+	depends on CROS_EC && (X86 || ARM || ARM64 || COMPILE_TEST)
+	help
+	  If you say Y here, you get support for talking to the ChromeOS EC
+	  over an eSPI bus using shared memory access. This driver converts
+	  LPC I/O port accesses to eSPI shared memory accesses, maintaining
+	  compatibility with existing EC communication protocols while
+	  utilizing the eSPI interface.
+
+	  This uses a simple byte-level protocol with a checksum and supports
+	  both protocol v2 and v3 for EC communication.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cros_ec_espi.
+
 config CROS_EC_PROTO
 	tristate
 	help

@@ -247,7 +247,7 @@ int cros_ec_register(struct cros_ec_device *ec_dev)
 		err = devm_request_threaded_irq(dev, ec_dev->irq,
 						cros_ec_irq_handler,
 						cros_ec_irq_thread,
-						IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+						IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 						"chromeos-ec", ec_dev);
 		if (err) {
 			dev_err(dev, "Failed to request IRQ %d: %d\n",
