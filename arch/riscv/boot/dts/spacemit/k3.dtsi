@@ -1621,6 +1621,7 @@
 			interrupts = <75 IRQ_TYPE_LEVEL_HIGH>;
 			reg = <0x0 0xcac00000 0x0 0x80000>;
 			reg-names = "rgxregs";
+			power-domains = <&power K3_PMU_GPU_PWR_DOMAIN>;
 			clocks = <&syscon_apmu CLK_APMU_GPU>;
 			clock-names = "clk_rgx";
 			resets = <&syscon_apmu RESET_APMU_GPU>;
