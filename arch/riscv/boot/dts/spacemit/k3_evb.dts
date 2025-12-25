@@ -89,7 +89,7 @@
 };
 
 &pinctrl {
-	ssp0_2_cfg {
+	ssp0_2_cfg: ssp0-2-cfg  {
 		ssp0-0-pins {
 			power-source = <3300>;
 		};
@@ -99,7 +99,7 @@
 		};
 	};
 
-	usb20_host_drv_3_cfg {
+	usb20_host_drv_3_cfg: usb20_host_drv-3-cfg {
 		usb20_host_drv-pins {
 			power-source  = <1800>;
 		};
