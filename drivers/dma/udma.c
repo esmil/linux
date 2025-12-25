@@ -117,8 +117,8 @@ static int dma_malloc(dma_map_info_t *dma_info, struct vm_area_struct *vma)
 {
 	int ret;
 
-	dma_info->kern_addr = dma_alloc_coherent(dma_dev->dev, &dma_info->size,
-						 dma_info->dma_addr, GFP_KERNEL);
+	dma_info->kern_addr = dma_alloc_coherent(dma_dev->dev, dma_info->size,
+						 &dma_info->dma_addr, GFP_KERNEL);
 	if (!dma_info->kern_addr) {
 		dev_err(dma_dev->dev,
 			"Unable to allocate contiguous DMA memory region of size %zu\n",
