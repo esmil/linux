@@ -190,9 +190,16 @@ static const struct vpu_freq_vmin_info vpufclk_freqtable[] =
 
 static struct mvx_dvfs_ctx_t mvx_dvfs_ctx;
 
-static void set_clock_rate(uint32_t clk_rate) { clk_set_rate(mvx_dvfs_ctx.clock, clk_rate); }
+static void set_clock_rate(uint32_t clk_rate)
+{
+	//clk_set_rate(mvx_dvfs_ctx.clock, clk_rate);
+}
 
-static uint32_t get_clock_rate(void) { return clk_get_rate(mvx_dvfs_ctx.clock); }
+static uint32_t get_clock_rate(void)
+{
+	//return clk_get_rate(mvx_dvfs_ctx.clock);
+	return 0;
+}
 
 static uint32_t get_max_clock_rate(void) { return DVFS_FREQ_MAX; }
 
