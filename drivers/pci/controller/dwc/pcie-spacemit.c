@@ -29,6 +29,7 @@
 
 #include "../../pci.h"
 #include "pcie-designware.h"
+#include "spacemit_pcie_phy.h"
 
 #define	PCIE_VENDORID_MASK	0xffff
 #define	PCIE_DEVICEID_SHIFT	16
@@ -91,6 +92,7 @@
 #define	PCIE_IGNORE_PERSTN	BIT(31)
 /* Perst GPIO en in RC mode 1: perst# low, 0: perst# high */
 #define	PCIE_PERSTN_OE	BIT(24)
+#define	PCIE_PERSTN_OUT	BIT(25)
 
 #define	SPACEMIT_PHY_AHB_LINK_STS	0x0004
 #define	SMLH_LINK_UP	BIT(1)
@@ -171,7 +173,7 @@ static inline void spacemit_pcie_phy_ahb_writel(struct spacemit_pcie *pcie, u32 
 	writel(value, pcie->phy_ahb + offset);
 }
 
-int is_pcie_init = 1;
+int is_pcie_init = 0;
 static int __init pcie_already_init(char *str)
 {
 	is_pcie_init = 1;
@@ -250,6 +252,17 @@ static int __init spacemit_pcie_init_id(struct spacemit_pcie *pcie)
 	return 0;
 }
 
+static void spacemit_pcie_eq_preset(struct spacemit_pcie *pcie)
+{
+    struct dw_pcie *pci = pcie->pci;
+    u32 val;
+
+    val = dw_pcie_readl_dbi(pci, GEN3_EQ_CONTROL_OFF);
+    val &= ~(0xffff << 8);
+    val |= ((0x1 << 4) << 8);
+    dw_pcie_writel_dbi(pci, GEN3_EQ_CONTROL_OFF, val);
+}
+
 static int spacemit_pcie_host_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -259,8 +272,12 @@ static int spacemit_pcie_host_init(struct dw_pcie_rp *pp)
 	mdelay(100);
 	/* set Perst# gpio high state*/
 	reg = spacemit_pcie_readl(pcie, PCIE_CTRL_LOGIC);
-	reg &= ~PCIE_PERSTN_OE;
+	reg |= PCIE_PERSTN_OE;
+	reg |= PCIE_PERSTN_OUT;
 	spacemit_pcie_writel(pcie, PCIE_CTRL_LOGIC, reg);
+
+	spacemit_pcie_init_phy(pcie);
+	spacemit_pcie_eq_preset(pcie);
 
 	/* read the link status register, get the current speed */
 	reg = dw_pcie_readw_dbi(pci, EXP_CAP_ID_OFFSET + PCI_EXP_LNKSTA);
@@ -346,6 +363,13 @@ static int __init spacemit_add_pcie_port(struct spacemit_pcie *pcie,
 	/* set Perst# (fundamental reset) gpio low state*/
 	reg = spacemit_pcie_readl(pcie, PCIE_CTRL_LOGIC);
 	reg |= PCIE_PERSTN_OE;
+	reg |= PCIE_PERSTN_OUT;
+	spacemit_pcie_writel(pcie, PCIE_CTRL_LOGIC, reg);
+
+	usleep_range(1000, 2000);
+
+	reg = spacemit_pcie_readl(pcie, PCIE_CTRL_LOGIC);
+	reg &= ~PCIE_PERSTN_OUT;
 	spacemit_pcie_writel(pcie, PCIE_CTRL_LOGIC, reg);
 
 	pp->irq = platform_get_irq(pdev, 0);
@@ -365,6 +389,11 @@ static int __init spacemit_add_pcie_port(struct spacemit_pcie *pcie,
 		dev_err(dev, "failed to initialize host\n");
 		return ret;
 	}
+
+	if (dw_pcie_link_up(pci))
+		dev_info(dev, "spacemit-pcie: link is up after host_init\n");
+	else
+		dev_info(dev, "spacemit-pcie: link is down after host_init\n");
 
 	return 0;
 }
