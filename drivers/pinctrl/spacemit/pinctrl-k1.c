@@ -437,6 +437,9 @@ static int spacemit_pctrl_check_power(struct pinctrl_dev *pctldev,
 		default:
 			dev_err(dev, "group %s has unsupported power\n",
 				grpname);
+			/* TODO: revert it */
+			panic("You pinctrl configuration is wrong! \
+			      Please add power-source property\n");
 			return -ENOTSUPP;
 		}
 	}
