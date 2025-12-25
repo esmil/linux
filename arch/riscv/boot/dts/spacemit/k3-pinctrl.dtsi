@@ -2006,6 +2006,7 @@
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
 		};
 	};
 

@@ -188,6 +188,15 @@
 	};
 };
 
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_1_cfg>;
+
+	max-link-speed = <1>;
+	num-lanes = <4>;
+	status = "okay";
+};
+
 &eth1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac1_base_pins
