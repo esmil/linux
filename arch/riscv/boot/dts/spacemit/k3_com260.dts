@@ -76,6 +76,10 @@
 
 &pinctrl {
 	gmac1_cfg: gmac1-cfg {
+		/delete-node/ gmac1-2-pins;
+		/delete-node/ gmac1-4-pins;
+		/delete-node/ gmac1-5-pins;
+
 		gmac1-0-pins {
 			power-source = <1800>;
 		};
@@ -199,10 +203,7 @@
 
 &eth1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&gmac1_base_pins
-		     &gmac1_rgmii_add_pins
-		     &gmac1_int_pins
-		     &gmac1_phy_reset_pins>;
+	pinctrl-0 = <&gmac1_cfg>;
 
 	max-speed = <1000>;
 	tx-fifo-depth = <8192>;
