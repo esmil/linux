@@ -202,6 +202,19 @@
 	status = "disabled";
 };
 
+&ec {
+	status = "okay";
+	interrupt-parent = <&gpio>;
+	interrupts = <1 11 IRQ_TYPE_EDGE_RISING>;
+
+	i2c_tunnel: i2c-tunnel {
+		compatible = "google,cros-ec-i2c-tunnel";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		google,remote-bus = <1>;
+	};
+};
+
 &eth0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac0_cfg>;

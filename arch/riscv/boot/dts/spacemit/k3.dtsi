@@ -2245,6 +2245,12 @@
 			status = "disabled";
 		};
 
+		ec: cros_ec@0 {
+			compatible = "google,cros-ec-espi";
+			reg = <0x0 0x84000000 0x0 0x1000>;
+			status = "disabled";
+		};
+
 		linlon-v5@c0500000 {
 			compatible = "arm china,linlon-v5";
 			reg = <0x0 0xc0500000 0x0 0x200000>;
