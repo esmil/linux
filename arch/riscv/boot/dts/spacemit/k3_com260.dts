@@ -219,8 +219,8 @@
 
 	spacemit,clk-tuning-enable;
 	spacemit,clk-tuning-by-delayline;
-	spacemit,tx-phase = <0>;
-	spacemit,rx-phase = <0>;
+	spacemit,tx-phase = <47>;
+	spacemit,rx-phase = <53>;
 
 	status = "okay";
 
