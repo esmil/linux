@@ -2256,6 +2256,9 @@
 			reg = <0x0 0xc0500000 0x0 0x200000>;
 			interrupt-parent = <&saplic>;
 			interrupts = <74 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&syscon_apmu CLK_APMU_VPU>;
+			clock-names = "vpu_clk";
+			power-domains = <&power K3_PMU_VPU_PWR_DOMAIN>;
 			resets = <&syscon_apmu RESET_APMU_VPU>;
 			status = "disabled";
 		};
