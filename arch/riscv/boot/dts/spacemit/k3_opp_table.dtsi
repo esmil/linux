@@ -6,13 +6,25 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		clocks = <&syscon_apmu CLK_APMU_CCI550>;
-		clock-names = "cci";
+		clocks = <&syscon_apmu CLK_APMU_CCI550>, <&pll CLK_PLL3>, <&pll CLK_PLL4>;
+		clock-names = "cci", "pll_clst0", "pll_clst1";
 		cci-hz = /bits/ 64 <614500000>;
 
-		opp2202000000 {
-			opp-hz = /bits/ 64 <2202000000>, /bits/ 64 <2202000000>;
-			opp-microvolt = <850000>;
+		opp2400000000 {
+			opp-hz = /bits/ 64 <2400000000>, /bits/ 64 <2400000000>;
+			opp-microvolt = <1000000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp2200000000 {
+			opp-hz = /bits/ 64 <2200000000>, /bits/ 64 <2200000000>;
+			opp-microvolt = <880000>;
+			clock-latency-ns = <200000>;
+		};
+
+		opp2000000000 {
+			opp-hz = /bits/ 64 <2000000000>, /bits/ 64 <2000000000>;
+			opp-microvolt = <880000>;
 			clock-latency-ns = <200000>;
 		};
 
@@ -22,14 +34,8 @@
 			clock-latency-ns = <200000>;
 		};
 
-		opp1229000000 {
-			opp-hz = /bits/ 64 <1229000000>, /bits/ 64 <1229000000>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <200000>;
-		};
-
-		opp1100000000 {
-			opp-hz = /bits/ 64 <1100000000>, /bits/ 64 <1100000000>;
+		opp1228000000 {
+			opp-hz = /bits/ 64 <1228000000>, /bits/ 64 <1228000000>;
 			opp-microvolt = <800000>;
 			clock-latency-ns = <200000>;
 		};
@@ -57,8 +63,8 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp2200000000 {
-			opp-hz = /bits/ 64 <2200000000>, /bits/ 64 <2200000000>;
+		opp2000000000 {
+			opp-hz = /bits/ 64 <2000000000>, /bits/ 64 <2000000000>;
 			opp-microvolt = <800000>;
 			clock-latency-ns = <200000>;
 		};
@@ -69,14 +75,8 @@
 			clock-latency-ns = <200000>;
 		};
 
-		opp1229000000 {
-			opp-hz = /bits/ 64 <1229000000>, /bits/ 64 <1229000000>;
-			opp-microvolt = <800000>;
-			clock-latency-ns = <200000>;
-		};
-
-		opp1100000000 {
-			opp-hz = /bits/ 64 <1100000000>, /bits/ 64 <1100000000>;
+		opp1228000000 {
+			opp-hz = /bits/ 64 <1228000000>, /bits/ 64 <1228000000>;
 			opp-microvolt = <800000>;
 			clock-latency-ns = <200000>;
 		};
