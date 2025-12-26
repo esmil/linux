@@ -1588,7 +1588,6 @@ void saturn_hee_rdma_dmmu(struct spacemit_hw_device *hwdev, u8 tbu_id, struct tb
 	u8 rdma_id = tbu_id / 2;
 	struct cmdlist_regs *cl_tbu = NULL;
 
-	msleep(500);
 	CONFIG_RDMA_ADDR_REG(hwdev, 0, rdma_id, tbu->tbu_va[0], cl_rdma);
 	CONFIG_RDMA_ADDR_REG(hwdev, 1, rdma_id, tbu->tbu_va[1], cl_rdma);
 	CONFIG_RDMA_ADDR_REG(hwdev, 2, rdma_id, tbu->tbu_va[2], cl_rdma);
