@@ -1633,7 +1633,7 @@
 			clocks = <&syscon_apmu CLK_APMU_GPU>;
 			clock-names = "clk_rgx";
 			resets = <&syscon_apmu RESET_APMU_GPU>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		eth0: ethernet@cac80000 {
