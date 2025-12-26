@@ -124,13 +124,13 @@
 };
 
 &usb2_host_u2phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2_host {
 	#address-cells = <1>;
 	#size-cells = <0>;
-	status = "disabled";
+	status = "okay";
 
 	hub@1 {
 		/* FE1.1S USB2.0 hub (4 ports) */
