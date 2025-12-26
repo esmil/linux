@@ -2,7 +2,7 @@
 
 config SPACEMIT_HMP
 	bool "Spacemit HMP support"
-	default SOC_SPACEMIT
+	depends on SMP && SOC_SPACEMIT
 	help
 	  Say y here to enable the HMP feature support.
 	  This feature categorizes the CPU cores within the
