@@ -211,6 +211,15 @@ static inline const char *dwc3_ep0_state_string(enum dwc3_ep0_state state)
 	}
 }
 
+static inline const char *
+dwc3_gadget_link_string_spd(enum dwc3_link_state state, bool ss)
+{
+	if (ss)
+		return dwc3_gadget_link_string(state);
+	else
+		return dwc3_gadget_hs_link_string(state);
+}
+
 /**
  * dwc3_gadget_event_string - returns event name
  * @event: the event code
@@ -219,47 +228,48 @@ static inline const char *dwc3_gadget_event_string(char *str, size_t size,
 		const struct dwc3_event_devt *event)
 {
 	enum dwc3_link_state state = event->event_info & DWC3_LINK_STATE_MASK;
+	bool spd = event->event_info & BIT(20);
 
 	switch (event->type) {
 	case DWC3_DEVICE_EVENT_DISCONNECT:
 		snprintf(str, size, "Disconnect: [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_RESET:
 		snprintf(str, size, "Reset [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_CONNECT_DONE:
 		snprintf(str, size, "Connection Done [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_LINK_STATUS_CHANGE:
 		snprintf(str, size, "Link Change [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_WAKEUP:
 		snprintf(str, size, "WakeUp [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_SUSPEND:
 		snprintf(str, size, "Suspend [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_SOF:
 		snprintf(str, size, "Start-Of-Frame [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
 		snprintf(str, size, "Erratic Error [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_CMD_CMPL:
 		snprintf(str, size, "Command Complete [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	case DWC3_DEVICE_EVENT_OVERFLOW:
 		snprintf(str, size, "Overflow [%s]",
-				dwc3_gadget_link_string(state));
+				dwc3_gadget_link_string_spd(state, spd));
 		break;
 	default:
 		snprintf(str, size, "UNKNOWN");
