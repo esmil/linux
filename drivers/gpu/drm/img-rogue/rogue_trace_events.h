@@ -49,10 +49,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/tracepoint.h>
 #include <linux/time.h>
 
-#undef __assign_str
-#define __assign_str(dst, src)	\
-	strscpy(__get_str(dst), (src) ? (const char *)(src) : "(null)")
-
 #define show_secs_from_ns(ns) \
 	({ \
 		u64 t = ns + (NSEC_PER_USEC / 2); \
@@ -93,9 +89,9 @@ TRACE_EVENT_FN(rogue_fence_update,
 	),
 
 	TP_fast_assign(
-		__assign_str(comm, comm);
-		__assign_str(cmd, cmd);
-		__assign_str(dm, dm);
+		__assign_str(comm);
+		__assign_str(cmd);
+		__assign_str(dm);
 		__entry->gpu_id = gpu_id;
 		__entry->ctx_id = ctx_id;
 		__entry->offset = offset;
@@ -144,9 +140,9 @@ TRACE_EVENT_FN(rogue_fence_check,
 	),
 
 	TP_fast_assign(
-		__assign_str(comm, comm);
-		__assign_str(cmd, cmd);
-		__assign_str(dm, dm);
+		__assign_str(comm);
+		__assign_str(cmd);
+		__assign_str(dm);
 		__entry->gpu_id = gpu_id;
 		__entry->ctx_id = ctx_id;
 		__entry->offset = offset;
@@ -189,7 +185,7 @@ TRACE_EVENT(rogue_job_enqueue,
 		__entry->ctx_id = ctx_id;
 		__entry->int_id = int_id;
 		__entry->ext_id = ext_id;
-		__assign_str(kick_type, kick_type);
+		__assign_str(kick_type);
 	),
 
 	TP_printk("gpu=%lu, ctx_id=%lu int_id=%lu ext_id=%lu kick_type=%s",
@@ -221,7 +217,7 @@ TRACE_EVENT(rogue_sched_switch,
 	),
 
 	TP_fast_assign(
-		__assign_str(work_type, work_type);
+		__assign_str(work_type);
 		__entry->switch_type = switch_type;
 		__entry->timestamp = timestamp;
 		__entry->gpu_id = gpu_id;
@@ -262,8 +258,8 @@ TRACE_EVENT(rogue_create_fw_context,
 	),
 
 	TP_fast_assign(
-		__assign_str(comm, comm);
-		__assign_str(dm, dm);
+		__assign_str(comm);
+		__assign_str(dm);
 		__entry->gpu_id = gpu_id;
 		__entry->ctx_id = ctx_id;
 	),
@@ -562,7 +558,7 @@ TRACE_EVENT_FN(rogue_firmware_activity,
 	TP_fast_assign(
 		__entry->timestamp = timestamp;
 		__entry->gpu_id = gpu_id;
-		__assign_str(task, task);
+		__assign_str(task);
 		__entry->fw_event = fw_event;
 	),
 
