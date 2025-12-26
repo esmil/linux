@@ -117,9 +117,8 @@
 	pinctrl-0 = <&mmc1_cfg>;
 	bus-width = <4>;
 	wp-inverted;
-	broken-cd;
-	//cd-gpios = <&gpio 0 5 GPIO_ACTIVE_LOW>;
-	//vmmc-supply = <&dcdc_4>;
+	cd-gpios = <&gpio 0 4 GPIO_ACTIVE_HIGH>;
+	vmmc-supply = <&p3v3>;
 	vqmmc-supply = <&aldo1>;
 	no-mmc;
 	no-sdio;
