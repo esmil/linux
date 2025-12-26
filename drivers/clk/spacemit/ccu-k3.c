@@ -1125,14 +1125,19 @@ CCU_MUX_DIV_GATE_DEFINE(ri2s0_sysclk, ri2s01_sysclk_parents, RCPU_AUDIO_I2S0_SYS
 			4, 2, BIT(1), 0);
 CCU_MUX_DIV_GATE_DEFINE(ri2s1_sysclk, ri2s01_sysclk_parents, RCPU_AUDIO_I2S1_SYS_CLK_CTRL, 8, 11,
 			4, 2, BIT(1), 0);
+
+CCU_GATE_DEFINE(ruart_14_src, CCU_PARENT_HW(pll1_d5_491p52), RCPU_UART_NM_CLK_14M_CTRL, BIT(31), 0);
+CCU_DDN_DEFINE(ruart_14, ruart_14_src, RCPU_UART_NM_CLK_14M_CTRL, 0, 13, 16, 13, 2, 0);
+CCU_GATE_DEFINE(ruart_58_src, CCU_PARENT_HW(pll1_d5_491p52), RCPU_UART_NM_CLK_58M_CTRL, BIT(31), 0);
+CCU_DDN_DEFINE(ruart_58, ruart_58_src, RCPU_UART_NM_CLK_58M_CTRL, 0, 13, 16, 13, 2, 0);
 /* RCPU SYSCTRL clocks end */
 
 /* RCPU UARTCTRL clocks start */
 static const struct clk_parent_data ruart_clk_parents[] = {
-	CCU_PARENT_HW(slow_uart1_14p74),
+	CCU_PARENT_HW(ruart_14),
 	CCU_PARENT_HW(pll1_aud_245p7),
 	CCU_PARENT_HW(pll1_d96_25p6),
-	CCU_PARENT_HW(pll1_m3d128_57p6),
+	CCU_PARENT_HW(ruart_58),
 };
 CCU_MUX_DIV_GATE_DEFINE(ruart0_clk, ruart_clk_parents, RCPU1_UART0_CLK_RST, 8, 11,
 			4, 2, BIT(1), 0);
@@ -1730,6 +1735,10 @@ static struct clk_hw *k3_ccu_rcpu_sysctrl_hws[] = {
 	[CLK_RCPU_SYSCTRL_REMAC_RGMII_TX]	= &remac_rgmii_tx_clk.common.hw,
 	[CLK_RCPU_SYSCTRL_RI2S0_SYSCLK]		= &ri2s0_sysclk.common.hw,
 	[CLK_RCPU_SYSCTRL_RI2S1_SYSCLK]		= &ri2s1_sysclk.common.hw,
+	[CLK_RCPU_SYSCTRL_RUART_14_SRC]		= &ruart_14_src.common.hw,
+	[CLK_RCPU_SYSCTRL_RUART_58_SRC]		= &ruart_58_src.common.hw,
+	[CLK_RCPU_SYSCTRL_RUART_14]		= &ruart_14.common.hw,
+	[CLK_RCPU_SYSCTRL_RUART_58]		= &ruart_58.common.hw,
 };
 
 static const struct spacemit_ccu_data k3_ccu_rcpu_sysctrl_data = {
