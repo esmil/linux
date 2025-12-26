@@ -28,6 +28,76 @@ struct private_data {
 	int opp_token;
 };
 
+#define TURBO0_FREQUENCY		(2200000000)
+#define STABLE_FREQUENCY		(1500000000)
+
+static int spacemit_processor_notifier(struct notifier_block *nb,
+                                  unsigned long event, void *data)
+{
+	int cpu;
+	struct device *cpu_dev;
+	struct cpufreq_freqs *freqs = (struct cpufreq_freqs *)data;
+	struct cpufreq_policy *policy = ( struct cpufreq_policy *)freqs->policy;
+	struct opp_table *opp_table;
+	struct device_node *np;
+	struct clk *pll_clst0, *pll_clst1;
+	u64 rates;
+	u32 microvol;
+	int i;
+
+	cpu = cpumask_first(policy->related_cpus);
+	cpu_dev = get_cpu_device(cpu);
+	opp_table = _find_opp_table(cpu_dev);
+
+	for_each_available_child_of_node(opp_table->np, np) {
+		of_property_read_u64_array(np, "opp-hz", &rates, 1);
+		if (rates == freqs->new * 1000) {
+			of_property_read_u32(np, "opp-microvolt", &microvol);
+			break;
+		}
+	}
+
+	/* get the pll clk handler */
+	pll_clst0 = of_clk_get_by_name(opp_table->np, "pll_clst0");
+	pll_clst1 = of_clk_get_by_name(opp_table->np, "pll_clst1");
+
+	if (event == CPUFREQ_PRECHANGE) {
+
+		if (freqs->new * 1000 >= TURBO0_FREQUENCY) {
+			if (freqs->old * 1000 >= TURBO0_FREQUENCY) {
+				for (i = 0; i < opp_table->clk_count; ++i)
+					clk_set_rate(opp_table->clks[i], STABLE_FREQUENCY);
+			}
+
+			if (freqs->new * 1000 >= TURBO0_FREQUENCY) {
+				/* 2.4G */
+				if (!IS_ERR(pll_clst0))
+					clk_set_rate(pll_clst0, freqs->new * 1000);
+
+				/* 2.4G */
+				if (!IS_ERR(pll_clst1))
+					clk_set_rate(pll_clst1, freqs->new * 1000);
+			}
+		}
+	}
+
+	if (event == CPUFREQ_POSTCHANGE) {
+		/* TODO */
+	}
+
+	if (!IS_ERR(pll_clst0))
+		clk_put(pll_clst0);
+	if (!IS_ERR(pll_clst1))
+		clk_put(pll_clst1);
+
+	dev_pm_opp_put_opp_table(opp_table);
+
+	return 0;
+}
+static struct notifier_block spacemit_processor_notifier_block = {
+       .notifier_call = spacemit_processor_notifier,
+};
+
 static int spacemit_policy_notifier(struct notifier_block *nb,
                                   unsigned long event, void *data)
 {
@@ -206,6 +276,12 @@ static struct notifier_block spacemit_platform_nb = {
 static int __init spacemit_processor_driver_init(void)
 {
        int ret;
+
+	ret = cpufreq_register_notifier(&spacemit_processor_notifier_block, CPUFREQ_TRANSITION_NOTIFIER);
+	if (ret) {
+		pr_err("register cpufreq notifier failed\n");
+		return -EINVAL;
+	}
 
        ret = cpufreq_register_notifier(&spacemit_policy_notifier_block, CPUFREQ_POLICY_NOTIFIER);
        if (ret) {
