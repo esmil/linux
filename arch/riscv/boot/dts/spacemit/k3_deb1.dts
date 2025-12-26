@@ -86,7 +86,7 @@
 };
 
 &pinctrl {
-	gmac0_cfg: gmac0-cfg {
+	gmac0-cfg {
 		/delete-node/ gmac0-2-pins;
 		/delete-node/ gmac0-4-pins;
 		/delete-node/ gmac0-5-pins;
@@ -103,7 +103,7 @@
 			power-source = <1800>;
 		};
 
-		gmac0_phy_reset_pins: gmac0-6-pins {
+		gmac0-6-pins {
 			pinmux = <K3_PADCONF(15, 0)>;
 
 			bias-disable;

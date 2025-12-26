@@ -89,7 +89,7 @@
 };
 
 &pinctrl {
-	ssp0_2_cfg: ssp0-2-cfg  {
+	ssp0-2-cfg  {
 		ssp0-0-pins {
 			power-source = <3300>;
 		};
@@ -99,13 +99,13 @@
 		};
 	};
 
-	usb20_host_drv_3_cfg: usb20_host_drv-3-cfg {
+	usb20_host_drv-3-cfg {
 		usb20_host_drv-pins {
 			power-source  = <1800>;
 		};
 	};
 
-	usb30_drd_id_vbus_cfg: usb30_drd-id-vbus-cfg {
+	usb30_drd-id-vbus-cfg {
 		usb30_drd-pins {
 			pinmux = <K3_PADCONF(116, 2)>,	/* usb30 drd id */
 				 <K3_PADCONF(117, 2)>;	/* usb30 drd vbuson */
@@ -115,7 +115,7 @@
 		};
 	};
 
-	gmac1_cfg: gmac1-cfg {
+	gmac1-cfg {
 		/delete-node/ gmac1-2-pins;
 		/delete-node/ gmac1-4-pins;
 		/delete-node/ gmac1-5-pins;
@@ -132,7 +132,7 @@
 			power-source = <1800>;
 		};
 
-		gmac1_phy_reset_pins: gmac1-6-pins {
+		gmac1-6-pins {
 			pinmux = <K3_PADCONF(37, 0)>;
 
 			bias-disable;
