@@ -133,6 +133,13 @@
 			power-source = <1800>;
 		};
 	};
+
+	qspi-cfg {
+		/delete-node/ qspi-1-pins;
+		qspi-0-pins {
+			power-source = <1800>;
+		};
+	};
 };
 
 &uart0 {
@@ -142,7 +149,20 @@
 };
 
 &qspi {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&qspi_cfg>;
+	spacemit,qspi-tx-dma = <0>;
+	spacemit,qspi-rx-dma = <0>;
+	status = "okay";
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <26500000>;
+		m25p,fast-read;
+		broken-flash-reset;
+		status = "okay";
+	};
 };
 
 &usb2_host_u2phy {
