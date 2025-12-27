@@ -531,7 +531,7 @@ static void saturn_init_tmg(struct spacemit_crtc *a_crtc)
 		dpu_write(hwdev, TMG_REG, base, cmd_wait_en, 0);
 		dpu_write(hwdev, TMG_REG, base, cmd_wait_te, 0);
 		dpu_write(hwdev, TMG_REG, base, sof_pre_ln_num, 0);
-		dpu_write(hwdev, TMG_REG, base, hfp, hfp+2000);
+		dpu_write(hwdev, TMG_REG, base, hfp, hfp);
 		dpu_write(hwdev, TMG_REG, base, hbp, hbp);
 		dpu_write(hwdev, TMG_REG, base, vfp, vfp);
 		dpu_write(hwdev, TMG_REG, base, vbp, vbp);
