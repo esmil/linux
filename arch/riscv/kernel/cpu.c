@@ -330,11 +330,14 @@ static int c_show(struct seq_file *m, void *v)
 {
 	unsigned long cpu_id = (unsigned long)v - 1;
 	struct riscv_cpuinfo *ci = per_cpu_ptr(&riscv_cpuinfo, cpu_id);
-	struct device_node *node;
-	const char *compat;
+	struct device_node *node = of_get_cpu_node(cpu_id, NULL);
+	const char *compat, *model;
 
 	seq_printf(m, "processor\t: %lu\n", cpu_id);
 	seq_printf(m, "hart\t\t: %lu\n", cpuid_to_hartid_map(cpu_id));
+
+	if (!of_property_read_string(node, "model", &model))
+		seq_printf(m, "model name\t: %s\n", model);
 
 	/*
 	 * For historical raisins, the isa: line is limited to the lowest common
@@ -347,13 +350,10 @@ static int c_show(struct seq_file *m, void *v)
 	print_mmu(m);
 
 	if (acpi_disabled) {
-		node = of_get_cpu_node(cpu_id, NULL);
-
 		if (!of_property_read_string(node, "compatible", &compat) &&
 		    strcmp(compat, "riscv"))
 			seq_printf(m, "uarch\t\t: %s\n", compat);
 
-		of_node_put(node);
 	}
 
 	seq_printf(m, "mvendorid\t: 0x%lx\n", ci->mvendorid);
@@ -367,6 +367,7 @@ static int c_show(struct seq_file *m, void *v)
 	seq_puts(m, "hart isa\t: ");
 	print_isa(m, hart_isa[cpu_id].isa, cpu_id);
 	seq_puts(m, "\n");
+	of_node_put(node);
 
 	return 0;
 }

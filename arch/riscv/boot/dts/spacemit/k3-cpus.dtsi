@@ -7,6 +7,7 @@
 			cpu_0: cpu@0 {
 				device_type = "cpu";
 				reg = <0>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -50,6 +51,7 @@
 			cpu_1: cpu@1 {
 				device_type = "cpu";
 				reg = <1>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -93,6 +95,7 @@
 			cpu_2: cpu@2 {
 				device_type = "cpu";
 				reg = <2>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -136,6 +139,7 @@
 			cpu_3: cpu@3 {
 				device_type = "cpu";
 				reg = <3>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -179,6 +183,7 @@
 			cpu_4: cpu@4 {
 				device_type = "cpu";
 				reg = <4>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -222,6 +227,7 @@
 			cpu_5: cpu@5 {
 				device_type = "cpu";
 				reg = <5>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -265,6 +271,7 @@
 			cpu_6: cpu@6 {
 				device_type = "cpu";
 				reg = <6>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -308,6 +315,7 @@
 			cpu_7: cpu@7 {
 				device_type = "cpu";
 				reg = <7>;
+				model = "Spacemit(R) X100";
 				status = "okay";
 				compatible = "riscv";
 				riscv,isa = "rv64imafdcvh";
@@ -351,6 +359,7 @@
 			cpu_8: cpu@8 {
 				device_type = "cpu";
 				reg = <8>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -395,6 +404,7 @@
 			cpu_9: cpu@9 {
 				device_type = "cpu";
 				reg = <9>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -439,6 +449,7 @@
 			cpu_10: cpu@10 {
 				device_type = "cpu";
 				reg = <10>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -483,6 +494,7 @@
 			cpu_11: cpu@11 {
 				device_type = "cpu";
 				reg = <11>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -527,6 +539,7 @@
 			cpu_12: cpu@12 {
 				device_type = "cpu";
 				reg = <12>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -571,6 +584,7 @@
 			cpu_13: cpu@13 {
 				device_type = "cpu";
 				reg = <13>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -615,6 +629,7 @@
 			cpu_14: cpu@14 {
 				device_type = "cpu";
 				reg = <14>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
@@ -659,6 +674,7 @@
 			cpu_15: cpu@15 {
 				device_type = "cpu";
 				reg = <15>;
+				model = "Spacemit(R) A100";
 				status = "okay";
 				compatible = "riscv";
 				cpu-ai = "true";
