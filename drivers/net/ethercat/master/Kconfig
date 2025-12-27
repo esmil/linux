@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# EtherCAT master support
+#
+
+config EC_MASTER
+    tristate "EtherCAT master (IgH)"
+    depends on ETHERCAT
+    help
+      Say Y or M here to build the IgH EtherCAT master driver.
+      The master is controlled via a character device interface.
+      If unsure, say N.
+
+if EC_MASTER
+
+config EC_MASTER_RUN_ON_CPU
+    int "Run EtherCAT master on CPU"
+    default 1
+    range 0 7
+    help
+      Set the CPU (0-7) on which to run the EtherCAT master.
+      If unsure, the default is 1.
+
+config EC_MASTER_DEBUG_LEVEL
+    int "Debug level for EtherCAT master"
+    default 0
+    range 0 2
+    help
+      Set the debug level for the EtherCAT master driver.
+      0: No debug information.
+      1: Error messages.
+      2: Full debug information.
+
+endif # EC_MASTER

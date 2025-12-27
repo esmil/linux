@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# EtherCAT support
+#
+
+menuconfig ETHERCAT
+	bool "EtherCAT support"
+	depends on NET && NETDEVICES && ETHERNET
+	help
+	  EtherCAT is an industrial real-time fieldbus protocol that runs over
+	  Ethernet frames (Layer 2). Selecting this option enables the EtherCAT
+	  master subsystem and the corresponding network device interfaces.
+
+if ETHERCAT
+
+source "drivers/net/ethercat/master/Kconfig"
+source "drivers/net/ethercat/device/Kconfig"
+
+endif # ETHERCAT
+

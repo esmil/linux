@@ -1,0 +1,34 @@
+
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# EtherCAT device support
+#
+
+menuconfig EC_DEVICE
+	bool "EtherCAT device"
+	depends on ETHERCAT
+	help
+	  Enable EtherCAT device support.
+
+if EC_DEVICE
+
+config EC_GENERIC
+	tristate "Generic EtherCAT device support"
+	help
+	  Generic EtherCAT device support using the standard Linux networking
+	  stack. This is portable but may have higher latency/jitter.
+
+config EC_K1X_GMAC
+	tristate "Spacemit K1 GMAC EtherCAT device support"
+	depends on SOC_SPACEMIT_K1 || COMPILE_TEST
+	help
+	  EtherCAT device support for the Spacemit K1X GMAC controller.
+
+config EC_K3_GMAC
+	tristate "Spacemit K3 GMAC EtherCAT device support"
+	depends on SOC_SPACEMIT_K3 && STMMAC_ETH!=y
+	select PAGE_POOL
+	help
+	  EtherCAT device support for Spacemit K3 GMAC controller.
+
+endif # EC_DEVICE
