@@ -1156,7 +1156,6 @@ int __sched_setaffinity(struct task_struct *p, struct affinity_context *ctx)
 #ifdef CONFIG_SPACEMIT_HMP
 	retval = hmp_cpu_affinity_restrict(p, ctx->new_mask);
 	if (retval) {
-		rcu_read_unlock();
 		return retval;
 	}
 #endif
