@@ -1935,7 +1935,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA0>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status  = "disabled";
+			status  = "okay";
 		};
 
 		ai_dmac1: hdma1@d8805000 {
@@ -1947,7 +1947,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA1>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ai_dmac2: hdma2@d8806000 {
@@ -1959,7 +1959,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA2>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ai_dmac3: hdma3@d8807000 {
@@ -1971,7 +1971,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA3>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ai_dmac4: hdma4@d8808000 {
@@ -1983,7 +1983,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA4>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status  = "disabled";
+			status  = "okay";
 		};
 
 		ai_dmac5: hdma5@d8809000 {
@@ -1995,7 +1995,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA5>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ai_dmac6: hdma6@d880a000 {
@@ -2007,7 +2007,7 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA6>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ai_dmac7: hdma7@d880b000 {
@@ -2019,13 +2019,13 @@
 			resets = <&syscon_dciu RESET_DCIU_HDMA>, <&syscon_dciu RESET_DCIU_AXIDMA7>;
 			reset-names = "bus", "dma";
 			dma-coherent;
-			status = "disabled";
+			status = "okay";
 		};
 
-		ai_dmadev: msi_test@0 {
+		ai_dmadev: aidma-dev@0 {
 			compatible = "ai-dma-dev";
 			msi-parent = <&simsic>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		pcie0_rc: pcie@80000000 {
