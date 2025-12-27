@@ -111,6 +111,22 @@
 			power-source = <1800>;
 		};
 	};
+
+	i2c1-3-cfg {
+		i2c1-0-pins {
+			power-source = <3300>;
+		};
+	};
+
+	fusb301_cfg: fusb301-cfg {
+		fusb301-0-pins {
+			pinmux = <K3_PADCONF(85, 0)>;
+
+			bias-pull-up;
+			drive-strength = <25>;
+			power-source = <1800>;
+		};
+	};
 };
 
 &uart0 {
@@ -156,6 +172,17 @@
 	role-switch-default-mode = "peripheral";
 	/* monitor-vbus; */
 	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0x0>;
+			porta_role_switch: endpoint {
+				remote-endpoint = <&fusb301_ep>;
+			};
+		};
+	};
 };
 
 &usb3_portb_u2phy {
@@ -420,6 +447,44 @@
 		regulator-max-microvolt = <3300000>;
 		regulator-always-on;
 		regulator-boot-on;
+	};
+};
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_3_cfg>;
+	status = "okay";
+
+	tcpc@25 {
+		compatible = "onsemi,fusb301";
+		reg = <0x25>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fusb301_cfg>;
+		irq-gpios = <&gpio 2 21 GPIO_ACTIVE_LOW>;
+		wakeup-source;
+		status = "okay";
+
+		typec_0: connector@0 {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			data-role = "dual";
+			power-role = "dual";
+			try-power-role = "sink";
+			typec-power-opmode = "default";
+			pd-disable;
+
+			ports {
+				#address-cells = <0x1>;
+				#size-cells = <0x0>;
+
+				port@0 {
+					reg = <0x0>;
+					fusb301_ep: endpoint {
+						remote-endpoint = <&porta_role_switch>;
+					};
+				};
+			};
+		};
 	};
 };
 
