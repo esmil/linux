@@ -118,6 +118,12 @@
 		};
 	};
 
+	usb30_drd_dir-0-cfg {
+		usb30_drd_dir-pins {
+			power-source = <1800>;
+		};
+	};
+
 	fusb301_cfg: fusb301-cfg {
 		fusb301-0-pins {
 			pinmux = <K3_PADCONF(85, 0)>;
@@ -160,17 +166,17 @@
 };
 
 &usb3_porta_u3phy {
-	// Enabled but will do nop during init
+	/* dual phy selection is auto detect from GPIO86(SS_SW_3V3) */
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb30_drd_dir_0_cfg>;
 	status = "okay";
 };
 
 &usb3_porta {
 	dr_mode = "otg";
-	/* Bringup stage, only enable USB2 phy */
-	maximum-speed = "high-speed";
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
-	/* monitor-vbus; */
+	monitor-vbus;
 	status = "okay";
 
 	ports {
