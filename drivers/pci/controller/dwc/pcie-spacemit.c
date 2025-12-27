@@ -95,6 +95,7 @@
 #define	PCIE_PERSTN_OUT	BIT(25)
 
 #define	SPACEMIT_PHY_AHB_LINK_STS	0x0004
+#define SOFT_RESET	BIT(0)
 #define	SMLH_LINK_UP	BIT(1)
 #define	RDLH_LINK_UP	BIT(12)
 #define	PCIE_CLIENT_DEBUG_LTSSM_MASK	GENMASK(11, 6)
@@ -526,6 +527,16 @@ static int __init spacemit_pcie_probe(struct platform_device *pdev)
 	reset_control_assert(pcie->reset);
 	spacemit_pcie_hold_phy_rst(pcie);
 	reset_control_deassert(pcie->reset);
+
+	reg = spacemit_pcie_readl(pcie, SPACEMIT_PHY_AHB_LINK_STS);
+	reg |= SOFT_RESET;
+	spacemit_pcie_writel(pcie, SPACEMIT_PHY_AHB_LINK_STS, reg);
+
+	mdelay(2);
+
+	reg = spacemit_pcie_readl(pcie, SPACEMIT_PHY_AHB_LINK_STS);
+	reg &= ~SOFT_RESET;
+	spacemit_pcie_writel(pcie, SPACEMIT_PHY_AHB_LINK_STS, reg);
 
 	pcie->pcie_init_before_kernel = is_pcie_init;
 	if (is_pcie_init == 0) {
