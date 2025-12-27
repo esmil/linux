@@ -523,7 +523,6 @@ static void reset_hw(struct device *dev)
 	}
 }
 
-static int b_backto_active;
 static void mvx_pm_disable_clk(struct device *dev)
 {
 	struct clk *clock;
@@ -550,6 +549,7 @@ static void mvx_pm_enable_clk(struct device *dev)
 	}
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int mvx_pm_poweron(struct device *dev)
 {
 	struct mvx_dev_ctx *ctx = dev_get_drvdata(dev);
@@ -573,6 +573,7 @@ static int mvx_pm_poweroff(struct device *dev)
 	return 0;
 }
 
+static int b_backto_active;
 static int mvx_pm_suspend(struct device *dev)
 {
 	MVX_LOG_PRINT(&mvx_log_dev, MVX_LOG_INFO, "mvx_pm_suspend start. b_backto_active=%d", b_backto_active);
@@ -599,6 +600,7 @@ static int mvx_pm_resume(struct device *dev)
 	MVX_LOG_PRINT(&mvx_log_dev, MVX_LOG_INFO, "mvx_pm_resume exit. b_backto_active=%d", b_backto_active);
 	return 0;
 }
+#endif /* CONFIG_PM_SLEEP */
 
 static int mvx_pm_runtime_suspend(struct device *dev)
 {
@@ -624,8 +626,8 @@ static int mvx_pm_runtime_idle(struct device *dev)
 
 static const struct dev_pm_ops mvx_dev_pm_ops = {
 	SET_RUNTIME_PM_OPS(mvx_pm_runtime_suspend, mvx_pm_runtime_resume, NULL)
-		SET_SYSTEM_SLEEP_PM_OPS(mvx_pm_suspend, mvx_pm_resume)
-			.runtime_idle = mvx_pm_runtime_idle,
+	SET_SYSTEM_SLEEP_PM_OPS(mvx_pm_suspend, mvx_pm_resume)
+	.runtime_idle = mvx_pm_runtime_idle,
 };
 #endif /* CONFIG_PM */
 
