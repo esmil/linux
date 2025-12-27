@@ -435,6 +435,10 @@
 			#interrupt-cells = <3>;
 			syscon = <&syscon_gpio>;
 			syscon-edge = <&syscon_gpio_edge>;
+			gpio-ranges = <&pinctrl 0 0 0 32>,
+				      <&pinctrl 1 0 32 32>,
+				      <&pinctrl 2 0 64 32>,
+				      <&pinctrl 3 0 96 32>;
 		};
 
 		pinctrl: pinctrl@d401e000 {
