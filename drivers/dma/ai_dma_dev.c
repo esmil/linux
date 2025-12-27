@@ -482,6 +482,8 @@ static int ai_dmadev_probe(struct platform_device *pdev) {
 	INIT_LIST_HEAD(&dma_req_list);
 	spin_lock_init(&aidma_lock);
 
+	return 0;
+
 err_destroy_req_class:
 	class_destroy(req_class);
 err_unregister_req_chrdev:
