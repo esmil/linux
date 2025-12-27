@@ -175,14 +175,19 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 	struct rpmi_regulator_context *context = reg->context;
 	struct rpmi_mbox_message msg;
 	struct rpmi_volt_get_sup_tx tx;
-	struct rpmi_volt_get_sup_rx rx;
+	struct rpmi_volt_get_sup_rx *rx;
 	struct regulator_desc *desc = reg->desc;
 	struct linear_range *ranges;
 	unsigned int max, num_voltages = 0;
 	int ret;
 
-	ranges = kmalloc(reg->num_levels * sizeof(struct linear_range), GFP_KERNEL);
+	ranges = devm_kzalloc(context->dev, reg->num_levels * sizeof(struct linear_range), GFP_KERNEL);
 	if (ranges == NULL)
+		return -ENOMEM;
+
+	/* Allocate rx buffer with space for flexible array member */
+	rx = devm_kzalloc(context->dev, context->max_msg_data_size, GFP_KERNEL);
+	if (!rx)
 		return -ENOMEM;
 
 	tx.domain_id = cpu_to_le32(id);
@@ -193,19 +198,19 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 		if (reg->type == RPMI_REGULATOR_LINEAR) {
 			rpmi_mbox_init_send_with_response(&msg,
 							  RPMI_REGULATOR_SRV_GET_SUPPORTED_LEVELS,
-							  &tx, sizeof(tx), &rx,
+							  &tx, sizeof(tx), rx,
 							  context->max_msg_data_size);
 			ret = rpmi_mbox_send_message(context->chan, &msg);
 			if (ret)
 				return ret;
 
-			if (rx.status)
-				return rpmi_to_linux_error(rx.status);
+			if (rx->status)
+				return rpmi_to_linux_error(rx->status);
 
-			ranges[i].min = rx.volt_level[0];
-			max = rx.volt_level[1];
+			ranges[i].min = rx->volt_level[0];
+			max = rx->volt_level[1];
 
-			ranges[i].step = rx.volt_level[2];
+			ranges[i].step = rx->volt_level[2];
 			ranges[i].min_sel = (i == 0) ? 0 : (ranges[i - 1].max_sel + 1);
 
 			if (ranges[i].step == 0)
@@ -504,8 +509,13 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 	config.of_node = NULL;
 
 	/* get the desc */
-	for (i = 0; i < num_domains; i++)
+	for (i = 0; i < num_domains; i++) {
 		desc[i] = rpmi_regulator_enumerate(context, i, &regptr[i]);
+		if (IS_ERR(desc[i])) {
+			ret = PTR_ERR(desc[i]);
+			goto fail_free_channel;
+		}
+	}
 
 	/* set regulator parent */
 	for (i = 0; i < num_domains; ++i) {
