@@ -28,8 +28,8 @@ struct private_data {
 	int opp_token;
 };
 
-#define TURBO0_FREQUENCY		(2200000000)
-#define STABLE_FREQUENCY		(1500000000)
+#define TURBO0_FREQUENCY		(1000000000)
+#define STABLE_FREQUENCY		(819200000)
 
 static int spacemit_processor_notifier(struct notifier_block *nb,
                                   unsigned long event, void *data)
@@ -63,13 +63,13 @@ static int spacemit_processor_notifier(struct notifier_block *nb,
 
 	if (event == CPUFREQ_PRECHANGE) {
 
-		if (freqs->new * 1000 >= TURBO0_FREQUENCY) {
-			if (freqs->old * 1000 >= TURBO0_FREQUENCY) {
+		if (freqs->new * 1000 > TURBO0_FREQUENCY) {
+			if (freqs->old * 1000 > TURBO0_FREQUENCY) {
 				for (i = 0; i < opp_table->clk_count; ++i)
 					clk_set_rate(opp_table->clks[i], STABLE_FREQUENCY);
 			}
 
-			if (freqs->new * 1000 >= TURBO0_FREQUENCY) {
+			if (freqs->new * 1000 > TURBO0_FREQUENCY) {
 				/* 2.4G */
 				if (!IS_ERR(pll_clst0))
 					clk_set_rate(pll_clst0, freqs->new * 1000);
