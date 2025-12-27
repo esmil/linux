@@ -402,21 +402,34 @@ static void *tcm_match_pa(unsigned long vaddr)
 	// TODO
 	struct vm_area_struct *vma;
 	mm_alloc_node_t *node;
-	struct list_head *head;
+	tcm_private *tcm_pri;
 	unsigned long offset;
+	void *paddr = NULL;
+
+	/* Acquire mmap lock before calling find_vma */
+	mmap_read_lock(current->mm);
 
 	vma = find_vma(current->mm, vaddr);
 	if (!vma) {
-		return NULL;
+		goto out_unlock;
+	}
+
+	tcm_pri = (tcm_private *)vma->vm_private_data;
+	if (!tcm_pri) {
+		goto out_unlock;
 	}
 
 	offset = vaddr - vma->vm_start;
-	head = (struct list_head *)vma->vm_private_data;
-	list_for_each_entry(node, head, list) {
-		return (void *)((unsigned long)node->paddr + offset);
+	node = list_first_entry(tcm_pri->head, mm_alloc_node_t, list);
+	if (!node) {
+		pr_err("can not switch tcm va to pa\n");
+		goto out_unlock;
 	}
+	paddr = (void *)((unsigned long)node->paddr + offset);
 
-	return NULL;
+out_unlock:
+	mmap_read_unlock(current->mm);
+	return paddr;
 }
 
 static request_mem_t *get_req_mem_node(int pid)
