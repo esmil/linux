@@ -653,7 +653,7 @@ static const struct pinmux_ops spacemit_pmx_ops = {
 	.get_function_groups	= pinmux_generic_get_function_groups,
 	.set_mux		= spacemit_pmx_set_mux,
 	.gpio_request_enable	= spacemit_request_gpio,
-	.strict			= true,
+	.strict			= false,
 };
 
 #define ENABLE_DRV_STRENGTH	BIT(1)
