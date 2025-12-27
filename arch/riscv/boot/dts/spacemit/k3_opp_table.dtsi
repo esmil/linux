@@ -6,9 +6,8 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		clocks = <&syscon_apmu CLK_APMU_CCI550>, <&pll CLK_PLL3>, <&pll CLK_PLL4>;
-		clock-names = "cci", "pll_clst0", "pll_clst1";
-		cci-hz = /bits/ 64 <614500000>;
+		clocks = <&pll CLK_PLL3>, <&pll CLK_PLL4>;
+		clock-names = "pll_clst0", "pll_clst1";
 
 		opp2400000000 {
 			opp-hz = /bits/ 64 <2400000000>, /bits/ 64 <2400000000>;
