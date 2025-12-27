@@ -1640,6 +1640,16 @@
 			status = "okay";
 		};
 
+                ec_master: ethercat_master {
+                        compatible = "spacemit,igh-ec-master";
+                        master-count = <1>;
+                        status = "disabled";
+
+                        master0 {
+                                main-device = <&eth0>;
+                        };
+		};
+
 		eth0: ethernet@cac80000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xcac80000 0x0 0x2000>;
