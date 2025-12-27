@@ -115,6 +115,32 @@
 		};
 	};
 
+	gmac0-cfg {
+		/delete-node/ gmac0-2-pins;
+		/delete-node/ gmac0-4-pins;
+		/delete-node/ gmac0-5-pins;
+
+		gmac0-0-pins {
+			power-source = <1800>;
+		};
+
+		gmac0-1-pins {
+			power-source = <1800>;
+		};
+
+		gmac0-3-pins {
+			power-source = <1800>;
+		};
+
+		gmac0-6-pins {
+			pinmux = <K3_PADCONF(15, 0)>;
+
+			bias-disable;
+			drive-strength = <25>;
+			power-source = <1800>;
+		};
+	};
+
 	gmac1-cfg {
 		/delete-node/ gmac1-2-pins;
 		/delete-node/ gmac1-4-pins;
@@ -134,6 +160,58 @@
 
 		gmac1-6-pins {
 			pinmux = <K3_PADCONF(37, 0)>;
+
+			bias-disable;
+			drive-strength = <25>;
+			power-source = <1800>;
+		};
+	};
+
+	gmac2-cfg {
+		/delete-node/ gmac2-2-pins;
+		/delete-node/ gmac2-4-pins;
+		/delete-node/ gmac2-5-pins;
+
+		gmac2-0-pins {
+			power-source = <1800>;
+		};
+
+		gmac2-1-pins {
+			power-source = <1800>;
+		};
+
+		gmac2-3-pins {
+			power-source = <1800>;
+		};
+
+		gmac2-6-pins {
+			pinmux = <K3_PADCONF(58, 0)>;
+
+			bias-disable;
+			drive-strength = <25>;
+			power-source = <1800>;
+		};
+	};
+
+	gmac3-cfg {
+		/delete-node/ gmac3-2-pins;
+		/delete-node/ gmac3-4-pins;
+		/delete-node/ gmac3-5-pins;
+
+		gmac3-0-pins {
+			power-source = <1800>;
+		};
+
+		gmac3-1-pins {
+			power-source = <1800>;
+		};
+
+		gmac3-3-pins {
+			power-source = <1800>;
+		};
+
+		gmac3-6-pins {
+			pinmux = <K3_PADCONF(75, 0)>;
 
 			bias-disable;
 			drive-strength = <25>;
@@ -274,6 +352,42 @@
 	status = "okay";
 };
 
+&eth0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&gmac0_cfg>;
+
+	max-speed = <1000>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii0>;
+	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
+	snps,reset-delays-us = <2 10000 10000>;
+
+	spacemit,wake-irq-enable;
+
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-delayline;
+	spacemit,tx-phase = <65>;
+	spacemit,rx-phase = <50>;
+
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii0: phy@0 {
+			compatible = "ethernet-phy-id001c.c916";
+			reg = <0x1>;
+			device_type = "ethernet-phy";
+		};
+	};
+};
+
 &eth1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac1_cfg>;
@@ -310,6 +424,77 @@
 	};
 };
 
+&eth2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&gmac2_cfg>;
+
+	max-speed = <1000>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii2>;
+	snps,reset-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
+	snps,reset-delays-us = <2 10000 10000>;
+
+	spacemit,wake-irq-enable;
+
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-delayline;
+	spacemit,tx-phase = <53>;
+	spacemit,rx-phase = <52>;
+
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii2: phy@2 {
+			compatible = "ethernet-phy-id001c.c916";
+			reg = <0x1>;
+			device_type = "ethernet-phy";
+		};
+	};
+};
+
+&eth3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&gmac3_cfg>;
+
+	max-speed = <1000>;
+	tx-fifo-depth = <4096>;
+	rx-fifo-depth = <4096>;
+	snps,tso;
+	snps,force_sf_dma_mode;
+	phy-mode = "rgmii";
+	phy-handle = <&rgmii3>;
+	snps,reset-gpios = <&gpio 2 11 GPIO_ACTIVE_LOW>;
+	snps,reset-delays-us = <2 10000 10000>;
+
+	spacemit,wake-irq-enable;
+
+	spacemit,clk-tuning-enable;
+	spacemit,clk-tuning-by-delayline;
+	spacemit,tx-phase = <51>;
+	spacemit,rx-phase = <54>;
+
+	status = "disabled";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		rgmii3: phy@3 {
+			compatible = "ethernet-phy-id001c.c916";
+			reg = <0x1>;
+			device_type = "ethernet-phy";
+		};
+	};
+};
 
 &rpmi_regulator {
 	status = "okay";
