@@ -639,10 +639,15 @@ static int spacemit_request_gpio(struct pinctrl_dev *pctldev,
 	struct spacemit_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
 	const struct spacemit_pin *spin = spacemit_get_pin(pctrl, pin);
 	void __iomem *reg;
+	u32 val;
 
 	reg = spacemit_pin_to_reg(pctrl, pin);
+
 	guard(raw_spinlock_irqsave)(&pctrl->lock);
-	writel_relaxed(spin->gpiofunc, reg);
+	val = readl_relaxed(reg);
+	val &= ~PAD_MUX;
+	val |= spin->gpiofunc;
+	writel_relaxed(val, reg);
 
 	return 0;
 }
