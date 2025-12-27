@@ -331,12 +331,7 @@ static const struct dw_pcie_host_ops spacemit_pcie_host_ops = {
 	.init = spacemit_pcie_host_init,
 };
 
-static void (*spacemit_pcie_irq_callback)(int);
 
-static void spacemit_pcie_set_irq_callback(void (*fn)(int))
-{
-	spacemit_pcie_irq_callback = fn;
-}
 
 /* local cpu interrupt, vendor specific*/
 static irqreturn_t spacemit_pcie_irq_handler(int irq, void *arg)
@@ -465,7 +460,7 @@ static void spacemit_pcie_clk_disable(struct spacemit_pcie *pcie)
 	clk_disable_unprepare(pcie->clk_master);
 }
 
-static int __init spacemit_pcie_probe(struct platform_device *pdev)
+static int spacemit_pcie_probe(struct platform_device *pdev)
 {
 	u32 reg;
 	int ret;
