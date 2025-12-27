@@ -102,8 +102,6 @@ static int spacemit_policy_notifier(struct notifier_block *nb,
                                   unsigned long event, void *data)
 {
 	int cpu;
-	u64 rates;
-	struct clk *cci_clk;
 	struct device *cpu_dev;
 	struct cpufreq_policy *policy = data;
 	struct opp_table *opp_table;
@@ -111,14 +109,6 @@ static int spacemit_policy_notifier(struct notifier_block *nb,
 	cpu = cpumask_first(policy->related_cpus);
 	cpu_dev = get_cpu_device(cpu);
 	opp_table = _find_opp_table(cpu_dev);
-
-	cci_clk = of_clk_get_by_name(opp_table->np, "cci");
-	if (!IS_ERR(cci_clk)) {
-		of_property_read_u64_array(opp_table->np, "cci-hz", &rates, 1);
-		clk_enable(cci_clk);
-		clk_set_rate(cci_clk, rates);
-		clk_put(cci_clk);
-	}
 
 	if (policy->clk)
 		clk_put(policy->clk);
