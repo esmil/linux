@@ -3295,7 +3295,7 @@
 		};
 	};
 
-	usb30_drd_dir_0_cfg: uusb30_drd_dir-0-cfg {
+	usb30_drd_dir_0_cfg: usb30_drd_dir-0-cfg {
 		usb30_drd_dir-pins {
 			pinmux = <K3_PADCONF(86, 6)>;	/* usb30 drd dir */
 
@@ -3304,7 +3304,7 @@
 		};
 	};
 
-	usb30_drd_dir_1_cfg: uusb30_drd_dir-1-cfg {
+	usb30_drd_dir_1_cfg: usb30_drd_dir-1-cfg {
 		usb30_drd_dir-pins {
 			pinmux = <K3_PADCONF(107, 4)>;	/* usb30 drd dir */
 
