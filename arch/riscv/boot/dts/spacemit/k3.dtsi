@@ -312,7 +312,7 @@
 		};
 
 		pll: clock-controller@d4090000 {
-			compatible = "spacemit,k3-pll";
+			compatible = "spacemit,k3-pll", "syscon";
 			reg = <0x0 0xd4090000 0x0 0x10000>;
 			clocks = <&vctcxo_24m>;
 			spacemit,mpmu = <&syscon_mpmu>;
@@ -1491,6 +1491,7 @@
 		usb3_porta_u3phy: phy@cad30000 {
 			compatible = "spacemit,k3-usb3-phy";
 			spacemit,syscon-apmu = <&syscon_apmu>;
+			spacemit,syscon-apb-spare = <&pll>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
 			reg = <0x0 0xcad30000 0x0 0x200>,
 			      <0x0 0xcad40000 0x0 0x200>;
@@ -1505,13 +1506,13 @@
 			interrupt-parent = <&saplic>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
 			resets = <&syscon_apmu RESET_APMU_USB3_PORTA>;
-			phys = <&usb3_porta_u2phy>, <&usb3_porta_u3phy>;
-			phy-names = "usb2-phy", "usb3-phy";
+			phys = <&usb3_porta_u3phy>, <&usb3_porta_u2phy>;
+			phy-names = "usb3-phy", "usb2-phy";
 			phy_type = "utmi";
 			snps,dis_enblslpm_quirk;
 			snps,dis_u2_susphy_quirk;
 			snps,dis_u3_susphy_quirk;
-			snps,dis-del-phy-power-chg-quirk;
+			snps,del_phy_power_chg_quirk;
 			snps,dis-tx-ipgap-linecheck-quirk;
 			snps,parkmode-disable-ss-quirk;
 			status = "disabled";
@@ -1526,7 +1527,10 @@
 
 		usb3_portb_u3phy: phy@81f00000{
 			compatible = "spacemit,k3-usb3-phy";
+			spacemit,syscon-apmu = <&syscon_apmu>;
+			spacemit,syscon-apb-spare = <&pll>;
 			reg = <0x0 0x81f00000 0x0 0x200>;
+			combo-usb-bit = <2>;
 			#phy-cells = <0>;
 			status = "disabled";
 		};
@@ -1560,7 +1564,10 @@
 
 		usb3_portc_u3phy: phy@82000000{
 			compatible = "spacemit,k3-usb3-phy";
+			spacemit,syscon-apmu = <&syscon_apmu>;
+			spacemit,syscon-apb-spare = <&pll>;
 			reg = <0x0 0x82000000 0x0 0x200>;
+			combo-usb-bit = <1>;
 			#phy-cells = <0>;
 			status = "disabled";
 		};
@@ -1594,7 +1601,10 @@
 
 		usb3_portd_u3phy: phy@82100000{
 			compatible = "spacemit,k3-usb3-phy";
+			spacemit,syscon-apmu = <&syscon_apmu>;
+			spacemit,syscon-apb-spare = <&pll>;
 			reg = <0x0 0x82100000 0x0 0x200>;
+			combo-usb-bit = <0>;
 			#phy-cells = <0>;
 			status = "disabled";
 		};
