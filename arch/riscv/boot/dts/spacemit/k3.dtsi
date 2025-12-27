@@ -2284,7 +2284,7 @@
 			clock-names = "vpu_clk";
 			power-domains = <&power K3_PMU_VPU_PWR_DOMAIN>;
 			resets = <&syscon_apmu RESET_APMU_VPU>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ccic0: cam_ccic@d420a000 {
