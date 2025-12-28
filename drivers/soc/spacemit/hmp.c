@@ -267,6 +267,13 @@ int hmp_set_ai_thread(pid_t pid)
 	get_task_struct(t);
 	rcu_read_unlock();
 
+	/*
+	 * !!! the vector context should not be
+	 * initiated before switch to AI cores
+	 */
+	WARN(t->thread.vstate.datap, "pid:%u(%s), vector context has been initialized already!!!\n",
+		current->pid, current->comm);
+
 	/* mark the thread type as an ai thread under task_lock */
 	task_lock(t);
 	t->thread_type = HMP_AI;
