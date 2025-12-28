@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2025 Spacemit, Inc */
+
+&soc {
+	display: display-subsystem {
+		compatible = "spacemit,saturn-edp";
+		reg = <0 0xc0440000 0 0x54000>;
+		hw_ver = <2>;
+		ports = <&dpu1_crtc0>;
+	};
+
+	dpu1_crtc0: dpu1_crtc0 {
+		compatible = "spacemit,dpu-saturn";
+		interrupt-parent = <&saplic>;
+		interrupts = <139 IRQ_TYPE_LEVEL_HIGH>,
+			     <138 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "ONLINE_IRQ",
+				  "OFFLINE_IRQ";
+		clocks = <&syscon_apmu CLK_APMU_DSI4LN2_LCD_PXCLK>,
+			<&syscon_apmu CLK_APMU_DSI4LN2_LCD_MCLK>,
+			<&syscon_apmu CLK_APMU_DSI4LN2_DPU_ACLK>,
+			<&syscon_apmu CLK_APMU_DSI4LN2_DSI_ESC>,
+			<&syscon_apmu CLK_APMU_DSI4LN2_LCD_DSC>;
+		clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
+		resets = <&syscon_apmu RESET_APMU_DSI4LN2_LCD_MCLK>,
+			<&syscon_apmu RESET_APMU_DSI4LN2_ESCCLK>,
+			<&syscon_apmu RESET_APMU_DSI4LN2_LCD_SW>,
+			<&syscon_apmu RESET_APMU_DSI4LN2_DPU_ACLK>,
+			<&syscon_apmu RESET_APMU_DSI4LN2_LCD_DSCCLK>;
+		reset-names= "mclk_reset", "esc_reset", "lcd_reset", "aclk_reset", "dsc_reset";
+		power-domains = <&power K3_PMU_LCD1_PWR_DOMAIN>;
+		pipeline-id = <1>;
+		is_edp = <1>;
+		ip = "spacemit-saturn";
+		spacemit-dpu-min-mclk = <40960000>;
+		status = "disabled";
+
+		dpu1_crtc0_out0: endpoint@0 {
+			remote-endpoint = <&dp1_in>;
+		};
+	};
+
+	dp1: dp1@cac88000 {
+		compatible = "spacemit,inno-dp1";
+		reg = <0x0 0xcac88000 0x0 0x4000>;
+		interrupt-parent = <&saplic>;
+		interrupts = <140 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&syscon_apmu CLK_APMU_EDP1_PXCLK>;
+		clock-names = "pxclk";
+		resets = <&syscon_apmu RESET_APMU_EDP1>;
+		reset-names= "reset";
+		color_format = <1>;
+		ref_clock = <24000000>;
+		dp-id = <1>;
+		status = "disabled";
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			dp1_in: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&dpu1_crtc0_out0>;
+			};
+		};
+	};
+
+};
