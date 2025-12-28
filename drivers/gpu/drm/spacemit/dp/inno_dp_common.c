@@ -574,13 +574,34 @@ static int sink_lane_status_get(struct dp_chip_t *chip, uint8_t status[DP_LINK_S
 void inno_dp_link_train(struct dp_chip_t *chip)
 {
 	uint8_t link_status[DP_LINK_STATUS_SIZE];
+	uint32_t temp = 0;
+
+	struct inno_conn_t *conn = (struct inno_conn_t *)chip->priv;
 
 	if (!chip || !chip->connected)
 		return;
 
 retry:
 	inno_dp_cdr_training(chip);
+
+	/* (0x100 INNODP_LANE_CONFIG) */
+	temp = osal_read32(0x100, conn);
+	temp &= ~(0xf << 25);
+	temp |= 2 << 25; /* pattern mode */
+	temp |= 0xf << 17; /* transmit lanes */
+	temp |= BIT(8);
+	osal_write32(0x100, temp, conn);
+
 	inno_dp_eq_training(chip);
+
+	/* (0x100 INNODP_LANE_CONFIG) */
+	temp = osal_read32(0x100, conn);
+	temp &= ~(0xf << 25);
+	temp |= 0 << 25; /* pattern mode */
+	temp |= 0xf << 17; /* transmit lanes */
+	temp |= BIT(8);
+	osal_write32(0x100, temp, conn);
+
 	inno_dp_link_start(chip);
 
 	if (!sink_lane_status_get(chip, link_status) &&

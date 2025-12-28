@@ -23,14 +23,15 @@ struct inno_conn_t g_inno_conn_table[INNO_CONN_MAX] = {
 		.flag = INNO_CONN_FLAG_NONE,
 		.regbase = DP_REGISTER_BASE_ADDRESS,
 		.regsize = DP_REGISTER_SIZE,
-		.use_phy_board = true,
-		.phy_i2c_id = 0,
-		.lane_count = 2, /* support 2lanes */
+		.use_phy_board = false,
+		.phy_i2c_id = 3,
+		.lane_count = 4, /* support 2lanes */
 		.lane_rate = INNODP_LINK_BW_2_7,
 		/* .lane_rate = INNODP_LINK_BW_1_62, */
-		.vic  = INNO_VIC_1920x1200, /* use vic=1080p when edid valid. */
+		.vic  = INNO_VIC_1920x1080, /* use vic=1080p when edid valid. */
 		.width = 1920,
-		.height = 1200,
+		.height = 1080,
+		.edp_enable = false,
 		.func = &g_inno_dp_func,
 	},
 };
@@ -46,6 +47,11 @@ struct inno_conn_t *inno_get_conn_module(enum modules module_id)
 int inno_do_display(struct inno_conn_t *conn, struct drm_display_mode *mode)
 {
 	int ret = 0;
+	uint8_t edid[256];
+
+	void __iomem *pmu_addr = (void __iomem *)ioremap(0xD4282800, 0x400);
+	void __iomem *ciu_addr = (void __iomem *)ioremap(0xD4282C00, 0x200);
+	u32 value;
 
 	/* init modules */
 	if (conn->func->init)
@@ -74,17 +80,26 @@ int inno_do_display(struct inno_conn_t *conn, struct drm_display_mode *mode)
 		}
 	}
 
-	if (conn->func->disable)
-		conn->func->disable(conn);
+	value = readl_relaxed(pmu_addr + 0x380);
+	osal_printf("%s PMU offset 0x380:0x%x\n", __func__, value);
 
-	if (!conn->is_enable && conn->func->enable) {
-		ret = conn->func->enable(conn);
-		if (ret) {
-			osal_printf_func("[%d]enable failed\n\n",
-					 conn->conn_id);
-			return -1;
-		}
-	}
+	value = readl_relaxed(pmu_addr + 0x388);
+	osal_printf("%s PMU offset 0x388:0x%x\n", __func__, value);
+
+	value = readl_relaxed(pmu_addr + 0x44);
+	osal_printf("%s PMU offset 0x44:0x%x\n", __func__, value);
+
+	value = readl_relaxed(pmu_addr + 0x4c);
+	osal_printf("%s PMU offset 0x4c:0x%x\n", __func__, value);
+
+	value = readl_relaxed(pmu_addr + 0x23c);
+	osal_printf("%s PMU offset 0x23c:0x%x\n", __func__, value);
+
+	value = readl_relaxed(ciu_addr + 0x12c);
+	osal_printf("%s CIU offset 0x12c:0x%x\n", __func__, value);
+
+	iounmap(pmu_addr);
+	iounmap(ciu_addr);
 
 	return 0;
 }

@@ -11,6 +11,9 @@
 #include <linux/platform_device.h>
 #include <linux/component.h>
 #include <linux/proc_fs.h>
+#include <linux/clk.h>
+#include <linux/reset.h>
+#include <linux/delay.h>
 #include <drm/drm_of.h>
 #include <drm/drm_device.h>
 #include <drm/drm_encoder.h>
@@ -34,6 +37,9 @@ struct dp_dev {
 
 	struct proc_dir_entry *proc_irq;
 	enum drm_connector_status connector_status;
+
+	struct reset_control *reset;
+	struct clk *pxclk;
 
 	struct inno_conn_t *conn;
 };
@@ -80,16 +86,19 @@ static const struct drm_encoder_funcs dp_encoder_funcs = {
 
 static void dp_encoder_enable(struct drm_encoder *encoder)
 {
+	DRM_INFO("%s()\n", __func__);
 }
 
 static void dp_encoder_disable(struct drm_encoder *encoder)
 {
+	DRM_INFO("%s()\n", __func__);
 }
 
 static int dp_encoder_atomic_check(struct drm_encoder *encoder,
 				   struct drm_crtc_state *crtc_state,
 				   struct drm_connector_state *conn_state)
 {
+	DRM_INFO("%s()\n", __func__);
 	return 0;
 }
 
@@ -98,6 +107,30 @@ static void dp_mode_set(struct drm_encoder *encoder,
 			 struct drm_display_mode *adjusted_mode)
 {
 	struct dp_dev *dp_dev = container_of(encoder, struct dp_dev, encoder);
+	uint64_t clk_val;
+	uint64_t set_clk_val;
+
+	DRM_INFO("%s()\n", __func__);
+
+	if (dp_dev->pxclk) {
+		clk_prepare_enable(dp_dev->pxclk);
+
+		set_clk_val = adjusted_mode->clock * 1000;
+
+		DRM_INFO("pxclk set_clk_val %lld\n", set_clk_val);
+
+		if (set_clk_val) {
+			set_clk_val = clk_round_rate(dp_dev->pxclk, set_clk_val);
+			clk_val = clk_get_rate(dp_dev->pxclk);
+			if(clk_val != set_clk_val){
+				clk_set_rate(dp_dev->pxclk, set_clk_val);
+				DRM_INFO("set pxclk=%lld\n", set_clk_val);
+			}
+		}
+
+		clk_val = clk_get_rate(dp_dev->pxclk);
+		DRM_INFO("get pxclk=%lld\n", clk_val);
+	}
 
 	dp_dev->conn->is_enable = 0;
 	inno_do_display(dp_dev->conn, adjusted_mode);
@@ -152,22 +185,33 @@ static void dp_proc_irq_debug_exit(struct dp_dev *dp_dev)
 static int dp_dev_resource_init(struct dp_dev *dp_dev,
 				struct platform_device *pdev)
 {
-	uint32_t i2c_id;
+	uint32_t dp_id;
 	struct resource *res;
+	void __iomem *pmu_addr = (void __iomem *)ioremap(0xd4282800, 0x400);
+	void __iomem *ciu_addr = (void __iomem *)ioremap(0xd4282c00, 0x200);
+	u32 value;
 
 	dp_dev->conn = inno_get_conn_module(INNO_CONN_DP0);
 
-	if (of_property_read_u32(pdev->dev.of_node, "i2c-id", &i2c_id)) {
-		dev_err(&pdev->dev, "i2c-id attribute is missing, default is 0.\n");
-		i2c_id = 0;
+	if (of_property_read_u32(pdev->dev.of_node, "dp-id", &dp_id)) {
+		DRM_INFO("%s() DP %d\n", __func__, dp_id);
+		dp_id = 0;
 	}
 
-	dp_dev->conn->phy_i2c_fd = i2c_get_adapter(i2c_id);
-	if (!dp_dev->conn->phy_i2c_fd) {
-		dev_err(&pdev->dev, "Failed to obtain i2c adapter, id = %d\n",
-			i2c_id);
-		return -ENODEV;
+	if (dp_id == 0) {
+		// mux dp0
+		value = readl(ciu_addr + 0x12c);
+		value |= BIT(8);
+		writel(value, (ciu_addr + 0x12c));
 	}
+
+	// use dp pll
+	// value = readl(pmu_addr + 0x23c);
+	// value |= BIT(2);
+	// writel(value, (pmu_addr + 0x23c));
+
+	iounmap(ciu_addr);
+	iounmap(pmu_addr);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -194,6 +238,10 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 	struct dp_dev *dp_dev;
 	struct drm_device *drm = (struct drm_device *)data;
 	struct platform_device *pdev = to_platform_device(dev);
+	uint64_t clk_val;
+	uint64_t set_clk_val;
+
+	DRM_INFO("%s()\n", __func__);
 
 	dp_dev = devm_kmalloc(dev, sizeof(*dp_dev), GFP_KERNEL);
 	if (!dp_dev)
@@ -204,6 +252,24 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 	dp_dev->drm = drm;
 	dp_dev->proc_irq = NULL;
 	dp_dev->connector_status = connector_status_connected;
+
+	dp_dev->reset = devm_reset_control_get_optional_shared(&pdev->dev, "reset");
+	if (IS_ERR_OR_NULL(dp_dev->reset)) {
+		DRM_INFO("Failed to found reset\n");
+	}
+
+	dp_dev->pxclk = of_clk_get_by_name(dev->of_node, "pxclk");
+	if (IS_ERR(dp_dev->pxclk)) {
+		dp_dev->pxclk = NULL;
+		DRM_INFO("Failed to found pxclk\n");
+	}
+
+	if (!IS_ERR_OR_NULL(dp_dev->reset)) {
+		ret = reset_control_deassert(dp_dev->reset);
+		if (ret < 0) {
+			DRM_INFO("Failed to deassert reset\n");
+		}
+	}
 
 	ret = drm_connector_init(drm, &dp_dev->connector,
 				 &dp_connector_funcs,
@@ -238,6 +304,7 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 		drm_connector_cleanup(&dp_dev->connector);
 		return ret;
 	}
+
 	return 0;
 }
 
@@ -245,10 +312,23 @@ static void inno_dp_unbind(struct device *dev, struct device *master, void *data
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct dp_dev *dp_dev = platform_get_drvdata(pdev);
+	int ret;
+
+	DRM_INFO("%s()\n", __func__);
 
 	dp_proc_irq_debug_exit(dp_dev);
 	drm_encoder_cleanup(&dp_dev->encoder);
 	drm_connector_cleanup(&dp_dev->connector);
+
+	if (dp_dev->pxclk)
+		clk_disable_unprepare(dp_dev->pxclk);
+
+	if (!IS_ERR_OR_NULL(dp_dev->reset)) {
+		ret = reset_control_assert(dp_dev->reset);
+		if (ret < 0) {
+			DRM_INFO("Failed to assert reset\n");
+		}
+	}
 }
 
 static const struct component_ops inno_dp_ops = {
@@ -258,6 +338,7 @@ static const struct component_ops inno_dp_ops = {
 
 static int inno_dp_probe(struct platform_device *pdev)
 {
+	DRM_INFO("%s()\n", __func__);
 	return component_add(&pdev->dev, &inno_dp_ops);
 }
 
@@ -267,7 +348,8 @@ static void inno_dp_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id inno_dp_match[] = {
-	{ .compatible = "spacemit,inno-dp" },
+	{ .compatible = "spacemit,inno-dp0" },
+	{ .compatible = "spacemit,inno-dp1" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, inno_dp_match);
@@ -280,3 +362,11 @@ struct platform_driver inno_dp_driver = {
 		.of_match_table = inno_dp_match,
 	},
 };
+
+// module_platform_driver(inno_dp_driver);
+
+static int inno_dp_driver_init(void)
+{
+       return platform_driver_register(&inno_dp_driver);
+}
+late_initcall(inno_dp_driver_init);

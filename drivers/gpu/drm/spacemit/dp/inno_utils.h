@@ -11,7 +11,7 @@
 #include <linux/types.h>
 #include <linux/printk.h>
 
-#define osal_printf(fmt, args...) pr_err(fmt, ##args)
+#define osal_printf(fmt, args...) pr_info(fmt, ##args)
 #define osal_printf_func(fmt, args...) \
 	pr_err("%s:%d: " fmt, __func__, __LINE__, ##args)
 
