@@ -118,7 +118,7 @@ static int riscv_vr_get(struct task_struct *target,
 	membuf_write(&to, &ptrace_vstate, sizeof(struct __riscv_v_regset_state));
 
 	/* Copy all the vector registers from vstate. */
-	return membuf_write(&to, vstate->datap, riscv_v_vsize);
+	return membuf_write(&to, vstate->datap, vstate->vlenb);
 }
 
 static int riscv_vr_set(struct task_struct *target,
@@ -150,7 +150,7 @@ static int riscv_vr_set(struct task_struct *target,
 	/* Copy all the vector registers. */
 	pos = 0;
 	ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, vstate->datap,
-				 0, riscv_v_vsize);
+				 0, vstate->vlenb);
 	return ret;
 }
 #endif
