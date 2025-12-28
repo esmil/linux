@@ -31,6 +31,14 @@ EXPORT_SYMBOL_GPL(riscv_v_vsize);
 
 int riscv_v_setup_vsize(void)
 {
+#ifdef CONFIG_SPACEMIT_HMP
+	/*
+	 * The vector context size of X100 is 32*32=1024,
+	 * and the vector context size of A100 is 128*32=4096,
+	 * so, config to 4096, it'll be ok for both X100 and A100.
+	*/
+	riscv_v_vsize = 4096;
+#else
 	unsigned long this_vsize;
 
 	/*
@@ -54,7 +62,6 @@ int riscv_v_setup_vsize(void)
 	}
 
 	/* the different vsize is allowed on spacemit hmp architecture */
-#ifndef CONFIG_SPACEMIT_HMP
 	if (riscv_v_vsize != this_vsize) {
 		WARN(1, "RISCV_ISA_V only supports one vlenb on SMP systems");
 		return -EOPNOTSUPP;
