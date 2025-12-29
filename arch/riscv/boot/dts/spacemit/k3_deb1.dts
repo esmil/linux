@@ -140,6 +140,17 @@
 			power-source = <1800>;
 		};
 	};
+
+	pcie0-1-cfg {
+		pcie0-0-pins {
+			pinmux = <K3_PADCONF(79, 5)>,
+				 <K3_PADCONF(81, 5)>;
+
+			bias-pull-up;
+			drive-strength = <33>;
+			power-source = <1800>;
+		};
+	};
 };
 
 &uart0 {
@@ -253,6 +264,15 @@
 
 &usb3_portd {
 	/* TypeC (USB3/DP/Power) (with ANX7447 chip) */
+	status = "okay";
+};
+
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_1_cfg>;
+
+	max-link-speed = <3>;
+	num-lanes = <4>;
 	status = "okay";
 };
 
