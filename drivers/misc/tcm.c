@@ -14,6 +14,7 @@
 #include <linux/poll.h>
 #include <linux/compat.h>
 #include <linux/random.h>
+#include <linux/soc/spacemit/spacemit-hmp.h>
 
 #define TCM_NAME		"tcm"
 
@@ -561,9 +562,10 @@ static int tcm_aicore_bind(aicore_bind_t *bind)
 	paddr = (phys_addr_t)tcm_match_pa((unsigned long)bind->vaddr);
 
 	for (int i = 0; i < g_block_num; i++) {
-		if ((paddr >= g_mmheap[i].start && paddr < g_mmheap[i].end) && 
+		if ((paddr >= g_mmheap[i].start && paddr < g_mmheap[i].end) &&
 		    ((paddr + bind->size) >= g_mmheap[i].start && (paddr + bind->size) < g_mmheap[i].end)) {
 			if (!cpumask_empty(&g_mmheap[i].cpu_mask)) {
+				hmp_set_ai_thread(current->pid);
 				long ret = sched_setaffinity(current->pid, &g_mmheap[i].cpu_mask);
 				if (ret != 0) {
 					dev_err(tcm.dev, "CPU affinity setting failed, va: 0x%lx pa:%lx \n",
