@@ -681,12 +681,13 @@ static int spa_wdt_probe(struct platform_device *pdev)
 	watchdog_set_nowayout(&spa_wdt, nowayout);
 
 	info->wdt_dev = spa_wdt;
+#if 0
 	ret = watchdog_register_device(&info->wdt_dev);
 	if (ret) {
 		dev_err(info->dev, "cannot register watchdog (%d)\n", ret);
 		goto err_register_fail;
 	}
-
+#endif
 	info->feed_timeout = ktime_set(SPACEMIT_WATCHDOG_FEED_TIMEOUT, 0);
 	hrtimer_setup(&info->feed_timer, spa_wdt_feed, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
