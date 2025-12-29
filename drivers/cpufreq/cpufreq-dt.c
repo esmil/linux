@@ -24,6 +24,7 @@
 
 #include "cpufreq-dt.h"
 
+#ifndef CONFIG_SOC_SPACEMIT
 struct private_data {
 	struct list_head node;
 
@@ -33,6 +34,7 @@ struct private_data {
 	bool have_static_opps;
 	int opp_token;
 };
+#endif
 
 static LIST_HEAD(priv_list);
 

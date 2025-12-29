@@ -18,16 +18,6 @@
 #include "../opp/opp.h"
 #include "cpufreq-dt.h"
 
-struct private_data {
-	struct list_head node;
-
-	cpumask_var_t cpus;
-	struct device *cpu_dev;
-	struct cpufreq_frequency_table *freq_table;
-	bool have_static_opps;
-	int opp_token;
-};
-
 #define TURBO0_FREQUENCY		(1000000000)
 #define STABLE_FREQUENCY		(819200000)
 
@@ -123,9 +113,6 @@ static int spacemit_policy_notifier(struct notifier_block *nb,
 static struct notifier_block spacemit_policy_notifier_block = {
        .notifier_call = spacemit_policy_notifier,
 };
-
-extern struct private_data *cpufreq_dt_find_data(int cpu);
-extern void cpufreq_dt_add_data(struct private_data *priv);
 
 static int spacemit_dt_cpufreq_pre_early_init(struct device *dev, int cpu)
 {
