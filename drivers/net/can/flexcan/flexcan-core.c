@@ -1950,18 +1950,6 @@ static int register_flexcandev(struct net_device *dev)
 	struct flexcan_regs __iomem *regs = priv->regs;
 	u32 reg, err;
 
-#if 1
-	static void __iomem *reg_base;
-	u32 pll3_ctl;
-	netdev_err(dev, "enter register_flexcandev\n");
-	reg_base = ioremap(0xD4050000,0x3000);
-	writel(0x1, reg_base + 0x10B4);
-	reg_base = ioremap(0xD4090000,0x0200);
-	pll3_ctl = readl(reg_base + 0x011C);
-	pll3_ctl |= (0x1<<4);
-	writel(pll3_ctl, reg_base + 0x011C);
-#endif
-
 	err = flexcan_clks_enable(priv);
 	if (err)
 		return err;
