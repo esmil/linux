@@ -100,21 +100,20 @@ static int va2pa(void *va, size_t size, va2pa_t **va2pa, pid_t pid)
 
 static int dma_malloc(struct ai_dmac *dma, dma_map_info_t *dma_info, struct vm_area_struct *vma)
 {
-	int ret;
-
-	dma_info->kern_addr = dma_alloc_coherent(dma->dev, dma_info->size, &dma_info->dma_addr, GFP_KERNEL);
+	dma_info->kern_addr = kmalloc(dma_info->size, GFP_KERNEL);
 	if (!dma_info->kern_addr) {
-		dev_err(dma->dev, "Unable to allocate contiguous DMA memory region of size " \
-				"%zu.\n", dma_info->size);
+		dev_err(dma->dev,"kmalloc failed\n");
 		return -ENOMEM;
 	}
 
-	ret = dma_mmap_coherent(dma->dev, vma, dma_info->kern_addr, dma_info->dma_addr, dma_info->size);
-	pr_debug("dma_addr:%llx,user_addr:%llx\n",dma_info->dma_addr, (unsigned long long)vma->vm_start);
-	if (ret < 0) {
-		dev_err(dma->dev,"Unable to remap address %p to userspace address 0x%lx, size "\
-				"%zu.\n", dma_info->kern_addr, dma_info->user_addr, \
-				dma_info->size);
+	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+	if (remap_pfn_range(vma, vma->vm_start, (virt_to_phys(dma_info->kern_addr) >> PAGE_SHIFT),
+			    vma->vm_end - vma->vm_start, vma->vm_page_prot))
+		return -EAGAIN;
+
+	dma_info->dma_addr = dma_map_single(dma->dev, dma_info->kern_addr, dma_info->size, DMA_BIDIRECTIONAL);
+	if (dma_mapping_error(dma->dev, dma_info->dma_addr)) {
+		dev_err(dma->dev,"mapping buffer failed\n");
 		return -1;
 	}
 
@@ -123,7 +122,8 @@ static int dma_malloc(struct ai_dmac *dma, dma_map_info_t *dma_info, struct vm_a
 
 static void dma_free(struct ai_dmac *dma, dma_map_info_t *dma_info)
 {
-	dma_free_coherent(dma->dev, dma_info->size, dma_info->kern_addr, dma_info->dma_addr);
+	dma_unmap_single(dma->dev, dma_info->dma_addr, dma_info->size, DMA_BIDIRECTIONAL);
+	kfree(dma_info->kern_addr);
 }
 
 static int dma_open(struct inode *inode, struct file *filp)
