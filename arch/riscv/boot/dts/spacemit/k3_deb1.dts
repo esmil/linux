@@ -260,11 +260,18 @@
 	interrupt-parent = <&gpio>;
 	interrupts = <1 11 IRQ_TYPE_EDGE_RISING>;
 
-	i2c_tunnel: i2c-tunnel {
+	i2c_tunnel1: i2c-tunnel@1 {
 		compatible = "google,cros-ec-i2c-tunnel";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		google,remote-bus = <1>;
+	};
+
+	i2c_tunnel4: i2c-tunnel@4 {
+		compatible = "google,cros-ec-i2c-tunnel";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		google,remote-bus = <4>;
 	};
 };
 
