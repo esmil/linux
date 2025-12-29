@@ -244,15 +244,16 @@
 };
 
 &usb3_portd_u2phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portd_u3phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portd {
-	status = "disabled";
+	/* TypeC (USB3/DP/Power) (with ANX7447 chip) */
+	status = "okay";
 };
 
 &ec {
