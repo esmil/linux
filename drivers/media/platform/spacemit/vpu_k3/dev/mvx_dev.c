@@ -329,6 +329,8 @@ static int mvx_dev_probe(struct device *dev, struct resource *iores, struct reso
 	ctx->client_ops.print_debug = print_debug;
 	ctx->client_ops.wait_session_idle = wait_session_idle;
 
+	clk_set_rate(ctx->clock, 1000000000);
+
 	/* Create if context. */
 	ctx->if_ops = mvx_if_create(dev, &ctx->client_ops, ctx);
 	if (IS_ERR(ctx->if_ops))
