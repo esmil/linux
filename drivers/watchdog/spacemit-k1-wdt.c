@@ -56,9 +56,9 @@
 #define K1_WATCHDOG_RESET_TEST_ID	1
 #endif
 
-#define MPMU_APRR		(0x1020)
-#define MPMU_APRR_WDTR	(1<<4)
-#define DEFAULT_SHIFT (8)
+#define MPMU_APRR			(0x1020)
+#define MPMU_APRR_WDTR			(1<<4)
+#define DEFAULT_SHIFT			(8)
 /*
  * MPMU_APSR is a dummy reg which is used to handle reboot
  * cmds. Its layout is:
@@ -66,11 +66,11 @@
  *	bit8~11:  set to 0x1 when normal boot with no parameter
  *                set to 0x5 for other valid cmds.
  */
-#define MPMU_ARSR		(0x1028)
-#define MPMU_ARSR_REBOOT_CMD(x)	((x) << 8)
-#define MPMU_ARSR_SWR_MASK	(0xf << 8)
-#define REBOOT_CMD_NORMAL	0x1
-#define REBOOT_CMD_VALID	0x5
+#define MPMU_ARSR			(0x1028)
+#define MPMU_ARSR_REBOOT_CMD(x)		((x) << 14)
+#define MPMU_ARSR_SWR_MASK		(0xf << 14)
+#define REBOOT_CMD_NORMAL		0x1
+#define REBOOT_CMD_VALID		0x5
 
 static bool nowayout	= WATCHDOG_NOWAYOUT ? true : false;
 static DEFINE_SPINLOCK(reboot_lock);
@@ -94,6 +94,7 @@ struct spa_wdt_info {
 	void __iomem	*mpmu_base;
 	struct device *dev;
 	struct clk *clk;
+	struct clk *clk_bus;
 	struct reset_control *reset;
 	struct hrtimer feed_timer;
 	ktime_t feed_timeout;
@@ -191,7 +192,7 @@ static void spa_enable_wdt_clk(struct spa_wdt_info *info)
 {
 	mutex_lock(&wdt_clk_lock);
 	if (!info->wdt_clk_open) {
-		//clk_prepare_enable(info->clk);
+		clk_prepare_enable(info->clk);
 		reset_control_deassert(info->reset);
 		info->wdt_clk_open = true;
 	}
@@ -202,7 +203,7 @@ static void spa_disable_wdt_clk(struct spa_wdt_info *info)
 {
 	mutex_lock(&wdt_clk_lock);
 	if (info->wdt_clk_open) {
-		//clk_disable_unprepare(info->clk);
+		clk_disable_unprepare(info->clk);
 		reset_control_assert(info->reset);
 		info->wdt_clk_open = false;
 	}
@@ -644,12 +645,19 @@ static int spa_wdt_probe(struct platform_device *pdev)
 	writel(reg, mpmu_arsr);
 
 	/* get WDT clock */
-/*	info->clk = devm_clk_get(info->dev, NULL);
+	info->clk = devm_clk_get(info->dev, "clk");
 	if (IS_ERR(info->clk)) {
 		dev_err(info->dev, "failed to get WDT clock\n");
 		return PTR_ERR(info->clk);
 	}
-*/
+
+	info->clk_bus = devm_clk_get(info->dev, "clk-bus");
+	if (IS_ERR(info->clk_bus)) {
+		dev_err(info->dev, "failed to get WDT bus clock\n");
+		return PTR_ERR(info->clk_bus);
+	}
+	clk_prepare_enable(info->clk_bus);
+
 	info->reset = devm_reset_control_get_optional(info->dev,NULL);
 	if(IS_ERR(info->reset)) {
 		dev_err(info->dev, "watchdog get reset failed\n");
@@ -723,7 +731,9 @@ err_alloc:
 	watchdog_unregister_device(&info->wdt_dev);
 err_register_fail:
 	spa_disable_wdt_clk(info);
-//	clk_put(info->clk);
+	clk_disable_unprepare(info->clk_bus);
+	clk_put(info->clk);
+	clk_put(info->clk_bus);
 
 	return ret;
 }
@@ -740,7 +750,9 @@ static void spa_wdt_remove(struct platform_device *pdev)
 	}
 
 	spa_disable_wdt_clk(info);
-//	clk_put(info->clk);
+	clk_disable_unprepare(info->clk_bus);
+	clk_put(info->clk);
+	clk_put(info->clk_bus);
 
 	return;
 }
@@ -759,7 +771,7 @@ static void spa_wdt_shutdown(struct platform_device *pdev)
 		spa_enable_wdt_clk(info);
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static int spa_wdt_suspend(struct device *dev)
 {
 	struct spa_wdt_info *info = dev_get_drvdata(dev);
@@ -804,7 +816,7 @@ static const struct dev_pm_ops wdt_pm_ops = {
 };
 #else
 static const struct dev_pm_ops wdt_pm_ops = {};
-#endif /* CONFIG_PM */
+#endif /* CONFIG_PM_SLEEP */
 
 #ifdef CONFIG_OF_RESERVED_MEM
 #include <linux/of.h>
