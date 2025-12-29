@@ -264,7 +264,7 @@
 	no-sd;
 	no-sdio;
 	clock-frequency = <375000000>;
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2_host_u2phy {
