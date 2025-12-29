@@ -185,16 +185,10 @@
 };
 
 &usb3_portb_u3phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portb {
-	/* Bringup stage, only enable USB2 phy */
-	/delete-property/ phys;
-	/delete-property/ phy-names;
-	maximum-speed = "high-speed";
-	phys = <&usb3_portb_u2phy>;
-	phy-names = "usb2-phy";
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
