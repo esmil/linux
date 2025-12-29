@@ -655,8 +655,8 @@
 #define RESET_RCPU_I2CCTRL_RI2C2 2
 
 /* RMPU clocks */
-#define CLK_RPMU_RCPU_APB        0
-#define CLK_RPMU_RCPU_AXI        1
+#define CLK_RPMU_RCPU_AXI        0
+#define CLK_RPMU_RCPU_APB        1
 #define CLK_RPMU_RIPC2MSA        2
 #define CLK_RPMU_RIPC2CP         3
 #define CLK_RPMU_RIPC2AP         4
