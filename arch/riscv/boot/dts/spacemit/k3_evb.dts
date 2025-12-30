@@ -517,7 +517,7 @@
 
 	edcdc1: edcdc1 {
 		regulator-min-microvolt = <534000>;
-		regulator-max-microvolt = <880000>;
+		regulator-max-microvolt = <10000000>;
 		regulator-always-on;
 		regulator-boot-on;
 	};
