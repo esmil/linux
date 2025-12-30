@@ -7,6 +7,7 @@
 #include "k3_opp_table.dtsi"
 #include "lcd_dsi_panel.dtsi"
 #include "lcd/lcd_icnl9911c_mipi.dtsi"
+#include "k3-dp0.dtsi"
 
 / {
 	compatible = "spacemit,k3-evb";
@@ -832,16 +833,16 @@
 
 &dpu_crtc0 {
 	memory-region = <&dpu_resv0>;
-	status = "okay";
+	status = "disabled";
 };
 
 &dpu_crtc1 {
 	memory-region = <&dpu_resv1>;
-	status = "okay";
+	status = "disabled";
 };
 
 &dsi0 {
-	status = "okay";
+	status = "disabled";
 
 	panel0: panel0@0 {
 		status = "ok";
@@ -857,5 +858,16 @@
 };
 
 &lcds {
+	status = "disabled";
+};
+
+&dpu0_crtc0 {
+	memory-region = <&dpu_resv0>;
+	status = "okay";
+};
+
+&dp0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp0_2_cfg>;
 	status = "okay";
 };
