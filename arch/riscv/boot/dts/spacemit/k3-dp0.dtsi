@@ -36,8 +36,16 @@
 		spacemit-dpu-min-mclk = <40960000>;
 		status = "disabled";
 
-		dpu0_crtc0_out0: endpoint@0 {
-			remote-endpoint = <&dp0_in>;
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				dpu0_crtc0_out0: endpoint@0 {
+					remote-endpoint = <&dp0_in>;
+				};
+			};
 		};
 	};
 
