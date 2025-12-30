@@ -31,6 +31,7 @@
 		power-domains = <&power K3_PMU_LCD1_PWR_DOMAIN>;
 		pipeline-id = <1>;
 		is_edp = <1>;
+		dpu-id = <1>;
 		ip = "spacemit-saturn";
 		spacemit-dpu-min-mclk = <40960000>;
 		status = "disabled";

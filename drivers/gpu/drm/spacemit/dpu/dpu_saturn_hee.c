@@ -553,7 +553,12 @@ static void saturn_init_tmg(struct spacemit_crtc *a_crtc)
 
 	if (a_crtc->is_edp) {
 		// 1920x1080@60Hz
-		void __iomem *tmg_addr = (void __iomem *)ioremap(0xc0391200, 0x100);
+		void __iomem *tmg_addr;
+
+		if (a_crtc->dpu_id == 1)
+			tmg_addr= (void __iomem *)ioremap(0xc0491200, 0x100);
+		else
+			tmg_addr= (void __iomem *)ioremap(0xc0391200, 0x100);
 
 		writel(0x00000184, tmg_addr + 0x00); // saturn_tmg_reg_0
 		writel(0x00000000, tmg_addr + 0x04); // saturn_tmg_reg_1

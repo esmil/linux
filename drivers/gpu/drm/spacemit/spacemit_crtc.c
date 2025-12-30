@@ -1505,6 +1505,7 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 #endif
 	const char *str;
 	u32 dpu_id;
+	u32 pipeline_id;
 	u32 is_edp;
 	u32 dpu_out_format;
 	DRM_INFO("%s()\n", __func__);
@@ -1537,9 +1538,15 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(a_crtc->dsc_reset))
 		DRM_DEV_DEBUG(dev, "not found dsc_reset\n");
 
-	if (of_property_read_u32(np, "pipeline-id", &dpu_id))
+	if (of_property_read_u32(np, "pipeline-id", &pipeline_id))
 		return -EINVAL;
-	a_crtc->dev_id = dpu_id;
+	a_crtc->dev_id = pipeline_id;
+
+	if (of_property_read_u32(np, "dpu-id", &dpu_id)) {
+		DRM_INFO("%s() dpu id was not found\n", __func__);
+		a_crtc->dpu_id = 0;
+	} else
+		a_crtc->dpu_id = dpu_id;
 
 	if (of_property_read_u32(np, "is_edp", &is_edp))
 		return -EINVAL;
@@ -1578,10 +1585,13 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	 * on/off lcd power domain before/after probe func.
 	 */
 	pm_runtime_enable(&pdev->dev);
-	if (spacemit_dpu_logo_booton) {
-		spacemit_dpu_power_enable(a_crtc, true);
-		dpu_pm_resume(&pdev->dev);
-	}
+	// if (spacemit_dpu_logo_booton) {
+	// 	spacemit_dpu_power_enable(a_crtc, true);
+	// 	dpu_pm_resume(&pdev->dev);
+	// }
+
+	spacemit_dpu_power_enable(a_crtc, true);
+	dpu_pm_resume(&pdev->dev);
 
 	return component_add(dev, &dpu_component_ops);
 }

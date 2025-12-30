@@ -175,6 +175,7 @@ struct spacemit_crtc {
 #endif
 	int dev_id;
 	bool is_edp;
+	int dpu_id;
 	struct timer_list cfg_rdy_timer;
 	int wb_id;
 	struct slice_cfg slice_wb[MAX_SLICE];
