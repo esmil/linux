@@ -18,4 +18,10 @@ config SPACEMIT_PM_DOMAINS
 	  In order to meet high performance and low power requirements, a power
 	  management unit is designed or saving power.
 
+config CONFIG_SPACEMIT_DDR_QOS
+	bool "Spacemit ddr qos config"
+	depends on SOC_SPACEMIT_K3
+	help
+	  Say y here to enable ddr qos config function.
+
 source "drivers/soc/spacemit/v2d/Kconfig"
