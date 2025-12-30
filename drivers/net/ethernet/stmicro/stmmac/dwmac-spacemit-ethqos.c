@@ -57,27 +57,21 @@ struct spacemit_ethqos {
 };
 
 /**
- * struct spacemit_ethqos_ops - Spacemit platform-specific operations (glue layer)
- * @glue_parse_dt:	 Parse platform-specific data from device tree
- * @glue_bind_ops:	 Bind platform-specific callbacks to plat
- * @glue_config_plat:	 Configure platform-specific registers
- * @glue_release_dt:	 Release platform-specific data
- * @glue_unbind_ops:	 Unbind platform callbacks from plat
- * @glue_cleanup_plat:	 Clean up platform-specific configuration
- *
+ * struct spacemit_ethqos_ops - Spacemit platform glue ops
+ * @devm_glue_parse_dt:        Parse platform data from DT (devm-managed)
+ * @devm_glue_bind_ops:        Install platform callbacks (devm-rollback)
+ * @devm_glue_config_plat:     Program platform registers (devm-managed)
  */
 struct spacemit_ethqos_ops {
-	int (*glue_parse_dt)(struct platform_device *pdev, struct spacemit_ethqos *eqos);
-	int (*glue_bind_ops)(struct spacemit_ethqos *eqos);
-	int (*glue_config_plat)(struct spacemit_ethqos *eqos);
-	void (*glue_release_dt)(struct spacemit_ethqos *eqos);
-	void (*glue_unbind_ops)(struct spacemit_ethqos *eqos);
-	void (*glue_cleanup_plat)(struct spacemit_ethqos *eqos);
+	int (*devm_glue_parse_dt)(struct platform_device *pdev,
+				  struct spacemit_ethqos *eqos);
+	int (*devm_glue_bind_ops)(struct spacemit_ethqos *eqos);
+	int (*devm_glue_config_plat)(struct spacemit_ethqos *eqos);
 };
 
-static int spacemit_glue_init(struct platform_device *pdev,
-			      struct plat_stmmacenet_data *plat_dat,
-			      const struct spacemit_ethqos_ops *ops)
+static int devm_spacemit_glue_init(struct platform_device *pdev,
+				   struct plat_stmmacenet_data *plat_dat,
+				   const struct spacemit_ethqos_ops *ops)
 {
 	struct device *dev = &pdev->dev;
 	struct spacemit_ethqos *eqos;
@@ -89,57 +83,27 @@ static int spacemit_glue_init(struct platform_device *pdev,
 
 	eqos->pdev = pdev;
 	eqos->plat = plat_dat;
-
-	if (ops->glue_parse_dt) {
-		ret = ops->glue_parse_dt(pdev, eqos);
-		if (ret)
-			return dev_err_probe(dev, ret, "glue layer: dt parse failed");
-	}
-
-	if (ops->glue_bind_ops) {
-		ret = ops->glue_bind_ops(eqos);
-		if (ret) {
-			dev_err_probe(dev, ret, "glue layer: bind ops failed");
-			goto err_release_dt;
-		}
-	}
-
-	if (ops->glue_config_plat) {
-		ret = ops->glue_config_plat(eqos);
-		if (ret) {
-			dev_err_probe(dev, ret, "glue layer: config failed");
-			goto err_unbind_ops;
-		}
-	}
-
 	plat_dat->bsp_priv = eqos;
+
+	if (ops->devm_glue_parse_dt) {
+		ret = ops->devm_glue_parse_dt(pdev, eqos);
+		if (ret)
+			return dev_err_probe(dev, ret, "glue layer: dt parse failed\n");
+	}
+
+	if (ops->devm_glue_bind_ops) {
+		ret = ops->devm_glue_bind_ops(eqos);
+		if (ret)
+			return dev_err_probe(dev, ret, "glue layer: bind ops failed\n");
+	}
+
+	if (ops->devm_glue_config_plat) {
+		ret = ops->devm_glue_config_plat(eqos);
+		if (ret)
+			return dev_err_probe(dev, ret, "glue layer: config failed\n");
+	}
+
 	return 0;
-
-err_unbind_ops:
-	if (ops->glue_unbind_ops)
-		ops->glue_unbind_ops(eqos);
-err_release_dt:
-	if (ops->glue_release_dt)
-		ops->glue_release_dt(eqos);
-	return ret;
-}
-
-static void spacemit_glue_deinit(struct platform_device *pdev,
-				 struct plat_stmmacenet_data *plat_dat,
-				 const struct spacemit_ethqos_ops *ops)
-{
-	struct spacemit_ethqos *eqos = plat_dat->bsp_priv;
-
-	if (ops->glue_cleanup_plat)
-		ops->glue_cleanup_plat(eqos);
-
-	if (ops->glue_unbind_ops)
-		ops->glue_unbind_ops(eqos);
-
-	if (ops->glue_release_dt)
-		ops->glue_release_dt(eqos);
-
-	plat_dat->bsp_priv = NULL;
 }
 
 /* -----------------------------------------------------------------------------
@@ -148,9 +112,6 @@ static void spacemit_glue_deinit(struct platform_device *pdev,
  */
 #define TX_PHASE			1
 #define RX_PHASE			0
-/* ctrl register bits */
-#define EMAC_BUS_CLK_EN			BIT(0)
-#define EMAC_BUS_RST			BIT(1)
 
 #define PHY_INTF_RGMII			BIT(3)
 #define PHY_INTF_MII			BIT(4)
@@ -502,13 +463,28 @@ static int k3_parse_dt(struct platform_device *pdev, struct spacemit_ethqos *eqo
 	return 0;
 }
 
-static void k3_release_dt(struct spacemit_ethqos *eqos)
+static void devm_k3_release_dt(void *arg)
 {
+	struct spacemit_ethqos *eqos = arg;
+
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(eqos->dbg_dir);
 	eqos->dbg_dir = NULL;
 	eqos->dbg_clk_tuning = NULL;
 #endif
+}
+
+static int devm_k3_parse_dt(struct platform_device *pdev,
+			    struct spacemit_ethqos *eqos)
+{
+	int ret;
+
+	ret = k3_parse_dt(pdev, eqos);
+	if (ret)
+		return ret;
+
+	return devm_add_action_or_reset(&pdev->dev,
+					devm_k3_release_dt, eqos);
 }
 
 static void k3_fix_mac_speed(void *bsp_priv, int speed, unsigned int mode)
@@ -576,7 +552,7 @@ static int k3_clks_config(void *bsp_priv, bool enabled)
 	return ret;
 }
 
-static int k3_bind_plat_ops(struct spacemit_ethqos *eqos)
+static int devm_k3_bind_plat_ops(struct spacemit_ethqos *eqos)
 {
 	struct plat_stmmacenet_data *plat_dat = eqos->plat;
 
@@ -588,11 +564,26 @@ static int k3_bind_plat_ops(struct spacemit_ethqos *eqos)
 
 static int k3_setup_plat(struct spacemit_ethqos *eqos)
 {
+	struct device *dev = &eqos->pdev->dev;
 	int ret;
+
+	if (eqos->phy_clk_from_soc) {
+		ret = clk_prepare_enable(eqos->phy_clk);
+		if (ret)
+			return dev_err_probe(dev, ret, "failed to enable phy_clk\n");
+	}
+
+	if (eqos->tx_clk_from_soc) {
+		ret = clk_prepare_enable(eqos->tx_clk);
+		if (ret) {
+			ret = dev_err_probe(dev, ret, "failed to enable tx_clk\n");
+			goto err_disable_phy_clk;
+		}
+	}
 
 	ret = k3_eqos_iface_config(eqos);
 	if (ret)
-		return ret;
+		goto err_disable_tx_clk;
 
 	/*
 	 * On k3 platforms, the delayline must be enabled during probe;
@@ -603,19 +594,69 @@ static int k3_setup_plat(struct spacemit_ethqos *eqos)
 	    eqos->clk_tuning_way != CLK_TUNING_BY_DLINE)
 		return 0;
 
-	return spacemit_rgmii_dline_enable(eqos);
+	ret = spacemit_rgmii_dline_enable(eqos);
+	if (ret)
+		goto err_disable_tx_clk;
+
+	return 0;
+
+err_disable_tx_clk:
+	if (eqos->tx_clk_from_soc)
+		clk_disable_unprepare(eqos->tx_clk);
+
+err_disable_phy_clk:
+	if (eqos->phy_clk_from_soc)
+		clk_disable_unprepare(eqos->phy_clk);
+
+	return ret;
+}
+
+static void devm_k3_cleanup_plat(void *arg)
+{
+	struct spacemit_ethqos *eqos = arg;
+
+	if (eqos->tx_clk_from_soc)
+		clk_disable_unprepare(eqos->tx_clk);
+
+	if (eqos->phy_clk_from_soc)
+		clk_disable_unprepare(eqos->phy_clk);
+}
+
+static int devm_k3_setup_plat(struct spacemit_ethqos *eqos)
+{
+	struct device *dev = &eqos->pdev->dev;
+	int ret;
+
+	ret = k3_setup_plat(eqos);
+	if (ret)
+		return ret;
+
+	return devm_add_action_or_reset(dev, devm_k3_cleanup_plat, eqos);
 }
 
 static const struct spacemit_ethqos_ops k3_gmac_ops = {
-	.glue_parse_dt = k3_parse_dt,
-	.glue_bind_ops = k3_bind_plat_ops,
-	.glue_config_plat = k3_setup_plat,
-	.glue_release_dt = k3_release_dt,
-	.glue_unbind_ops = NULL,
-	.glue_cleanup_plat = NULL,
+	.devm_glue_parse_dt = devm_k3_parse_dt,
+	.devm_glue_bind_ops = devm_k3_bind_plat_ops,
+	.devm_glue_config_plat = devm_k3_setup_plat,
 };
 
 /* TODO: add K4/K5/K6 SoC-specific GMAC macros/ops here in future */
+
+static void spacemit_ethqos_fixup_caps(struct platform_device *pdev)
+{
+	struct net_device *ndev = platform_get_drvdata(pdev);
+	struct stmmac_priv *priv = netdev_priv(ndev);
+	struct spacemit_ethqos *eqos = priv->plat->bsp_priv;
+
+	/*
+	 * On boards where the GMAC TX clock is derived from the PHY RX clock,
+	 * some PHYs may stop the RX clock in low power states (e.g. EEE/LPI).
+	 * This removes the TX clock and can lead to TX timeouts. Disable EEE
+	 * for this configuration.
+	 */
+	if (!eqos->tx_clk_from_soc)
+		priv->dma_cap.eee = 0;
+}
 
 static int spacemit_ethqos_probe(struct platform_device *pdev)
 {
@@ -623,8 +664,6 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 	struct stmmac_resources stmmac_res;
 	struct plat_stmmacenet_data *plat_dat;
 	const struct spacemit_ethqos_ops *ops;
-	struct net_device *ndev;
-	struct stmmac_priv *priv;
 	int ret;
 
 	ops = of_device_get_match_data(dev);
@@ -639,38 +678,17 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 	if (IS_ERR(plat_dat))
 		return PTR_ERR(plat_dat);
 
-	ret = spacemit_glue_init(pdev, plat_dat, ops);
+	ret = devm_spacemit_glue_init(pdev, plat_dat, ops);
 	if (ret)
 		return ret;
 
-	ret = stmmac_dvr_probe(dev, plat_dat, &stmmac_res);
-	if (ret) {
-		spacemit_glue_deinit(pdev, plat_dat, ops);
+	ret = devm_stmmac_pltfr_probe(pdev, plat_dat, &stmmac_res);
+	if (ret)
 		return ret;
-	}
 
-	/*
-	 * At present, enabling EEE on some board may cause TX timeouts.
-	 * This is expected to be improved in future revisions.
-	 */
-	ndev = platform_get_drvdata(pdev);
-	priv = netdev_priv(ndev);
-	priv->dma_cap.eee = 0;
+	spacemit_ethqos_fixup_caps(pdev);
 
 	return 0;
-}
-
-static void spacemit_ethqos_remove(struct platform_device *pdev)
-{
-	const struct spacemit_ethqos_ops *ops;
-	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct stmmac_priv *priv = netdev_priv(ndev);
-	struct plat_stmmacenet_data *plat_dat = priv->plat;
-
-	ops = of_device_get_match_data(&pdev->dev);
-
-	stmmac_dvr_remove(&pdev->dev);
-	spacemit_glue_deinit(pdev, plat_dat, ops);
 }
 
 static const struct of_device_id spacemit_ethqos_match[] = {
@@ -681,7 +699,6 @@ MODULE_DEVICE_TABLE(of, spacemit_ethqos_match);
 
 static struct platform_driver spacemit_ethqos_driver = {
 	.probe  = spacemit_ethqos_probe,
-	.remove = spacemit_ethqos_remove,
 	.driver = {
 		.name           = DRIVER_NAME,
 		.pm             = &stmmac_pltfr_pm_ops,
