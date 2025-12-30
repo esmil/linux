@@ -162,16 +162,21 @@
 };
 
 &usb3_porta_u3phy {
-	// Enabled but will do nop during init
+	orientation-switch;
 	status = "okay";
+
+	port {
+		usb3_phy_switch: endpoint {
+			remote-endpoint = <&fusb301_sw_ep>;
+		};
+	};
 };
 
 &usb3_porta {
 	dr_mode = "otg";
-	/* Bringup stage, only enable USB2 phy */
-	maximum-speed = "high-speed";
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
+	monitor-vbus;
 	status = "okay";
 
 	ports {
@@ -466,6 +471,13 @@
 					reg = <0x0>;
 					fusb301_ep: endpoint {
 						remote-endpoint = <&porta_role_switch>;
+					};
+				};
+
+				port@1 {
+					reg = <0x1>;
+					fusb301_sw_ep: endpoint {
+						remote-endpoint = <&usb3_phy_switch>;
 					};
 				};
 			};
