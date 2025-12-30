@@ -107,6 +107,12 @@
 		};
 	};
 
+	i2c6-1-cfg {
+		i2c6-0-pins {
+			power-source = <3300>;
+		};
+	};
+
 	fusb301_cfg: fusb301-cfg {
 		fusb301-0-pins {
 			pinmux = <K3_PADCONF(58, 0)>;
@@ -464,6 +470,17 @@
 				};
 			};
 		};
+	};
+};
+
+&i2c6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c6_1_cfg>;
+	status = "okay";
+
+	ctf2301: ctf2301@4c {
+		compatible = "sensylink,ctf2301";
+		reg = <0x4c>;
 	};
 };
 
