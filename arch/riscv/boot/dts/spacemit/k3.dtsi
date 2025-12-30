@@ -1489,7 +1489,8 @@
 		};
 
 		usb3_porta_u3phy: phy@cad30000 {
-			compatible = "spacemit,k3-usb3-phy";
+			compatible = "spacemit,k3-usb3-phy",
+				     "spacemit,k3-typec-switch";
 			spacemit,syscon-apmu = <&syscon_apmu>;
 			spacemit,syscon-apb-spare = <&pll>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
