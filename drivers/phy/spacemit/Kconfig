@@ -17,6 +17,7 @@ config PHY_SPACEMIT_K3_USB3
 	depends on (ARCH_SPACEMIT || COMPILE_TEST) && OF
 	depends on COMMON_CLK
 	depends on USB_COMMON
+	depends on TYPEC || TYPEC=n
 	select GENERIC_PHY
 	help
 	  Enable this to support K3 USB 3.0 PHY driver. This driver takes care of

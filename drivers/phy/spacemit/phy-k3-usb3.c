@@ -19,6 +19,9 @@
 #include <linux/usb.h>
 #include <linux/phy/phy.h>
 
+#include <linux/usb/typec.h>
+#include <linux/usb/typec_mux.h>
+
 #define MAX_NUM_PHY 2
 
 #define PLL_TIMEOUT 500000 /* For PHY PLL lock (usec) */
@@ -151,7 +154,10 @@ struct k3_usb3phy {
 	struct regmap *pmu;
 	struct regmap *apb_spare;
 
+	/* For USB only */
 	bool nop;
+	bool orientation_flip;
+	struct typec_switch_dev *sw;
 };
 
 static void k3_usb3phy_combo_set_usb(struct k3_usb3phy *k3_phy, bool usb)
@@ -314,6 +320,85 @@ static const struct phy_ops k3_usb3phy_ops = {
 	.owner = THIS_MODULE,
 };
 
+#if IS_ENABLED(CONFIG_TYPEC)
+static int k3_usb3phy_switch_set(struct typec_switch_dev *sw,
+				 enum typec_orientation orientation)
+{
+	struct k3_usb3phy *k3_phy = typec_switch_get_drvdata(sw);
+	bool val;
+
+	val = orientation == TYPEC_ORIENTATION_REVERSE;
+	if (k3_phy->orientation_flip)
+		val = !val;
+
+	if (regmap_test_bits(k3_phy->pmu, PMUA_TYPEC_CTRL,
+			     TYPEC_ORIENT_OVRD | TYPEC_ORIENT_OVRD_EN) != val)
+		regmap_update_bits(
+			k3_phy->pmu, PMUA_TYPEC_CTRL,
+			TYPEC_ORIENT_OVRD | TYPEC_ORIENT_OVRD_EN,
+			val ? TYPEC_ORIENT_OVRD | TYPEC_ORIENT_OVRD_EN : 0);
+
+	dev_dbg(k3_phy->dev, "Override orientation with %d\n", val);
+	return 0;
+}
+
+static void k3_usb3_typec_unregister(void *data)
+{
+	struct k3_usb3phy *k3_phy = data;
+
+	typec_switch_unregister(k3_phy->sw);
+}
+
+static int k3_usb3_typec_register(struct k3_usb3phy *k3_phy)
+{
+	struct typec_switch_desc sw_desc = {};
+	struct device *dev = k3_phy->dev;
+
+	sw_desc.drvdata = k3_phy;
+	sw_desc.name = dev_name(dev);
+	sw_desc.fwnode = dev_fwnode(dev);
+	sw_desc.set = k3_usb3phy_switch_set;
+	k3_phy->sw = typec_switch_register(dev, &sw_desc);
+	if (IS_ERR(k3_phy->sw)) {
+		dev_err(dev, "Unable to register typec switch: %pe\n",
+			k3_phy->sw);
+		return PTR_ERR(k3_phy->sw);
+	}
+
+	dev_info(dev, "Using orientation-switch mode, flip: %d\n",
+		 k3_phy->orientation_flip);
+
+	return devm_add_action_or_reset(dev, k3_usb3_typec_unregister, k3_phy);
+}
+#else
+static int k3_usb3_typec_register(struct k3_usb3phy *k3_phy)
+{
+	return 0;
+}
+#endif
+
+static int k3_usb3phy_switch_init(struct k3_usb3phy *k3_phy)
+{
+	struct device *dev = k3_phy->dev;
+	bool flip, override;
+	u32 val = 0;
+
+	if (!device_is_compatible(dev, "spacemit,k3-typec-switch"))
+		return 0;
+
+	flip = device_property_read_bool(dev, "orientation-flip");
+	override = device_property_read_bool(dev, "orientation-switch");
+	if (flip && !override)
+		regmap_update_bits(k3_phy->pmu, PMUA_TYPEC_CTRL,
+				   TYPEC_ORIENT_FLIP, val);
+
+	if (!override)
+		return 0;
+
+	k3_phy->orientation_flip = flip;
+	return k3_usb3_typec_register(k3_phy);
+};
+
 static int k3_usb3phy_probe(struct platform_device *pdev)
 {
 	struct phy *(*xlate)(struct device *dev,
@@ -389,7 +474,7 @@ static int k3_usb3phy_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, PTR_ERR(provider),
 				     "error registering provider\n");
 
-	return 0;
+	return k3_usb3phy_switch_init(k3_phy);
 }
 
 static const struct of_device_id k3_usb3phy_of_match[] = {
