@@ -715,6 +715,7 @@ static int fusb301_get_cc_orientation(struct fusb301_chip *chip)
 		break;
 	}
 
+	typec_set_orientation(chip->port, orientation);
 	chip->orient = orientation;
 	dev_info(chip->dev, "get orientation: %d\n", orientation);
 	return ret;
@@ -924,6 +925,7 @@ static int fusb301_typec_port_probe(struct fusb301_chip *chip)
 
 	chip->port = typec_register_port(dev, cap);
 	if (IS_ERR(chip->port)) {
+		dev_err(dev, "fail to register typec port\n");
 		ret = PTR_ERR(chip->port);
 		goto err_put_role;
 	}
