@@ -214,20 +214,12 @@ static struct notifier_block pm_notifier = {
 	.priority = INT_MAX,
 };
 
-static ssize_t proc_set_thread_type(struct file *file, const char __user *buf,
-				    size_t count, loff_t *ppos)
+int hmp_set_ai_thread(pid_t pid)
 {
-	pid_t pid;
 	unsigned int cpu;
 	int ret = 0;
 	cpumask_t online_ai_cpus;
 	struct task_struct *t = NULL;
-
-	if (kstrtoint_from_user(buf, count, 10, &pid))
-		return -EINVAL;
-
-	if (pid < 0)
-        return -EINVAL;
 
 	/* enable one ai cpu core if none ai core enabled */
 	cpumask_and(&online_ai_cpus, &ai_cpu_mask, cpu_online_mask);
@@ -267,6 +259,23 @@ static ssize_t proc_set_thread_type(struct file *file, const char __user *buf,
 	}
 
 	put_task_struct(t);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(hmp_set_ai_thread);
+
+static ssize_t proc_set_thread_type(struct file *file, const char __user *buf,
+				    size_t count, loff_t *ppos)
+{
+	pid_t pid;
+	int ret = 0;
+
+	if (kstrtoint_from_user(buf, count, 10, &pid))
+		return -EINVAL;
+
+	if (pid < 0)
+        return -EINVAL;
+
+	ret = hmp_set_ai_thread(pid);
 	return ret == 0 ? count : ret;
 }
 
