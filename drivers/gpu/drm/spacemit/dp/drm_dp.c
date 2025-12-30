@@ -56,10 +56,11 @@ static const struct drm_connector_funcs dp_connector_funcs = {
 
 static int dp_conn_get_modes(struct drm_connector *connector)
 {
-	int count;
+	// int count;
 
-	count = drm_edid_connector_add_modes(connector);
-	return count;
+	// count = drm_edid_connector_add_modes(connector);
+	// return count;
+	return drm_add_modes_noedid(connector, 1920, 1080);
 }
 
 static enum drm_mode_status dp_conn_mode_valid(struct drm_connector *connector,

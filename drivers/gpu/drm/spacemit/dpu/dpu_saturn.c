@@ -216,7 +216,7 @@ struct spacemit_hw_device spacemit_dp_devices[SPACEMIT_DP_MAX_DEVICES] = {
 		.etm_size = 65,
 		.acad_num = 149,
 		.is_acad_on = false,
-		.is_edp =true,
+		.is_edp = true,
 		.is_bl_save_on = false,
 		.dpu_version = SATURN_HEE,
 		.conf_dpuctrl_color_matrix = saturn_hee_conf_dpuctrl_color_matrix,
@@ -616,7 +616,7 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 		a_crtc->dsipll_valid = true;
 
 	//crtc is_offline_mode dts
-	if (a_crtc->dsipll_valid)
+	if (a_crtc->dsipll_valid | a_crtc->is_edp)
 		a_crtc->is_offline_mode = 0;
 	else
 		a_crtc->is_offline_mode = 1;
@@ -658,7 +658,7 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 	}
 #endif
 
-	if (!a_crtc->is_offline_mode)
+	if (!a_crtc->is_offline_mode && !a_crtc->is_edp)
 		/* must be the last in parse process */
 		dpu_parse_panel_dt(a_crtc);
 
@@ -995,6 +995,10 @@ static int dpu_enable_clocks(struct spacemit_crtc *a_crtc)
 				set_clk_val = a_crtc->dsc_pxclk ;  /* dsc mode pxclk */
 			else
 				set_clk_val = mode->clock * 1000;
+
+			if (set_clk_val == 0)
+				set_clk_val = 148500000;
+
 			if (set_clk_val) {
 				set_clk_val = clk_round_rate(clk_ctx->pxclk, set_clk_val);
 				clk_val = clk_get_rate(clk_ctx->pxclk);

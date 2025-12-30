@@ -459,8 +459,10 @@ static void spacemit_crtc_atomic_disable(struct drm_crtc *crtc,
 #ifdef CONFIG_SPACEMIT_DEBUG
 	a_crtc->is_working = false;
 #endif
-	dpu_pm_suspend(a_crtc->dev);
-	spacemit_dpu_power_enable(a_crtc, false);
+	if (!a_crtc->is_edp) {
+		dpu_pm_suspend(a_crtc->dev);
+		spacemit_dpu_power_enable(a_crtc, false);
+	}
 
 	spin_lock_irq(&drm->event_lock);
 	if (crtc->state->event) {
