@@ -5,6 +5,7 @@
 #include "k3-rdomain.dtsi"
 #include "k3-pinctrl.dtsi"
 #include "k3_opp_table.dtsi"
+#include "k3-dp1.dtsi"
 
 / {
 	compatible = "spacemit,k3-deb1";
@@ -176,6 +177,16 @@
 
 			bias-pull-up;
 			drive-strength = <38>;
+			power-source = <3300>;
+		};
+	};
+
+	dp1_1_cfg: dp1-1-cfg {
+		dp1-0-pins {
+			pinmux = <K3_PADCONF(24, 6)>;	/* dp1 hpd */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
 			power-source = <3300>;
 		};
 	};
@@ -738,3 +749,14 @@
 	};
 };
 */
+
+&dpu1_crtc0 {
+	memory-region = <&dpu_resv1>;
+	status = "okay";
+};
+
+&dp1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp1_1_cfg>;
+	status = "okay";
+};
