@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
+#include <linux/thermal.h>
 
 #define PWM_PARENT_CLOCK			360000
 
@@ -49,6 +50,7 @@ struct ctf2301 {
 	struct i2c_client *client;
 
 	struct regmap *regmap;
+	struct thermal_cooling_device *cdev;
 
 	unsigned int pwm_freq_code;
 	bool temp_signed;
@@ -262,6 +264,46 @@ static int ctf2301_write(struct device *dev, enum hwmon_sensor_types type,
 	return 0;
 }
 
+static int ctf2301_cdev_get_max_state(struct thermal_cooling_device *cdev,
+				 unsigned long *state)
+{
+	*state = 255;
+	return 0;
+}
+
+static int ctf2301_cdev_get_cur_state(struct thermal_cooling_device *cdev,
+                                 unsigned long *state)
+{
+	struct ctf2301 *data = cdev->devdata;
+	unsigned int reg_val;
+	long val;
+	int err;
+
+	err = regmap_read(data->regmap, CTF2301_PWM_VALUE, &reg_val);
+	if (err)
+		return err;
+
+	val = (reg_val * 255) / (data->pwm_freq_code * 2);
+
+	*state = clamp_val(val, 0, 255);
+
+	return 0;
+}
+
+static int ctf2301_cdev_set_cur_state(struct thermal_cooling_device *cdev,
+                                 unsigned long state)
+{
+	struct ctf2301 *data = cdev->devdata;
+
+	return ctf2301_update_pwm(data, state);
+}
+
+static const struct thermal_cooling_device_ops ctf2301_cooling_ops = {
+	.get_max_state = ctf2301_cdev_get_max_state,
+	.get_cur_state = ctf2301_cdev_get_cur_state,
+	.set_cur_state = ctf2301_cdev_set_cur_state,
+};
+
 static const struct hwmon_channel_info * const ctf2301_info[] = {
 	HWMON_CHANNEL_INFO(temp, HWMON_T_INPUT, HWMON_T_INPUT),
 	HWMON_CHANNEL_INFO(pwm, HWMON_PWM_INPUT | HWMON_PWM_FREQ),
@@ -342,6 +384,16 @@ static int ctf2301_probe(struct i2c_client *client)
 	if (IS_ERR(hwmon_dev))
 		return dev_err_probe(dev, PTR_ERR(hwmon_dev),
 				     "failed to register hwmon device");
+
+	if (IS_ENABLED(CONFIG_THERMAL)) {
+		ctf2301->cdev = devm_thermal_of_cooling_device_register(dev,
+									dev->of_node,
+									"ctf2301_fan",
+									ctf2301,
+									&ctf2301_cooling_ops);
+		if (IS_ERR(ctf2301->cdev))
+			dev_warn(dev, "failed to register cooling device");
+	}
 
 	return 0;
 }

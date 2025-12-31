@@ -505,6 +505,7 @@
 	ctf2301: ctf2301@4c {
 		compatible = "sensylink,ctf2301";
 		reg = <0x4c>;
+		#cooling-cells = <2>;
 	};
 };
 
