@@ -135,6 +135,7 @@
 #define	PC_TO_EP_INT_MASK	(0x3fffffff)
 
 #define PCIE_ELBI_EP_MSI_REASON         0x018
+#define COHERENCY_CONTROL_3_OFF		0x8E8
 
 #define PCIE_LINK_IS_L2(x) \
 	(((x) & PCIE_CLIENT_DEBUG_LTSSM_MASK) == PCIE_CLIENT_DEBUG_LTSSM_L2)
@@ -291,6 +292,22 @@ static int spacemit_pcie_host_init(struct dw_pcie_rp *pp)
 	return 0;
 }
 
+static int spacemit_pcie_msi_host_init(struct dw_pcie_rp *pp)
+{
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	u32 val;
+
+	dw_pcie_dbi_ro_wr_en(pci);
+
+	val = dw_pcie_readl_dbi(pci, COHERENCY_CONTROL_3_OFF);
+	val |= (0xf << 11);
+	dw_pcie_writel_dbi(pci, COHERENCY_CONTROL_3_OFF, val);
+
+	dw_pcie_dbi_ro_wr_dis(pci);
+
+	return 0;
+}
+
 static int spacemit_pcie_intx_map(struct irq_domain *domain, unsigned int irq,
 				  irq_hw_number_t hwirq)
 {
@@ -330,6 +347,7 @@ static int spacemit_pcie_init_irq_domain(struct dw_pcie_rp *pp)
 
 static const struct dw_pcie_host_ops spacemit_pcie_host_ops = {
 	.init = spacemit_pcie_host_init,
+	.msi_init = spacemit_pcie_msi_host_init,
 };
 
 
