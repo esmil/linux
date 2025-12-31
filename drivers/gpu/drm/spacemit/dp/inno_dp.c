@@ -674,7 +674,7 @@ static int inno_dp_init(struct inno_conn_t *conn)
 
 	// inno_dp_phy_test(conn);
 #if 1
-	inno_dp_phy_init(conn);
+	inno_dp_phy_reset(conn);
 
 	// inno_dp_irq_enable(inno);
 #endif
@@ -764,6 +764,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 
 	#endif
 
+	osal_printf("%s() inno_dp_modeset begin\n", __func__);
+
 	osal_write32(0x18, osal_read32(0x18, conn) & ~BIT(29), conn);
 
 	osal_write32(0x18, osal_read32(0x18, conn) | BIT(30), conn);
@@ -771,6 +773,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_write32(0x100, osal_read32(0x100, conn) & ~0x1E0000, conn);
 
 	// core pll
+	osal_printf("%s() core pll config\n", __func__);
+
 	osal_write32(0x180, 0xe13002b1, conn);
 
 	osal_write32(0x188, 0x10801, conn);
@@ -790,6 +794,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_read32(0x180, conn);
 
 	// pixel pll
+	osal_printf("%s() pixel pll config\n", __func__);
+
 	osal_write32(0x190, 0x63300181, conn);
 
 	osal_write32(0x194, 0x01000801, conn);
@@ -811,6 +817,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_read32(0x28, conn);
 
 	// hpd
+	osal_printf("%s() hpd config\n", __func__);
+
 	osal_write32(0x18, osal_read32(0x18, conn) | BIT(28), conn);
 
 	osal_write32(0x84, osal_read32(0x84, conn) | BIT(16), conn);
@@ -833,7 +841,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_read32(0x88, conn);
 
 	// ana_drv
-
+	osal_printf("%s() ana drv config\n", __func__);
+	// output mode control of 4 data lanes
 	osal_write32(0x1B0, osal_read32(0x1B0, conn) & ~0xF000000, conn);
 
 	osal_write32(0x1c0, 0xf08000, conn);
@@ -849,10 +858,10 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_write32(0x1DC, (osal_read32(0x1DC, conn) & ~0xFF) | 0xFF, conn);
 
 	osal_write32(0x1DC, osal_read32(0x1DC, conn) & 0xFF0000FF, conn);
-
-	osal_write32(0x1A4, (osal_read32(0x1A4, conn) & 0x00FFFFFF) | (0x55 << 24), conn);
-
-	osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0xFFFFFF00) | 0x55, conn);
+	// output mode lane2 lane3 level value 0xf
+	osal_write32(0x1A4, (osal_read32(0x1A4, conn) & 0x00FFFFFF) | (0xff << 24), conn);
+	// output mode lane0 lane1 level value 0xf
+	osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0xFFFFFF00) | 0xff, conn);
 
 	osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0x0000FFFF) | (0x0B0B << 16), conn);
 
@@ -871,6 +880,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_write32(0x100, (osal_read32(0x100, conn) & ~0x3) | 0x1, conn);
 
 	// bist mode
+	osal_printf("%s() bist mode config\n", __func__);
+
 	osal_write32(0x200, 0x400000, conn);
 
 	osal_write32(0x224, 0xc00029, conn);
@@ -911,6 +922,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_write32(0x238, 0x1000, conn);
 
 	// training
+	osal_printf("%s() training config\n", __func__);
 	inno_dp_compliance_config(inno);
 
 	inno_dp_sink_power_ctrl(conn->priv, true);
@@ -924,10 +936,14 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	// osal_write32(0x28, osal_read32(0x28, conn) | BIT(0), conn);
 
 	// colorbar
+	// osal_printf("%s() colorbar mode\n", __func__);
 	// osal_write32(0x238, 0x1021, conn);
 
 	// DPU
+	osal_printf("%s() DPU mode\n", __func__);
 	osal_write32(0x238, 0x1020, conn);
+
+	osal_printf("%s() inno_dp_modeset end\n", __func__);
 
 	return 0;
 }
