@@ -1441,7 +1441,7 @@ static int k1_qspi_probe(struct platform_device *pdev)
 	u32 qspi_bus_num = 0;
 	int host_irq = 0;
 
-	ctlr = spi_alloc_master(&pdev->dev, sizeof(struct k1_qspi));
+	ctlr = spi_alloc_host(&pdev->dev, sizeof(struct k1_qspi));
 	if (!ctlr)
 		return -ENOMEM;
 
