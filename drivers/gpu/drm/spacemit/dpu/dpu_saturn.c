@@ -571,8 +571,9 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 
 	clk_ctx->hclk = of_clk_get_by_name(np, "hclk");
 	if (IS_ERR(clk_ctx->hclk)) {
+		clk_ctx->hclk = NULL;
 		pr_err("%s, read hclk failed from dts!\n", __func__);
-		return PTR_ERR(clk_ctx->hclk);
+		// return PTR_ERR(clk_ctx->hclk);
 	}
 
 	if (!a_crtc->is_edp) {
@@ -588,6 +589,14 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 		}
 		if (of_property_read_u32(np, "spacemit-dsi-escclk", &a_crtc->escclk))
 			a_crtc->escclk = DPU_ESCCLK_DEFAULT;
+	} else {
+		clk_ctx->escclk = of_clk_get_by_name(np, "escclk");
+		if (IS_ERR(clk_ctx->escclk)) {
+			pr_err("%s, read escclk failed from dts!\n", __func__);
+			clk_ctx->escclk = NULL;
+			// return PTR_ERR(clk_ctx->escclk);
+		}
+		clk_ctx->bitclk = NULL;
 	}
 
 	clk_ctx->aclk = of_clk_get_by_name(np, "aclk");
@@ -616,7 +625,7 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 		a_crtc->dsipll_valid = true;
 
 	//crtc is_offline_mode dts
-	if (a_crtc->dsipll_valid | a_crtc->is_edp)
+	if (a_crtc->dsipll_valid || a_crtc->is_edp)
 		a_crtc->is_offline_mode = 0;
 	else
 		a_crtc->is_offline_mode = 1;
@@ -849,7 +858,7 @@ static int dpu_update_clocks(struct spacemit_crtc *a_crtc, uint64_t mclk)
 	return 0;
 #endif
 	//offline does not change clk
-	if (a_crtc->is_offline_mode || !clk_ctx->mclk)
+	if (a_crtc->is_offline_mode || a_crtc->is_edp || !clk_ctx->mclk)
 		return 0;
 
 	trace_u64_data("update mclk", mclk);
