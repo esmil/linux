@@ -128,19 +128,25 @@ static int ctf2301_read_fan(struct device *dev, u32 attr, long *val)
 	return 0;
 }
 
+static int ctf2301_update_pwm(struct ctf2301 *data, long val)
+{
+	int map_val;
+
+	clamp_val(val, 0, 255);
+
+	map_val = (val * data->pwm_freq_code * 2) / 255;
+
+	return regmap_write(data->regmap, CTF2301_PWM_VALUE, map_val);
+}
+
 static int ctf2301_write_pwm(struct device *dev, u32 attr, long val)
 {
 	struct ctf2301 *ctf2301 = dev_get_drvdata(dev);
-	int err, map_val;
+	int err;
 
 	switch (attr) {
 	case hwmon_pwm_input:
-		map_val = (val * ctf2301->pwm_freq_code * 2) / 255;
-
-		err = regmap_write(ctf2301->regmap, CTF2301_PWM_VALUE, map_val);
-		if (err)
-			return err;
-		break;
+		return ctf2301_update_pwm(ctf2301, val);
 	case hwmon_pwm_freq:
 		ctf2301->pwm_freq_code = DIV_ROUND_UP(PWM_PARENT_CLOCK, val) / 2;
 
