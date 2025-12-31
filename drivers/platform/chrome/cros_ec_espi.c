@@ -716,7 +716,7 @@ static struct platform_driver cros_ec_espi_driver = {
 		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 	.probe = cros_ec_espi_probe,
-	.remove_new = cros_ec_espi_remove,
+	.remove = cros_ec_espi_remove,
 };
 
 module_platform_driver(cros_ec_espi_driver);
@@ -724,3 +724,4 @@ module_platform_driver(cros_ec_espi_driver);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("ChromeOS EC eSPI driver");
 MODULE_ALIAS("platform:" DRV_NAME);
+
