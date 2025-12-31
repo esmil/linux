@@ -94,6 +94,12 @@
 };
 
 &pinctrl {
+	can2-1-cfg {
+		can2-0-pins {
+			power-source = <3300>;
+		};
+	};
+
 	gmac1-cfg {
 		/delete-node/ gmac1-2-pins;
 		/delete-node/ gmac1-4-pins;
@@ -752,6 +758,13 @@
 		reg = <0x4c>;
 		#cooling-cells = <2>;
 	};
+};
+
+&flexcan2 {
+	clock-frequency = <80000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&can2_1_cfg>;
+	status = "okay";
 };
 
 /*
