@@ -236,14 +236,17 @@ static int spacemit_gem_prime_vmap(struct drm_gem_object *gem_obj, struct iosys_
 	struct spacemit_gem_object *spacemit_obj = to_spacemit_obj(gem_obj);
 	struct sg_page_iter piter;
 	int ret = 0;
+	void *vaddr;
 	int npages = PAGE_ALIGN(gem_obj->size) >> PAGE_SHIFT;
 	struct page **pages, **tmp;
 	pgprot_t pgprot = pgprot_writecombine(PAGE_KERNEL);
 
 	mutex_lock(&spacemit_obj->vmap_lock);
 
-	if (spacemit_obj->vmap_cnt)
+	if (spacemit_obj->vmap_cnt) {
+		vaddr = spacemit_obj->vaddr;
 		goto vmap_success;
+	}
 
 	if (gem_obj->import_attach) {
 		ret = dma_buf_vmap(gem_obj->import_attach->dmabuf, map);
@@ -268,20 +271,22 @@ static int spacemit_gem_prime_vmap(struct drm_gem_object *gem_obj, struct iosys_
 			*(tmp++) = sg_page_iter_page(&piter);
 		}
 
-		spacemit_obj->vaddr = vmap(pages, npages, VM_MAP, pgprot);
+		vaddr = vmap(pages, npages, VM_MAP, pgprot);
 		kvfree(pages);
-		if (!spacemit_obj->vaddr) {
+		if (!vaddr) {
 			ret = -ENOMEM;
 			goto vmap_fail;
 		}
+		spacemit_obj->vaddr = vaddr;
 	}
 
 	if (ret) {
 		DRM_DEBUG_KMS("Failed to vmap pages, error %d\n", ret);
 		goto vmap_fail;
 	}
-	spacemit_obj->vmap_cnt++;
 vmap_success:
+	spacemit_obj->vmap_cnt++;
+	iosys_map_set_vaddr(map, vaddr);
 	mutex_unlock(&spacemit_obj->vmap_lock);
 	return 0;
 
@@ -343,6 +348,7 @@ __spacemit_gem_create_object(struct drm_device *drm, size_t size)
 		return ERR_PTR(ret);
 	}
 
+	spacemit_obj->sgt = NULL;
 	spacemit_obj->vaddr = NULL;
 	spacemit_obj->vmap_cnt = 0;
 	mutex_init(&spacemit_obj->vmap_lock);

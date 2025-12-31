@@ -19,7 +19,6 @@
 #include <linux/kernel.h>
 #include <drm/drm_fbdev_dma.h>
 #include <drm/drm_gem_dma_helper.h>
-// #include <drm/drm_fbdev_shmem.h>
 
 #include "spacemit_drm.h"
 #include "spacemit_dmmu.h"
@@ -349,7 +348,7 @@ static int spacemit_drm_bind(struct device *dev)
 	err = drm_dev_register(drm, 0);
 	if (err < 0)
 		goto err_kms_helper_poll_fini;
-	// drm_fbdev_dma_setup(drm, 0);
+	drm_fbdev_dma_setup(drm, 0);
 
 	return 0;
 
