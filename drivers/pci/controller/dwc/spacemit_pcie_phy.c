@@ -29,8 +29,6 @@
 #define K2_APB_SPARE32_OFFSET   0x17C
 
 #define PCIE_REF_CLK_OUTPUT
-#define STATIC_BF
-#define PCIE_PORTA
 #define PORTA_X4
 
 static inline u32 phy_readl(void __iomem *base, u32 offset)
@@ -100,6 +98,85 @@ static void hsio_rcal_ovrd_check(void __iomem *phy_base, void __iomem *apb_base)
 		pr_err("R calibration value top ovrd Error\n");
 }
 #endif
+
+static void init_x1_phy(void __iomem *phy_base, void __iomem *pmu_base)
+{
+	int i;
+        u32 rd_data;
+        u32 clk_res_offset = 0x1E8; /* PMUA_REG_BASE+0x1E8 */
+
+        phy_mod_bit(pmu_base, clk_res_offset, (1 << 30), 0);
+
+        pr_info("Now int init_x1_puphy...\n");
+
+#ifndef PCIE_100M_REF_CLK
+        /* select 24Mhz refclock input pll_reg2[7:4]=2 */
+        rd_data = phy_readl(phy_base, (0x16 << 2));
+        rd_data &= 0xffff0fff;
+        rd_data |= 0x00002000;
+        phy_writel(phy_base, (0x16 << 2), rd_data);
+
+        phy_mod_bit(phy_base, (0x17 << 2), (0x1 << 21), 0);
+
+        for (i = 0; i < 2; i++) {
+                phy_mod_bit(phy_base + (0x400 * i), (0x14 << 2), 0x3, 0);
+        }
+
+#ifdef PCIE_REF_CLK_OUTPUT
+        phy_mod_bit(phy_base, (0x17 << 2), (0x1 << 20), 1);
+        phy_writel(phy_base, (0x14 << 2), 0x00006505);
+#endif
+#endif
+
+	/* pll_reg1 of lane0, disable ssc pll_reg4[3:0]=4'h0 */
+        rd_data = phy_readl(phy_base, (0x16 << 2));
+        rd_data &= 0xf0ffffff;
+        phy_writel(phy_base, (0x16 << 2), rd_data);
+
+	for (i = 0; i < 1; i++) {
+                void __iomem *lane_base = phy_base + (0x400 * i);
+
+                phy_mod_bit(lane_base, (0x10 << 2), (0x1 << 13), 1);
+
+                phy_writel(lane_base, (0x02 << 2), 0xf << 3);
+
+                phy_mod_bit(lane_base, (0x50 << 2), (1 << 4), 1);
+
+                phy_mod_bit(lane_base, (0x19 << 2), (1 << 22), 1);
+        }
+
+        /* Force RCV Good / Dynamic Lock */
+        for (i = 0; i < 1; i++) {
+                void __iomem *lane_base = phy_base + (0x400 * i);
+
+                /* cdr fix bypass */
+                phy_mod_bit(lane_base, 0x4, (0x1 << 6), 0);
+                /* dynamic lock */
+                phy_mod_bit(lane_base, 0xC, (0x1 << 2), 1);
+        }
+
+	/* Force RCV done */
+        for (i = 0; i < 1; i++) {
+                phy_mod_bit(phy_base + (0x400 * i), (0x06 << 2), (0x1 << 10), 1);
+        }
+
+        /* Set init done */
+        for (i = 0; i < 1; i++) {
+                void __iomem *lane_base = phy_base + (0x400 * i);
+                /* cfg_sw_phy_init_done */
+                phy_mod_bit(lane_base, (0x02 << 2), (0x1 << 11), 1);
+
+                rd_data = phy_readl(lane_base, (0x02 << 2));
+                rd_data &= ~(0xf << 7);
+                phy_writel(lane_base, (0x02 << 2), rd_data);
+
+                /* aux clk 24M */
+                rd_data = phy_readl(lane_base, (0x02 << 2));
+                rd_data |= (0x2 << 7);
+                phy_writel(lane_base, (0x02 << 2), rd_data);
+        }
+}
+
 
 static void init_x2_phy(void __iomem *phy_base, void __iomem *pmu_base)
 {
@@ -196,15 +273,16 @@ static void wait_phy_pll_lock(void __iomem *phy_base)
 	}
 }
 
-int spacemit_pcie_init_phy(struct spacemit_pcie *pcie)
+int spacemit_pcie_init_phy(int port_id)
 {
 	void __iomem *combo_base;
 	void __iomem *pmu_base;
 	void __iomem *apb_base;
 	void __iomem *phy0_base;
 	void __iomem *phy1_base;
+	void __iomem *phy5_base;
 	u32 val;
-	static int phy_init_done = 0;
+	int phy_init_done = 0;
 
 	if (phy_init_done) {
 		pr_info("spacemit-pcie: PHY already initialized\n");
@@ -234,43 +312,43 @@ int spacemit_pcie_init_phy(struct spacemit_pcie *pcie)
 
 	phy0_base = combo_base + PHY0_OFFSET;
 	phy1_base = combo_base + PHY1_OFFSET;
+	phy5_base = combo_base + PHY5_OFFSET;
 
 	pr_info("spacemit-pcie: Starting PHY initialization...\n");
 
 	phy_mod_bit(apb_base, K2_APB_SPARE31_OFFSET, (0x1 << 17), 1);
 
-#ifdef STATIC_BF
 	phy_mod_bit(pmu_base, 0x1D8, 0x00000010, 1);
-
-	val = phy_readl(pmu_base, 0x1D8);
-
-#ifdef PCIE_PORTA
-	phy_mod_bit(pmu_base, 0x1D8, 0x00000008, 1);
+	if (port_id == 0){
+		phy_mod_bit(pmu_base, 0x1D8, 0x00000008, 1);
 #ifdef PORTA_X4
-	phy_mod_bit(pmu_base, 0x1D8, (0x1 << 3), 0);
+		phy_mod_bit(pmu_base, 0x1D8, (0x1 << 3), 0);
 #endif
 
-	val = phy_readl(pmu_base, 0x1D8);
-	if (((val >> 3) & 0x1) == 1) {
-		/* PCIe A x2(phy0) + PCIe B x2(phy1) */
-		pr_info("Configuring PCIe A x2\n");
-		init_x2_phy(phy0_base, pmu_base);
-		wait_phy_pll_lock(phy0_base);
-		printk("Now finish puphy PHY0 init ...\n");
-		pcie_ssc_open(phy0_base);
-	} else {
-		/* PCIe A x4(phy0,phy1) */
-		pr_info("Configuring PCIe A x4\n");
-		init_x2_phy(phy0_base, pmu_base);
-		init_x2_phy(phy1_base, pmu_base);
+		val = phy_readl(pmu_base, 0x1D8);
+		if (((val >> 3) & 0x1) == 1) {
+			/* PCIe A x2(phy0) + PCIe B x2(phy1) */
+			pr_info("Configuring PCIe A x2\n");
+			init_x2_phy(phy0_base, pmu_base);
+			wait_phy_pll_lock(phy0_base);
+			printk("Now finish puphy PHY0 init ...\n");
+			pcie_ssc_open(phy0_base);
+		} else {
+			/* PCIe A x4(phy0,phy1) */
+			pr_info("Configuring PCIe A x4\n");
+			init_x2_phy(phy0_base, pmu_base);
+			init_x2_phy(phy1_base, pmu_base);
 
-		wait_phy_pll_lock(phy0_base);
-		wait_phy_pll_lock(phy1_base);
+			wait_phy_pll_lock(phy0_base);
+			wait_phy_pll_lock(phy1_base);
 
-		pcie_ssc_open(phy0_base);
+			pcie_ssc_open(phy0_base);
+		}
+	} else if (port_id == 4) {
+		init_x1_phy(phy5_base, pmu_base);
+		wait_phy_pll_lock(phy5_base);
+		pcie_ssc_open(phy5_base);
 	}
-#endif /* PCIE_PORTA */
-#endif /* STATIC_BF */
 
 	phy_init_done = 1;
 	pr_info("spacemit-pcie: PHY initialization done.\n");

@@ -10,6 +10,6 @@
 
 struct spacemit_pcie;
 
-int spacemit_pcie_init_phy(struct spacemit_pcie *pcie);
+int spacemit_pcie_init_phy(int port_id);
 
 #endif /* _SPACEMIT_PCIE_PHY_H */

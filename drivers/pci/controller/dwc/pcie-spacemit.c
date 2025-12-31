@@ -139,6 +139,7 @@
 #define PCIE_LINK_IS_L2(x) \
 	(((x) & PCIE_CLIENT_DEBUG_LTSSM_MASK) == PCIE_CLIENT_DEBUG_LTSSM_L2)
 struct spacemit_pcie {
+	int			port_id;
 	struct dw_pcie		*pci;
 	void __iomem		*app_base;		/* DT app */
 	void __iomem		*phy_ahb;		/* DT phy_ahb */
@@ -277,7 +278,7 @@ static int spacemit_pcie_host_init(struct dw_pcie_rp *pp)
 	reg |= PCIE_PERSTN_OUT;
 	spacemit_pcie_writel(pcie, PCIE_CTRL_LOGIC, reg);
 
-	spacemit_pcie_init_phy(pcie);
+	spacemit_pcie_init_phy(pcie->port_id);
 	spacemit_pcie_eq_preset(pcie);
 
 	/* read the link status register, get the current speed */
@@ -503,6 +504,11 @@ static int spacemit_pcie_probe(struct platform_device *pdev)
 	pcie->phy_ahb = devm_ioremap(dev, res->start, resource_size(res));
 	if (!pcie->phy_ahb)
 		return -ENOMEM;
+
+	if (of_property_read_u32(np, "spacemit,pcie-port", &pcie->port_id)) {
+		dev_err(dev, "Failed to get pcie's port id\n");
+		return -EINVAL;
+	}
 
 	pcie->reset = devm_reset_control_get_optional(dev, NULL);
 	if (IS_ERR(pcie->reset)) {
