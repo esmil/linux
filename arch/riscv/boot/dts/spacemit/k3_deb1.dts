@@ -73,6 +73,24 @@
 		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8";
 		stdout-path = "serial0:115200";
 	};
+
+	rfkill-pcie-wlan {
+		compatible = "rfkill-gpio";
+		label = "rfkill-pcie-wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wlan_en_cfg>;
+		radio-type = "wlan";
+		shutdown-gpios = <&gpio 1 3 GPIO_ACTIVE_HIGH>;
+	};
+
+	rfkill-usb-bt {
+		compatible = "rfkill-gpio";
+		label = "rfkill-usb-bt";
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_en_cfg>;
+		radio-type = "bluetooth";
+		shutdown-gpios = <&gpio 0 30 GPIO_ACTIVE_HIGH>;
+	};
 };
 
 &resmem {
@@ -163,17 +181,21 @@
 			drive-strength = <33>;		/* DS8 */
 			power-source = <1800>;
 		};
+	};
 
-		pcie4-w-dis1-pins {
-			pinmux = <K3_PADCONF(30, 0)>;
+	wlan_en_cfg: wl-en-cfg {
+		wlan-en-pins {
+			pinmux = <K3_PADCONF(35, 0)>;
 
 			bias-pull-up;
 			drive-strength = <38>;
 			power-source = <3300>;
 		};
+	};
 
-		pcie4-w-dis2-pins {
-			pinmux = <K3_PADCONF(35, 0)>;
+	bt_en_cfg: bt-en-cfg {
+		bt-en-pins {
+			pinmux = <K3_PADCONF(30, 0)>;
 
 			bias-pull-up;
 			drive-strength = <38>;
