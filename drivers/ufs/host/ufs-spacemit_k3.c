@@ -68,8 +68,8 @@ static int spacemit_k3_regs[] = {
 #define UFS_SPACEMIT_K3_ACLK_NAME "ufs-aclk"
 
 /* PHY register magic values */
-#define MPHY_PU_ALL 0x07f
-#define MPHY_PU_WITH_HB8_RESET 0x37f
+#define MPHY_PU_ALL 0x87f
+#define MPHY_PU_WITH_HB8_RESET 0xb7f
 #define MPHY_DEVICE_RESET_DEASSERT 0x101
 #define MPHY_DEVICE_RESET_ASSERT 0x001
 #define MPHY_PLL_LOCK_BIT BIT(31)
@@ -213,15 +213,15 @@ static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 	mdelay(1);
 
 	/* power up all */
-	ufshcd_writel(hba, 0x07f, UFS_PHY_MNG_BASE + 0x4);
+	ufshcd_writel(hba, MPHY_PU_ALL, UFS_PHY_MNG_BASE + 0x4);
 	mdelay(1);
 
 	/* asserted ana_rx_hb8_reset */
-	ufshcd_writel(hba, 0x37f, UFS_PHY_MNG_BASE + 0x4);
+	ufshcd_writel(hba, 0xb7f, UFS_PHY_MNG_BASE + 0x4);
 	mdelay(1);
 
 	/* deasserted ana_rx_hb8_reset */
-	ufshcd_writel(hba, 0x07f, UFS_PHY_MNG_BASE + 0x4);
+	ufshcd_writel(hba, MPHY_PU_ALL, UFS_PHY_MNG_BASE + 0x4);
 	mdelay(1);
 
 	/* deasserted ufs device reset & refer clk output enable */
@@ -247,7 +247,13 @@ static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 
 	dev_info(hba->dev, "M-PHY PLL locked successfully\n");
 
-	/* tx_gear switch */
+	/*
+	 * tx_gear switch
+	 *
+	 * TODO: Check if udelay(20) can be reduced or replaced with status
+	 * polling. Need to verify if MPHY_BKDR_CTRL or ATOP 0xC2 registers
+	 * have ready/done bits. The mdelay(5) may also be optimized.
+	 */
 	ufshcd_writel(hba, 0x1, UFS_PHY_MNG_BASE + 0x08);
 	udelay(20);
 
@@ -256,6 +262,10 @@ static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 
 	ufshcd_writel(hba, 0x0, UFS_PHY_MNG_BASE + 0x08);
 	udelay(20);
+
+	/* Extra settle time after MPHY tuning */
+	mdelay(5);
+
 	dev_dbg(hba->dev, "M-PHY init completed\n");
 
 	return 0;
@@ -870,8 +880,8 @@ static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
 	/* support write booster */
 	hba->caps |= UFSHCD_CAP_WB_EN;
 
-	/* support runtime autosuspend */
-	hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
+	/* support runtime autosuspend - disabled for silicon bringup */
+	/* hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND; */
 }
 
 /**
@@ -974,45 +984,9 @@ static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
  */
 static void ufs_spacemit_k3_platform_init(struct device *dev)
 {
-	struct clk *clk;
-	struct reset_control *rst;
-
-	/* Enable PLL1_D6 (416M/409M) */
-	clk = devm_clk_get(dev, "ufs-pll1-d6");
-	if (!IS_ERR(clk)) {
-		clk_prepare_enable(clk);
-		dev_dbg(dev, "ufs-pll1-d6 enabled\n");
-	} else {
-		dev_warn(dev, "Failed to get ufs-pll1-d6: %ld\n", PTR_ERR(clk));
-	}
-
-	/* Enable PLL2_D5 (600MHz) */
-	clk = devm_clk_get(dev, "ufs-pll2-d5");
-	if (!IS_ERR(clk)) {
-		clk_prepare_enable(clk);
-		dev_dbg(dev, "ufs-pll2-d5 enabled\n");
-	} else {
-		dev_warn(dev, "Failed to get ufs-pll2-d5: %ld\n", PTR_ERR(clk));
-	}
-
-	/* Enable PLL2_D6 (500MHz) */
-	clk = devm_clk_get(dev, "ufs-pll2-d6");
-	if (!IS_ERR(clk)) {
-		clk_prepare_enable(clk);
-		dev_dbg(dev, "ufs-pll2-d6 enabled\n");
-	} else {
-		dev_warn(dev, "Failed to get ufs-pll2-d6: %ld\n", PTR_ERR(clk));
-	}
-
-	/* ufs_aclk reset via reset controller (optional) */
-	rst = devm_reset_control_get_optional_exclusive(dev, "ufs-aclk-rst");
-	if (IS_ERR(rst)) {
-		dev_warn(dev, "ufs: failed to get ufs-aclk reset control: %ld\n", PTR_ERR(rst));
-	} else if (rst) {
-		reset_control_assert(rst);
-		udelay(1);
-		reset_control_deassert(rst);
-	}
+	/* Note: reset control is obtained in ufs_spacemit_k3_init() to avoid
+	 * duplicate exclusive access. Initial reset cycle is done there.
+	 */
 
 	dev_info(dev, "Platform init completed\n");
 }
@@ -1035,13 +1009,17 @@ static int ufs_spacemit_k3_init(struct ufs_hba *hba)
 	}
 
 	/* Get reset control from device tree */
-	host->rst = devm_reset_control_get_optional(dev, "ufs-aclk-rst");
+	host->rst = devm_reset_control_get_optional_exclusive(dev, "ufs-aclk-rst");
 	if (IS_ERR(host->rst)) {
 		err = PTR_ERR(host->rst);
 		dev_err(dev, "Failed to get reset control: %d\n", err);
 		host->rst = NULL;
 		/* Continue without reset control - will use manual PMUAP method */
 	} else if (host->rst) {
+		/* Perform initial reset cycle */
+		reset_control_assert(host->rst);
+		udelay(1);
+		reset_control_deassert(host->rst);
 		dev_info(dev, "Reset control initialized successfully\n");
 	}
 
