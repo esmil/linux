@@ -1353,6 +1353,26 @@
 			};
 		};
 
+		thermal: thermal@d4018000 {
+			compatible = "spacemit,k3-tsensor";
+			reg = <0x0 0xd4018000 0x0 0x100>;
+			interrupt-parent = <&saplic>;
+			interrupts = <61 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "tsensor";
+			clocks = <&syscon_apbc CLK_APBC_TSEN>,
+				<&syscon_apbc CLK_APBC_TSEN_BUS>;
+			clock-names = "func", "bus";
+			resets = <&syscon_apbc RESET_APBC_TSEN>;
+			sensor_range = <0x0 0x7>;
+			temperature_offset = <274>;
+			#thermal-sensor-cells = <1>;
+			status = "okay";
+		};
+
+		thermal_zones: thermal-zones {
+
+		};
+
 		timer0: timer@d4014000 {
 			compatible = "spacemit,soc-timer";
 			reg = <0x0 0xd4014000 0x0 0xc8>;
