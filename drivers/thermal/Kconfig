@@ -417,6 +417,13 @@ config DA9062_THERMAL
 	  zone.
 	  Compatible with the DA9062 and DA9061 PMICs.
 
+config K3_THERMAL
+	tristate "Spacemit K3 Thermal Support"
+	depends on OF && SOC_SPACEMIT
+	help
+	  Enable this option if you want to have support for thermal management
+	  controller present in Spacemit SoCs
+
 menu "Mediatek thermal drivers"
 depends on ARCH_MEDIATEK || COMPILE_TEST
 source "drivers/thermal/mediatek/Kconfig"
