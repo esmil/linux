@@ -62,6 +62,24 @@
 		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8";
 		stdout-path = "serial0:115200";
 	};
+
+	rfkill-pcie-wlan {
+		compatible = "rfkill-gpio";
+		label = "rfkill-pcie-wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&m2_wdis1_cfg>;
+		radio-type = "wlan";
+		shutdown-gpios = <&gpio 2 9 GPIO_ACTIVE_LOW>;
+	};
+
+	rfkill-m2-bt {
+		compatible = "rfkill-gpio";
+		label = "rfkill-m2-bt";
+		pinctrl-names = "default";
+		pinctrl-0 = <&m2_wdis2_cfg>;
+		radio-type = "bluetooth";
+		shutdown-gpios = <&gpio 1 25 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &resmem {
@@ -155,17 +173,21 @@
 			drive-strength = <38>;		/* DS8 */
 			power-source = <3300>;
 		};
+	};
 
-		pcie4-w-dis1-pins {
-			pinmux = <K3_PADCONF(57, 0)>;
+	m2_wdis1_cfg: m2-wdis1-cfg {
+		m2-wdis1-pins {
+			pinmux = <K3_PADCONF(73, 0)>;
 
 			bias-pull-up;
 			drive-strength = <38>;
 			power-source = <3300>;
 		};
+	};
 
-		pcie4-w-dis2-pins {
-			pinmux = <K3_PADCONF(73, 0)>;
+	m2_wdis2_cfg: m2-wdis2-cfg {
+		m2-wdis2-pins {
+			pinmux = <K3_PADCONF(57, 0)>;
 
 			bias-pull-up;
 			drive-strength = <38>;
