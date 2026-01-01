@@ -329,6 +329,10 @@
 	status = "okay";
 };
 
+&ufshc {
+	status = "okay";
+};
+
 &pcie0_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie0_1_cfg>;

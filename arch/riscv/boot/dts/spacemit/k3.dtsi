@@ -2275,23 +2275,20 @@
 			};
 		};
 
-		ufshc: ufshc@c0a80000 {
+		ufshc: ufshc@0xc0e00000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "spacemit,k3-ufshcd", "jedec,ufs-2.1";
-			reg = <0x0 0xc0a80000 0x0 0x40000>;
+			reg = <0x0 0xc0e00000 0x0 0x40000>;
 			interrupt-parent = <&saplic>;
-			interrupts = <115 0x4>;
-			clocks = <&syscon_apmu CLK_APMU_UFS_ACLK>,
-				 <&syscon_apmu CLK_PLL1_D6>,
-				 <&syscon_apmu CLK_PLL2_D5>,
-				 <&syscon_apmu CLK_PLL2_D6>;
-			clock-names = "ufs-aclk", "ufs-pll1-d6", "ufs-pll2-d5", "ufs-pll2-d6";
+			interrupts = <135 0x4>;
+			clocks = <&syscon_apmu CLK_APMU_UFS_ACLK>;
+			clock-names = "ufs-aclk";
 			resets = <&syscon_apmu RESET_APMU_UFS_ACLK>;
 			reset-names = "ufs-aclk-rst";
-			freq-table-hz = <409600000 409600000>;
+			freq-table-hz = <491000000 491000000>;
 			lanes-per-direction = <2>;
-			ref-clk-freq = <26000000>;
+			ref-clk-freq = <19200000>;
 			status = "disabled";
 		};
 
