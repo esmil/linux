@@ -17,11 +17,32 @@
 
 static atomic_t system_suspending = ATOMIC_INIT(0);
 
-struct cpumask	regular_cpu_mask __read_mostly;
-EXPORT_SYMBOL_GPL(regular_cpu_mask);
+static struct cpumask	regular_cpu_mask __read_mostly;
+static struct cpumask	ai_cpu_mask __read_mostly;
 
-struct cpumask	ai_cpu_mask __read_mostly;
-EXPORT_SYMBOL_GPL(ai_cpu_mask);
+int hmp_get_cpumask(struct cpumask *mask, hmp_type_e type)
+{
+	int	ret = 0;
+
+	if (!mask) {
+		return -EINVAL;
+	}
+
+	switch (type) {
+	case HMP_REGULAR:
+		cpumask_copy(mask, &regular_cpu_mask);
+		break;
+
+	case HMP_AI:
+		cpumask_copy(mask, &ai_cpu_mask);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
 
 int hmp_cpu_affinity_restrict(struct task_struct *p, const struct cpumask *new_mask)
 {
@@ -35,7 +56,7 @@ int hmp_cpu_affinity_restrict(struct task_struct *p, const struct cpumask *new_m
 	if (cpumask_empty(new_mask))
 		return -EINVAL;
 
-	allowed_mask = (p->thread_type == HMP_REGULAR_THREAD) ?
+	allowed_mask = (p->thread_type == HMP_REGULAR) ?
 					&regular_cpu_mask : &ai_cpu_mask;
 
 	if (!cpumask_subset(new_mask, allowed_mask))
@@ -78,7 +99,7 @@ bool hmp_cpu_can_offline(unsigned int cpu)
 	} else {
 		if (cpumask_weight(&online_ai_cpus) <= 1) {
 			for_each_process_thread(g, p) {
-				if (p->thread_type == HMP_AI_THREAD) {
+				if (p->thread_type == HMP_AI) {
 					pr_err("Cannot offline the last AI cpu\n");
 					return false;
 				}
@@ -174,7 +195,7 @@ bool hmp_set_default_cpumask(struct task_struct *p)
 {
 
     /* check if called from set ai task */
-    if (p->thread_type == HMP_AI_THREAD) {
+    if (p->thread_type == HMP_AI) {
         _set_cpumask(p, &ai_cpu_mask);
         return !cpumask_empty(&p->cpus_mask);
     }
@@ -186,7 +207,7 @@ bool hmp_set_default_cpumask(struct task_struct *p)
     /* All new threads default to regular cores unless it's a per-CPU kthread
 	 * AI thread property will be set explicitly via /proc/ai_threads
 	 */
-    p->thread_type = HMP_REGULAR_THREAD;
+    p->thread_type = HMP_REGULAR;
     _set_cpumask(p, &regular_cpu_mask);
     return !cpumask_empty(&p->cpus_mask);
 }
@@ -248,13 +269,13 @@ int hmp_set_ai_thread(pid_t pid)
 
 	/* mark the thread type as an ai thread under task_lock */
 	task_lock(t);
-	t->thread_type = HMP_AI_THREAD;
+	t->thread_type = HMP_AI;
 	task_unlock(t);
 
 	ret = set_cpus_allowed_ptr(t, &ai_cpu_mask);
 	if (ret) {
 		task_lock(t);
-		t->thread_type = HMP_REGULAR_THREAD;
+		t->thread_type = HMP_REGULAR;
 		task_unlock(t);
 	}
 
