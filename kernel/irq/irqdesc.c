@@ -16,6 +16,9 @@
 #include <linux/irqdomain.h>
 #include <linux/sysfs.h>
 #include <linux/string_choices.h>
+#ifdef CONFIG_SPACEMIT_HMP
+#include <linux/soc/spacemit/spacemit-hmp.h>
+#endif
 
 #include "internals.h"
 
@@ -40,10 +43,22 @@ __setup("irqaffinity=", irq_affinity_setup);
 
 static void __init init_irq_default_affinity(void)
 {
+#ifdef CONFIG_SPACEMIT_HMP
+	struct cpumask cpu_mask;
+#endif
+
 	if (!cpumask_available(irq_default_affinity))
 		zalloc_cpumask_var(&irq_default_affinity, GFP_NOWAIT);
 	if (cpumask_empty(irq_default_affinity))
 		cpumask_setall(irq_default_affinity);
+
+#ifdef CONFIG_SPACEMIT_HMP
+	/* update irq_default_affinity, it should be subset of regular cpus mask */
+	if (!hmp_get_cpumask(&cpu_mask, HMP_REGULAR) &&
+		cpumask_and(&cpu_mask, irq_default_affinity, &cpu_mask)) {
+			cpumask_copy(irq_default_affinity, &cpu_mask);
+	}
+#endif
 }
 #else
 static void __init init_irq_default_affinity(void)

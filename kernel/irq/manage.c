@@ -21,6 +21,9 @@
 #include <linux/sched/isolation.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/task_work.h>
+#ifdef CONFIG_SPACEMIT_HMP
+#include <linux/soc/spacemit/spacemit-hmp.h>
+#endif
 
 #include "internals.h"
 
@@ -347,12 +350,31 @@ static bool irq_set_affinity_deactivated(struct irq_data *data,
 	return true;
 }
 
+#ifdef CONFIG_SPACEMIT_HMP
+int irq_set_affinity_locked(struct irq_data *data, const struct cpumask *cpu_mask,
+			    bool force)
+{
+	struct irq_chip *chip = irq_data_get_irq_chip(data);
+	struct irq_desc *desc = irq_data_to_desc(data);
+	int ret = 0;
+
+	struct cpumask affinity_cpu_mask;
+	struct cpumask *mask = &affinity_cpu_mask;
+
+	if (hmp_get_cpumask(mask, HMP_REGULAR) ||
+	    !cpumask_and(mask, cpu_mask, mask)) {
+		WARN(1, "irq(%u) set affinity(%*pb) failed!\n",
+		     irq_desc_get_irq(desc), cpumask_pr_args(cpu_mask));
+		return -EINVAL;
+	}
+#else
 int irq_set_affinity_locked(struct irq_data *data, const struct cpumask *mask,
 			    bool force)
 {
 	struct irq_chip *chip = irq_data_get_irq_chip(data);
 	struct irq_desc *desc = irq_data_to_desc(data);
 	int ret = 0;
+#endif
 
 	if (!chip || !chip->irq_set_affinity)
 		return -EINVAL;
