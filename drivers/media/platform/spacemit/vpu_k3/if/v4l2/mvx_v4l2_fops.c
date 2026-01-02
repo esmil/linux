@@ -110,9 +110,9 @@ int mvx_v4l2_release(struct file *file)
 
 	MVX_SESSION_INFO(&vsession->session, "v4l2: Release.");
 
-	mutex_lock(&vsession->mutex);
-
 	mvx_v4l2_ctrls_done(vsession->fh.ctrl_handler);
+
+	mutex_lock(&vsession->mutex);
 
 	for (i = 0; i < MVX_DIR_MAX; i++)
 		if (vsession->port[i].q_set != false) {
