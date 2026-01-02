@@ -354,6 +354,10 @@
 	status = "okay";
 };
 
+&ufshc {
+	status = "okay";
+};
+
 &eth0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac0_cfg>;
