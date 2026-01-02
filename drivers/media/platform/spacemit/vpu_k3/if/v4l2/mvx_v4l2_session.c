@@ -274,7 +274,7 @@ static void handle_event(struct mvx_session *session, enum mvx_session_event eve
 		 * If the FW later returns a buffer to us, we could silently
 		 * skip it.
 		 */
-		if (vb->state != VB2_BUF_STATE_DEQUEUED) {
+		if (vb->state != VB2_BUF_STATE_DEQUEUED && vb->state != VB2_BUF_STATE_DONE) {
 			enum vb2_buffer_state state = mvx_v4l2_buffer_update(vbuf);
 
 			vb2_buffer_done(vb, state);
