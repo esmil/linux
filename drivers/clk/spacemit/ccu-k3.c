@@ -1138,8 +1138,8 @@ CCU_GATE_DEFINE(c3_tcm_pipe_clk, CCU_PARENT_HW(axi_clk), DCIU_C3_TCM_PIPE_CLK, B
 /* DCIU clocks end */
 
 /* RPMU clocks start */
-CCU_DIV_FC_DEFINE(rcpu_axi_clk,  CCU_PARENT_HW(rcpu_clk), RCPU5_RCPU_BUS_CLK_CTRL, BIT(8), 0, 2, 0);
-CCU_DIV_FC_DEFINE(rcpu_apb_clk,  CCU_PARENT_HW(rcpu_axi_clk), RCPU5_RCPU_BUS_CLK_CTRL, BIT(8), 3, 3, 0);
+CCU_DIV_FC_DEFINE(rcpu_axi_clk,  CCU_PARENT_HW(rcpu_clk), RCPU5_RCPU_BUS_CLK_CTRL, BIT(8), 3, 3, 0);
+CCU_DIV_FC_DEFINE(rcpu_apb_clk,  CCU_PARENT_HW(rcpu_axi_clk), RCPU5_RCPU_BUS_CLK_CTRL, BIT(8), 0, 3, 0);
 
 CCU_GATE_DEFINE(ripc2msa_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL, BIT(5), 0);
 CCU_GATE_DEFINE(ripc2cp_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL, BIT(3), 0);
