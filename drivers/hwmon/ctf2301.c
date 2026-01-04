@@ -132,13 +132,9 @@ static int ctf2301_read_fan(struct device *dev, u32 attr, long *val)
 
 static int ctf2301_update_pwm(struct ctf2301 *data, long val)
 {
-	int map_val;
+	val = clamp_val(val, 0, 255);
 
-	clamp_val(val, 0, 255);
-
-	map_val = (val * data->pwm_freq_code * 2) / 255;
-
-	return regmap_write(data->regmap, CTF2301_PWM_VALUE, map_val);
+	return regmap_write(data->regmap, CTF2301_PWM_VALUE, val);
 }
 
 static int ctf2301_write_pwm(struct device *dev, u32 attr, long val)
