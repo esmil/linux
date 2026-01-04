@@ -98,7 +98,7 @@ static int dp_encoder_atomic_check(struct drm_encoder *encoder,
 				   struct drm_crtc_state *crtc_state,
 				   struct drm_connector_state *conn_state)
 {
-	DRM_INFO("%s()\n", __func__);
+	DRM_DEBUG("%s()\n", __func__);
 	return 0;
 }
 
