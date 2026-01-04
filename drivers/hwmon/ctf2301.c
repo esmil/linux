@@ -374,6 +374,9 @@ static int ctf2301_probe(struct i2c_client *client)
 		return dev_err_probe(dev, err,
 				     "failed to write CTF2301_PWM_AND_TACH_CFG");
 
+	/* default to enable the fan */
+	ctf2301_update_pwm(ctf2301, 255);
+
 	hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name, ctf2301,
 							 &ctf2301_chip_info,
 							 NULL);
