@@ -3,6 +3,7 @@
 # Makefile for the Realtek network device drivers.
 #
 
+obj-$(CONFIG_R8127) += r8127/
 obj-$(CONFIG_8139CP) += 8139cp.o
 obj-$(CONFIG_8139TOO) += 8139too.o
 obj-$(CONFIG_ATP) += atp.o

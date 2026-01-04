@@ -121,6 +121,12 @@ config R8169_LEDS
 	  Optional support for controlling the NIC LED's with the netdev
 	  LED trigger.
 
+config R8127
+	tristate "Realtek RTL8127 10GbE PCIe Ethernet support (vendor driver)"
+	depends on PCI
+	help
+	  This driver supports Realtek RTL8127 10 Gigabit Ethernet controllers.
+
 config RTASE
 	tristate "Realtek Automotive Switch 9054/9068/9072/9075/9068/9071 PCIe Interface support"
 	depends on PCI
