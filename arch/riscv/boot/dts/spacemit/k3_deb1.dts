@@ -172,6 +172,16 @@
 		};
 	};
 
+	pcie2-1-cfg {
+		pcie2-0-pins {
+			pinmux = <K3_PADCONF(25, 4)>,	/* pcie2 perst */
+				 <K3_PADCONF(27, 4)>;	/* pcie2 clkreq */
+
+			drive-strength = <38>;
+			power-source = <3300>;
+		};
+	};
+
 	pcie4_0_cfg: pcie4-0-cfg {
 		pcie4-0-pins {
 			pinmux = <K3_PADCONF(76, 5)>,	/* pcie4 perst */
@@ -339,6 +349,15 @@
 
 	max-link-speed = <3>;
 	num-lanes = <4>;
+	status = "okay";
+};
+
+&pcie2_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie2_1_cfg>;
+
+	max-link-speed = <1>;
+	num-lanes = <2>;
 	status = "okay";
 };
 
