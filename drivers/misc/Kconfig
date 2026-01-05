@@ -608,7 +608,7 @@ config NSM
 
 config SPACEMIT_TCM
 	bool "Generic tcm alloc management driver"
-	depends on SOC_SPACEMIT
+	depends on SOC_SPACEMIT && SPACEMIT_HMP
 	default y
 	help
 	  This driver allows you to alloc tcm for userspace.
