@@ -459,10 +459,9 @@ static void spacemit_crtc_atomic_disable(struct drm_crtc *crtc,
 #ifdef CONFIG_SPACEMIT_DEBUG
 	a_crtc->is_working = false;
 #endif
-	if (!a_crtc->is_edp) {
-		dpu_pm_suspend(a_crtc->dev);
-		spacemit_dpu_power_enable(a_crtc, false);
-	}
+
+	dpu_pm_suspend(a_crtc->dev);
+	spacemit_dpu_power_enable(a_crtc, false);
 
 	spin_lock_irq(&drm->event_lock);
 	if (crtc->state->event) {
@@ -1382,7 +1381,7 @@ static int spacemit_dpu_bind(struct device *dev, struct device *master, void *da
 	if (a_crtc->is_offline_mode){
 		dpu_pm_suspend(a_crtc->dev);
 		spacemit_dpu_power_enable(a_crtc, false);
-	} else {
+	} else if (!a_crtc->is_edp) {
 		dpu_parse_dsi_ops(a_crtc);
 	}
 
@@ -1585,13 +1584,10 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	 * on/off lcd power domain before/after probe func.
 	 */
 	pm_runtime_enable(&pdev->dev);
-	// if (spacemit_dpu_logo_booton) {
-	// 	spacemit_dpu_power_enable(a_crtc, true);
-	// 	dpu_pm_resume(&pdev->dev);
-	// }
-
-	spacemit_dpu_power_enable(a_crtc, true);
-	dpu_pm_resume(&pdev->dev);
+	if (spacemit_dpu_logo_booton) {
+		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(&pdev->dev);
+	}
 
 	return component_add(dev, &dpu_component_ops);
 }

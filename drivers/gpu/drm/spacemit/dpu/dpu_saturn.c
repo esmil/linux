@@ -1005,9 +1005,6 @@ static int dpu_enable_clocks(struct spacemit_crtc *a_crtc)
 			else
 				set_clk_val = mode->clock * 1000;
 
-			if (set_clk_val == 0)
-				set_clk_val = 148500000;
-
 			if (set_clk_val) {
 				set_clk_val = clk_round_rate(clk_ctx->pxclk, set_clk_val);
 				clk_val = clk_get_rate(clk_ctx->pxclk);

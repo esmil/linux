@@ -37,6 +37,7 @@ struct dp_dev {
 
 	struct proc_dir_entry *proc_irq;
 	enum drm_connector_status connector_status;
+	struct drm_display_mode mode;
 
 	struct reset_control *reset;
 	struct clk *pxclk;
@@ -86,7 +87,34 @@ static const struct drm_encoder_funcs dp_encoder_funcs = {
 
 static void dp_encoder_enable(struct drm_encoder *encoder)
 {
+	struct dp_dev *dp_dev = container_of(encoder, struct dp_dev, encoder);
+	uint64_t clk_val;
+	uint64_t set_clk_val;
+	struct drm_display_mode *mode = &dp_dev->mode;
+
 	DRM_INFO("%s()\n", __func__);
+
+	if (dp_dev->pxclk) {
+		// clk_prepare_enable(dp_dev->pxclk);
+
+		set_clk_val = mode->clock * 1000;
+		DRM_INFO("pxclk set_clk_val %lld\n", set_clk_val);
+
+		if (set_clk_val) {
+			set_clk_val = clk_round_rate(dp_dev->pxclk, set_clk_val);
+			clk_val = clk_get_rate(dp_dev->pxclk);
+			if(clk_val != set_clk_val){
+				clk_set_rate(dp_dev->pxclk, set_clk_val);
+				DRM_INFO("set pxclk=%lld\n", set_clk_val);
+			}
+		}
+
+		clk_val = clk_get_rate(dp_dev->pxclk);
+		DRM_INFO("get pxclk=%lld\n", clk_val);
+	}
+
+	dp_dev->conn->is_enable = 0;
+	inno_do_display(dp_dev->conn, mode);
 }
 
 static void dp_encoder_disable(struct drm_encoder *encoder)
@@ -107,33 +135,10 @@ static void dp_mode_set(struct drm_encoder *encoder,
 			 struct drm_display_mode *adjusted_mode)
 {
 	struct dp_dev *dp_dev = container_of(encoder, struct dp_dev, encoder);
-	uint64_t clk_val;
-	uint64_t set_clk_val;
 
 	DRM_INFO("%s()\n", __func__);
 
-	if (dp_dev->pxclk) {
-		clk_prepare_enable(dp_dev->pxclk);
-
-		set_clk_val = adjusted_mode->clock * 1000;
-
-		DRM_INFO("pxclk set_clk_val %lld\n", set_clk_val);
-
-		if (set_clk_val) {
-			set_clk_val = clk_round_rate(dp_dev->pxclk, set_clk_val);
-			clk_val = clk_get_rate(dp_dev->pxclk);
-			if(clk_val != set_clk_val){
-				clk_set_rate(dp_dev->pxclk, set_clk_val);
-				DRM_INFO("set pxclk=%lld\n", set_clk_val);
-			}
-		}
-
-		clk_val = clk_get_rate(dp_dev->pxclk);
-		DRM_INFO("get pxclk=%lld\n", clk_val);
-	}
-
-	dp_dev->conn->is_enable = 0;
-	inno_do_display(dp_dev->conn, adjusted_mode);
+	drm_mode_copy(&dp_dev->mode, adjusted_mode);
 }
 
 static const struct drm_encoder_helper_funcs dp_encoder_helper_funcs = {
@@ -270,6 +275,9 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 			DRM_INFO("Failed to deassert reset\n");
 		}
 	}
+
+	if (dp_dev->pxclk)
+		clk_prepare_enable(dp_dev->pxclk);
 
 	ret = drm_connector_init(drm, &dp_dev->connector,
 				 &dp_connector_funcs,
