@@ -992,6 +992,24 @@ static void ufs_spacemit_k3_platform_init(struct device *dev)
 }
 
 /**
+ * ufs_spacemit_k3_fsm_dump_work - Deferred work to dump FSM state
+ * @work: work structure
+ *
+ * This function is called from a workqueue context (not interrupt context),
+ * allowing safe execution of blocking operations like ufshcd_dme_get().
+ */
+static void ufs_spacemit_k3_fsm_dump_work(struct work_struct *work)
+{
+	struct ufs_spacemit_k3_host *host = container_of(work, struct ufs_spacemit_k3_host,
+							  fsm_dump_work);
+	struct ufs_hba *hba = host->hba;
+
+	/* Safe to call blocking functions in workqueue context */
+	if (ufshcd_is_link_active(hba))
+		ufs_spacemit_k3_dump_fsm_state(hba);
+}
+
+/**
  * ufs_spacemit_k3_init - init phy and prepare clk
  * @hba: host controller instance
  */
@@ -1028,6 +1046,9 @@ static int ufs_spacemit_k3_init(struct ufs_hba *hba)
 	ufshcd_set_variant(hba, host);
 	ufs_spacemit_k3_set_caps(hba);
 	ufs_spacemit_k3_advertise_quirks(hba);
+
+	/* Initialize workqueue for deferred FSM state dump */
+	INIT_WORK(&host->fsm_dump_work, ufs_spacemit_k3_fsm_dump_work);
 
 	err = ufshcd_vops_phy_initialization(host->hba);
 out:
@@ -1173,11 +1194,12 @@ static int ufs_spacemit_k3_device_reset(struct ufs_hba *hba)
  * @evt: event type
  * @data: event-specific data
  *
- * Handles error events from UFS core, dumps registers and FSM state
- * for debugging.
+ * Handles error events from UFS core, dumps registers immediately
+ * and schedules FSM state dump for later execution in workqueue context.
  */
 static void ufs_spacemit_k3_event_notify(struct ufs_hba *hba, enum ufs_event_type evt, void *data)
 {
+	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
 	bool dump_regs = false;
 
 	switch (evt) {
@@ -1207,13 +1229,13 @@ static void ufs_spacemit_k3_event_notify(struct ufs_hba *hba, enum ufs_event_typ
 		break;
 	}
 
-	/* Dump registers if error occurred */
+	/* Dump registers if error occurred (safe in interrupt context) */
 	if (hba->errors || dump_regs)
 		ufs_spacemit_k3_dump_host_regs(hba);
 
-	/* Dump FSM state if link is active */
-	if (ufshcd_is_link_active(hba))
-		ufs_spacemit_k3_dump_fsm_state(hba);
+	/* Schedule FSM state dump in workqueue context (not in interrupt context) */
+	if (ufshcd_is_link_active(hba) && host)
+		queue_work(system_wq, &host->fsm_dump_work);
 }
 
 /**

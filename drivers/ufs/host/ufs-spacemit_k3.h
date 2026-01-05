@@ -13,6 +13,7 @@
 #include <linux/reset.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_qos.h>
+#include <linux/workqueue.h>
 
 /* Spacemit K3 UFS host controller vendor specific registers */
 #define UFS_SYS1CLK_1US 0xC0
@@ -99,6 +100,9 @@ struct ufs_spacemit_k3_host {
 
 	bool first_init_done;
 	bool first_hce_done;
+
+	/* Workqueue for deferred FSM state dump */
+	struct work_struct fsm_dump_work;
 };
 
 #define ufs_spacemit_k3_is_link_off(hba) ufshcd_is_link_off(hba)
