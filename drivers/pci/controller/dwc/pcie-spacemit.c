@@ -147,6 +147,7 @@ struct spacemit_pcie {
 	struct phy		**phy;
 	int pcie_init_before_kernel;
 	int			link_gen;
+	int			num_lanes;
 	bool			link_is_up;
 	struct irq_domain	*irq_domain;
 	struct	clk *clk_master;
@@ -279,7 +280,7 @@ static int spacemit_pcie_host_init(struct dw_pcie_rp *pp)
 	reg |= PCIE_PERSTN_OUT;
 	spacemit_pcie_writel(pcie, PCIE_CTRL_LOGIC, reg);
 
-	spacemit_pcie_init_phy(pcie->port_id);
+	spacemit_pcie_init_phy(pcie->port_id, pcie->num_lanes);
 	spacemit_pcie_eq_preset(pcie);
 
 	/* read the link status register, get the current speed */
@@ -526,6 +527,12 @@ static int spacemit_pcie_probe(struct platform_device *pdev)
 	if (of_property_read_u32(np, "spacemit,pcie-port", &pcie->port_id)) {
 		dev_err(dev, "Failed to get pcie's port id\n");
 		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(np, "num-lanes", &pcie->num_lanes);
+	if (ret || (pcie->num_lanes < 1) || (pcie->num_lanes > 8)) {
+		dev_warn(dev, "num-lanes property not provided or invalid, setting num-lanes to 1\n");
+		pcie->num_lanes = 1;
 	}
 
 	pcie->reset = devm_reset_control_get_optional(dev, NULL);
