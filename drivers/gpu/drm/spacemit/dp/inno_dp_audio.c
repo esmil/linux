@@ -8,6 +8,20 @@
 #include "inno_utils.h"
 #include "inno_dp_audio.h"
 
+#if IS_ENABLED(CONFIG_SND_SOC)
+static int inno_dp_dai_startup(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *dai)
+{
+	struct inno_conn_t *conn = snd_soc_dai_get_drvdata(dai);
+
+	//reset audio
+	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
+	udelay(1000);
+	osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
+
+	return 0;
+}
+
 static int inno_dp_dai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct inno_conn_t *conn = snd_soc_dai_get_drvdata(dai);
@@ -69,6 +83,7 @@ static int inno_dp_dai_mute(struct snd_soc_dai *dai, int mute, int direction)
 }
 
 const struct snd_soc_dai_ops inno_dp_dai_ops = {
+	.startup = inno_dp_dai_startup,
 	.hw_params = inno_dp_dai_pcm_hw_params,
 	.set_fmt = inno_dp_dai_set_dai_fmt,
 	.mute_stream = inno_dp_dai_mute,
@@ -89,41 +104,8 @@ struct snd_soc_dai_driver inno_dp_dai_driver = {
 	.ops = &inno_dp_dai_ops,
 };
 
-static int inno_dp_init_audio(struct inno_conn_t *conn)
-{
-	/* init dp audio */
-	osal_write32(0x424, osal_read32(0x424, conn) | BIT(13), conn);
-	osal_write32(0x420, osal_read32(0x420, conn) | BIT(13), conn);
-	osal_write32(0x424, osal_read32(0x424, conn) | BIT(12), conn);
-	osal_write32(0x420, osal_read32(0x420, conn) | BIT(12), conn);
-	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(31), conn);
-	osal_write32(0x300, osal_read32(0x300, conn) | BIT(22), conn);
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(16, 14))
-			    | (0x01 << 14), conn);
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(28, 25))
-			    | (0x01 << 25), conn);
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(21, 17))
-			    | (0x10 << 17), conn);
-	osal_write32(0x300, osal_read32(0x300, conn) & ~GENMASK(24, 23), conn);
-	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(30), conn);
-	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
-	udelay(1000);
-	osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
-
-	return 0;
-}
-
-static int inno_dp_dai_probe(struct snd_soc_component *component)
-{
-	struct inno_conn_t *conn = snd_soc_component_get_drvdata(component);
-
-	inno_dp_init_audio(conn);
-	return 0;
-};
-
 const struct snd_soc_component_driver soc_component_inno_dp = {
 	.name = "inno-dp-audio",
-	.probe = inno_dp_dai_probe,
 };
 
 int inno_dp_audio_register(struct device *dev)
@@ -137,3 +119,5 @@ void inno_dp_audio_unregister(struct device *dev)
 {
 	snd_soc_unregister_component(dev);
 }
+#endif
+

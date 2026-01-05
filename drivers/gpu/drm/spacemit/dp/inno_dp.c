@@ -678,9 +678,12 @@ static int inno_dp_init(struct inno_conn_t *conn)
 
 	// inno_dp_irq_enable(inno);
 #endif
-	// ret = inno_dp_audio_register(conn->dev);
-	// if (ret)
-	// 	return osal_printf_func("failed to register dp auido component\n");
+
+#if IS_ENABLED(CONFIG_SND_SOC)
+	ret = inno_dp_audio_register(conn->dev);
+	if (ret)
+		return osal_printf_func("failed to register dp auido component\n");
+#endif
 
 	return 0;
 }
@@ -704,7 +707,9 @@ static void inno_dp_exit(struct inno_conn_t *conn)
 		conn->priv = NULL;
 	}
 
-	// inno_dp_audio_unregister(conn->dev);
+#if IS_ENABLED(CONFIG_SND_SOC)
+	inno_dp_audio_unregister(conn->dev);
+#endif
 }
 
 static int inno_dp_get_edid(struct inno_conn_t *conn, uint8_t *buff)
@@ -839,6 +844,28 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 		osal_write32(0x88, osal_read32(0x88, conn) | BIT(29), conn);
 
 	osal_read32(0x88, conn);
+
+	osal_printf("%s() audio config\n", __func__);
+	/* init dp audio */
+	osal_write32(0x424, osal_read32(0x424, conn) | BIT(13), conn);
+	osal_write32(0x420, osal_read32(0x420, conn) | BIT(13), conn);
+	osal_write32(0x424, osal_read32(0x424, conn) | BIT(12), conn);
+	osal_write32(0x420, osal_read32(0x420, conn) | BIT(12), conn);
+	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(31), conn);    //i2s input
+	osal_write32(0x300, osal_read32(0x300, conn) | BIT(22), conn);     //i2s stream
+	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(16, 14))  //2 channel
+			    | (0x01 << 14), conn);
+	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(28, 25))  //channel 1-2
+			    | (0x01 << 25), conn);
+	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(21, 17))  //16bit
+			    | (0x10 << 17), conn);
+	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(24, 23))  //left-justified mode
+			    | (0x01 << 23), conn);
+
+	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(30), conn);
+	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
+	udelay(1000);
+	osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
 
 	// ana_drv
 	osal_printf("%s() ana drv config\n", __func__);
