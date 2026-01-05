@@ -921,3 +921,25 @@
 	pinctrl-0 = <&dp1_1_cfg>;
 	status = "okay";
 };
+
+&adma3 {
+	status = "okay";
+};
+
+&ri2s3 {
+	status = "okay";
+};
+
+&sound_card_dp1 {
+	status = "okay";
+	playback-only;
+	simple-audio-card,mclk-fs = <512>;
+	simple-audio-card,dai-link@0 {
+		format = "left_j";
+		frame-master = <&dp1_link_cpu>;
+		bitclock-master = <&dp1_link_cpu>;
+		dp1_link_codec: codec {
+			sound-dai = <&dp1>;
+		};
+	};
+};

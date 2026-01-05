@@ -417,7 +417,7 @@
 	ri2s2: ri2s2@c0883900 {
 		compatible = "spacemit,k3-ri2s";
 		#sound-dai-cells = <0>;
-		reg = <0x0 0xc0883500 0x0 0x300>,
+		reg = <0x0 0xc0883900 0x0 0x300>,
 		      <0x0 0xc08d8400 0x0 0x4000>;
 		clocks = <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S2>,
 			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S2_BUS>,
@@ -431,10 +431,10 @@
 		status = "disabled";
 	};
 
-	ri2s3: ri2s1@c0883D00 {
+	ri2s3: ri2s3@c0883D00 {
 		compatible = "spacemit,k3-ri2s";
 		#sound-dai-cells = <0>;
-		reg = <0x0 0xc0883500 0x0 0x300>,
+		reg = <0x0 0xc0883d00 0x0 0x300>,
 		      <0x0 0xc08dc400 0x0 0x4000>;
 		clocks = <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S3>,
 			 <&syscon_rcpu_i2sctrl CLK_RCPU_I2SCTRL_RI2S3_BUS>,
@@ -446,5 +446,33 @@
 		dmas = <&adma3 1>, <&adma3 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
+	};
+
+	sound_card_dp0: sound-card-dp0@0 {
+		compatible = "simple-audio-card";
+		simple-audio-card,mclk-fs = <512>;
+		status = "disabled";
+		simple-audio-card,dai-link@0 {
+			format = "left_j";
+			frame-master = <&dp0_link_cpu>;
+			bitclock-master = <&dp0_link_cpu>;
+			dp0_link_cpu: cpu {
+				sound-dai = <&ri2s2>;
+			};
+		};
+	};
+
+	sound_card_dp1: sound-card-dp1@1 {
+		compatible = "simple-audio-card";
+		simple-audio-card,mclk-fs = <512>;
+		status = "disabled";
+		simple-audio-card,dai-link@0 {
+			format = "left_j";
+			frame-master = <&dp1_link_cpu>;
+			bitclock-master = <&dp1_link_cpu>;
+			dp1_link_cpu: cpu {
+				sound-dai = <&ri2s3>;
+			};
+		};
 	};
 };

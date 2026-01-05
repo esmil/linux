@@ -61,6 +61,7 @@
 		color_format = <1>;
 		ref_clock = <24000000>;
 		dp-id = <1>;
+		#sound-dai-cells = <0>;
 		status = "disabled";
 
 		port {
