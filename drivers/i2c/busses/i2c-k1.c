@@ -752,10 +752,6 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 
 	i2c->bus_clk = clk;
 
-	ret = clk_set_rate(i2c->scl_clk, i2c->clock_freq);
-	if (ret)
-		return dev_err_probe(&pdev->dev, ret, "failed to set rate for SCL clock");
-
 	ret = clk_prepare_enable(i2c->scl_clk);
 	if (ret)
 		return dev_err_probe(&pdev->dev, ret, "failed to prepare and enable clock");
@@ -776,6 +772,10 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 		udelay(200);
 		reset_control_deassert(i2c->resets);
 	}
+
+	ret = clk_set_rate(i2c->scl_clk, i2c->clock_freq);
+	if (ret)
+		return dev_err_probe(&pdev->dev, ret, "failed to set rate for SCL clock");
 
 	spacemit_i2c_reset(i2c);
 
