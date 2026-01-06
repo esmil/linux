@@ -67,6 +67,18 @@ static int spacemit_k3_regs[] = {
 
 #define UFS_SPACEMIT_K3_ACLK_NAME "ufs-aclk"
 
+/*
+ * PMU/clock registers used to configure UFS ACLK source/divider and trigger
+ * FC (frequency change) handshake.
+ *
+ * Kept consistent with the working ufs-asr driver + patch in this workspace.
+ */
+#define SPACEMIT_K3_UFS_PMUAP_REG	(0xd4282800 + 0x268)
+#define SPACEMIT_K3_ACGR_REG_BASE	(0xd4050000 + 0x1024)
+
+#define UFS_PMUAP_ACLK_FC_REQ		BIT(8)
+#define UFS_ACLK_FC_TIMEOUT		10000
+
 /* PHY register magic values */
 #define MPHY_PU_ALL 0x87f
 #define MPHY_PU_WITH_HB8_RESET 0xb7f
@@ -197,6 +209,38 @@ static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_l
 		dev_err(hba->dev, "%s: couldn't read PA_CONNECTEDTXDATALANES %d\n", __func__, err);
 
 	return err;
+}
+
+static int ufs_spacemit_k3_trigger_aclk_fc(struct device *dev)
+{
+	void __iomem *ufs_pmuap_reg;
+	u32 reg_val;
+	u32 timeout;
+
+	ufs_pmuap_reg = ioremap((phys_addr_t)SPACEMIT_K3_UFS_PMUAP_REG, 4);
+	if (!ufs_pmuap_reg) {
+		dev_err(dev, "Failed to map UFS PMUAP reg\n");
+		return -ENOMEM;
+	}
+
+	reg_val = readl(ufs_pmuap_reg);
+	reg_val |= UFS_PMUAP_ACLK_FC_REQ;
+	writel(reg_val, ufs_pmuap_reg);
+
+	timeout = UFS_ACLK_FC_TIMEOUT;
+	while (timeout) {
+		reg_val = readl(ufs_pmuap_reg);
+		if (!(reg_val & UFS_PMUAP_ACLK_FC_REQ))
+			break;
+		timeout--;
+		udelay(10);
+	}
+
+	if (reg_val & UFS_PMUAP_ACLK_FC_REQ)
+		dev_err(dev, "ACLK FC request failed (PMUAP=0x%x)\n", reg_val);
+
+	iounmap(ufs_pmuap_reg);
+	return 0;
 }
 
 /**
@@ -965,6 +1009,9 @@ static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
 					break;
 				}
 			}
+
+			/* Also check/trigger FC via PMUAP, matching ufs-asr logic. */
+			ufs_spacemit_k3_trigger_aclk_fc(hba->dev);
 		} else {
 		}
 		break;
@@ -984,11 +1031,59 @@ static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
  */
 static void ufs_spacemit_k3_platform_init(struct device *dev)
 {
-	/* Note: reset control is obtained in ufs_spacemit_k3_init() to avoid
-	 * duplicate exclusive access. Initial reset cycle is done there.
-	 */
+	void __iomem *ufs_pmuap_reg;
+	void __iomem *acgr_reg;
+	u32 reg_val;
+	u32 timeout;
 
-	dev_info(dev, "Platform init completed\n");
+	acgr_reg = ioremap((phys_addr_t)SPACEMIT_K3_ACGR_REG_BASE, 4);
+	if (!acgr_reg) {
+		dev_err(dev, "Failed to map ACGR reg\n");
+		return;
+	}
+
+	ufs_pmuap_reg = ioremap((phys_addr_t)SPACEMIT_K3_UFS_PMUAP_REG, 4);
+	if (!ufs_pmuap_reg) {
+		dev_err(dev, "Failed to map UFS PMUAP reg\n");
+		iounmap(acgr_reg);
+		return;
+	}
+
+	/* enable CLK_499M */
+	reg_val = readl(acgr_reg);
+	reg_val |= BIT(21);
+	writel(reg_val, acgr_reg);
+
+	/* ufs_aclk reset */
+	writel(0x0, ufs_pmuap_reg);
+
+	reg_val = BIT(0) | BIT(1);
+	/*
+	 * aclk selection and divider fields are kept consistent with the
+	 * known-good ufs-asr settings in this workspace.
+	 */
+	writel(reg_val, ufs_pmuap_reg);
+
+	/* set FC_REQ */
+	reg_val |= UFS_PMUAP_ACLK_FC_REQ;
+	writel(reg_val, ufs_pmuap_reg);
+
+	timeout = UFS_ACLK_FC_TIMEOUT;
+	while (timeout) {
+		reg_val = readl(ufs_pmuap_reg);
+		if (!(reg_val & UFS_PMUAP_ACLK_FC_REQ))
+			break;
+		timeout--;
+		udelay(10);
+	}
+	if (reg_val & UFS_PMUAP_ACLK_FC_REQ)
+		dev_err(dev, "Failed to select aclk (PMUAP=0x%x)\n", reg_val);
+
+	dev_err(dev, "ufs_spacemit_k3_platform_init, PMUAP=0x%x\n",
+		readl(ufs_pmuap_reg));
+
+	iounmap(ufs_pmuap_reg);
+	iounmap(acgr_reg);
 }
 
 /**
@@ -1095,20 +1190,34 @@ static int ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 	}
 
 	/* Perform AXI reset using Reset Framework */
-	dev_dbg(dev, "Asserting UFS AXI reset via reset framework\n");
-	ret = reset_control_assert(host->rst);
-	if (ret) {
-		dev_err(dev, "Reset assert failed: %d\n", ret);
-		goto out;
-	}
-	usleep_range(10, 20);
+	if (host->rst) {
+		dev_dbg(dev, "Asserting UFS AXI reset via reset framework\n");
+		ret = reset_control_assert(host->rst);
+		if (ret) {
+			dev_err(dev, "Reset assert failed: %d\n", ret);
+			goto out;
+		}
+		usleep_range(10, 20);
 
-	ret = reset_control_deassert(host->rst);
-	if (ret) {
-		dev_err(dev, "Reset deassert failed: %d\n", ret);
-		goto out;
+		ret = reset_control_deassert(host->rst);
+		if (ret) {
+			dev_err(dev, "Reset deassert failed: %d\n", ret);
+			goto out;
+		}
+		dev_info(dev, "UFS AXI reset completed via reset framework\n");
+	} else {
+		void __iomem *ufs_pmuap_reg;
+
+		dev_warn(dev, "No reset control, using PMUAP for UFS AXI reset\n");
+		ufs_pmuap_reg = ioremap((phys_addr_t)SPACEMIT_K3_UFS_PMUAP_REG, 4);
+		if (!ufs_pmuap_reg) {
+			dev_err(dev, "Failed to map UFS PMUAP reg\n");
+			ret = -ENOMEM;
+			goto out;
+		}
+		writel(0x0, ufs_pmuap_reg);
+		iounmap(ufs_pmuap_reg);
 	}
-	dev_info(dev, "UFS AXI reset completed via reset framework\n");
 
 	/* Re-enable ufs aclk */
 	if (clki->max_freq) {
