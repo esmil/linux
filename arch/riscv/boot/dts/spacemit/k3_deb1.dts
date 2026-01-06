@@ -356,8 +356,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie2_1_cfg>;
 
-	max-link-speed = <1>;
-	num-lanes = <2>;
 	status = "okay";
 };
 
