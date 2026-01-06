@@ -2158,7 +2158,7 @@
 
 			spacemit,pcie-port = <2>;
 			bus-range = <0x00 0xff>;
-			max-link-speed = <2>;
+			max-link-speed = <3>;
 			num-lanes = <2>;
 			device_type = "pci";
 			#address-cells = <3>;
