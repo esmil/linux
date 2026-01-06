@@ -166,7 +166,7 @@ static int spacemit_i2c_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct spacemit_i2c_dev *i2c = container_of(hw, struct spacemit_i2c_dev, scl_clk_hw);
 	u32 lv, lcr, mask, shift, max_lv;
 
-	lv = DIV_ROUND_UP(parent_rate, rate);
+	lv = DIV_ROUND_UP(parent_rate, rate * 2);
 
 	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
 		mask = SPACEMIT_LCR_LV_STANDARD_MASK;
@@ -196,8 +196,8 @@ static long spacemit_i2c_clk_round_rate(struct clk_hw *hw, unsigned long rate,
 {
 	u32 lv, freq;
 
-	lv = DIV_ROUND_UP(*parent_rate, rate);
-	freq = DIV_ROUND_UP(*parent_rate, lv);
+	lv = DIV_ROUND_UP(*parent_rate, rate * 2);
+	freq = DIV_ROUND_UP(*parent_rate, lv * 2);
 
 	return freq;
 }
@@ -217,7 +217,7 @@ static unsigned long spacemit_i2c_clk_recalc_rate(struct clk_hw *hw,
 	else
 		return 0;
 
-	return DIV_ROUND_UP(parent_rate, lv);
+	return DIV_ROUND_UP(parent_rate, lv * 2);
 }
 
 static const struct clk_ops spacemit_i2c_clk_ops = {
