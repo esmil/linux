@@ -27,7 +27,7 @@ static const struct regulator_ops mpq8655_regulator_ops = {
 };
 
 static const struct linear_range mpq8655_buck_ranges[] = {
-	REGULATOR_LINEAR_RANGE(534000, 0x10b, 0x1b8, 2000),
+	REGULATOR_LINEAR_RANGE(0, 0, 0x1f4, 2000),
 };
 
 /* These define the voltage selector field for buck regulators */
@@ -48,12 +48,12 @@ static const struct linear_range mpq8655_buck_ranges[] = {
 		.owner			= THIS_MODULE,			\
 		.linear_ranges		= _ranges,			\
 		.n_linear_ranges	= ARRAY_SIZE(_ranges),		\
-		.vsel_reg		= MPQ8655_ENABLE_REG(_off, _n) + 1,	\
+		.vsel_reg		= MPQ8655_ENABLE_REG(_off, _n),	\
 		.vsel_mask		= _mask,			\
 	}
 
 #define MPQ8655_BUCK_DESC(_n) \
-	MPQ8655_REG_DESC(BUCK, edcdc, _n, "vcc", 0x21, BUCK_MASK, 174, mpq8655_buck_ranges)
+	MPQ8655_REG_DESC(BUCK, edcdc, _n, "vcc", 0x21, BUCK_MASK, 501, mpq8655_buck_ranges)
 
 
 static const struct regulator_desc mpq8655_regulator_desc[] = {

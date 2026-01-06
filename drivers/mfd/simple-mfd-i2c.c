@@ -96,6 +96,7 @@ static const struct simple_mfd_data maxim_mon_max77705 = {
 static const struct regmap_config spacemit_p1_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
+	.max_register = 0xb0,
 };
 
 static const struct mfd_cell spacemit_p1_cells[] = {
@@ -112,6 +113,8 @@ static const struct simple_mfd_data spacemit_p1 = {
 static const struct regmap_config spacemit_mpq8655_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 16,
+	.val_format_endian = REGMAP_ENDIAN_LITTLE,
+	.max_register = 0x21,
 };
 
 static const struct mfd_cell spacemit_mpq8655_cells[] = {

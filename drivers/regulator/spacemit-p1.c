@@ -58,7 +58,7 @@ static const struct linear_range p1_buck_ranges[] = {
 
 /* Selector value 0 can be used for suspend */
 static const struct linear_range p1_ldo_ranges[] = {
-	REGULATOR_LINEAR_RANGE(500000, 11, 127, 25000),
+	REGULATOR_LINEAR_RANGE(225000, 0, 127, 25000),
 };
 
 /* These define the voltage selector field for buck and LDO regulators */
@@ -90,14 +90,14 @@ static const struct linear_range p1_ldo_ranges[] = {
 	P1_REG_DESC(BUCK, buck, _n, "vin", 0x47, BUCK_MASK, 254, p1_buck_ranges)
 
 #define P1_ALDO_DESC(_n) \
-	P1_REG_DESC(ALDO, aldo, _n, "vin", 0x5b, LDO_MASK, 117, p1_ldo_ranges)
+	P1_REG_DESC(ALDO, aldo, _n, "vcc", 0x5b, LDO_MASK, 128, p1_ldo_ranges)
 
 #ifdef CONFIG_SOC_SPACEMIT_K3
 #define P1_DLDO_DESC(_n) \
-	P1_REG_DESC(DLDO, dldo, _n, "buck4", 0x67, LDO_MASK, 117, p1_ldo_ranges)
+	P1_REG_DESC(DLDO, dldo, _n, "buck4", 0x67, LDO_MASK, 128, p1_ldo_ranges)
 #else
 #define P1_DLDO_DESC(_n) \
-	P1_REG_DESC(DLDO, dldo, _n, "buck5", 0x67, LDO_MASK, 117, p1_ldo_ranges)
+	P1_REG_DESC(DLDO, dldo, _n, "buck5", 0x67, LDO_MASK, 128, p1_ldo_ranges)
 #endif
 
 static const struct regulator_desc p1_regulator_desc[] = {
