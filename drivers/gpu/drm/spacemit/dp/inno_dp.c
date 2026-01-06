@@ -861,6 +861,9 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 			    | (0x10 << 17), conn);
 	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(24, 23))  //left-justified mode
 			    | (0x01 << 23), conn);
+	/* set Audio TimeStamp Packet Header, packet ID = 0, version number = 0x12 */
+	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(13, 0))
+			    | (0x12 << 0), conn);
 
 	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(30), conn);
 	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
