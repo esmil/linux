@@ -135,9 +135,6 @@ static int devm_spacemit_glue_init(struct platform_device *pdev,
 #define RGMII_RX_PHASE_MASK		GENMASK(22, 20)
 #define RGMII_TX_PHASE_MASK		GENMASK(26, 24)
 
-#define EMAC_RX_DLINE_STEP_MASK		GENMASK(5, 4)
-#define EMAC_TX_DLINE_STEP_MASK		GENMASK(21, 20)
-
 #define EMAC_RX_DLINE_CODE_MASK		GENMASK(15, 8)
 #define EMAC_TX_DLINE_CODE_MASK		GENMASK(31, 24)
 
@@ -246,11 +243,16 @@ static int clk_phase_set(struct spacemit_ethqos *eqos, bool is_tx)
 
 static int spacemit_rgmii_dline_enable(struct spacemit_ethqos *eqos)
 {
-	u32 mask = EMAC_TX_DLINE_EN | EMAC_RX_DLINE_EN;
+	u32 mask, val;
 	int ret;
 
+	mask = EMAC_TX_DLINE_EN | EMAC_RX_DLINE_EN |
+	       EMAC_TX_DLINE_CODE_MASK | EMAC_RX_DLINE_CODE_MASK;
+
+	val = EMAC_TX_DLINE_EN | EMAC_RX_DLINE_EN;
+
 	ret = regmap_update_bits(eqos->apmu, eqos->dline_off,
-				 mask, mask);
+				 mask, val);
 	if (ret)
 		dev_err(&eqos->pdev->dev,
 			"failed to enable RGMII delayline\n");
