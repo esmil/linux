@@ -25,6 +25,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -69,6 +70,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -113,6 +115,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -157,6 +160,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -201,6 +205,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -245,6 +250,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -289,6 +295,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -333,6 +340,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -378,6 +386,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -423,6 +432,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -468,6 +478,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -513,6 +524,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -558,6 +570,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -603,6 +616,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -648,6 +662,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
@@ -693,6 +708,7 @@
 						"zvkt", "zcd", "sdtrig";
 				riscv,cbom-block-size = <64>;
 				riscv,cboz-block-size = <64>;
+				riscv,cbop-block-size = <64>;
 				i-cache-block-size = <64>;
 				i-cache-size = <65536>;
 				i-cache-sets = <256>;
