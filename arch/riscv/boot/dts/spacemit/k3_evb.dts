@@ -106,6 +106,12 @@
 };
 
 &pinctrl {
+	i2c6-0-cfg {
+		i2c6-0-pins {
+			power-source = <1800>;
+		};
+	};
+
 	ssp0-2-cfg  {
 		ssp0-0-pins {
 			power-source = <3300>;
@@ -814,6 +820,26 @@
 		regulator-max-microvolt = <3300000>;
 		regulator-always-on;
 		regulator-boot-on;
+	};
+};
+
+&i2c6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c6_0_cfg>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "atmel,24c02";
+		reg = <0x50>;
+		read-only;
+		status = "okay";
+
+		nvmem-layout {
+			compatible = "onie,tlv-layout";
+
+			product_name: product-name {
+			};
+		};
 	};
 };
 
