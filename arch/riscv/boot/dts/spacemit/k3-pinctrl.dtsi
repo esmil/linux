@@ -2131,7 +2131,7 @@
 		};
 	};
 
-	pcie4_0_cfg: pcie4-0-cfg {
+	pcie4_1_cfg: pcie4-1-cfg {
 		pcie4-0-pins {
 			pinmux = <K3_PADCONF(76, 5)>,	/* pcie4 perst */
 				 <K3_PADCONF(77, 5)>,	/* pcie4 wake */
