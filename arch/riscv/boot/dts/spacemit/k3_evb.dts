@@ -77,6 +77,21 @@
 		rng-seed = <0x25d69b2 0xff555073 0xd23238ea 0x57aa5455 0x792478ed 0xa744f28e 0x6ba4fc54 0xa2bf20fc>;
 		stdout-path = "serial0:115200";
 	};
+
+	vmmc_sdio: regulator-vmmc-sdio {
+		compatible = "regulator-fixed";
+		regulator-name = "vmmc-sdio";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		gpio = <&gpio 3 6 GPIO_ACTIVE_HIGH>;
+	};
+
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+
+		reset-gpios = <&gpio 3 4 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &resmem {
@@ -220,6 +235,16 @@
 			power-source = <1800>;
 		};
 	};
+
+	mmc2-cfg {
+		mmc2-0-pins {
+			power-source = <1800>;
+		};
+
+		mmc2-1-pins {
+			power-source = <1800>;
+		};
+	};
 };
 
 &uart0 {
@@ -252,6 +277,9 @@
 	pinctrl-0 = <&mmc2_cfg>;
 	bus-width = <4>;
 	non-removable;
+	vmmc-supply = <&vmmc_sdio>;
+	vqmmc-supply = <&p1v8>;
+	mmc-pwrseq = <&sdio_pwrseq>;
 	no-mmc;
 	no-sd;
 	clock-frequency = <375000000>;
