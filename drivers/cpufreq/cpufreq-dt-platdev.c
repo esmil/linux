@@ -243,7 +243,7 @@ create_pdev:
 			       sizeof(struct cpufreq_dt_platform_data)));
 }
 
-#if defined(CONFIG_SOC_SPACEMIT) && defined(CONFIG_REGULATOR_RPMI)
+#if defined(CONFIG_SOC_SPACEMIT)
 late_initcall(cpufreq_dt_platdev_init);
 #else
 core_initcall(cpufreq_dt_platdev_init);
