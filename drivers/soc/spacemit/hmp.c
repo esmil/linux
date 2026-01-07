@@ -12,6 +12,7 @@
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
 #include <linux/of.h>
+#include <asm/vector.h>
 #include <linux/soc/spacemit/spacemit-hmp.h>
 
 
@@ -267,13 +268,6 @@ int hmp_set_ai_thread(pid_t pid)
 	get_task_struct(t);
 	rcu_read_unlock();
 
-	/*
-	 * !!! the vector context should not be
-	 * initiated before switch to AI cores
-	 */
-	WARN(t->thread.vstate.datap, "pid:%u(%s), vector context has been initialized already!!!\n",
-		current->pid, current->comm);
-
 	/* mark the thread type as an ai thread under task_lock */
 	task_lock(t);
 	t->thread_type = HMP_AI;
@@ -284,6 +278,19 @@ int hmp_set_ai_thread(pid_t pid)
 		task_lock(t);
 		t->thread_type = HMP_REGULAR;
 		task_unlock(t);
+	} else if (t->thread.vstate.datap) {
+		/*
+		 * the vector context should not be initiated before switch
+		 * to AI cores, if it has been initiated already, just
+		 * reset the vector state!!
+		 */
+		pr_warn("%s: pid:%u(%s), vector has been enabled already!!!\n",
+			__func__, t->pid, t->comm);
+		riscv_v_vstate_ctrl_init(t);
+		riscv_v_vstate_off(task_pt_regs(t));
+		kfree(t->thread.vstate.datap);
+		memset(&t->thread.vstate, 0, sizeof(struct __riscv_v_ext_state));
+		clear_tsk_thread_flag(t, TIF_RISCV_V_DEFER_RESTORE);
 	}
 
 	put_task_struct(t);
