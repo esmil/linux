@@ -13,8 +13,6 @@
 #include "thermal_core.h"
 #include "k3-thermal.h"
 
-#define MAX_SENSOR_NUMBER		8
-
 static int init_sensors(struct platform_device *pdev)
 {
 	int ret;
@@ -33,6 +31,13 @@ static int init_sensors(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	ret = of_property_read_u32_array(pdev->dev.of_node, "tsensor_map",
+			s->tsen_enable_map, s->sr[1] - s->sr[0] + 1);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to get definition of tsensor_map\n");
+		return -EINVAL;
+	}
+
 	/* first: disable all the interrupts */
         writel(0xffffffff, s->base + REG_TSEN_LITE_INT_CLR);
         writel(0xffffffff, s->base + REG_TSEN_LITE_INT_ENB);
@@ -41,6 +46,11 @@ static int init_sensors(struct platform_device *pdev)
         val = readl(s->base + REG_TSEN_LITE_CFG);
         val &= ~BITS_D_CK_DIV_SEL;
         val |= BITS_CK_DIV_SEL_DIV4;
+
+	/* vref calibration */
+	val &= ~BITS_D_REG_VREF_CTRL;
+	val |= ((CALIB_VREF_DEFAULT & 0xff) << BITS_D_REG_VREF_OFFSET);
+
         writel(val, s->base + REG_TSEN_LITE_CFG);
 
 	return 0;
@@ -60,6 +70,7 @@ static int k3_thermal_get_temp(struct thermal_zone_device *tz, int *temp)
 
 	/* select which sensor */
 	writel(desc->index, desc->base + REG_TSEN_LITE_CFG2);
+	msleep(1);
 	*temp = readl(desc->base + REG_TSEN_LITE_TEMP_DATA);
 	*temp &= BITS_TEMP_DATA;
 	*temp /= TEMP_RAW_DATA_DIV;
@@ -124,6 +135,7 @@ static const struct thermal_zone_device_ops k3_of_thermal_ops = {
 
 static int k3_thermal_probe(struct platform_device *pdev)
 {
+	unsigned int value;
 	int ret, i;
 	struct resource *res;
 	struct k3_thermal_sensor *s;
@@ -182,6 +194,9 @@ static int k3_thermal_probe(struct platform_device *pdev)
 
 	/* then register the thermal zone */
 	for (i = s->sr[0]; i <= s->sr[1]; ++i) {
+		if (s->tsen_enable_map[i] == 0)
+			continue;
+
 		s->sdesc[i].base = s->base;
 		s->sdesc[i].index = i;
 		s->sdesc[i].temp_offset = s->temp_offset;
@@ -201,6 +216,17 @@ static int k3_thermal_probe(struct platform_device *pdev)
 
 	/* enable the sensor interrupt & using auto mode */
 	enable_sensors(pdev);
+
+	pr_debug("test cfg d_out_sel[26] and d_en_autozero[25]\n");
+	value = readl(s->base);
+	value |= ((1 << 25) | (1 << 26));
+	writel(value, s->base);
+	value = readl(s->base);
+	pr_debug("cfg_val: 0x%x\n", value);
+	value &= ~((1 << 25) | (1 << 26));
+	writel(value, s->base);
+	value = readl(s->base);
+	pr_debug("cfg_val: 0x%x\n", value);
 
 	return 0;
 }

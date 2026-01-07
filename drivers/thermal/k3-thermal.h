@@ -1,6 +1,11 @@
 #ifndef __k3_THERMAL_H__
 #define __k3_THERMAL_H__
 
+#define MAX_SENSOR_NUMBER		8
+#define CALIB_VREF_DEFAULT		(0x9A)
+#define BITS_D_REG_VREF_CTRL		BITS(7, 14)
+#define BITS_D_REG_VREF_OFFSET		(7)
+
 #define BITS(_start, _end) ((BIT(_end) - BIT(_start)) + BIT(_end))
 
 #define MAX_SENSOR_NUMBER		8
@@ -46,6 +51,7 @@ struct k3_thermal_sensor {
 	/* sensor range */
 	unsigned int sr[2];
 	struct k3_thermal_sensor_desc *sdesc;
+	unsigned int tsen_enable_map[MAX_SENSOR_NUMBER];
 };
 
 #endif
