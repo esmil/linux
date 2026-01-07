@@ -1523,6 +1523,7 @@ static void ufs_spacemit_k3_remove(struct platform_device *pdev)
 
 	pm_runtime_get_sync(&(pdev)->dev);
 	ufshcd_remove(hba);
+	pm_runtime_put(&(pdev)->dev);
 }
 
 static const struct dev_pm_ops ufs_spacemit_k3_pm_ops = {
