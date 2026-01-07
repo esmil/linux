@@ -10,10 +10,12 @@
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <scsi/scsi_eh.h>
@@ -54,6 +56,11 @@
 #define ANA_EQ_CTRL_REG_ATTR 0x00CD
 #define ANA_HSGEAR_CTRL_ATTR 0x00C1
 
+/* APMU_UFS_CLK_RES_CTRL FC request bit */
+#define UFS_ACLK_FC_REQ		BIT(8)
+#define UFS_ACLK_FC_TIMEOUT_US	10000
+#define UFS_ACLK_FC_DELAY_US	10
+
 /* the delay between TX bursts */
 #define VS_TX_BURST_CLOSURE_DELAY 0xD084
 
@@ -64,20 +71,6 @@ static int spacemit_k3_regs[] = {
 	(UFS_PHY_MNG_BASE + UFS_DEVICE_IO_CTRL),
 	0xFFF,
 };
-
-#define UFS_SPACEMIT_K3_ACLK_NAME "ufs-aclk"
-
-/*
- * PMU/clock registers used to configure UFS ACLK source/divider and trigger
- * FC (frequency change) handshake.
- *
- * Kept consistent with the working ufs-asr driver + patch in this workspace.
- */
-#define SPACEMIT_K3_UFS_PMUAP_REG	(0xd4282800 + 0x268)
-#define SPACEMIT_K3_ACGR_REG_BASE	(0xd4050000 + 0x1024)
-
-#define UFS_PMUAP_ACLK_FC_REQ		BIT(8)
-#define UFS_ACLK_FC_TIMEOUT		10000
 
 /* PHY register magic values */
 #define MPHY_PU_ALL 0x87f
@@ -209,38 +202,6 @@ static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_l
 		dev_err(hba->dev, "%s: couldn't read PA_CONNECTEDTXDATALANES %d\n", __func__, err);
 
 	return err;
-}
-
-static int ufs_spacemit_k3_trigger_aclk_fc(struct device *dev)
-{
-	void __iomem *ufs_pmuap_reg;
-	u32 reg_val;
-	u32 timeout;
-
-	ufs_pmuap_reg = ioremap((phys_addr_t)SPACEMIT_K3_UFS_PMUAP_REG, 4);
-	if (!ufs_pmuap_reg) {
-		dev_err(dev, "Failed to map UFS PMUAP reg\n");
-		return -ENOMEM;
-	}
-
-	reg_val = readl(ufs_pmuap_reg);
-	reg_val |= UFS_PMUAP_ACLK_FC_REQ;
-	writel(reg_val, ufs_pmuap_reg);
-
-	timeout = UFS_ACLK_FC_TIMEOUT;
-	while (timeout) {
-		reg_val = readl(ufs_pmuap_reg);
-		if (!(reg_val & UFS_PMUAP_ACLK_FC_REQ))
-			break;
-		timeout--;
-		udelay(10);
-	}
-
-	if (reg_val & UFS_PMUAP_ACLK_FC_REQ)
-		dev_err(dev, "ACLK FC request failed (PMUAP=0x%x)\n", reg_val);
-
-	iounmap(ufs_pmuap_reg);
-	return 0;
 }
 
 /**
@@ -981,7 +942,6 @@ static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is
 static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
 					enum ufs_notify_change_status status)
 {
-	struct ufs_clk_info *clki;
 	int ret = 0;
 
 	switch (status) {
@@ -993,25 +953,6 @@ static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
 
 	case POST_CHANGE:
 		if (on) {
-			/*
-			 * Trigger FC handshake via clk framework.
-			 * We re-apply the current rate to ensure the FC bit is toggled
-			 * and checked by the clock driver.
-			 */
-			list_for_each_entry(clki, &hba->clk_list_head, list) {
-				if (!strcmp(clki->name, "ufs-aclk")) {
-					unsigned long rate = clk_get_rate(clki->clk);
-
-					ret = clk_set_rate(clki->clk, rate);
-					if (ret)
-						dev_err(hba->dev, "Failed to trigger ACLK FC: %d\n",
-							ret);
-					break;
-				}
-			}
-
-			/* Also check/trigger FC via PMUAP, matching ufs-asr logic. */
-			ufs_spacemit_k3_trigger_aclk_fc(hba->dev);
 		} else {
 		}
 		break;
@@ -1031,59 +972,71 @@ static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
  */
 static void ufs_spacemit_k3_platform_init(struct device *dev)
 {
-	void __iomem *ufs_pmuap_reg;
-	void __iomem *acgr_reg;
-	u32 reg_val;
-	u32 timeout;
+	struct clk *ufs_aclk;
+	struct reset_control *rst;
+	unsigned long rate;
+	u32 freq_table[2];
+	int ret;
 
-	acgr_reg = ioremap((phys_addr_t)SPACEMIT_K3_ACGR_REG_BASE, 4);
-	if (!acgr_reg) {
-		dev_err(dev, "Failed to map ACGR reg\n");
-		return;
-	}
-
-	ufs_pmuap_reg = ioremap((phys_addr_t)SPACEMIT_K3_UFS_PMUAP_REG, 4);
-	if (!ufs_pmuap_reg) {
-		dev_err(dev, "Failed to map UFS PMUAP reg\n");
-		iounmap(acgr_reg);
-		return;
-	}
-
-	/* enable CLK_499M */
-	reg_val = readl(acgr_reg);
-	reg_val |= BIT(21);
-	writel(reg_val, acgr_reg);
-
-	/* ufs_aclk reset */
-	writel(0x0, ufs_pmuap_reg);
-
-	reg_val = BIT(0) | BIT(1);
 	/*
-	 * aclk selection and divider fields are kept consistent with the
-	 * known-good ufs-asr settings in this workspace.
+	 * Replace direct MPMU/APMU register pokes with the clock framework:
+	 * - parent selection/divider/FC handshake are handled by the CCU
+	 *   clock driver (CCU_MUX_DIV_GATE_FC_DEFINE for ufs_aclk).
+	 * - the 491.52MHz parent gate (MPMU_ACGR BIT(21)) is managed by the
+	 *   common clock tree.
 	 */
-	writel(reg_val, ufs_pmuap_reg);
-
-	/* set FC_REQ */
-	reg_val |= UFS_PMUAP_ACLK_FC_REQ;
-	writel(reg_val, ufs_pmuap_reg);
-
-	timeout = UFS_ACLK_FC_TIMEOUT;
-	while (timeout) {
-		reg_val = readl(ufs_pmuap_reg);
-		if (!(reg_val & UFS_PMUAP_ACLK_FC_REQ))
-			break;
-		timeout--;
-		udelay(10);
+	ufs_aclk = devm_clk_get_optional(dev, "ufs-aclk");
+	if (IS_ERR(ufs_aclk)) {
+		dev_err(dev, "Failed to get ufs-aclk: %ld\n", PTR_ERR(ufs_aclk));
+		return;
 	}
-	if (reg_val & UFS_PMUAP_ACLK_FC_REQ)
-		dev_err(dev, "Failed to select aclk (PMUAP=0x%x)\n", reg_val);
+	if (!ufs_aclk) {
+		dev_dbg(dev, "No ufs-aclk clock, skipping platform clock init\n");
+		return;
+	}
 
-	dev_err(dev, "ufs_spacemit_k3_platform_init, PMUAP=0x%x\n",
-		readl(ufs_pmuap_reg));
+	rate = clk_get_rate(ufs_aclk);
+	if (dev->of_node &&
+	    !of_property_read_u32_array(dev->of_node, "freq-table-hz",
+					freq_table, ARRAY_SIZE(freq_table)) &&
+	    freq_table[1])
+		rate = freq_table[1];
 
-	iounmap(ufs_pmuap_reg);
-	iounmap(acgr_reg);
+	/*
+	 * Reset UFS ACLK domain via reset framework. Use non-devm get/put so
+	 * the later variant init can safely request the same reset line
+	 * exclusively.
+	 */
+	rst = reset_control_get_optional_exclusive(dev, "ufs-aclk-rst");
+	if (IS_ERR(rst)) {
+		dev_warn(dev, "Failed to get reset control: %ld\n", PTR_ERR(rst));
+		rst = NULL;
+	}
+	if (rst) {
+		ret = reset_control_assert(rst);
+		if (ret)
+			dev_warn(dev, "Reset assert failed: %d\n", ret);
+		udelay(1);
+		ret = reset_control_deassert(rst);
+		if (ret)
+			dev_warn(dev, "Reset deassert failed: %d\n", ret);
+		reset_control_put(rst);
+	}
+
+	/*
+	 * Apply the configured rate to force the clock driver to perform the
+	 * FC handshake, matching the flow previously implemented via PMUAP.
+	 */
+	if (!rate) {
+		dev_warn(dev, "ufs-aclk rate is 0, skipping clk_set_rate\n");
+		return;
+	}
+
+	ret = clk_set_rate(ufs_aclk, rate);
+	if (ret)
+		dev_err(dev, "Failed to set ufs-aclk rate to %luHz: %d\n", rate, ret);
+	else
+		dev_dbg(dev, "ufs-aclk configured: %luHz\n", clk_get_rate(ufs_aclk));
 }
 
 /**
@@ -1174,7 +1127,7 @@ static int ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 	/* get ufs aclk from clock list (already parsed from DTS) */
 	if (!list_empty(head)) {
 		list_for_each_entry(clki, head, list) {
-			if (clki->name && !strcmp(clki->name, UFS_SPACEMIT_K3_ACLK_NAME))
+			if (clki->name && !strcmp(clki->name, "ufs-aclk"))
 				break;
 		}
 	}
@@ -1205,18 +1158,6 @@ static int ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 			goto out;
 		}
 		dev_info(dev, "UFS AXI reset completed via reset framework\n");
-	} else {
-		void __iomem *ufs_pmuap_reg;
-
-		dev_warn(dev, "No reset control, using PMUAP for UFS AXI reset\n");
-		ufs_pmuap_reg = ioremap((phys_addr_t)SPACEMIT_K3_UFS_PMUAP_REG, 4);
-		if (!ufs_pmuap_reg) {
-			dev_err(dev, "Failed to map UFS PMUAP reg\n");
-			ret = -ENOMEM;
-			goto out;
-		}
-		writel(0x0, ufs_pmuap_reg);
-		iounmap(ufs_pmuap_reg);
 	}
 
 	/* Re-enable ufs aclk */
