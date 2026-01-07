@@ -251,6 +251,30 @@
 			power-source = <1800>;
 		};
 	};
+
+	pcie1-1-cfg {
+		pcie1-0-pins {
+			bias-pull-up;			/* pull up */
+			drive-strength = <38>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
+	pcie3-1-cfg {
+		pcie3-0-pins {
+			bias-pull-up;			/* pull up  */
+			drive-strength = <33>;		/* DS8 */
+			power-source = <1800>;
+		};
+	};
+
+	pcie4-1-cfg {
+		pcie4-0-pins {
+			bias-pull-up;			/* pull up */
+			drive-strength = <38>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
 };
 
 &uart0 {
@@ -534,6 +558,42 @@
 			device_type = "ethernet-phy";
 		};
 	};
+};
+
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_1_cfg>;
+
+	num-lanes = <2>;
+	status = "okay";
+};
+
+&pcie1_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_1_cfg>;
+
+	status = "okay";
+};
+
+&pcie2_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie2_2_cfg>;
+
+	status = "okay";
+};
+
+&pcie3_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie3_1_cfg>;
+
+	status = "okay";
+};
+
+&pcie4_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie4_1_cfg>;
+
+	status = "okay";
 };
 
 &thermal_zones {
