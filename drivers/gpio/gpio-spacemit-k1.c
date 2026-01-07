@@ -314,6 +314,7 @@ static int spacemit_gpio_add_bank(struct spacemit_gpio *sg,
 	gb->sg = sg;
 
 	gc->base		= index * SPACEMIT_NR_GPIOS_PER_BANK;
+	gc->ngpio		= SPACEMIT_NR_GPIOS_PER_BANK;
 	gc->of_gpio_n_cells	= 3;
 	gc->of_node_instance_match = spacemit_of_node_instance_match;
 
