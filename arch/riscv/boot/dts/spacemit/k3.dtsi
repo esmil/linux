@@ -1364,6 +1364,7 @@
 			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC_TSEN>;
 			sensor_range = <0x0 0x7>;
+			tsensor_map = <1 0 1 1 1 1 1 1>;
 			temperature_offset = <274>;
 			#thermal-sensor-cells = <1>;
 			status = "okay";

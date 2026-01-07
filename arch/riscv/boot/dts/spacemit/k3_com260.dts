@@ -558,13 +558,13 @@
 };
 
 &thermal_zones {
-	thermal_0 {
+	thermal_top {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 0>;
 
 		trips {
-			thermal0_trip0: thermal0-trip0 {
+			thermal_top_trip0: thermal_top-trip0 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
@@ -572,27 +572,13 @@
 		};
 	};
 
-	thermal_1 {
-		polling-delay = <1000>;
-		polling-delay-passive = <250>;
-		thermal-sensors = <&thermal 1>;
-
-		trips {
-			thermal1_trip0: thermal1-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
-				type = "passive";
-			};
-		};
-	};
-
-	thermal_2 {
+	thermal_vpu {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 2>;
 
 		trips {
-			thermal2_trip0: thermal2-trip0 {
+			thermal_vpu_trip0: thermal_vpu-trip0 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
@@ -600,13 +586,13 @@
 		};
 	};
 
-	thermal_3 {
+	thermal_gpu {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 3>;
 
 		trips {
-			thermal3_trip0: thermal3-trip0 {
+			thermal_gpu_trip0: thermal_gpu-trip0 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
@@ -614,38 +600,37 @@
 		};
 	};
 
-	thermal_4 {
-		/* top sensor */
+	thermal_cluster0 {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 4>;
 
 		trips {
-			thermal4_top_trip0: thermal4-trip0 {
+			thermal_cluster0_trip0: thermal_cluster0-trip0 {
 				temperature = <35000>;
 				hysteresis = <5000>;
 				type = "active";
 			};
 
-			thermal4_top_trip1: thermal4-trip1 {
+			thermal_cluster0_trip1: thermal_cluster0-trip1 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
 
-			thermal4_top_trip2: thermal4-trip2 {
+			thermal_cluster0_trip2: thermal_cluster0-trip2 {
 				temperature = <50000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
 
-			thermal4_top_trip3: thermal4-trip3 {
+			thermal_cluster0_trip3: thermal_cluster0-trip3 {
 				temperature = <60000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
 
-			thermal4_top_trip4: thermal4-trip04 {
+			thermal_cluster0_trip4: thermal_cluster0-trip4 {
 				temperature = <70000>;
 				hysteresis = <5000>;
 				type = "passive";
@@ -654,39 +639,39 @@
 
 		cooling-maps {
 			map0 {
-				trip = <&thermal4_top_trip0>;
+				trip = <&thermal_cluster0_trip0>;
 				cooling-device = <&ctf2301 0 50>;
 			};
 
 			map1 {
-				trip = <&thermal4_top_trip1>;
+				trip = <&thermal_cluster0_trip1>;
 				cooling-device = <&ctf2301 64 75>;
 			};
 
 			map2 {
-				trip = <&thermal4_top_trip2>;
+				trip = <&thermal_cluster0_trip2>;
 				cooling-device = <&ctf2301 102 128>;
 			};
 
 			map3 {
-				trip = <&thermal4_top_trip3>;
+				trip = <&thermal_cluster0_trip3>;
 				cooling-device = <&ctf2301 179 204>;
 			};
 
 			map4 {
-				trip = <&thermal4_top_trip4>;
+				trip = <&thermal_cluster0_trip4>;
 				cooling-device = <&ctf2301 255 255>;
 			};
 		};
 	};
 
-	thermal_5 {
+	thermal_cluster1 {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 5>;
 
 		trips {
-			thermal5_trip0: thermal5-trip0 {
+			thermal_cluster1_trip0: thermal_cluster1-trip0 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
@@ -694,13 +679,13 @@
 		};
 	};
 
-	thermal_6 {
+	thermal_cluster2 {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 6>;
 
 		trips {
-			thermal6_trip0: thermal6-trip0 {
+			thermal_cluster2_trip0: thermal_cluster2-trip0 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
@@ -708,13 +693,13 @@
 		};
 	};
 
-	thermal_7 {
+	thermal_cluster3 {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
 		thermal-sensors = <&thermal 7>;
 
 		trips {
-			thermal7_trip0: thermal7-trip0 {
+			thermal_cluster7_trip0: thermal_cluster7-trip0 {
 				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
