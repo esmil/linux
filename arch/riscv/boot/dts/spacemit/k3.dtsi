@@ -445,6 +445,9 @@
 			compatible = "spacemit,k3-pinctrl";
 			reg = <0x0 0xd401e000 0x0 0x400>,
 			      <0x0 0xd401e800 0x0 0x34>;
+			clocks = <&syscon_apbc CLK_APBC_AIB>,
+                                <&syscon_apbc CLK_APBC_AIB_BUS>;
+			clock-names = "func", "bus";
 			syscon = <&syscon_gpio>;
 			syscon-edge = <&syscon_gpio_edge>;
 			spacemit,apbc = <&syscon_apbc 0x50>;
