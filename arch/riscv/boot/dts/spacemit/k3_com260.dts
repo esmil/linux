@@ -133,6 +133,12 @@
 		};
 	};
 
+	i2c1-1-cfg {
+		i2c1-0-pins {
+			power-source = <1800>;
+		};
+	};
+
 	i2c6-1-cfg {
 		i2c6-0-pins {
 			power-source = <3300>;
@@ -757,6 +763,26 @@
 						remote-endpoint = <&usb3_phy_switch>;
 					};
 				};
+			};
+		};
+	};
+};
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_1_cfg>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "atmel,24c02";
+		reg = <0x50>;
+		read-only;
+		status = "okay";
+
+		nvmem-layout {
+			compatible = "onie,tlv-layout";
+
+			product_name: product-name {
 			};
 		};
 	};
