@@ -92,6 +92,17 @@
 		radio-type = "bluetooth";
 		shutdown-gpios = <&gpio 0 30 GPIO_ACTIVE_HIGH>;
 	};
+
+	rfkill-usb-wwan {
+		compatible = "rfkill-gpio";
+		label = "m.2 WWAN"; /* B-Key */
+		radio-type = "wwan";
+		/* MODULE_TURN_ON_1V8 (FC_PWROFF#) */
+		shutdown-gpios = <&gpio 0 18 GPIO_ACTIVE_HIGH>;
+		/* WWAN_RESET#_1V8 (WWAN1V8_RST#) */
+		reset-gpios = <&gpio 0 19 GPIO_ACTIVE_HIGH>;
+		/* GPIO84 for CPU_W_DISABLE#1 (WWAN_DIS#) is no needed*/
+	};
 };
 
 &resmem {
@@ -301,7 +312,7 @@
 };
 
 &usb3_portb_u2phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portb {
@@ -312,6 +323,7 @@
 	phys = <&usb3_portb_u2phy>;
 	phy-names = "usb2-phy";
 	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portc_u2phy {
