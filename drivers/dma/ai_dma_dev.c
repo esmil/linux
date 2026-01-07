@@ -71,7 +71,7 @@ static int va2pa(void *va, size_t size, va2pa_t **va2pa, pid_t pid)
 		return -EINVAL;
 	}
 
-	p = kmalloc(sizeof(va2pa_t), GFP_KERNEL);
+	p = kmalloc(sizeof(va2pa_t), GFP_ATOMIC);
 	if (!p)
 		printk("failed to alloc for pages\n");
 	*va2pa = p;
@@ -106,15 +106,18 @@ static int dma_malloc(struct ai_dmac *dma, dma_map_info_t *dma_info, struct vm_a
 		return -ENOMEM;
 	}
 
-	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
-	if (remap_pfn_range(vma, vma->vm_start, (virt_to_phys(dma_info->kern_addr) >> PAGE_SHIFT),
-			    vma->vm_end - vma->vm_start, vma->vm_page_prot))
-		return -EAGAIN;
-
 	dma_info->dma_addr = dma_map_single(dma->dev, dma_info->kern_addr, dma_info->size, DMA_BIDIRECTIONAL);
 	if (dma_mapping_error(dma->dev, dma_info->dma_addr)) {
 		dev_err(dma->dev,"mapping buffer failed\n");
 		return -1;
+	}
+
+	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+	if (remap_pfn_range(vma, vma->vm_start, (virt_to_phys(dma_info->kern_addr) >> PAGE_SHIFT),
+			    vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
+		dma_unmap_single(dma->dev, dma_info->dma_addr, dma_info->size, DMA_BIDIRECTIONAL);
+		kfree(dma_info->kern_addr);
+		return -EAGAIN;
 	}
 
 	return 0;
@@ -312,7 +315,7 @@ void start_transfer() {
 				pr_debug("src_addr:%llx dst_addr:%llx\n",src_addr,dst_addr);
 
 				if (param->is_sgdg == true) {
-					params = kmalloc(sizeof(struct ai_pack_param), GFP_KERNEL);
+					params = kmalloc(sizeof(struct ai_pack_param), GFP_ATOMIC);
 					if (!params) {
 						kfree(s_pa_l);
 						kfree(d_pa_l);

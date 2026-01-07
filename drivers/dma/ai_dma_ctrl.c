@@ -273,8 +273,10 @@ static irqreturn_t axi_dmac_start_next_handler(int irq, void *devid)
 
 	spin_lock_irqsave(&aidma_lock, flags);
 	pending = ai_dmac_read(dma, AXI_DMAC_REG_IRQ_PENDING);
-	if (!pending)
+	if (!pending) {
+		spin_unlock_irqrestore(&aidma_lock, flags);
 		return IRQ_NONE;
+	}
 
 	ai_dmac_write(dma, AXI_DMAC_REG_IRQ_PENDING, pending);
 	req = aidma_info[dma->id].req;
@@ -375,7 +377,7 @@ static int ai_dmac_probe(struct platform_device *pdev)
 	dma_dev->id = dma_id;
 	dma_id++;
 
-	dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(33));
+	dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(38));
 	return 0;
 }
 
