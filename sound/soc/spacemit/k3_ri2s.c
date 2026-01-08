@@ -425,8 +425,7 @@ static int spacemit_i2s_trigger(struct snd_pcm_substream *substream,
 			sp_reg_val = readl(i2s->base + sp_reg_offset);
 			sp_reg_val &= ~SP_S_EN;
 			sp_reg_val |= SP_S_RST;
-			sp_reg_val &= ~(SP_FWID_MASK | SP_FSP | SP_CLKP | SP_MSL);
-			sp_reg_val &= ~SP_FPER_MASK;
+			sp_reg_val &= ~(SP_CLKP | SP_MSL);
 			sp_reg_val |= SP_WEN | SP_FFLUSH;
 
 			writel(sp_reg_val, i2s->base + RXSP);
