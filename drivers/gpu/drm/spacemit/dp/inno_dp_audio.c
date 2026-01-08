@@ -9,19 +9,6 @@
 #include "inno_dp_audio.h"
 
 #if IS_ENABLED(CONFIG_SND_SOC)
-static int inno_dp_dai_startup(struct snd_pcm_substream *substream,
-	struct snd_soc_dai *dai)
-{
-	struct inno_conn_t *conn = snd_soc_dai_get_drvdata(dai);
-
-	//reset audio
-	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
-	udelay(1000);
-	osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
-
-	return 0;
-}
-
 static int inno_dp_dai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct inno_conn_t *conn = snd_soc_dai_get_drvdata(dai);
@@ -67,6 +54,7 @@ static int inno_dp_dai_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(21, 17))
 			    | (data_bits << 17), conn);
+	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
 	return 0;
 }
 
@@ -82,10 +70,32 @@ static int inno_dp_dai_mute(struct snd_soc_dai *dai, int mute, int direction)
 	return 0;
 }
 
+static int inno_dp_dai_trigger(struct snd_pcm_substream *substream,
+				int cmd, struct snd_soc_dai *dai)
+{
+	struct inno_conn_t *conn = snd_soc_dai_get_drvdata(dai);
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
 const struct snd_soc_dai_ops inno_dp_dai_ops = {
-	.startup = inno_dp_dai_startup,
 	.hw_params = inno_dp_dai_pcm_hw_params,
 	.set_fmt = inno_dp_dai_set_dai_fmt,
+	.trigger = inno_dp_dai_trigger,
 	.mute_stream = inno_dp_dai_mute,
 	.no_capture_mute = 0,
 };
