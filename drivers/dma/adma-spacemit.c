@@ -622,11 +622,12 @@ static irqreturn_t adma_chan_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-const char *irq_names[] = { "adma-tx", "adma-rx" };
+const char *irq_names[] = { "tx", "rx" };
 static int adma_chan_init(struct adma_dev *adev, int idx, int irq)
 {
 	struct adma_pchan *phy  = &adev->phy[idx];
 	struct adma_ch *chan;
+	char *irq_name;
 	int ret;
 
 	chan = devm_kzalloc(adev->dev, sizeof(*chan), GFP_KERNEL);
@@ -639,8 +640,13 @@ static int adma_chan_init(struct adma_dev *adev, int idx, int irq)
 	chan->phy = phy;
 
 	if (irq) {
+		irq_name = devm_kasprintf(adev->dev, GFP_KERNEL, "%s-%s",
+					  dev_name(adev->dev), irq_names[idx]);
+		if (!irq_name)
+			return -ENOMEM;
+
 		ret = devm_request_irq(adev->dev, irq, adma_chan_handler,
-				       IRQF_SHARED, irq_names[idx], phy);
+				       0, irq_name, phy);
 		if (ret) {
 			dev_err(adev->dev, "channel request irq fail!\n");
 			devm_kfree(adev->dev, chan);
