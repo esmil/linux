@@ -103,6 +103,19 @@
 		reset-gpios = <&gpio 0 19 GPIO_ACTIVE_HIGH>;
 		/* GPIO84 for CPU_W_DISABLE#1 (WWAN_DIS#) is no needed*/
 	};
+
+	fan0: pwm-fan {
+		compatible = "pwm-fan";
+		pwms = <&cros_ec_pwm 0>;
+		/*
+		* Cooling states (0-6) -> PWM duty (0-255)
+		* Full speed is treated as ~6000RPM.
+		* Max speed limited to ~78% (200/255)
+		* Linear distribution from 0 to 200
+		*/
+		cooling-levels = <0 33 67 100 133 167 200>;
+		#cooling-cells = <2>;
+	};
 };
 
 &resmem {
@@ -403,6 +416,12 @@
 		#size-cells = <0>;
 		google,remote-bus = <4>;
 	};
+
+	/* EC PWM provider for fan control */
+	cros_ec_pwm: pwm {
+		compatible = "google,cros-ec-pwm";
+		#pwm-cells = <1>;
+	};
 };
 
 &eth0 {
@@ -444,56 +463,109 @@
 &thermal_zones {
 	thermal_top {
 		polling-delay = <1000>;
-		polling-delay-passive = <250>;
+		polling-delay-passive = <500>;
 		thermal-sensors = <&thermal 0>;
 
 		trips {
 			thermal_top_trip0: thermal_top-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
-				type = "passive";
+				temperature = <45000>;
+				hysteresis = <2000>;
+				type = "active";
 			};
 		};
 	};
 
 	thermal_vpu {
 		polling-delay = <1000>;
-		polling-delay-passive = <250>;
+		polling-delay-passive = <500>;
 		thermal-sensors = <&thermal 2>;
 
 		trips {
 			thermal_vpu_trip0: thermal_vpu-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
-				type = "passive";
+				temperature = <60000>;
+				hysteresis = <2000>;
+				type = "active";
 			};
 		};
 	};
 
 	thermal_gpu {
 		polling-delay = <1000>;
-		polling-delay-passive = <250>;
+		polling-delay-passive = <500>;
 		thermal-sensors = <&thermal 3>;
 
 		trips {
 			thermal_gpu_trip0: thermal_gpu-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
-				type = "passive";
+				temperature = <60000>;
+				hysteresis = <2000>;
+				type = "active";
 			};
 		};
 	};
 
 	thermal_cluster0 {
 		polling-delay = <1000>;
-		polling-delay-passive = <250>;
+		polling-delay-passive = <500>;
 		thermal-sensors = <&thermal 4>;
 
 		trips {
 			thermal_cluster0_trip0: thermal_cluster0-trip0 {
-				temperature = <35000>;
-				hysteresis = <5000>;
+				temperature = <40000>;
+				hysteresis = <2000>;
 				type = "active";
+			};
+
+			thermal_cluster0_trip1: thermal_cluster0-trip1 {
+				temperature = <55000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster0_trip2: thermal_cluster0-trip2 {
+				temperature = <65000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster0_trip3: thermal_cluster0-trip3 {
+				temperature = <75000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster0_trip4: thermal_cluster0-trip4 {
+				temperature = <95000>;
+				hysteresis = <2000>;
+				type = "hot";
+			};
+
+			thermal_cluster0_trip5: thermal_cluster0-trip5 {
+				temperature = <105000>;
+				hysteresis = <0>;
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&thermal_cluster0_trip0>;
+				/* Avoid too-low PWM that may not start the fan */
+				cooling-device = <&fan0 1 1>;
+			};
+
+			map1 {
+				trip = <&thermal_cluster0_trip1>;
+				cooling-device = <&fan0 4 3>;
+			};
+
+			map2 {
+				trip = <&thermal_cluster0_trip2>;
+				cooling-device = <&fan0 5 5>;
+			};
+
+			map3 {
+				trip = <&thermal_cluster0_trip3>;
+				cooling-device = <&fan0 6 6>;
 			};
 		};
 	};
