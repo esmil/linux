@@ -313,7 +313,8 @@ static int read_message(struct mvx_fw *fw, struct mve_comm_area_host *host, stru
 		MVX_LOG_PRINT(&mvx_log_if, MVX_LOG_WARNING,
 			      "Firmware v2 msg larger than capacity. code=%u, size=%u, wpos=%u, rpos=%u.", header.code,
 			      header.size, mve->out_wpos, host->out_rpos);
-		return -EFAULT;
+		/* Don't escalate to EFAULT; just retry later. */
+		return 0;
 	}
 
 	if (header.size > *size) {
