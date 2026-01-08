@@ -191,9 +191,8 @@
 	};
 
 	gmac2-cfg {
-		/delete-node/ gmac2-2-pins;
+		/delete-node/ gmac2-3-pins;
 		/delete-node/ gmac2-4-pins;
-		/delete-node/ gmac2-5-pins;
 
 		gmac2-0-pins {
 			power-source = <1800>;
@@ -203,11 +202,11 @@
 			power-source = <1800>;
 		};
 
-		gmac2-3-pins {
+		gmac2-2-pins {
 			power-source = <1800>;
 		};
 
-		gmac2-6-pins {
+		gmac2-5-pins {
 			pinmux = <K3_PADCONF(58, 0)>;
 
 			bias-disable;
@@ -217,9 +216,8 @@
 	};
 
 	gmac3-cfg {
-		/delete-node/ gmac3-2-pins;
+		/delete-node/ gmac3-3-pins;
 		/delete-node/ gmac3-4-pins;
-		/delete-node/ gmac3-5-pins;
 
 		gmac3-0-pins {
 			power-source = <1800>;
@@ -229,11 +227,11 @@
 			power-source = <1800>;
 		};
 
-		gmac3-3-pins {
+		gmac3-2-pins {
 			power-source = <1800>;
 		};
 
-		gmac3-6-pins {
+		gmac3-5-pins {
 			pinmux = <K3_PADCONF(75, 0)>;
 
 			bias-disable;
