@@ -219,6 +219,8 @@ to_spacemit_ccu_adev(struct auxiliary_device *adev)
 #define RCPU_ESPI_CLK_RST		0xDC
 #define RCPU_AUDIO_I2S0_SYS_CLK_CTRL	0x70
 #define RCPU_AUDIO_I2S1_SYS_CLK_CTRL	0x44
+#define RCPU_UART_NM_CLK_14M_CTRL	0x3C
+#define RCPU_UART_NM_CLK_58M_CTRL	0xD8
 
 /* RCPU UARTCTRL register offsets */
 #define RCPU1_UART0_CLK_RST		0x00
