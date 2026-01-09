@@ -510,38 +510,38 @@
 
 		trips {
 			thermal_cluster0_trip0: thermal_cluster0-trip0 {
-				temperature = <40000>;
-				hysteresis = <2000>;
+				temperature = <45000>;
+				hysteresis = <5000>;
 				type = "active";
 			};
 
 			thermal_cluster0_trip1: thermal_cluster0-trip1 {
 				temperature = <55000>;
-				hysteresis = <2000>;
-				type = "active";
+				hysteresis = <5000>;
+				type = "passive";
 			};
 
 			thermal_cluster0_trip2: thermal_cluster0-trip2 {
 				temperature = <65000>;
-				hysteresis = <2000>;
-				type = "active";
+				hysteresis = <5000>;
+				type = "passive";
 			};
 
 			thermal_cluster0_trip3: thermal_cluster0-trip3 {
 				temperature = <75000>;
-				hysteresis = <2000>;
-				type = "active";
+				hysteresis = <5000>;
+				type = "passive";
 			};
 
 			thermal_cluster0_trip4: thermal_cluster0-trip4 {
 				temperature = <95000>;
-				hysteresis = <2000>;
-				type = "hot";
+				hysteresis = <5000>;
+				type = "passive";
 			};
 
 			thermal_cluster0_trip5: thermal_cluster0-trip5 {
 				temperature = <105000>;
-				hysteresis = <0>;
+				hysteresis = <5>;
 				type = "critical";
 			};
 		};
@@ -555,7 +555,7 @@
 
 			map1 {
 				trip = <&thermal_cluster0_trip1>;
-				cooling-device = <&fan0 4 3>;
+				cooling-device = <&fan0 3 4>;
 			};
 
 			map2 {
