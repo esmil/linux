@@ -71,7 +71,7 @@ static int dp_conn_get_modes(struct drm_connector *connector)
 }
 
 static enum drm_mode_status dp_conn_mode_valid(struct drm_connector *connector,
-					       struct drm_display_mode *mode)
+					       const struct drm_display_mode *mode)
 {
 	return MODE_OK;
 }

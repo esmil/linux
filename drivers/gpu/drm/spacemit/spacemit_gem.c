@@ -14,7 +14,7 @@
 #include "spacemit_dmmu.h"
 #include "spacemit_drm.h"
 
-MODULE_IMPORT_NS(DMA_BUF);
+MODULE_IMPORT_NS("DMA_BUF");
 static const unsigned int orders[] = {8, 4, 0};
 static const int num_orders = ARRAY_SIZE(orders);
 

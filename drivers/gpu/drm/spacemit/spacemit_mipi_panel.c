@@ -341,7 +341,7 @@ static void spacemit_mipi_wq_reset_panel(struct work_struct *work)
 
 static void spacemit_mipi_te_esd_timer_handler(struct timer_list *t)
 {
-	struct spacemit_panel *panel = from_timer(panel, t, te_esd_timer);
+	struct spacemit_panel *panel = timer_container_of(panel, t, te_esd_timer);
 
 	mod_timer(&panel->te_esd_timer,
 		 jiffies + msecs_to_jiffies(2000));
@@ -567,7 +567,7 @@ static int spacemit_panel_disable(struct drm_panel *p)
 	cancel_delayed_work_sync(&panel->bl_work);
 
 	if (panel->gpio_te_irq)
-		del_timer(&panel->te_esd_timer);
+		timer_delete(&panel->te_esd_timer);
 #if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
 	if (panel->tp_ps_enabled) {
 		DRM_INFO("%s(face IN)\n", __func__);

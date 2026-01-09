@@ -1183,7 +1183,7 @@ static void saturn_enable_vsync(struct spacemit_crtc *a_crtc, bool enable)
 
 void spacemit_cfg_rdy_timer_handler(struct timer_list *t)
 {
-	struct spacemit_crtc *a_crtc = from_timer(a_crtc, t, cfg_rdy_timer);
+	struct spacemit_crtc *a_crtc = timer_container_of(a_crtc, t, cfg_rdy_timer);
 #ifdef CONFIG_SPACEMIT_DEBUG
 	struct spacemit_drm_private *priv = a_crtc->crtc.dev->dev_private;
 	struct spacemit_hw_device *hwdev = priv->hwdev;
@@ -1385,7 +1385,7 @@ static uint32_t dpu_online_isr(struct spacemit_crtc *a_crtc)
 		hwdev->clr_int_sts(a_crtc, irq_bit, dev_id);
 		trace_dpu_isr_status("cfg_rdy_clr", irq_raw & irq_bit);
 		a_crtc->flip_done = false;
-		del_timer(&a_crtc->cfg_rdy_timer);
+		timer_delete(&a_crtc->cfg_rdy_timer);
 		ur_done = false;
 		if (hwdev->enable_cfg_irq)
 			hwdev->enable_cfg_irq(a_crtc, hwdev, false);
@@ -1466,7 +1466,7 @@ static uint32_t dpu_offline_isr(struct spacemit_crtc *a_crtc)
 		hwdev->clr_int_sts(a_crtc, irq_bit, dev_id);
 		trace_dpu_isr_status("cfg_rdy_clr", irq_raw & irq_bit);
 		wb_flip_done = false;
-		del_timer(&a_crtc->cfg_rdy_timer);
+		timer_delete(&a_crtc->cfg_rdy_timer);
 
 		if (hwdev->enable_cfg_irq)
 			hwdev->enable_cfg_irq(a_crtc, hwdev, false);
