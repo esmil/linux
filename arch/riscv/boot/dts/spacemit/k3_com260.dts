@@ -314,8 +314,8 @@
 		compatible = "usb2109,2817";
 		reg = <1>;
 		peer-hub = <&hub_3_0>;
-		/* GPIO53(MIPI_CSI3_PWDN) for HUB 3V3 RST */
-		reset-gpio = <&gpio 1 21 GPIO_ACTIVE_LOW>;
+		/* GPIO53(MIPI_CSI3_PWDN) reserved for HUB 3V3 RST,
+		 * now reset will be done by HW */
 	};
 
 	/* VL817 USB3.0 hub (4 ports) */
@@ -323,8 +323,8 @@
 		compatible = "usb2109,817";
 		reg = <2>;
 		peer-hub = <&hub_2_0>;
-		/* GPIO53(MIPI_CSI3_PWDN) for HUB 3V3 RST */
-		reset-gpio = <&gpio 1 21 GPIO_ACTIVE_LOW>;
+		/* GPIO53(MIPI_CSI3_PWDN) reserved for HUB 3V3 RST,
+		 * now reset will be done by HW */
 	};
 };
 
