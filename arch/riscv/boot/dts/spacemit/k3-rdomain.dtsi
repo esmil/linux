@@ -13,6 +13,7 @@
 			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART0_BUS>,
 			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
 		clock-names = "core", "bus", "gate";
+		spacemit,rcpu-uart;
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART0>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -31,6 +32,7 @@
 			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART1_BUS>,
 			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
 		clock-names = "core", "bus", "gate";
+		spacemit,rcpu-uart;
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART1>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -49,6 +51,7 @@
 			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART2_BUS>,
 			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
 		clock-names = "core", "bus", "gate";
+		spacemit,rcpu-uart;
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART2>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -67,6 +70,7 @@
 			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART3_BUS>,
 			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
 		clock-names = "core", "bus", "gate";
+		spacemit,rcpu-uart;
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART3>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -85,6 +89,7 @@
 			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART4_BUS>,
 			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
 		clock-names = "core", "bus", "gate";
+		spacemit,rcpu-uart;
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART4>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
@@ -103,6 +108,7 @@
 			 <&syscon_rcpu_uartctrl CLK_RCPU_UARTCTRL_RUART5_BUS>,
 			 <&syscon_mpmu CLK_MPMU_SLOW_UART>;
 		clock-names = "core", "bus", "gate";
+		spacemit,rcpu-uart;
 		resets = <&syscon_rcpu_uartctrl RESET_RCPU_UARTCTRL_RUART5>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
