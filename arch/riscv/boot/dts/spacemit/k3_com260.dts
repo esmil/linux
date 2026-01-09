@@ -165,7 +165,7 @@
 		};
 	};
 
-	pcie0_1_cfg: pcie0-1-cfg {
+	pcie0-1-cfg {
 		pcie0-0-pins {
 			pinmux = <K3_PADCONF(79, 5)>,	/* pcie0 perst */
 				<K3_PADCONF(81, 5)>;	/* pcie0 clkreq */
@@ -176,7 +176,18 @@
 		};
 	};
 
-	pcie4_0_cfg: pcie4-0-cfg {
+	pcie3-0-cfg {
+		pcie3-0-pins {
+			pinmux = <K3_PADCONF(3, 4)>,	/* pcie3 perst */
+				 <K3_PADCONF(5, 4)>;	/* pcie3 clkreq */
+
+			bias-pull-up;			/* normal bias disable */
+			drive-strength = <38>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
+	pcie4-1-cfg {
 		pcie4-0-pins {
 			pinmux = <K3_PADCONF(76, 5)>,	/* pcie4 perst */
 				<K3_PADCONF(80, 5)>,	/* pcie4 wake */
@@ -336,16 +347,21 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie0_1_cfg>;
 
-	max-link-speed = <1>;
 	num-lanes = <4>;
+	status = "okay";
+};
+
+&pcie3_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie3_0_cfg>;
+
 	status = "okay";
 };
 
 &pcie4_rc {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pcie4_0_cfg>;
+	pinctrl-0 = <&pcie4_1_cfg>;
 
-	max-link-speed = <1>;
 	status = "okay";
 };
 
