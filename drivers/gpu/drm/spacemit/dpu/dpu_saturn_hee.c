@@ -509,6 +509,13 @@ static void saturn_init_tmg(struct spacemit_crtc *a_crtc)
 	struct drm_crtc *crtc = &a_crtc->crtc;
 	struct drm_display_mode *mode = &crtc->mode;
 	u16 vfp, vbp, vsync, hfp, hbp, hsync;
+	void __iomem *tmg_addr;
+	u32 value;
+
+	if (a_crtc->dpu_id == 1)
+		tmg_addr= (void __iomem *)ioremap(0xc0491200, 0x100);
+	else
+		tmg_addr= (void __iomem *)ioremap(0xc0391200, 0x100);
 
 	hsync = mode->hsync_end - mode->hsync_start;
 	hbp = mode->htotal - mode->hsync_end;
@@ -551,36 +558,20 @@ static void saturn_init_tmg(struct spacemit_crtc *a_crtc)
 		dpu_write(hwdev, TMG_REG, base, h_active, (mode->hdisplay / 2));
 	}
 
+	/* set vfp */
+	value = readl(tmg_addr + 0x14);
+	value &= 0xFFFF0000;
+	value |= vfp;
+	writel(value, tmg_addr + 0x14);
+
 	if (a_crtc->is_edp) {
-		// 1920x1080@60Hz
-		void __iomem *tmg_addr;
-
-		if (a_crtc->dpu_id == 1)
-			tmg_addr= (void __iomem *)ioremap(0xc0491200, 0x100);
-		else
-			tmg_addr= (void __iomem *)ioremap(0xc0391200, 0x100);
-
-		writel(0x00000184, tmg_addr + 0x00); // saturn_tmg_reg_0
-		writel(0x00000000, tmg_addr + 0x04); // saturn_tmg_reg_1
-		writel(0xf70f22e3, tmg_addr + 0x08); // saturn_tmg_reg_2
-		writel(0x00580038, tmg_addr + 0x0c); // saturn_tmg_reg_3
-		writel(0x0094002c, tmg_addr + 0x10); // saturn_tmg_reg_4
-		writel(0x00050004, tmg_addr + 0x14); // saturn_tmg_reg_5
-		writel(0x07800024, tmg_addr + 0x18); // saturn_tmg_reg_6
-		writel(0x00000438, tmg_addr + 0x1c); // saturn_tmg_reg_7
-		writel(0x0000211e, tmg_addr + 0x20); // saturn_tmg_reg_8
-		writel(0x0d840f0c, tmg_addr + 0x24); // saturn_tmg_reg_9
-		writel(0x00000000, tmg_addr + 0x28); // saturn_tmg_reg_10
-		writel(0x00020001, tmg_addr + 0x2c); // saturn_tmg_reg_11
-		writel(0x00000005, tmg_addr + 0x30); // saturn_tmg_reg_12
-		writel(0x00000013, tmg_addr + 0x38); // saturn_tmg_reg_14
-		writel(0x00000001, tmg_addr + 0x3c); // saturn_tmg_reg_15
-		writel(0x06b80640, tmg_addr + 0x40); // saturn_tmg_reg_16
-		writel(0x00064001, tmg_addr + 0x44); // saturn_tmg_reg_17
-		writel(0x000006b8, tmg_addr + 0x48); // saturn_tmg_reg_18
-
-		iounmap(tmg_addr);
+		/* set vsync align with hsync */
+		value = readl(tmg_addr + 0x3c);
+		value |= 0x01;
+		writel(value, tmg_addr + 0x3c);
 	}
+
+	iounmap(tmg_addr);
 }
 
 static void saturn_init_regs(struct spacemit_crtc *a_crtc)

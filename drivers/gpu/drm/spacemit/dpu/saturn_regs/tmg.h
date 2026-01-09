@@ -92,7 +92,8 @@ typedef union {
 	UINT32:15;
 
 	//REGISTER saturn_tmg_reg_15
-	UINT32:32;
+	UINT32 vsync_align_with_hsync       : 1;
+	UINT32:31;
 
 	//REGISTER saturn_tmg_reg_16
 	UINT32 dfc_low_thre                 : 12;
