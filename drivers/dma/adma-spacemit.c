@@ -114,6 +114,7 @@ struct adma_ch {
 
 struct adma_pchan {
 	int idx;
+	int irq;
 	void __iomem *base;
 	struct adma_ch *vchan;
 };
@@ -415,6 +416,7 @@ static void enable_chan(struct adma_pchan *phy)
 		return;
 	}
 
+	enable_irq(phy->irq);
 	if (achan->dir == DMA_MEM_TO_DEV)
 		adma_ch_write_reg(phy, DAR, achan->dev_addr);
 	else if (achan->dir == DMA_DEV_TO_MEM)
@@ -543,6 +545,7 @@ static void disable_chan(struct adma_pchan *phy)
 	reg_val &= ~ADMA_CH_EN;
 	adma_ch_write_reg(phy, DCR, reg_val);
 	adma_ch_write_reg(phy, IER, 0);
+	disable_irq_nosync(phy->irq);
 }
 
 static int adma_terminate_all(struct dma_chan *dchan)
@@ -652,6 +655,8 @@ static int adma_chan_init(struct adma_dev *adev, int idx, int irq)
 			devm_kfree(adev->dev, chan);
 			return ret;
 		}
+		phy->irq = irq;
+		disable_irq(phy->irq);
 	}
 
 	spin_lock_init(&chan->desc_lock);
