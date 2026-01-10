@@ -56,6 +56,12 @@
 #define ANA_EQ_CTRL_REG_ATTR 0x00CD
 #define ANA_HSGEAR_CTRL_ATTR 0x00C1
 
+/*
+ * Keep UFS ACLK at a lower parent rate (409.6MHz) for stable init.
+ * This mirrors the "ufs-low-aclk-freq" change from the other environment.
+ */
+#define UFS_ACLK_LOW_FREQ_HZ		409600000UL
+
 /* APMU_UFS_CLK_RES_CTRL FC request bit */
 #define UFS_ACLK_FC_REQ		BIT(8)
 #define UFS_ACLK_FC_TIMEOUT_US	10000
@@ -202,6 +208,59 @@ static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_l
 		dev_err(hba->dev, "%s: couldn't read PA_CONNECTEDTXDATALANES %d\n", __func__, err);
 
 	return err;
+}
+
+static int ufs_spacemit_k3_set_aclk_low_freq(struct ufs_hba *hba)
+{
+	struct ufs_clk_info *clki, *ufs_aclk = NULL;
+	struct list_head *head = &hba->clk_list_head;
+	int ret;
+
+	if (list_empty(head))
+		return -ENOENT;
+
+	list_for_each_entry(clki, head, list) {
+		if (clki->name && !strcmp(clki->name, "ufs-aclk")) {
+			ufs_aclk = clki;
+			break;
+		}
+	}
+
+	if (!ufs_aclk || !ufs_aclk->clk)
+		return -ENOENT;
+
+	ret = clk_set_rate(ufs_aclk->clk, UFS_ACLK_LOW_FREQ_HZ);
+	if (ret)
+		dev_warn(hba->dev, "Failed to set ufs-aclk to %luHz: %d\n",
+			 UFS_ACLK_LOW_FREQ_HZ, ret);
+	else
+		dev_dbg(hba->dev, "ufs-aclk set to %luHz\n", clk_get_rate(ufs_aclk->clk));
+
+	return ret;
+}
+
+static u32 ufs_spacemit_k3_get_sys1clk_1us(struct ufs_hba *hba)
+{
+	struct ufs_clk_info *clki, *ufs_aclk = NULL;
+	struct list_head *head = &hba->clk_list_head;
+	unsigned long rate_hz = 0;
+
+	if (!list_empty(head)) {
+		list_for_each_entry(clki, head, list) {
+			if (clki->name && !strcmp(clki->name, "ufs-aclk") && clki->clk) {
+				ufs_aclk = clki;
+				break;
+			}
+		}
+	}
+
+	if (ufs_aclk && ufs_aclk->clk)
+		rate_hz = clk_get_rate(ufs_aclk->clk);
+
+	if (!rate_hz)
+		return 0;
+
+	return DIV_ROUND_CLOSEST(rate_hz, 1000000);
 }
 
 /**
@@ -521,6 +580,7 @@ static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_
 static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 {
 	uint32_t reg_val;
+	u32 sys1clk_1us;
 
 	/*mphy_init*/
 	ufs_spacemit_k3_mphy_init(hba);
@@ -536,7 +596,10 @@ static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 
 	ufshcd_writel(hba, reg_val, UFS_PA_LINK_STARTUP_TIMER);
 
-	ufshcd_writel(hba, UFS_SYSCLK, UFS_SYS1CLK_1US);
+	sys1clk_1us = ufs_spacemit_k3_get_sys1clk_1us(hba);
+	if (!sys1clk_1us)
+		sys1clk_1us = DIV_ROUND_CLOSEST(UFS_ACLK_LOW_FREQ_HZ, 1000000);
+	ufshcd_writel(hba, sys1clk_1us, UFS_SYS1CLK_1US);
 	ufshcd_writel(hba, UFS_TX_SYMBO_CLK, UFS_TX_SYMBOL_CLK_NS_US);
 
 	dev_dbg(hba->dev, "REG_UFS_SYS1CLK_1US: 0x%x\n", ufshcd_readl(hba, UFS_SYS1CLK_1US));
@@ -953,6 +1016,7 @@ static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
 
 	case POST_CHANGE:
 		if (on) {
+			ufs_spacemit_k3_set_aclk_low_freq(hba);
 		} else {
 		}
 		break;
@@ -999,8 +1063,11 @@ static void ufs_spacemit_k3_platform_init(struct device *dev)
 	if (dev->of_node &&
 	    !of_property_read_u32_array(dev->of_node, "freq-table-hz",
 					freq_table, ARRAY_SIZE(freq_table)) &&
-	    freq_table[1])
-		rate = freq_table[1];
+	    freq_table[0])
+		rate = freq_table[0];
+
+	if (!rate || rate > UFS_ACLK_LOW_FREQ_HZ)
+		rate = UFS_ACLK_LOW_FREQ_HZ;
 
 	/*
 	 * Reset UFS ACLK domain via reset framework. Use non-devm get/put so
