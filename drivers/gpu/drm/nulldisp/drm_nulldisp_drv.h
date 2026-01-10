@@ -44,10 +44,34 @@
 #define __DRM_NULLDISP_DRV_H__
 
 #include <linux/version.h>
+#include <linux/mutex.h>
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0))
 #include <drm/drm_fourcc.h>
 #endif
+
+struct nulldisp_display_device {
+	struct drm_device *dev;
+
+	struct workqueue_struct *workqueue;
+	struct nulldisp_crtc *nulldisp_crtc;
+	struct nlpvrdpy *nlpvrdpy;
+#if defined(LMA)
+	struct pdp_gem_private *pdp_gem_priv;
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
+	struct drm_connector *connector;
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	/*
+	 * Currently, struct_mutex is only used by the nulldisp driver as a replacement
+	 * for BKL.
+	 *
+	 * For this reason, it is no longer part of struct drm_device.
+	 */
+	struct mutex struct_mutex;
+#endif
+};
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
 #define NULLDISP_USE_ATOMIC

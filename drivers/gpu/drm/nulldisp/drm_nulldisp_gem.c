@@ -54,6 +54,7 @@
 #include "drm_nulldisp_gem.h"
 #include "nulldisp_drm.h"
 #include "kernel_compatibility.h"
+#include "drm_nulldisp_drv.h"
 
 struct nulldisp_gem_object {
 	struct drm_gem_object base;
@@ -76,12 +77,19 @@ struct nulldisp_gem_object {
 int nulldisp_gem_object_get_pages(struct drm_gem_object *obj)
 {
 	struct drm_device *dev = obj->dev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+#endif
 	struct nulldisp_gem_object *nulldisp_obj = to_nulldisp_obj(obj);
 
 	if (WARN_ON(obj->import_attach))
 		return -EEXIST;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	WARN_ON(!mutex_is_locked(&nulldisp_dev->struct_mutex));
+#else
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
+#endif
 
 	if (atomic_inc_return(&nulldisp_obj->pg_refcnt) == 1) {
 		struct page **pages = drm_gem_get_pages(obj);
@@ -99,9 +107,16 @@ int nulldisp_gem_object_get_pages(struct drm_gem_object *obj)
 static void nulldisp_gem_object_put_pages(struct drm_gem_object *obj)
 {
 	struct drm_device *dev = obj->dev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+#endif
 	struct nulldisp_gem_object *nulldisp_obj = to_nulldisp_obj(obj);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	WARN_ON(!mutex_is_locked(&nulldisp_dev->struct_mutex));
+#else
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
+#endif
 
 	if (WARN_ON(atomic_read(&nulldisp_obj->pg_refcnt) == 0))
 		return;
@@ -159,10 +174,17 @@ static void nulldisp_gem_vm_open(struct vm_area_struct *vma)
 
 	if (!obj->import_attach) {
 		struct drm_device *dev = obj->dev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
 
+		mutex_lock(&nulldisp_dev->struct_mutex);
+		(void)nulldisp_gem_object_get_pages(obj);
+		mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 		mutex_lock(&dev->struct_mutex);
 		(void) nulldisp_gem_object_get_pages(obj);
 		mutex_unlock(&dev->struct_mutex);
+#endif
 	}
 }
 
@@ -172,10 +194,17 @@ static void nulldisp_gem_vm_close(struct vm_area_struct *vma)
 
 	if (!obj->import_attach) {
 		struct drm_device *dev = obj->dev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
 
+		mutex_lock(&nulldisp_dev->struct_mutex);
+		(void)nulldisp_gem_object_put_pages(obj);
+		mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 		mutex_lock(&dev->struct_mutex);
 		(void) nulldisp_gem_object_put_pages(obj);
 		mutex_unlock(&dev->struct_mutex);
+#endif
 	}
 
 	drm_gem_vm_close(vma);
@@ -212,9 +241,17 @@ int nulldisp_gem_prime_pin(struct drm_gem_object *obj)
 	struct drm_device *dev = obj->dev;
 	int err;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+
+	mutex_lock(&nulldisp_dev->struct_mutex);
+	err = nulldisp_gem_object_get_pages(obj);
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&dev->struct_mutex);
 	err = nulldisp_gem_object_get_pages(obj);
 	mutex_unlock(&dev->struct_mutex);
+#endif
 
 	return err;
 }
@@ -225,10 +262,17 @@ static
 void nulldisp_gem_prime_unpin(struct drm_gem_object *obj)
 {
 	struct drm_device *dev = obj->dev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
 
+	mutex_lock(&nulldisp_dev->struct_mutex);
+	nulldisp_gem_object_put_pages(obj);
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&dev->struct_mutex);
 	nulldisp_gem_object_put_pages(obj);
 	mutex_unlock(&dev->struct_mutex);
+#endif
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0))
@@ -330,12 +374,24 @@ int nulldisp_gem_prime_mmap(struct drm_gem_object *obj,
 {
 	int err;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct drm_device *dev = obj->dev;
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+
+	mutex_lock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&obj->dev->struct_mutex);
+#endif
+
 	err = nulldisp_gem_object_get_pages(obj);
 	if (!err)
 		err = drm_gem_mmap_obj(obj, obj->size, vma);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_unlock(&obj->dev->struct_mutex);
 
+#endif
 	return err;
 }
 #else
@@ -343,8 +399,14 @@ static int nulldisp_gem_obj_mmap(struct drm_gem_object *obj,
 				 struct vm_area_struct *vma)
 {
 	int err;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct drm_device *dev = obj->dev;
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
 
+	mutex_lock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&obj->dev->struct_mutex);
+#endif
 	err = nulldisp_gem_object_get_pages(obj);
 	/* Required in documentation for drm_gem_object_funcs::mmap */
 	vma->vm_ops = &nulldisp_gem_vm_ops;
@@ -352,7 +414,11 @@ static int nulldisp_gem_obj_mmap(struct drm_gem_object *obj,
 	pvr_vm_flags_set(vma, VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP);
 	vma->vm_page_prot = pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
 	vma->vm_page_prot = pgprot_decrypted(vma->vm_page_prot);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_unlock(&obj->dev->struct_mutex);
+#endif
 
 	return err;
 }
@@ -454,6 +520,9 @@ int nulldisp_gem_object_cpu_prep_ioctl(struct drm_device *dev, void *data,
 {
 	struct drm_nulldisp_gem_cpu_prep *args =
 		(struct drm_nulldisp_gem_cpu_prep *)data;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+#endif
 
 	struct drm_gem_object *obj;
 	struct nulldisp_gem_object *nulldisp_obj;
@@ -468,7 +537,11 @@ int nulldisp_gem_object_cpu_prep_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_lock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&dev->struct_mutex);
+#endif
 
 	obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj) {
@@ -515,7 +588,11 @@ int nulldisp_gem_object_cpu_prep_ioctl(struct drm_device *dev, void *data,
 exit_unref:
 	drm_gem_object_put(obj);
 exit_unlock:
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_unlock(&dev->struct_mutex);
+#endif
 	return err;
 }
 
@@ -525,6 +602,9 @@ int nulldisp_gem_object_cpu_fini_ioctl(struct drm_device *dev, void *data,
 	struct drm_nulldisp_gem_cpu_fini *args =
 		(struct drm_nulldisp_gem_cpu_fini *)data;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+#endif
 	struct drm_gem_object *obj;
 	struct nulldisp_gem_object *nulldisp_obj;
 	int err;
@@ -534,7 +614,11 @@ int nulldisp_gem_object_cpu_fini_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_lock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&dev->struct_mutex);
+#endif
 
 	obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj) {
@@ -554,7 +638,11 @@ int nulldisp_gem_object_cpu_fini_ioctl(struct drm_device *dev, void *data,
 exit_unref:
 	drm_gem_object_put(obj);
 exit_unlock:
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_unlock(&dev->struct_mutex);
+#endif
 	return err;
 }
 
@@ -664,7 +752,13 @@ int nulldisp_gem_dumb_map_offset(struct drm_file *file,
 	struct drm_gem_object *obj;
 	int err;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+
+	mutex_lock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_lock(&dev->struct_mutex);
+#endif
 
 	obj = drm_gem_object_lookup(file, handle);
 	if (!obj) {
@@ -681,7 +775,11 @@ int nulldisp_gem_dumb_map_offset(struct drm_file *file,
 exit_obj_unref:
 	drm_gem_object_put(obj);
 exit_unlock:
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 	mutex_unlock(&dev->struct_mutex);
+#endif
 	return err;
 }
 

@@ -114,7 +114,11 @@
 
 #include "kernel_compatibility.h"
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+MODULE_IMPORT_NS("DMA_BUF");
+#else
 MODULE_IMPORT_NS(DMA_BUF);
+#endif
 
 #define DRIVER_NAME "nulldisp"
 #define DRIVER_DESC "Imagination Technologies Null DRM Display Driver"
@@ -196,20 +200,6 @@ struct nulldisp_crtc {
 	struct nulldisp_flip_data *flip_data;
 #endif
 	bool flip_async;
-};
-
-struct nulldisp_display_device {
-	struct drm_device *dev;
-
-	struct workqueue_struct *workqueue;
-	struct nulldisp_crtc *nulldisp_crtc;
-	struct nlpvrdpy *nlpvrdpy;
-#if defined(LMA)
-	struct pdp_gem_private *pdp_gem_priv;
-#endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
-	struct drm_connector *connector;
-#endif
 };
 
 #if !defined(NULLDISP_USE_ATOMIC)
@@ -1478,7 +1468,11 @@ nulldisp_connector_helper_get_modes(struct drm_connector *connector)
 
 static enum drm_mode_status
 nulldisp_connector_helper_mode_valid(struct drm_connector *connector,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+				     const struct drm_display_mode *mode)
+#else
 				     struct drm_display_mode *mode)
+#endif
 {
 	/*
 	 * This function is called on each gathered mode (e.g. via EDID)
@@ -1998,6 +1992,9 @@ static int nulldisp_early_load(struct drm_device *dev, unsigned int instance)
 	dev->dev_private = nulldisp_dev;
 	nulldisp_dev->dev = dev;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_init(&nulldisp_dev->struct_mutex);
+#endif
 	drm_mode_config_init(dev);
 
 	dev->mode_config.funcs = (void *)&nulldisp_mode_config_funcs;
@@ -2138,6 +2135,9 @@ static void nulldisp_late_unload(struct drm_device *dev)
 #endif
 	drm_mode_config_cleanup(dev);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	mutex_destroy(&nulldisp_dev->struct_mutex);
+#endif
 	kfree(nulldisp_dev);
 }
 
@@ -2311,9 +2311,16 @@ static int nulldisp_gem_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!err) {
 		struct drm_file *file_priv = file->private_data;
 		struct drm_device *dev = file_priv->minor->dev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		struct nulldisp_display_device *nulldisp_dev = dev->dev_private;
+#endif
 		struct drm_gem_object *obj;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		mutex_lock(&nulldisp_dev->struct_mutex);
+#else
 		mutex_lock(&dev->struct_mutex);
+#endif
 		obj = vma->vm_private_data;
 
 		if (obj->import_attach)
@@ -2323,7 +2330,11 @@ static int nulldisp_gem_mmap(struct file *file, struct vm_area_struct *vma)
 			err = nulldisp_gem_object_get_pages(obj);
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		mutex_unlock(&nulldisp_dev->struct_mutex);
+#else
 		mutex_unlock(&dev->struct_mutex);
+#endif
 	}
 #endif
 	return err;
@@ -2408,7 +2419,9 @@ static struct drm_driver nulldisp_drm_driver = {
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0) */
 	.name				= DRIVER_NAME,
 	.desc				= DRIVER_DESC,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0))
 	.date				= DRIVER_DATE,
+#endif
 	.major				= PVRVERSION_MAJ,
 	.minor				= PVRVERSION_MIN,
 	.patchlevel			= PVRVERSION_BUILD,
