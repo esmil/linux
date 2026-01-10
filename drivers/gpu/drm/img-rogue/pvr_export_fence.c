@@ -195,6 +195,7 @@ static const char *pvr_exp_fence_get_timeline_name(struct dma_fence *fence)
 		return "***NO_TIMELINE***";
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0))
 static void pvr_exp_fence_value_str(struct dma_fence *fence, char *str, int size)
 {
 	snprintf(str, size, "%llu", (u64) fence->seqno);
@@ -208,6 +209,7 @@ static void pvr_exp_fence_timeline_value_str(struct dma_fence *fence,
 	if (pvr_exp_fence && pvr_exp_fence->fence_context)
 		pvr_exp_fence_context_value_str(pvr_exp_fence->fence_context, str, size);
 }
+#endif
 
 static bool pvr_exp_fence_enable_signaling(struct dma_fence *fence)
 {
@@ -276,8 +278,10 @@ static void pvr_exp_fence_release(struct dma_fence *fence)
 static const struct dma_fence_ops pvr_exp_fence_ops = {
 	.get_driver_name = pvr_exp_fence_get_driver_name,
 	.get_timeline_name = pvr_exp_fence_get_timeline_name,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0))
 	.fence_value_str = pvr_exp_fence_value_str,
 	.timeline_value_str = pvr_exp_fence_timeline_value_str,
+#endif
 	.enable_signaling = pvr_exp_fence_enable_signaling,
 	.wait = dma_fence_default_wait,
 	.release = pvr_exp_fence_release,

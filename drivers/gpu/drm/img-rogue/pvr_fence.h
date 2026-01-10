@@ -182,6 +182,14 @@ u32 pvr_fence_dump_info_on_stalled_ufos(struct pvr_fence_context *fctx,
 					u32 nr_ufos,
 					u32 *vaddrs);
 
+void pvr_fence_fence_value_str(struct dma_fence *fence, char *str, int size);
+
+void pvr_fence_foreign_fence_value_str(struct dma_fence *fence, char *str,
+				       int size);
+
+void pvr_fence_foreign_timeline_value_str(struct dma_fence *fence, char *str,
+					  int size);
+
 #if defined(SUPPORT_NATIVE_FENCE_SYNC) || defined(SUPPORT_BUFFER_SYNC)
 static inline void pvr_fence_cleanup(void)
 {

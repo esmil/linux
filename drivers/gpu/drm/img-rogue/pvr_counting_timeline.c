@@ -121,10 +121,15 @@ pvr_counting_fence_timeline_debug_request(void *data, u32 verbosity,
 				  value, timeline->current_value);
 		list_for_each_entry(obj, &timeline->active_fences,
 				    active_list_entry) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+			PVR_DUMPDEBUG_LOG(pfnDumpDebugPrintf, pvDumpDebugFile,
+					  " @%llu: val=%llu", obj->fence->seqno, obj->value);
+#else
 			obj->fence->ops->fence_value_str(obj->fence,
 							 value, sizeof(value));
 			PVR_DUMPDEBUG_LOG(pfnDumpDebugPrintf, pvDumpDebugFile,
 					  " @%s: val=%llu", value, obj->value);
+#endif
 		}
 		spin_unlock_irqrestore(&timeline->active_fences_lock, flags);
 	}

@@ -45,7 +45,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/version.h>
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0))
 #include <linux/pfn_t.h>
+#endif
 #include <linux/pfn.h>
 
 #include "img_defs.h"
@@ -220,9 +222,15 @@ static INLINE int _OSMMapPMR(PVRSRV_DEVICE_NODE *psDevNode,
 							IMG_BOOL bUseMixedMap)
 {
 	IMG_INT32 iStatus;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+	IMG_INT32 sPFN;
+
+	sPFN = psCpuPAddr->uiAddr;
+#else
 	pfn_t sPFN;
 
 	sPFN = phys_to_pfn_t(psCpuPAddr->uiAddr, 0);
+#endif
 
 	/*
 	 * vm_insert_page() allows insertion of individual pages into user
@@ -261,7 +269,11 @@ static INLINE int _OSMMapPMR(PVRSRV_DEVICE_NODE *psDevNode,
 			/* Since kernel 3.7 this sets VM_MIXEDMAP internally */
 			iStatus = vm_insert_page(ps_vma,
 									 ps_vma->vm_start + uiOffset,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+									 pfn_to_page(sPFN));
+#else
 									 pfn_t_to_page(sPFN));
+#endif
 		}
 	}
 	else
@@ -306,7 +318,11 @@ static INLINE int _OSMMapPMR(PVRSRV_DEVICE_NODE *psDevNode,
 
 		iStatus = remap_pfn_range(ps_vma,
 								  ps_vma->vm_start + uiOffset,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+								  sPFN,
+#else
 								  pfn_t_to_pfn(sPFN),
+#endif
 								  uiNumContiguousBytes,
 								  ps_vma->vm_page_prot);
 	}
@@ -472,15 +488,24 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 	 */
 	if (bUseVMInsertPage)
 	{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		IMG_INT32 sPFN;
+#else
 		pfn_t sPFN;
-
+#endif
 		for (uiOffsetIdx = 0; uiOffsetIdx < uiNumOfPFNs; ++uiOffsetIdx)
 		{
 			if (pbValid[uiOffsetIdx])
 			{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+				sPFN = psCpuPAddr[uiOffsetIdx].uiAddr;
+
+				if (!pfn_valid(sPFN) || page_count(pfn_to_page(sPFN)) == 0)
+#else
 				sPFN = phys_to_pfn_t(psCpuPAddr[uiOffsetIdx].uiAddr, 0);
 
 				if (!pfn_t_valid(sPFN) || page_count(pfn_t_to_page(sPFN)) == 0)
+#endif
 				{
 					bUseMixedMap = IMG_TRUE;
 					break;
