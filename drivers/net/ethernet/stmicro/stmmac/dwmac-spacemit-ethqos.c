@@ -588,6 +588,14 @@ static int k3_setup_plat(struct spacemit_ethqos *eqos)
 		goto err_disable_tx_clk;
 
 	/*
+	 * If GMAC TX clock is derived from PHY RXC, stopping RXC in EEE/LPI
+	 * will remove the TX clock and cause TX timeouts. Require RXC to run
+	 * in LPI.
+	 */
+	if (!eqos->tx_clk_from_soc)
+		eqos->plat->flags |= STMMAC_FLAG_RX_CLK_RUNS_IN_LPI;
+
+	/*
 	 * On k3 platforms, the delayline must be enabled during probe;
 	 * otherwise the GMAC will fail to operate.
 	 * Runtime phase tuning only updates the delay value.
@@ -644,22 +652,6 @@ static const struct spacemit_ethqos_ops k3_gmac_ops = {
 
 /* TODO: add K4/K5/K6 SoC-specific GMAC macros/ops here in future */
 
-static void spacemit_ethqos_fixup_caps(struct platform_device *pdev)
-{
-	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct stmmac_priv *priv = netdev_priv(ndev);
-	struct spacemit_ethqos *eqos = priv->plat->bsp_priv;
-
-	/*
-	 * On boards where the GMAC TX clock is derived from the PHY RX clock,
-	 * some PHYs may stop the RX clock in low power states (e.g. EEE/LPI).
-	 * This removes the TX clock and can lead to TX timeouts. Disable EEE
-	 * for this configuration.
-	 */
-	if (!eqos->tx_clk_from_soc)
-		priv->dma_cap.eee = 0;
-}
-
 static int spacemit_ethqos_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -687,8 +679,6 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 	ret = devm_stmmac_pltfr_probe(pdev, plat_dat, &stmmac_res);
 	if (ret)
 		return ret;
-
-	spacemit_ethqos_fixup_caps(pdev);
 
 	return 0;
 }
