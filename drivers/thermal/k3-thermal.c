@@ -192,6 +192,20 @@ static int k3_thermal_probe(struct platform_device *pdev)
 	/* initialize the sensors */
 	ret = init_sensors(pdev);
 
+	/* enable the sensors & using auto mode */
+	enable_sensors(pdev);
+
+	pr_debug("test cfg d_out_sel[26] and d_en_autozero[25]\n");
+	value = readl(s->base);
+	value |= ((1 << 25) | (1 << 26));
+	writel(value, s->base);
+	value = readl(s->base);
+	pr_debug("cfg_val: 0x%x\n", value);
+	value &= ~((1 << 25) | (1 << 26));
+	writel(value, s->base);
+	value = readl(s->base);
+	pr_debug("cfg_val: 0x%x\n", value);
+
 	/* then register the thermal zone */
 	for (i = s->sr[0]; i <= s->sr[1]; ++i) {
 		if (s->tsen_enable_map[i] == 0)
@@ -213,20 +227,6 @@ static int k3_thermal_probe(struct platform_device *pdev)
 		if (devm_thermal_add_hwmon_sysfs(dev, s->sdesc[i].tzd))
 			dev_warn(dev, "Failed to add hwmon sysfs attributes\n");
 	}
-
-	/* enable the sensor interrupt & using auto mode */
-	enable_sensors(pdev);
-
-	pr_debug("test cfg d_out_sel[26] and d_en_autozero[25]\n");
-	value = readl(s->base);
-	value |= ((1 << 25) | (1 << 26));
-	writel(value, s->base);
-	value = readl(s->base);
-	pr_debug("cfg_val: 0x%x\n", value);
-	value &= ~((1 << 25) | (1 << 26));
-	writel(value, s->base);
-	value = readl(s->base);
-	pr_debug("cfg_val: 0x%x\n", value);
 
 	return 0;
 }
