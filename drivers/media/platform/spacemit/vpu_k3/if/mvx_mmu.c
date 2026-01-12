@@ -45,7 +45,7 @@
 #include "mvx_mmu.h"
 #include "mvx_log_group.h"
 
-MODULE_IMPORT_NS(DMA_BUF);
+MODULE_IMPORT_NS("DMA_BUF");
 
 /****************************************************************************
  * Defines
