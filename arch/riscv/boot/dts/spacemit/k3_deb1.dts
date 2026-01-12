@@ -112,10 +112,9 @@
 		/*
 		* Cooling states (0-6) -> PWM duty (0-255)
 		* Full speed is treated as ~6000RPM.
-		* Max speed limited to ~78% (200/255)
-		* Linear distribution from 0 to 200
+		* Linear distribution from 0 to 255
 		*/
-		cooling-levels = <0 33 67 100 133 167 200>;
+		cooling-levels = <0 50 64 75 102 128 179 204 255>;
 		#cooling-cells = <2>;
 	};
 };
@@ -522,62 +521,60 @@
 
 		trips {
 			thermal_cluster0_trip0: thermal_cluster0-trip0 {
-				temperature = <45000>;
+				temperature = <35000>;
 				hysteresis = <5000>;
 				type = "active";
 			};
 
 			thermal_cluster0_trip1: thermal_cluster0-trip1 {
-				temperature = <55000>;
+				temperature = <40000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip2: thermal_cluster0-trip2 {
-				temperature = <65000>;
+				temperature = <50000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip3: thermal_cluster0-trip3 {
-				temperature = <75000>;
+				temperature = <60000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip4: thermal_cluster0-trip4 {
-				temperature = <95000>;
+				temperature = <70000>;
 				hysteresis = <5000>;
 				type = "passive";
-			};
-
-			thermal_cluster0_trip5: thermal_cluster0-trip5 {
-				temperature = <105000>;
-				hysteresis = <5>;
-				type = "critical";
 			};
 		};
 
 		cooling-maps {
 			map0 {
 				trip = <&thermal_cluster0_trip0>;
-				/* Avoid too-low PWM that may not start the fan */
-				cooling-device = <&fan0 1 1>;
+				cooling-device = <&fan0 0 1>;
 			};
 
 			map1 {
 				trip = <&thermal_cluster0_trip1>;
-				cooling-device = <&fan0 3 4>;
+				cooling-device = <&fan0 2 3>;
 			};
 
 			map2 {
 				trip = <&thermal_cluster0_trip2>;
-				cooling-device = <&fan0 5 5>;
+				cooling-device = <&fan0 4 5>;
 			};
 
 			map3 {
 				trip = <&thermal_cluster0_trip3>;
-				cooling-device = <&fan0 6 6>;
+				cooling-device = <&fan0 6 7>;
+			};
+
+			map4 {
+				trip = <&thermal_cluster0_trip4>;
+				cooling-device = <&fan0 8 8>;
 			};
 		};
 	};
