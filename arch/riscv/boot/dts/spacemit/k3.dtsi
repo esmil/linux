@@ -1692,8 +1692,9 @@
 			spacemit,ctrl-offset = <0x3e4>;
 			spacemit,dline-offset = <0x3e8>;
 			clocks = <&syscon_apmu CLK_APMU_EMAC0_BUS>,
-				 <&syscon_apmu CLK_APMU_EMAC0_1588>;
-			clock-names = "stmmaceth", "ptp_ref";
+				 <&syscon_apmu CLK_APMU_EMAC0_1588>,
+				 <&syscon_apmu CLK_APMU_EMAC0_RGMII_TX>;
+			clock-names = "stmmaceth", "ptp_ref", "tx_clk";
 			resets = <&syscon_apmu RESET_APMU_EMAC0>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
@@ -1711,8 +1712,9 @@
 			spacemit,ctrl-offset = <0x3ec>;
 			spacemit,dline-offset = <0x3f0>;
 			clocks = <&syscon_apmu CLK_APMU_EMAC1_BUS>,
-				 <&syscon_apmu CLK_APMU_EMAC1_1588>;
-			clock-names = "stmmaceth", "ptp_ref";
+				 <&syscon_apmu CLK_APMU_EMAC1_1588>,
+				 <&syscon_apmu CLK_APMU_EMAC1_RGMII_TX>;
+			clock-names = "stmmaceth", "ptp_ref", "tx_clk";
 			resets = <&syscon_apmu RESET_APMU_EMAC1>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
@@ -1730,8 +1732,9 @@
 			spacemit,ctrl-offset = <0x248>;
 			spacemit,dline-offset = <0x24c>;
 			clocks = <&syscon_apmu CLK_APMU_EMAC2_BUS>,
-				 <&syscon_apmu CLK_APMU_EMAC2_1588>;
-			clock-names = "stmmaceth", "ptp_ref";
+				 <&syscon_apmu CLK_APMU_EMAC2_1588>,
+				 <&syscon_apmu CLK_APMU_EMAC2_RGMII_TX>;
+			clock-names = "stmmaceth", "ptp_ref", "tx_clk";
 			resets = <&syscon_apmu RESET_APMU_EMAC2>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
@@ -1749,8 +1752,9 @@
 			spacemit,ctrl-offset = <0x0e4>;
 			spacemit,dline-offset = <0x0e8>;
 			clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_BUS>,
-				 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_1588>;
-			clock-names = "stmmaceth", "ptp_ref";
+				 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_1588>,
+				 <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_RGMII_TX>;
+			clock-names = "stmmaceth", "ptp_ref", "tx_clk";
 			resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RGMAC>;
 			reset-names = "stmmaceth";
 			interrupt-parent = <&saplic>;
