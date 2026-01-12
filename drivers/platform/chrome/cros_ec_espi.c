@@ -272,6 +272,12 @@ static int cros_ec_pkt_xfer_espi(struct cros_ec_device *ec,
 	int ret = 0;
 	u8 *dout;
 
+	/*
+	 * Give EC some time between commands to avoid overwhelming it.
+	 * This prevents timing issues when multiple commands are sent rapidly.
+	 */
+	usleep_range(500, 1000);
+
 	ret = cros_ec_prepare_tx(ec, msg);
 	if (ret < 0) {
 		dev_err(ec->dev, "cros_ec_prepare_tx failed: %d\n", ret);
@@ -311,7 +317,7 @@ static int cros_ec_pkt_xfer_espi(struct cros_ec_device *ec,
 		goto done;
 	}
 
-	msg->result = ret;
+	msg->result = sum;
 	ret = cros_ec_check_result(ec, msg);
 	if (ret) {
 		dev_err(ec->dev, "cros_ec_check_result failed: %d\n", ret);
@@ -373,6 +379,12 @@ static int cros_ec_cmd_xfer_espi(struct cros_ec_device *ec,
 		return -EINVAL;
 	}
 
+	/*
+	 * Give EC some time between commands to avoid overwhelming it.
+	 * This prevents timing issues when multiple commands are sent rapidly.
+	 */
+	usleep_range(500, 1000);
+
 	/* Now actually send the command to the EC and get the result */
 	args.flags = EC_HOST_ARGS_FLAG_FROM_HOST;
 	args.command_version = msg->version;
@@ -425,7 +437,7 @@ static int cros_ec_cmd_xfer_espi(struct cros_ec_device *ec,
 		goto done;
 	}
 
-	msg->result = ret;
+	msg->result = sum;
 	ret = cros_ec_check_result(ec, msg);
 	if (ret) {
 		dev_err(ec->dev, "cros_ec_check_result failed: %d\n", ret);
@@ -591,8 +603,14 @@ static int cros_ec_espi_probe(struct platform_device *pdev)
 	dev_dbg(dev, "ChromeOS EC detected via eSPI (ID: %c%c)\n", buf[0],
 		 buf[1]);
 
+	/*
+	 * Give EC some time to fully initialize before sending commands.
+	 * This helps avoid timing issues where EC is not ready to respond.
+	 */
+	msleep(100);
+
 	dev_dbg(dev, "Allocating ec_dev structure...\n");
-	ec_dev = devm_kzalloc(dev, sizeof(*ec_dev), GFP_KERNEL);
+	ec_dev = cros_ec_device_alloc(dev);
 	if (!ec_dev) {
 		dev_err(dev, "Failed to allocate ec_dev structure\n");
 		ret = -ENOMEM;
@@ -602,14 +620,10 @@ static int cros_ec_espi_probe(struct platform_device *pdev)
 
 	dev_dbg(dev, "Setting up ec_dev structure...\n");
 	platform_set_drvdata(pdev, ec_dev);
-	ec_dev->dev = dev;
 	ec_dev->phys_name = dev_name(dev);
 	ec_dev->cmd_xfer = cros_ec_cmd_xfer_espi;
 	ec_dev->pkt_xfer = cros_ec_pkt_xfer_espi;
 	ec_dev->cmd_readmem = cros_ec_espi_readmem;
-	ec_dev->din_size = sizeof(struct ec_host_response) +
-			   sizeof(struct ec_response_get_protocol_info);
-	ec_dev->dout_size = sizeof(struct ec_host_request);
 	ec_dev->priv = ec_espi;
 	dev_dbg(dev, "ec_dev structure configured successfully\n");
 
@@ -724,4 +738,3 @@ module_platform_driver(cros_ec_espi_driver);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("ChromeOS EC eSPI driver");
 MODULE_ALIAS("platform:" DRV_NAME);
-
