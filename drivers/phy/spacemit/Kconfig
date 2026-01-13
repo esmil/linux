@@ -22,3 +22,14 @@ config PHY_SPACEMIT_K3_USB3
 	help
 	  Enable this to support K3 USB 3.0 PHY driver. This driver takes care of
 	  enabling and clock setup and will be used by K3 dwc3 driver.
+
+config PHY_SPACEMIT_K3_PCIE
+	tristate "SpacemiT K3 PCIe PHY support"
+	depends on (ARCH_SPACEMIT || COMPILE_TEST) && OF
+	depends on COMMON_CLK
+	select GENERIC_PHY
+	help
+	  Enable this to support K3 PCIe PHY driver. This driver exposes the
+	  PCIe PHY initialisation sequence implemented in the SpacemiT vendor
+	  code via the generic PHY framework so that the K3 PCIe controller
+	  can be wired up using standard DT \"phys\" bindings.
