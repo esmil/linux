@@ -812,8 +812,8 @@ CCU_MUX_DIV_GATE_SPLIT_FC_DEFINE(lcd_dsc_clk, lcd_dsc_parents, APMU_LCD_CLK_RES_
 static const struct clk_parent_data lcdpx_parents[] = {
 	CCU_PARENT_HW(pll1_d4_614p4),
 	CCU_PARENT_HW(pll1_d5_491p52),
-	CCU_PARENT_HW(pll1_d10_245p76),
 	CCU_PARENT_HW(pll7_d5),
+	CCU_PARENT_HW(pll6_d6),
 	CCU_PARENT_HW(pll2_d7),
 	CCU_PARENT_HW(pll2_d4),
 	CCU_PARENT_HW(pll1_d48_51p2_ap),
