@@ -6,6 +6,8 @@
 #include "k3-pinctrl.dtsi"
 #include "k3_opp_table.dtsi"
 #include "k3-dp1.dtsi"
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/input/cros-ec-keyboard.h>
 
 / {
 	compatible = "spacemit,k3-deb1";
@@ -421,6 +423,16 @@
 	cros_ec_pwm: pwm {
 		compatible = "google,cros-ec-pwm";
 		#pwm-cells = <1>;
+	};
+
+	keyboard {
+		compatible = "google,cros-ec-keyb";
+		keypad,num-rows = <8>;
+		keypad,num-columns = <16>;
+		linux,keymap = <
+				CROS_STD_TOP_ROW_KEYMAP
+				CROS_STD_MAIN_KEYMAP
+		>;
 	};
 };
 
