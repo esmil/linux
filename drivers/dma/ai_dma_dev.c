@@ -22,6 +22,9 @@
 #include <asm/uaccess.h>
 #include <linux/mutex.h>
 #include <linux/pid.h>
+#include <linux/workqueue.h>
+#include <linux/cpumask.h>
+#include <linux/kthread.h>
 #include "ai_dma.h"
 
 #define DEVICE_NAME	"ai_dma"
@@ -35,6 +38,7 @@ spinlock_t aidma_lock;
 static struct list_head dma_req_list;
 unsigned long msi_addr;
 unsigned int msi_hwirq;
+static struct workqueue_struct *memcpy_workqueue;
 
 typedef struct {
 	size_t			size;
@@ -48,6 +52,15 @@ typedef struct {
 	dma_addr_t		addr;
 	size_t			size;
 } va2pa_t;
+
+typedef struct {
+	struct work_struct work;
+	void *dst_addr;
+	void *src_addr;
+	size_t size;
+	struct aidma_req *req;
+	int req_index;
+} memcpy_work_t;
 
 static int va2pa(void *va, size_t size, va2pa_t **va2pa, pid_t pid)
 {
@@ -96,6 +109,81 @@ static int va2pa(void *va, size_t size, va2pa_t **va2pa, pid_t pid)
 	pte_unmap(pte);
 
 	return flag;
+}
+
+static void *phys_to_virt_safe(dma_addr_t phys_addr)
+{
+	struct page *page;
+	unsigned long offset;
+
+	if (!phys_addr)
+		return NULL;
+
+	offset = phys_addr & ~PAGE_MASK;
+	page = phys_to_page(phys_addr);
+	if (!page)
+		return NULL;
+
+	return page_address(page) + offset;
+}
+
+static void async_memcpy_work(struct work_struct *work)
+{
+	memcpy_work_t *memcpy_work = container_of(work, memcpy_work_t, work);
+	void *dst_virt, *src_virt;
+	int cpu;
+
+	if (!memcpy_work)
+		return;
+
+	cpu = smp_processor_id();
+	pr_debug("memcpy work started on CPU %d, size: %zu\n", cpu, memcpy_work->size);
+
+	src_virt = phys_to_virt_safe((dma_addr_t)memcpy_work->src_addr);
+	dst_virt = phys_to_virt_safe((dma_addr_t)memcpy_work->dst_addr);
+
+	if (!src_virt || !dst_virt) {
+		pr_err("Failed to map physical addresses to virtual\n");
+		if (memcpy_work->req)
+			memcpy_work->req[memcpy_work->req_index].status = DMA_REQ_DONE;
+		goto out;
+	}
+
+	memcpy(dst_virt, src_virt, memcpy_work->size);
+	pr_debug("memcpy completed: src=%llx dst=%llx size=%zu\n", src_virt, dst_virt, memcpy_work->size);
+
+	if (memcpy_work->req)
+		memcpy_work->req[memcpy_work->req_index].status = DMA_REQ_DONE;
+
+out:
+	kfree(memcpy_work);
+}
+
+static int async_memcpy_start(void *dst_addr, void *src_addr, size_t size,
+			      struct aidma_req *req, int req_index)
+{
+	memcpy_work_t *work_item;
+	struct workqueue_struct *wq;
+
+	work_item = kmalloc(sizeof(memcpy_work_t), GFP_ATOMIC);
+	if (!work_item) {
+		pr_err("Failed to allocate memcpy work item\n");
+		return -ENOMEM;
+	}
+
+	work_item->dst_addr = dst_addr;
+	work_item->src_addr = src_addr;
+	work_item->size = size;
+	work_item->req = req;
+	work_item->req_index = req_index;
+
+	INIT_WORK(&work_item->work, async_memcpy_work);
+
+	wq = memcpy_workqueue ? memcpy_workqueue : system_wq;
+
+	queue_work(wq, &work_item->work);
+
+	return 0;
 }
 
 static int dma_malloc(struct ai_dmac *dma, dma_map_info_t *dma_info, struct vm_area_struct *vma)
@@ -271,22 +359,22 @@ void start_transfer() {
 		req = node->info->req_list;
 		for (i = 0; i < AIDMA_MAX_REQ; i++) {
 			if (req[i].status == DMA_REQ_SUBMIT) {
-				for (j = 0; j < AXI_DMAC_NUM; j++) {
-					if (aidma_info[j].work != true) {
-						aidma_info[j].work = true;
-						aidma_info[j].work_id = i;
-						aidma_info[j].req = req;
-						dma = aidma_info[j].dma;
-						req[i].status = DMA_REQ_PROCESS;
-						break;
-					}
-				}
-				if (dma == NULL) {
-					spin_unlock_irqrestore(&aidma_lock, flags);
-					return;
-				}
 				param = &req[i].params;
 				if (param->is_sgdg == true) {
+					for (j = 0; j < AXI_DMAC_NUM; j++) {
+						if (aidma_info[j].work != true) {
+							aidma_info[j].work = true;
+							aidma_info[j].work_id = i;
+							aidma_info[j].req = req;
+							dma = aidma_info[j].dma;
+							req[i].status = DMA_REQ_PROCESS;
+							break;
+						}
+					}
+					if (dma == NULL) {
+						spin_unlock_irqrestore(&aidma_lock, flags);
+						return;
+					}
 					size = param->ai_param.m_size * param->ai_param.k_size;
 				} else {
 					size = param->size;
@@ -333,7 +421,14 @@ void start_transfer() {
 					params->kr_size = param->ai_param.kr_size;
 					ai_dmac_pack_start(dma, params, dst_addr, src_addr);
 				} else {
-					ai_dmac_memcpy(dma, dst_addr, src_addr, param->size);
+					ret = async_memcpy_start((void *)dst_addr, (void *)src_addr, param->size, req, i);
+					if (ret != 0) {
+						pr_err("Failed to start async memcpy, ret = %d\n", ret);
+						kfree(s_pa_l);
+						kfree(d_pa_l);
+						spin_unlock_irqrestore(&aidma_lock, flags);
+						return;
+					}
 				}
 			}
 		}
@@ -485,6 +580,11 @@ static int ai_dmadev_probe(struct platform_device *pdev) {
 	INIT_LIST_HEAD(&dma_req_list);
 	spin_lock_init(&aidma_lock);
 
+	memcpy_workqueue = alloc_workqueue("memcpy_wq", WQ_UNBOUND | WQ_HIGHPRI, 0);
+	if (!memcpy_workqueue) {
+		dev_warn(&pdev->dev, "Failed to create memcpy workqueue, will use system_wq\n");
+	}
+
 	return 0;
 
 err_destroy_req_class:
@@ -513,6 +613,10 @@ err_free_msi:
 
 static void ai_dmadev_remove(struct platform_device *pdev)
 {
+	if (memcpy_workqueue) {
+		destroy_workqueue(memcpy_workqueue);
+		memcpy_workqueue = NULL;
+	}
 	platform_device_msi_free_irqs_all(&pdev->dev);
 }
 
