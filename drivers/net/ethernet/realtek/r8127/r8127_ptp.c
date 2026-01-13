@@ -751,8 +751,14 @@ void rtl8127_ptp_init(struct rtl8127_private *tp)
 
         /* init a hrtimer for pps */
         tp->pps_enable = 0;
-        hrtimer_init(&tp->pps_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-        tp->pps_timer.function = rtl8127_hrtimer_for_pps;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
+	hrtimer_init(&tp->pps_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	tp->pps_timer.function = rtl8127_hrtimer_for_pps;
+#else
+	hrtimer_setup(&tp->pps_timer, rtl8127_hrtimer_for_pps,
+			CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+#endif
 
         /* reset the PTP related hardware bits */
         rtl8127_ptp_reset(tp);
