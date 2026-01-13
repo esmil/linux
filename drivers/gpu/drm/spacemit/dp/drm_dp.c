@@ -28,6 +28,11 @@
 #include "inno_conn.h"
 #include "inno_dp_api.h"
 
+#define INNO_DP_HPD_IRQ_EVENT		BIT(31)
+#define INNO_DP_HPD_PLUG_EVENT		BIT(29)
+#define INNO_DP_HPD_UNPLUG_EVENT	BIT(28)
+#define INNO_DP_HPD_STATUS		BIT(26)
+
 struct dp_dev {
 	struct device *dev;
 
@@ -49,11 +54,23 @@ static enum drm_connector_status dp_conn_detect(struct drm_connector *connector,
 {
 	struct dp_dev *dp_dev = container_of(connector, struct dp_dev, connector);
 
+	if (inno_hpd_detect(dp_dev->conn))
+		dp_dev->connector_status = connector_status_connected;
+	else
+		dp_dev->connector_status = connector_status_disconnected;
+
 	return dp_dev->connector_status;
 }
 
+static int
+dp_conn_probe_single_connector_modes(struct drm_connector *connector,
+				       uint32_t maxX, uint32_t maxY)
+{
+	return drm_helper_probe_single_connector_modes(connector, 2560, 1600);
+}
+
 static const struct drm_connector_funcs dp_connector_funcs = {
-	.fill_modes = drm_helper_probe_single_connector_modes,
+	.fill_modes = dp_conn_probe_single_connector_modes,
 	.destroy = drm_connector_cleanup,
 	.detect = dp_conn_detect,
 	.reset = drm_atomic_helper_connector_reset,
@@ -61,13 +78,51 @@ static const struct drm_connector_funcs dp_connector_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
 };
 
+static int dp_conn_get_edid_block(void *data, uint8_t *buf, unsigned int block, size_t len)
+{
+	struct dp_dev *dp_dev = data;
+	switch (block) {
+	case 0:
+		memcpy(buf, &dp_dev->conn->edid_data[0], EDID_LENGTH);
+		break;
+	case 1:
+		memcpy(buf, &dp_dev->conn->edid_data[128], EDID_LENGTH);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int dp_conn_get_modes(struct drm_connector *connector)
 {
-	// int count;
+	int count;
+	const struct drm_edid *edid;
+	struct drm_display_mode *mode, *tmp;
+	struct drm_device *dev = connector->dev;
+	struct dp_dev *dp_dev = container_of(connector, struct dp_dev, connector);
 
-	// count = drm_edid_connector_add_modes(connector);
-	// return count;
-	return drm_add_modes_noedid(connector, 1920, 1080);
+	inno_get_edid(dp_dev->conn);
+
+	if (dp_dev->conn->edid_valid) {
+		edid = drm_edid_read_custom(connector, dp_conn_get_edid_block, dp_dev);
+		drm_edid_connector_update(connector, edid);
+		count = drm_edid_connector_add_modes(connector);
+		list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
+			if (mode->hdisplay == 2560) {
+				if (drm_mode_vrefresh(mode) > 90) {
+					list_del(&mode->head);
+					drm_mode_destroy(dev, mode);
+					count--;
+				}
+			}
+		}
+		drm_edid_free(edid);
+		return count;
+	} else {
+		return drm_add_modes_noedid(connector, 1920, 1080);
+	}
 }
 
 static enum drm_mode_status dp_conn_mode_valid(struct drm_connector *connector,
@@ -187,23 +242,68 @@ static void dp_proc_irq_debug_exit(struct dp_dev *dp_dev)
 	dp_dev->proc_irq = NULL;
 }
 
+static irqreturn_t soc_dp_irq_handler(int irq, void *data)
+{
+	struct dp_dev *dp_dev = data;
+	irqreturn_t ret = IRQ_NONE;
+	u32 status;
+
+	status = readl(dp_dev->conn->reg_mmap_addr + 0x80);
+	DRM_INFO("%s() status 0x%x\n", __func__, status);
+	if (status & BIT(17)) {
+		status = readl(dp_dev->conn->reg_mmap_addr + 0x88);
+		DRM_INFO("%s() HPD plug event 0x%x\n", __func__, status);
+		if (status & INNO_DP_HPD_PLUG_EVENT)
+			status |= INNO_DP_HPD_PLUG_EVENT;
+		if (status & INNO_DP_HPD_UNPLUG_EVENT)
+			status |= INNO_DP_HPD_UNPLUG_EVENT;
+		writel(status, (dp_dev->conn->reg_mmap_addr + 0x88));
+		ret = IRQ_WAKE_THREAD;
+	} else {
+		ret = IRQ_NONE;
+	}
+
+	return ret;
+}
+
+static irqreturn_t soc_dp_irq_thread_handler(int irq, void *data)
+{
+	struct dp_dev *dp_dev = data;
+	u32 hpd_status;
+
+	hpd_status = readl(dp_dev->conn->reg_mmap_addr + 0x88);
+	DRM_INFO("%s() hpd_status 0x%x\n", __func__, hpd_status);
+	if (hpd_status & INNO_DP_HPD_STATUS)
+		dp_dev->connector_status = connector_status_connected;
+	else
+		dp_dev->connector_status = connector_status_disconnected;
+
+	drm_kms_helper_hotplug_event(dp_dev->drm);
+
+	return IRQ_HANDLED;
+}
+
 static int dp_dev_resource_init(struct dp_dev *dp_dev,
 				struct platform_device *pdev)
 {
-	uint32_t dp_id;
+	uint32_t dp_id, edp_id;
 	struct resource *res;
 	void __iomem *pmu_addr = (void __iomem *)ioremap(0xd4282800, 0x400);
 	void __iomem *ciu_addr = (void __iomem *)ioremap(0xd4282c00, 0x200);
 	u32 value;
 
-	dp_dev->conn = inno_get_conn_module(INNO_CONN_DP0);
+	if (of_property_read_u32(pdev->dev.of_node, "dp-id", &dp_id))
+		dp_id = -1;
 
-	if (of_property_read_u32(pdev->dev.of_node, "dp-id", &dp_id)) {
-		DRM_INFO("%s() DP %d\n", __func__, dp_id);
-		dp_id = 0;
-	}
+	if (of_property_read_u32(pdev->dev.of_node, "edp-id", &edp_id))
+		edp_id = -1;
 
-	if (dp_id == 0) {
+	if (edp_id != -1)
+		dp_dev->conn = inno_get_conn_module(INNO_CONN_EDP);
+	else
+		dp_dev->conn = inno_get_conn_module(INNO_CONN_DP);
+
+	if (dp_id == 0 || edp_id == 0) {
 		// mux dp0
 		value = readl(ciu_addr + 0x12c);
 		value |= BIT(8);
@@ -211,9 +311,15 @@ static int dp_dev_resource_init(struct dp_dev *dp_dev,
 	}
 
 	// use dp pll
-	// value = readl(pmu_addr + 0x23c);
-	// value |= BIT(2);
-	// writel(value, (pmu_addr + 0x23c));
+	// if (dp_id == 0 || edp_id == 0) {
+	// 	value = readl(pmu_addr + 0x23c);
+	// 	value |= BIT(2);
+	// 	writel(value, (pmu_addr + 0x23c));
+	// } else {
+	// 	value = readl(pmu_addr + 0x23c);
+	// 	value |= BIT(18);
+	// 	writel(value, (pmu_addr + 0x23c));
+	// }
 
 	iounmap(ciu_addr);
 	iounmap(pmu_addr);
@@ -245,6 +351,8 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 	struct platform_device *pdev = to_platform_device(dev);
 	uint64_t clk_val;
 	uint64_t set_clk_val;
+	int irq;
+	u32 status;
 
 	DRM_INFO("%s()\n", __func__);
 
@@ -305,11 +413,36 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 				     &dp_dev->encoder);
 
 	platform_set_drvdata(pdev, dp_dev);
-	dp_proc_irq_debug_init(dp_dev);
+	// dp_proc_irq_debug_init(dp_dev);
 
 	ret = dp_dev_resource_init(dp_dev, pdev);
 	if (ret) {
 		drm_connector_cleanup(&dp_dev->connector);
+		return ret;
+	}
+
+	inno_init(dp_dev->conn);
+
+	if (inno_hpd_detect(dp_dev->conn))
+		dp_dev->connector_status = connector_status_connected;
+	else
+		dp_dev->connector_status = connector_status_disconnected;
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(&pdev->dev, "Failed to obtain interrupt ret = %d.\n", irq);
+		return irq;
+	}
+
+	status = readl(dp_dev->conn->reg_mmap_addr + 0x84);
+	status &= ~BIT(16);
+	status |= BIT(17);
+	writel(status, (dp_dev->conn->reg_mmap_addr + 0x84));
+
+	ret = devm_request_threaded_irq(&pdev->dev, irq, soc_dp_irq_handler,
+			soc_dp_irq_thread_handler, 0, dev_name(&pdev->dev), dp_dev);
+	if (ret) {
+		dev_err(&pdev->dev, "Failure requesting irq %d: %d.\n", irq, ret);
 		return ret;
 	}
 
@@ -324,9 +457,11 @@ static void inno_dp_unbind(struct device *dev, struct device *master, void *data
 
 	DRM_INFO("%s()\n", __func__);
 
-	dp_proc_irq_debug_exit(dp_dev);
+	// dp_proc_irq_debug_exit(dp_dev);
 	drm_encoder_cleanup(&dp_dev->encoder);
 	drm_connector_cleanup(&dp_dev->connector);
+
+	inno_exit(dp_dev->conn);
 
 	if (dp_dev->pxclk)
 		clk_disable_unprepare(dp_dev->pxclk);

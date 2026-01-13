@@ -11,11 +11,10 @@
 
 enum modules {
 	INNO_CONN_NONE = -1,
-	INNO_CONN_DP0,
+	INNO_CONN_DP = 0,
+	INNO_CONN_EDP = 1,
 	INNO_CONN_MAX,
 };
-
-#define inno_conn_is_dp(_id)	((_id) == INNO_CONN_DP0)
 
 #define INNO_CONN_FLAG_NONE	(0x0)
 #define INNO_CONN_FLAG_BIST	(0x1)
@@ -50,6 +49,8 @@ struct inno_conn_t {
 	int edp_enable;
 	struct inno_conn_func_t *func;
 	struct drm_display_mode out_mode;
+	bool edid_valid;
+	uint8_t edid_data[256];
 
 	void *priv;
 	bool is_enable;
@@ -59,7 +60,7 @@ struct inno_conn_t {
 struct inno_conn_func_t {
 	int (*init)(struct inno_conn_t *conn);
 	void (*exit)(struct inno_conn_t *conn);
-	int (*fini)(struct inno_conn_t *conn);
+	bool (*hpd_detect)(struct inno_conn_t *conn);
 	int (*get_edid)(struct inno_conn_t *conn, uint8_t *buff);
 	int (*show_edid)(struct inno_conn_t *conn, uint8_t *buff);
 	int (*modeset)(struct inno_conn_t *conn, struct drm_display_mode *mode);

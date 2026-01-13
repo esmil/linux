@@ -51,8 +51,8 @@ void osal_write32(uint32_t offset, uint32_t val,
 uint32_t osal_read32(uint32_t offset, struct inno_conn_t *conn)
 {
 	uint32_t val = *(volatile uint32_t *)(conn->reg_mmap_addr + offset);
-
-	osal_printf_func("[r] reg: %#x, val: %#x\n", offset, val);
+	if (offset == 0x180 || offset == 0x190)
+		osal_printf_func("[r] reg: %#x, val: %#x\n", offset, val);
 	return val;
 }
 

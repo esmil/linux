@@ -203,30 +203,20 @@ static void inno_dp_phy_cfg(struct dp_chip_t *inno)
 
 static void inno_dp_phy_init(struct inno_conn_t *conn)
 {
-	osal_write32(0x180, BIT(0) | osal_read32(0x180, conn), conn);
-
-	//reset
-	osal_write32(0x1c, 0x40000000, conn);
-	osal_write32(0x1c, 0x0, conn);
-
-	//core pll cfg
+	/* core pll cfg */
 	osal_write32(0x180, 0xe1300231, conn);
 	osal_write32(0x184, 0x22000000, conn);
 	osal_write32(0x188, 0x1, conn);
 	osal_write32(0x1a0, 0x2a00, conn);
-	// osal_write32(0x198, 0x2002a, conn);
 	osal_write32(0x198, 0x2012a, conn);
 	osal_write32(0x180, 0xe1300230, conn);
-
 	osal_msleep(10);
-	//check core pll lock
 
+	/* check core pll lock */
 	osal_read32(0x180, conn);
-	osal_read32(0x40, conn);
 
-	osal_read32(0x8c, conn);
+	/* enable hpd plug */
 	osal_write32(0x8c, 0x20000000, conn);
-	osal_read32(0x8c, conn);
 }
 
 
@@ -235,12 +225,11 @@ static void inno_dp_phy_reset(struct inno_conn_t *conn)
 	if (conn->use_phy_board)
 		innodp_phyboard_reset(conn);
 
-	/* reset phy and controller */
-	osal_write32(0x1c, (0x3 << 30) | osal_read32(0x1c, conn), conn);
+	/* reset phy and controller, video, audio */
+	osal_write32(0x1c,  BIT(31) | BIT(30) | BIT(28) | BIT(0) | osal_read32(0x1c, conn), conn);
 	osal_msleep(5);
-	osal_write32(0x1c, ~(0x3 << 30) & osal_read32(0x1c, conn), conn);
-
-	osal_msleep(5);
+	osal_write32(0x1c, (~(BIT(31) | BIT(30) | BIT(28) | BIT(0))) & osal_read32(0x1c, conn), conn);
+	osal_msleep(2);
 }
 
 static int inno_dp_pclk_calc(unsigned int pclk, unsigned int *div)
@@ -572,7 +561,7 @@ static void inno_dp_irq_enable(struct dp_chip_t *inno)
 	tmp |= BIT(17); /* enable hpd plug evnet */
 	osal_write32(0x84, tmp, conn);
 
-	tmp = osal_read32(0x84, conn);
+	tmp = osal_read32(0x8c, conn);
 
 	/* enable hpd event; hpd in irq; hpd out irq */
 	tmp = BIT(31) | BIT(29) | BIT(28);
@@ -624,26 +613,30 @@ static int inno_dp_irq_handle(struct dp_chip_t *inno)
 	return irq_status;
 }
 
-static int inno_dp_detect_ctx(struct inno_conn_t *conn)
+static bool inno_dp_hpd_detect(struct inno_conn_t *conn)
 {
 	uint32_t reg_value = 0, reg_value1;
 
-	osal_printf("%s()\n", __func__);
-
-	/* need 500ms for long */
-	osal_msleep(1000);
+	/* need 100ms for long */
+	osal_msleep(100);
 
 	reg_value = osal_read32(0x80, conn);
 	reg_value1 = osal_read32(0x88, conn);
 
+	osal_printf("%s() 0x80 0x%x 0x88 0x%x\n", __func__, reg_value, reg_value1);
+
 	if ((reg_value & BIT(17)) && (reg_value1 & BIT(29))) {
 		/* clear interrupt */
 		inno_dp_irq_handle(conn->priv);
+	}
+
+	if (reg_value1 & BIT(26)) {
 		osal_printf("%s() true\n", __func__);
 		return true;
+	} else {
+		osal_printf("%s() false\n", __func__);
+		return false;
 	}
-	osal_printf("%s() false\n", __func__);
-	return false;
 }
 
 static int inno_dp_init(struct inno_conn_t *conn)
@@ -672,12 +665,9 @@ static int inno_dp_init(struct inno_conn_t *conn)
 
 	inno->irq_handle = inno_dp_irq_handle;
 
-	// inno_dp_phy_test(conn);
-#if 1
 	inno_dp_phy_reset(conn);
-
-	// inno_dp_irq_enable(inno);
-#endif
+	inno_dp_phy_init(conn);
+	inno_dp_irq_enable(inno);
 
 #if IS_ENABLED(CONFIG_SND_SOC)
 	ret = inno_dp_audio_register(conn->dev);
@@ -719,7 +709,7 @@ static int inno_dp_get_edid(struct inno_conn_t *conn, uint8_t *buff)
 
 	osal_printf("%s()\n", __func__);
 
-	if (inno_dp_detect_ctx(conn))
+	if (inno_dp_hpd_detect(conn))
 		ret = inno_dp_read_edid(inno, buff);
 
 	return ret;
@@ -826,7 +816,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 
 	osal_write32(0x18, osal_read32(0x18, conn) | BIT(28), conn);
 
-	osal_write32(0x84, osal_read32(0x84, conn) | BIT(16), conn);
+	// osal_write32(0x84, osal_read32(0x84, conn) | BIT(16), conn);
 
 	osal_write32(0x84, osal_read32(0x84, conn) | BIT(17), conn);
 
@@ -1063,7 +1053,7 @@ static int inno_dp_disable(struct inno_conn_t *conn)
 struct inno_conn_func_t g_inno_dp_func = {
 	.init = inno_dp_init,
 	.exit = inno_dp_exit,
-	.fini = NULL,
+	.hpd_detect = inno_dp_hpd_detect,
 	.get_edid = inno_dp_get_edid,
 	.show_edid = inno_dp_show_edid,
 	.modeset = inno_dp_modeset,
