@@ -2053,6 +2053,66 @@
 			status = "okay";
 		};
 
+		phy0: phy-pcie@81d00000 {
+			compatible = "spacemit,k3-pcie-phy";
+			reg = <0x0 0x81d00000 0x0 0x1000>;
+			spacemit,syscon-apb-spare = <&pll>;
+			num-lanes = <2>;
+			spacemit,phy-id = <0>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		phy1: phy-pcie@81e00000 {
+			compatible = "spacemit,k3-pcie-phy";
+			reg = <0x0 0x81e00000 0x0 0x1000>;
+			spacemit,syscon-apb-spare = <&pll>;
+			num-lanes = <2>;
+			spacemit,phy-id = <1>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		phy2: phy-pcie@81f00000 {
+			compatible = "spacemit,k3-pcie-phy";
+			reg = <0x0 0x81f00000 0x0 0x1000>;
+			spacemit,syscon-apb-spare = <&pll>;
+			num-lanes = <1>;
+			spacemit,phy-id = <2>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		phy3: phy-pcie@82000000 {
+			compatible = "spacemit,k3-pcie-phy";
+			reg = <0x0 0x82000000 0x0 0x1000>;
+			spacemit,syscon-apb-spare = <&pll>;
+			num-lanes = <1>;
+			spacemit,phy-id = <3>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		phy4: phy-pcie@82100000 {
+			compatible = "spacemit,k3-pcie-phy";
+			reg = <0x0 0x82100000 0x0 0x1000>;
+			spacemit,syscon-apb-spare = <&pll>;
+			num-lanes = <1>;
+			spacemit,phy-id = <4>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
+		phy5: phy-pcie@82200000 {
+			compatible = "spacemit,k3-pcie-phy";
+			reg = <0x0 0x82200000 0x0 0x1000>;
+			spacemit,syscon-apb-spare = <&pll>;
+			num-lanes = <1>;
+			spacemit,phy-id = <5>;
+			#phy-cells = <0>;
+			status = "disabled";
+		};
+
 		pcie0_rc: pcie@80000000 {
 			compatible = "spacemit,k3-pcie";
 			reg = <0x0 0x80000000 0x0 0x00001000>, /* dbi */
@@ -2063,6 +2123,7 @@
 				<0x0 0x82900000 0x0 0x00001000>; /* phy ahb */
 				reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
 
+				spacemit,apmu = <&syscon_apmu>;
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_MSTE>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
 			clock-names = "pcie-master", "pcie-slave";
@@ -2109,6 +2170,7 @@
 				<0x0 0x82c00000 0x0 0x00001000>; /* phy ahb */
 			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
 
+			spacemit,apmu = <&syscon_apmu>;
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_MSTE>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTB_SLV>;
 			clock-names = "pcie-master", "pcie-slave";
@@ -2154,6 +2216,7 @@
 				<0x0 0x82d00000 0x0 0x00001000>; /* phy ahb */
 			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
 
+			spacemit,apmu = <&syscon_apmu>;
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_MSTE>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTC_SLV>;
 			clock-names = "pcie-master", "pcie-slave";
@@ -2199,6 +2262,7 @@
 			      <0x0 0x82a00000 0x0 0x00001000>; /* phy ahb */
 			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
 
+			spacemit,apmu = <&syscon_apmu>;
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_MSTE>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTD_SLV>;
 			clock-names = "pcie-master", "pcie-slave";
@@ -2244,6 +2308,7 @@
 			      <0x0 0x82b00000 0x0 0x00001000>; /* phy ahb */
 			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
 
+			spacemit,apmu = <&syscon_apmu>;
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_MSTE>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTE_SLV>;
 			clock-names = "pcie-master", "pcie-slave";
