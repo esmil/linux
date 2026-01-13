@@ -203,6 +203,17 @@
 		};
 	};
 
+	pcie1-1-cfg {
+		pcie1-0-pins {
+			pinmux = <K3_PADCONF(88, 4)>,	/* pcie1 perst */
+				 <K3_PADCONF(90, 4)>;	/* pcie1 clkreq */
+
+			bias-pull-up;
+			drive-strength = <33>;
+			power-source = <1800>;
+		};
+	};
+
 	pcie2-1-cfg {
 		pcie2-0-pins {
 			pinmux = <K3_PADCONF(25, 4)>,	/* pcie2 perst */
@@ -375,27 +386,60 @@
 	status = "okay";
 };
 
+&phy0 {
+	status = "okay";
+};
+
+&phy1 {
+	status = "okay";
+};
+
+&phy2 {
+	status = "okay";
+};
+
+&phy3 {
+	status = "okay";
+};
+
+&phy5 {
+	status = "okay";
+};
+
 &pcie0_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie0_1_cfg>;
-
-	max-link-speed = <3>;
+	phys = <&phy0>, <&phy1>;
+	phy-names = "phy0", "phy1";
 	num-lanes = <4>;
+	spacemit,device-detect-gpios = <&gpio 2 25 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&pcie1_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_1_cfg>;
+	phys = <&phy1>;
+	phy-names = "phy1";
+	num-lanes = <2>;
 	status = "okay";
 };
 
 &pcie2_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie2_1_cfg>;
-
+	phys = <&phy2>, <&phy3>;
+	phy-names = "phy2", "phy3";
+	num-lanes = <2>;
 	status = "okay";
 };
 
 &pcie4_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie4_0_cfg>;
-
-	max-link-speed = <1>;
+	phys = <&phy5>;
+	phy-names = "phy5";
+	num-lanes = <1>;
 	status = "okay";
 };
 
