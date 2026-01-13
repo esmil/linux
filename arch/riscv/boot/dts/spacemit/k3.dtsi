@@ -1947,6 +1947,16 @@
 			status = "disabled";
 		};
 
+		sound_card0: sound-card@0 {
+			status = "disabled";
+			compatible = "simple-audio-card";
+		};
+
+		sound_card1: sound-card@1 {
+			status = "disabled";
+			compatible = "simple-audio-card";
+		};
+
 		hwspinlock: hwspin@cac91c00 {
 			compatible = "spacemit,hwspinlock";
 			reg = <0x0 0xcac91c00 0x0 0x100>;

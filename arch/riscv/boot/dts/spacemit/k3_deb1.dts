@@ -169,6 +169,12 @@
 		};
 	};
 
+	i2c3-1-cfg {
+		i2c3-0-pins {
+			power-source = <3300>;
+		};
+	};
+
 	usb30_drd_dir-0-cfg {
 		usb30_drd_dir-pins {
 			power-source = <1800>;
@@ -272,6 +278,12 @@
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
+	sspa1_1_cfg: sspa1-1-cfg {
+		sspa1-0-pins {
 			power-source = <3300>;
 		};
 	};
@@ -905,6 +917,24 @@
 	};
 };
 
+&i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3_1_cfg>;
+	status = "okay";
+
+	es8326: es8326@19{
+		compatible = "everest,es8326";
+		reg = <0x19>;
+		#sound-dai-cells = <0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <3 31 IRQ_TYPE_EDGE_RISING>;
+		/* spk-ctl-gpio = <&gpio 127 0>; */
+		everest,mic1-src = [44];
+		everest,mic2-src = [66];
+		everest,jack-detect-inverted;
+		status = "okay";
+	};
+};
 /*
 &i2c8 {
 	pinctrl-names = "default";
@@ -1112,6 +1142,30 @@
 		bitclock-master = <&dp1_link_cpu>;
 		dp1_link_codec: codec {
 			sound-dai = <&dp1>;
+		};
+	};
+};
+
+&i2s1 {
+	status = "okay";
+	pinctrl-0 = <&sspa1_1_cfg>;
+	pinctrl-names = "default";
+};
+
+&sound_card1 {
+	status = "okay";
+	simple-audio-card,mclk-fs = <256>;
+	simple-audio-card,dai-link@0 {
+		format = "i2s";
+		frame-master = <&link1_cpu>;
+		bitclock-master = <&link1_cpu>;
+
+		link1_cpu: cpu {
+			sound-dai = <&i2s1>;
+		};
+
+		link1_codec: codec {
+			sound-dai = <&es8326>;
 		};
 	};
 };
