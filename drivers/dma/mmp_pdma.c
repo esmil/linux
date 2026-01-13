@@ -52,11 +52,7 @@
 #define DCSR_CMPST	BIT(10)	/* The Descriptor Compare Status */
 #define DCSR_EORINTR	BIT(9)	/* The end of Receive */
 
-#ifdef CONFIG_SOC_SPACEMIT_K3
-#define DRCMR(n)	((((n) < 64) ? 0x0100 : 0x1000) + (((n) & 0x3f) << 2))
-#else
 #define DRCMR(n)	((((n) < 64) ? 0x0100 : 0x1100) + (((n) & 0x3f) << 2))
-#endif
 #define DRCMR_MAPVLD	BIT(7)	/* Map Valid (read / write) */
 #define DRCMR_CHLNUM	0x1f	/* mask for Channel Number (read / write) */
 
