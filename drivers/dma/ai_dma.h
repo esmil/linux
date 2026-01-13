@@ -83,7 +83,7 @@ struct dma_transfer_param {
 struct aidma_req {
 	struct dma_transfer_param params;
 	enum dma_req_status status;
-};
+} __attribute__((aligned(64)));
 
 struct axi_dmac_info {
 	struct ai_dmac *dma;
