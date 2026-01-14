@@ -18,6 +18,8 @@
 #include <linux/of_platform.h>
 #include <linux/kernel.h>
 #include <drm/clients/drm_client_setup.h>
+#include <drm/drm_fbdev_dma.h>
+#include <drm/drm_gem_dma_helper.h>
 
 #include "spacemit_drm.h"
 #include "spacemit_dmmu.h"
@@ -284,6 +286,7 @@ static struct drm_driver spacemit_drm_drv = {
 	.prime_fd_to_handle	= drm_gem_prime_fd_to_handle,
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.gem_prime_import_sg_table = spacemit_gem_prime_import_sg_table,
+	DRM_FBDEV_DMA_DRIVER_OPS,
 #ifdef CONFIG_DEBUG_FS
 	.debugfs_init		= spacemit_drm_debugfs_init,
 #endif
@@ -345,7 +348,7 @@ static int spacemit_drm_bind(struct device *dev)
 	err = drm_dev_register(drm, 0);
 	if (err < 0)
 		goto err_kms_helper_poll_fini;
-	// drm_client_setup(drm, NULL);
+	drm_client_setup(drm, NULL);
 
 	return 0;
 
