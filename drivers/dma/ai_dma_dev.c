@@ -150,7 +150,7 @@ static void async_memcpy_work(struct work_struct *work)
 	}
 
 	memcpy(dst_virt, src_virt, memcpy_work->size);
-	pr_debug("memcpy completed: src=%llx dst=%llx size=%zu\n", src_virt, dst_virt, memcpy_work->size);
+	pr_debug("memcpy completed: src=%llx dst=%llx size=%zu\n", (u64)src_virt, (u64)dst_virt, memcpy_work->size);
 
 	if (memcpy_work->req)
 		memcpy_work->req[memcpy_work->req_index].status = DMA_REQ_DONE;
