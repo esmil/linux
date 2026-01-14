@@ -106,6 +106,24 @@ struct spacemit_afbc_state {
 	uint8_t copy_mode;
 };
 
+struct pll_freq_range_t{
+	u16 low;
+	u16 mid;
+	u16 high;
+};
+
+#define PLLMODE_DEFALUT 1
+/* DSI bitclk pll control regs */
+#define PLL_CTRL_REG0   0xc0
+#define PLL_CTRL_REG1   0xc4
+#define PLL_CTRL_REG2   0xc8
+#define PLL_CTRL_REG3   0xcc
+#define PLL_CTRL_STATUS 0x230
+
+#define PLL_LK          BIT(29)
+#define PLL_UP          BIT(31)
+#define PLL_DIV_EN      (0xf << 4)
+
 extern const u32 saturn_fbcmem_sizes[2];
 extern const u32 saturn_le_fbcmem_sizes[2];
 

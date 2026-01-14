@@ -45,3 +45,4 @@ obj-$(CONFIG_DRM_SPACEMIT) += spacemit-drm.o
 obj-$(CONFIG_SPACEMIT_MIPI_PANEL) += spacemit_mipi_panel.o
 obj-$(CONFIG_DRM_SPACEMIT_BACKLIGHT) += backlight/
 obj-$(CONFIG_DRM_SPACEMIT_SELFTEST) += selftest/
+obj-$(CONFIG_DRM_RASPBERRYPI_TOUCHSCREEN) += raspberrypi_touchscreen.o

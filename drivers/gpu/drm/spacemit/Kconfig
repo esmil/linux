@@ -31,5 +31,16 @@ config SPACEMIT_MIPI_PANEL
 	tristate "mipi panel support for SPACEMIT SOCs platform"
 	depends on DRM_SPACEMIT
 
+config DRM_RASPBERRYPI_TOUCHSCREEN
+	tristate "Raspberrypi Touchscreen"
+	default y
+	depends on DRM_SPACEMIT
+	select DRM_KMS_HELPER
+	select REGMAP_I2C
+	select DRM_PANEL
+	select DRM_MIPI_DSI
+
+	help
+	  Support for Raspberrypi Touchscreen driver.
 
 source "drivers/gpu/drm/spacemit/backlight/Kconfig"
