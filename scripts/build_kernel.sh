@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 PACKAGE_SRC_NAME="linux-riscv-spacemit-generic"
-CONFIG_FILE="k3_defconfig"
+CONFIG_FILE="k3_bianbu_defconfig"
 CLEAN_CMD="make distclean && make -C tools/perf clean &&
     VERSION=\$(grep -oP '^VERSION\\s*=\\s*\\K\\d+' Makefile)
     PATCHLEVEL=\$(grep -oP '^PATCHLEVEL\\s*=\\s*\\K\\d+' Makefile)
