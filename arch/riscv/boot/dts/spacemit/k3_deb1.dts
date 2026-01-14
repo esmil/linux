@@ -265,6 +265,16 @@
 			power-source = <3300>;
 		};
 	};
+
+	dp0_1_cfg: dp0-1-cfg {
+		dp0-0-pins {
+			pinmux = <K3_PADCONF(23, 6)>;	/* dp0 hpd */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
 };
 
 &uart0 {
@@ -1054,6 +1064,23 @@
 			};
 		};
 	};
+};
+*/
+
+/*
+&dpu0_crtc0 {
+	memory-region = <&dpu_resv0>;
+	status = "okay";
+};
+
+&edp0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp0_1_cfg>;
+	gpios-power = <101>;
+	gpios-enable = <118>;
+	gpios-bl = <106>;
+
+	status = "okay";
 };
 */
 
