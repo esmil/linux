@@ -223,9 +223,9 @@ static INLINE int _OSMMapPMR(PVRSRV_DEVICE_NODE *psDevNode,
 {
 	IMG_INT32 iStatus;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
-	IMG_INT32 sPFN;
+	IMG_UINT64 sPFN;
 
-	sPFN = psCpuPAddr->uiAddr;
+	sPFN = PHYS_PFN(psCpuPAddr->uiAddr);
 #else
 	pfn_t sPFN;
 
@@ -489,7 +489,7 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 	if (bUseVMInsertPage)
 	{
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
-		IMG_INT32 sPFN;
+		IMG_UINT64 sPFN;
 #else
 		pfn_t sPFN;
 #endif
@@ -498,7 +498,7 @@ OSMMapPMRGeneric(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
 			if (pbValid[uiOffsetIdx])
 			{
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
-				sPFN = psCpuPAddr[uiOffsetIdx].uiAddr;
+				sPFN = PHYS_PFN(psCpuPAddr[uiOffsetIdx].uiAddr);
 
 				if (!pfn_valid(sPFN) || page_count(pfn_to_page(sPFN)) == 0)
 #else
