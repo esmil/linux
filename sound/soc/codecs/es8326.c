@@ -11,6 +11,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/module.h>
+#include <linux/input.h>
 #include <sound/jack.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
@@ -1468,11 +1469,90 @@ static struct notifier_block headphone_init_notifier = {
 };
 #endif
 
-static int es8326_probe(struct snd_soc_component *component)
+static void es8326_enable_jack_detect(struct snd_soc_component *component,
+				struct snd_soc_jack *jack)
+{
+	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+
+	mutex_lock(&es8326->lock);
+	if (es8326->jd_inverted)
+		snd_soc_component_update_bits(component, ES8326_HPDET_TYPE,
+					      ES8326_HP_DET_JACK_POL, ~es8326->jack_pol);
+	es8326->jack = jack;
+
+	mutex_unlock(&es8326->lock);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+
+	if (es8326->irq > 0)
+		es8326_irq(es8326->irq, es8326);
+	else
+		es8326_irq_hpmic(es8326->irq, es8326);
+#else
+	es8326_irq(es8326->irq, es8326);
+#endif
+}
+
+static void es8326_disable_jack_detect(struct snd_soc_component *component)
+{
+	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+
+	dev_dbg(component->dev, "Enter into %s\n", __func__);
+	if (!es8326->jack)
+		return; /* Already disabled (or never enabled) */
+	cancel_delayed_work_sync(&es8326->jack_detect_work);
+
+	mutex_lock(&es8326->lock);
+	if (es8326->jack->status & SND_JACK_MICROPHONE) {
+		es8326_disable_micbias(component);
+		snd_soc_jack_report(es8326->jack, 0, SND_JACK_HEADSET);
+	}
+	es8326->jack = NULL;
+	mutex_unlock(&es8326->lock);
+}
+
+static int es8326_set_jack(struct snd_soc_component *component,
+			struct snd_soc_jack *jack, void *data)
+{
+	if (jack)
+		es8326_enable_jack_detect(component, jack);
+	else
+		es8326_disable_jack_detect(component);
+
+	return 0;
+}
+
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+static int es8326_init_jack(struct snd_soc_component *component)
 {
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
 	int ret;
 
+	es8326->jack = devm_kzalloc(component->dev, sizeof(*es8326->jack), GFP_KERNEL);
+	if (!es8326->jack)
+		return -ENOMEM;
+
+	ret = snd_soc_card_jack_new(component->card, "Headset Jack",
+		SND_JACK_HEADSET | SND_JACK_BTN_0 |
+		SND_JACK_BTN_1 | SND_JACK_BTN_2,
+		es8326->jack);
+	if (ret < 0) {
+		dev_err(component->dev, "Cannot create jack\n");
+		return ret;
+	}
+	snd_jack_set_key(es8326->jack->jack, SND_JACK_BTN_0, KEY_PLAYPAUSE);
+	snd_jack_set_key(es8326->jack->jack, SND_JACK_BTN_1, KEY_VOLUMEUP);
+	snd_jack_set_key(es8326->jack->jack, SND_JACK_BTN_2, KEY_VOLUMEDOWN);
+
+	es8326_enable_jack_detect(component, es8326->jack);
+
+	return 0;
+}
+#endif
+
+static int es8326_probe(struct snd_soc_component *component)
+{
+	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+	int ret;
 	es8326->component = component;
 	es8326->jd_inverted = device_property_read_bool(component->dev,
 							"everest,jack-detect-inverted");
@@ -1517,58 +1597,12 @@ static int es8326_probe(struct snd_soc_component *component)
 	es8326_init(component);
 	#ifdef SPACEMIT_CONFIG_CODEC_ES8326
 	spacemit_headphone_register_client(&headphone_init_notifier);
-	#endif
-	return 0;
-}
 
-static void es8326_enable_jack_detect(struct snd_soc_component *component,
-				struct snd_soc_jack *jack)
-{
-	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
-
-	mutex_lock(&es8326->lock);
-	if (es8326->jd_inverted)
-		snd_soc_component_update_bits(component, ES8326_HPDET_TYPE,
-					      ES8326_HP_DET_JACK_POL, ~es8326->jack_pol);
-	es8326->jack = jack;
-
-	mutex_unlock(&es8326->lock);
-#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-	if (es8326->irq > 0)
-		es8326_irq(es8326->irq, es8326);
-	else
-		es8326_irq_hpmic(es8326->irq, es8326);
-#else
-	es8326_irq(es8326->irq, es8326);
-#endif
-}
-
-static void es8326_disable_jack_detect(struct snd_soc_component *component)
-{
-	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
-
-	dev_dbg(component->dev, "Enter into %s\n", __func__);
-	if (!es8326->jack)
-		return; /* Already disabled (or never enabled) */
-	cancel_delayed_work_sync(&es8326->jack_detect_work);
-
-	mutex_lock(&es8326->lock);
-	if (es8326->jack->status & SND_JACK_MICROPHONE) {
-		es8326_disable_micbias(component);
-		snd_soc_jack_report(es8326->jack, 0, SND_JACK_HEADSET);
+	ret = es8326_init_jack(component);
+	if (ret != 0) {
+		dev_dbg(component->dev, "jack init return %d", ret);
 	}
-	es8326->jack = NULL;
-	mutex_unlock(&es8326->lock);
-}
-
-static int es8326_set_jack(struct snd_soc_component *component,
-			struct snd_soc_jack *jack, void *data)
-{
-	if (jack)
-		es8326_enable_jack_detect(component, jack);
-	else
-		es8326_disable_jack_detect(component);
-
+	#endif
 	return 0;
 }
 
