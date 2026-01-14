@@ -417,7 +417,11 @@ static __always_inline void __cmpwait(volatile void *ptr,
 		"	lr.w	%0, %1\n"
 		"	xor	%0, %0, %2\n"
 		"	bnez	%0, 1f\n"
+#ifdef CONFIG_SOC_SPACEMIT_K3
+			ZAWRS_WRS_STO "\n"
+#else
 			ZAWRS_WRS_NTO "\n"
+#endif
 		"1:"
 		: "=&r" (tmp), "+A" (*(u32 *)ptr)
 		: "r" (val));
@@ -428,7 +432,11 @@ static __always_inline void __cmpwait(volatile void *ptr,
 		"	lr.d	%0, %1\n"
 		"	xor	%0, %0, %2\n"
 		"	bnez	%0, 1f\n"
+#ifdef CONFIG_SOC_SPACEMIT_K3
+			ZAWRS_WRS_STO "\n"
+#else
 			ZAWRS_WRS_NTO "\n"
+#endif
 		"1:"
 		: "=&r" (tmp), "+A" (*(u64 *)ptr)
 		: "r" (val));
