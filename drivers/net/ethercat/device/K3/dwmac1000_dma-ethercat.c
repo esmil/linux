@@ -276,7 +276,7 @@ static void dwmac1000_rx_watchdog(struct stmmac_priv *priv,
 	writel(riwt, ioaddr + DMA_CHAN_RX_WATCHDOG(queue));
 }
 
-const struct stmmac_dma_ops ec_dwmac1000_dma_ops = {
+const struct stmmac_dma_ops dwmac1000_dma_ops = {
 	.reset = dwmac_dma_reset,
 	.init_chan = dwmac1000_dma_init_channel,
 	.init_rx_chan = dwmac1000_dma_init_rx,
@@ -296,3 +296,4 @@ const struct stmmac_dma_ops ec_dwmac1000_dma_ops = {
 	.get_hw_feature = dwmac1000_get_hw_feature,
 	.rx_watchdog = dwmac1000_rx_watchdog,
 };
+EXPORT_SYMBOL_GPL(dwmac1000_dma_ops);

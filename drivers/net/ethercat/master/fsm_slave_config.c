@@ -224,7 +224,6 @@ void ec_fsm_slave_config_state_start(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_start\n");
     EC_SLAVE_DBG(fsm->slave, 1, "Configuring...\n");
     ec_fsm_slave_config_enter_init(fsm);
 }
@@ -237,7 +236,6 @@ void ec_fsm_slave_config_enter_init(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_init\n");
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_INIT);
     ec_fsm_change_exec(fsm->fsm_change);
     fsm->state = ec_fsm_slave_config_state_init;
@@ -251,7 +249,6 @@ void ec_fsm_slave_config_state_init(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_init\n");
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -289,7 +286,6 @@ void ec_fsm_slave_config_state_clear_fmmus(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_clear_fmmus\n");
     ec_datagram_t *datagram = fsm->datagram;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
@@ -320,7 +316,6 @@ void ec_fsm_slave_config_enter_clear_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_clear_fmmus\n");
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     size_t sync_size;
@@ -350,7 +345,6 @@ void ec_fsm_slave_config_state_clear_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_clear_sync\n");
     ec_datagram_t *datagram = fsm->datagram;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
@@ -383,7 +377,6 @@ void ec_fsm_slave_config_enter_dc_clear_assign(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_clear_sync\n");
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
@@ -408,7 +401,6 @@ void ec_fsm_slave_config_state_dc_clear_assign(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_dc_clear_assign\n");
     ec_datagram_t *datagram = fsm->datagram;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
@@ -438,7 +430,6 @@ void ec_fsm_slave_config_enter_mbox_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_dc_clear_assign\n");
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int i;
@@ -571,7 +562,6 @@ void ec_fsm_slave_config_state_mbox_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_mbox_sync\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -639,7 +629,6 @@ void ec_fsm_slave_config_enter_assign_pdi(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_mbox_sync\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -664,7 +653,6 @@ void ec_fsm_slave_config_state_assign_pdi(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_assign_pdi\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -697,7 +685,6 @@ void ec_fsm_slave_config_enter_boot_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_assign_pdi\n");
     fsm->state = ec_fsm_slave_config_state_boot_preop;
 
     if (fsm->slave->requested_state != EC_SLAVE_STATE_BOOT) {
@@ -719,7 +706,6 @@ void ec_fsm_slave_config_state_boot_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_boot_preop\n");
     ec_slave_t *slave = fsm->slave;
 #ifdef EC_SII_ASSIGN
     int assign_to_pdi;
@@ -793,7 +779,6 @@ void ec_fsm_slave_config_state_assign_ethercat(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_assign_ethercat\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -832,10 +817,9 @@ void ec_fsm_slave_config_enter_sdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_sdo_conf\n");
     ec_slave_t *slave = fsm->slave;
 
-    if (!slave->config) {                          //当我用命令行进入op时，slave->config在这里被清空了？
+    if (!slave->config) {
         ec_fsm_slave_config_enter_pdo_sync(fsm);
         return;
     }
@@ -864,7 +848,6 @@ void ec_fsm_slave_config_state_sdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_sdo_conf\n");
     if (ec_fsm_coe_exec(fsm->fsm_coe, fsm->datagram)) {
         return;
     }
@@ -904,7 +887,6 @@ void ec_fsm_slave_config_enter_soe_conf_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_soe_conf_preop\n");
     ec_slave_t *slave = fsm->slave;
     ec_soe_request_t *req;
 
@@ -939,7 +921,6 @@ void ec_fsm_slave_config_state_soe_conf_preop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_soe_conf_preop\n");
     ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_soe_exec(fsm->fsm_soe, fsm->datagram)) {
@@ -984,7 +965,6 @@ void ec_fsm_slave_config_enter_eoe_ip_param(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_eoe_ip_param\n");
 #ifdef EC_EOE
     ec_slave_t *slave = fsm->slave;
     ec_eoe_request_t *request = &slave->config->eoe_ip_param_request;
@@ -1011,7 +991,6 @@ void ec_fsm_slave_config_state_eoe_ip_param(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_eoe_ip_param\n");
 #ifdef EC_EOE
     ec_slave_t *slave = fsm->slave;
 
@@ -1037,7 +1016,6 @@ void ec_fsm_slave_config_enter_pdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_pdo_conf\n");
     // Start configuring PDOs
     ec_fsm_pdo_start_configuration(fsm->fsm_pdo, fsm->slave);
     fsm->state = ec_fsm_slave_config_state_pdo_conf;
@@ -1052,7 +1030,6 @@ void ec_fsm_slave_config_state_pdo_conf(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_pdo_conf\n");
     // TODO check for config here
 
     if (ec_fsm_pdo_exec(fsm->fsm_pdo, fsm->datagram)) {
@@ -1202,7 +1179,6 @@ void ec_fsm_slave_config_enter_pdo_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_pdo_sync\n");
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int i, j, offset, num_pdo_syncs;
@@ -1271,7 +1247,6 @@ void ec_fsm_slave_config_state_pdo_sync(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_pdo_sync\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -1305,7 +1280,6 @@ void ec_fsm_slave_config_enter_fmmu(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_fmmu\n");
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     unsigned int i;
@@ -1360,7 +1334,6 @@ void ec_fsm_slave_config_state_fmmu(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_fmmu\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -1393,7 +1366,6 @@ void ec_fsm_slave_config_enter_dc_cycle(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_dc_cycle\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_slave_config_t *config = slave->config;
@@ -1432,7 +1404,6 @@ void ec_fsm_slave_config_state_dc_cycle(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_dc_cycle\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_slave_config_t *config = slave->config;
@@ -1476,7 +1447,6 @@ void ec_fsm_slave_config_state_dc_sync_check(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_dc_sync_check\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
@@ -1578,7 +1548,6 @@ void ec_fsm_slave_config_state_dc_start(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_dc_start\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_slave_config_t *config = slave->config;
@@ -1624,7 +1593,6 @@ void ec_fsm_slave_config_state_dc_assign(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_dc_assign\n");
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
@@ -1661,7 +1629,6 @@ void ec_fsm_slave_config_enter_wait_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_wait_safeop\n");
     ec_slave_config_t *config = fsm->slave->config;
     fsm->wait_ms = 0UL;
     if (config) {
@@ -1694,7 +1661,6 @@ void ec_fsm_slave_config_state_wait_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_wait_safeop\n");
     unsigned long diff = jiffies - fsm->jiffies_start;
 
     if (diff * 1000 / HZ < fsm->wait_ms) {
@@ -1712,7 +1678,6 @@ void ec_fsm_slave_config_enter_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_safeop\n");
     fsm->state = ec_fsm_slave_config_state_safeop;
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_SAFEOP);
     ec_fsm_change_exec(fsm->fsm_change); // execute immediately
@@ -1726,7 +1691,6 @@ void ec_fsm_slave_config_state_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_safeop\n");
     ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_change_exec(fsm->fsm_change)) return;
@@ -1759,7 +1723,6 @@ void ec_fsm_slave_config_enter_soe_conf_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_soe_conf_safeop\n");
     ec_slave_t *slave = fsm->slave;
     ec_soe_request_t *req;
 
@@ -1794,7 +1757,6 @@ void ec_fsm_slave_config_state_soe_conf_safeop(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_soe_conf_safeop\n");
     ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_soe_exec(fsm->fsm_soe, fsm->datagram)) {
@@ -1839,7 +1801,6 @@ void ec_fsm_slave_config_enter_op(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_enter_op\n");
     // set state to OP
     fsm->state = ec_fsm_slave_config_state_op;
     ec_fsm_change_start(fsm->fsm_change, fsm->slave, EC_SLAVE_STATE_OP);
@@ -1854,7 +1815,6 @@ void ec_fsm_slave_config_state_op(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_op\n");
     ec_slave_t *slave = fsm->slave;
 
     if (ec_fsm_change_exec(fsm->fsm_change)) return;
@@ -1881,7 +1841,6 @@ void ec_fsm_slave_config_reconfigure(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_reconfigure\n");
     EC_SLAVE_DBG(fsm->slave, 1, "Slave configuration detached during "
             "configuration. Reconfiguring.");
 
@@ -1898,7 +1857,6 @@ void ec_fsm_slave_config_state_error(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_error\n");
 }
 
 /****************************************************************************/
@@ -1909,7 +1867,6 @@ void ec_fsm_slave_config_state_end(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-//    printk("ec_fsm_slave_config_state_end\n");
 }
 
 /****************************************************************************/

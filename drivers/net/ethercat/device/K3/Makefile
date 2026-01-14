@@ -29,6 +29,8 @@ stmmac-objs := stmmac_main-ethercat.o \
                dwxgmac2_descs-ethercat.o \
                stmmac_xdp-ethercat.o \
                stmmac_est-ethercat.o \
+               stmmac_fpe-ethercat.o \
+               stmmac_vlan-ethercat.o \
                stmmac_platform-ethercat.o \
                dwmac-spacemit-ethqos-ethercat.o \
                $(stmmac-y)
