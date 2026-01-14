@@ -3,7 +3,7 @@
 
 &soc {
 
-	display: display-subsystem {
+	display-subsystem-dsi {
 		compatible = "spacemit,saturn-hee";
 		reg = <0 0xc0340000 0 0x54000>;
 		hw_ver = <2>;
