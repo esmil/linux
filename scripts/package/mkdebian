@@ -166,6 +166,7 @@ else
 fi
 sourcename=${KDEB_SOURCENAME:-linux-upstream}
 kernelgitver=$(git rev-parse --short HEAD)
+version=${KERNELRELEASE}
 baseversion=$(echo $version | cut -d- -f1)
 
 if [ "$ARCH" = "um" ] ; then
