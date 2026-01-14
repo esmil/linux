@@ -201,6 +201,76 @@ static void inno_dp_phy_cfg(struct dp_chip_t *inno)
 			     osal_read32(0x100, conn), conn);
 }
 
+static void inno_dp_core_pll_cfg(struct dp_chip_t *inno)
+{
+#define pll_prediv		(0)
+#define pll_fbdiv		(1)
+#define pll_postdiv		(2)
+#define pll_clkdiv_16m		(3)
+#define pll_postdiv_en		(4)
+#define pll_vcoclk_div8_en	(5)
+
+	osal_printf("%s() \n", __func__);
+
+	/* for reference clk 50mhz config */
+	/*
+	uint32_t pll_table[][6] = {
+		{2, 64, 0, 12, 1, 1},
+		{1, 54, 0, 21, 1, 1},
+		{1, 54, 0, 42, 0, 0},
+	};
+	*/
+
+	/* for reference clk 24mhz config */
+	uint32_t pll_table[][6] = {
+		{2, 135, 0, 12, 1, 1},
+		{2, 225, 0, 21, 1, 1},
+		{2, 225, 0, 42, 0, 0},
+	};
+	struct inno_conn_t *conn = (struct inno_conn_t *)inno->priv;
+
+	if (inno->phy_rate >= ARRAY_SIZE(pll_table) || inno->phy_rate < 0)
+		inno->phy_rate = 1;
+
+	/* power down core pll */
+	osal_write32(0x180, BIT(0) | osal_read32(0x180, conn), conn);
+
+	/* (0x188), INNODP_SPREAD_CFG */
+	osal_write32(0x188,
+		     (osal_read32(0x188, conn) & ~(0x3 << 8)) |
+		     (pll_table[inno->phy_rate][pll_postdiv] << 8) |
+		     (pll_table[inno->phy_rate][pll_postdiv_en] << 11) |
+		     (pll_table[inno->phy_rate][pll_vcoclk_div8_en] << 16), conn);
+
+	/* (0x1a0), INNODP_CLKDIV_16M */
+	osal_write32(0x1a0,
+		     (osal_read32(0x1a0, conn) & ~(0x3f << 8)) |
+		     (pll_table[inno->phy_rate][pll_clkdiv_16m] << 8), conn);
+
+	/* (0x180) pll config */
+	osal_write32(0x180,
+		     (osal_read32(0x180, conn) &
+		      ~(0x3f << 8) & ~(0xf << 16) & ~(0xff << 24)) |
+		     ((pll_table[inno->phy_rate][pll_fbdiv] >> 8) << 16) |
+		     ((pll_table[inno->phy_rate][pll_fbdiv] & 0xff) << 24) |
+		     (pll_table[inno->phy_rate][pll_prediv] << 8), conn);
+
+	/* turn off frac ctr */
+	osal_write32(0x180, (0x3 << 4) | osal_read32(0x180, conn), conn);
+
+	/* power up core pll */
+	osal_write32(0x180, ~(BIT(0)) & osal_read32(0x180, conn), conn);
+
+	osal_msleep(10);
+
+#undef pll_fbdiv
+#undef pll_prediv
+#undef pll_postdiv
+#undef pll_clkdiv_16m
+#undef pll_postdiv_en
+#undef pll_vcoclk_div8_en
+}
+
 static void inno_dp_phy_init(struct inno_conn_t *conn)
 {
 	/* core pll cfg */
@@ -398,6 +468,7 @@ static void inno_dp_video_cfg(struct inno_conn_t *conn, struct drm_display_mode 
 		polarity = 0x3;
 
 	msa_misc0 = 0x20;
+	/* RGB 8 bits */
 	video_map = 0x1;
 
 	osal_write32(0x200, (~(0x1f << 22) & osal_read32(0x200, conn)) |
@@ -558,7 +629,7 @@ static void inno_dp_irq_enable(struct dp_chip_t *inno)
 	 * instead of polling the
 	 */
 	/* tmp |= BIT(16); */
-	tmp |= BIT(17); /* enable hpd plug evnet */
+	tmp |= BIT(17); /* enable hpd plug event */
 	osal_write32(0x84, tmp, conn);
 
 	tmp = osal_read32(0x8c, conn);
@@ -737,97 +808,119 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 {
 	uint32_t index = 0;
 	struct dp_chip_t *inno = (struct dp_chip_t *)conn->priv;
+	uint8_t edid[256];
+	bool hdisplay_1920 = false;
+	bool hdisplay_2560 = false;
+	bool hdisplay_3840 = false;
 
-	#if 0
+	osal_printf("%s() hdisplay %d vdisplay %d\n", __func__, mode->hdisplay, mode->vdisplay);
 
-	inno_dp_compliance_config(inno);
-
-	inno_dp_link_config(inno);
-
-	inno_dp_irq_enable(inno);
-
-	index = inno_dp_pclk_index(conn, mode->clock);
-	if (conn->use_phy_board)
-		innodp_phyboard_pixel_pll_cfg(conn, index);
+	if (mode->hdisplay == 3840)
+		hdisplay_3840 = true;
+	else if (mode->hdisplay == 2560)
+		hdisplay_2560 = true;
+	else if (mode->hdisplay == 1920)
+		hdisplay_1920 = true;
 	else
-		inno_dp_pixel_pll_cfg(conn, index);
+		hdisplay_1920 = true;
 
-	if (conn->use_phy_board) {
-		innodp_phyboard_set_swinglevel(conn);
-		innodp_phyboard_link_config(conn);
-	}
-
-	#endif
-
-	osal_printf("%s() inno_dp_modeset begin\n", __func__);
 
 	osal_write32(0x18, osal_read32(0x18, conn) & ~BIT(29), conn);
-
 	osal_write32(0x18, osal_read32(0x18, conn) | BIT(30), conn);
-
 	osal_write32(0x100, osal_read32(0x100, conn) & ~0x1E0000, conn);
 
-	// core pll
+	/* core pll config */
 	osal_printf("%s() core pll config\n", __func__);
 
 	osal_write32(0x180, 0xe13002b1, conn);
-
 	osal_write32(0x188, 0x10801, conn);
-
 	osal_write32(0x184, osal_read32(0x184, conn) & 0xFF000000, conn);
-
 	osal_write32(0x198, osal_read32(0x198, conn) | BIT(17), conn);
-
 	osal_write32(0x198, osal_read32(0x198, conn) | BIT(8), conn);
-
 	osal_write32(0x1a0, 0x1500, conn);
-
 	osal_write32(0x180, 0xe1300230, conn);
-
 	osal_msleep(100);
 
 	osal_read32(0x180, conn);
 
-	// pixel pll
+	/* compliance config */
+	osal_printf("%s() compliance config\n", __func__);
+
+	inno_dp_compliance_config(inno);
+
+	if (conn->edp_enable) {
+		uint8_t value = 0;
+		struct dp_chip_t *chip = conn->priv;
+
+		osal_printf("%s() enable edp\n", __func__);
+
+		osal_write32(0x18, osal_read32(0x18, conn) | BIT(4), conn);
+		osal_write32(0x200, osal_read32(0x200, conn) | BIT(18), conn);
+		inno_dp_dpcd_read(chip, DP_EDP_CONFIGURATION_SET, &value, 1);
+		value |= 0x1;
+		inno_dp_dpcd_write(chip, DP_EDP_CONFIGURATION_SET, &value, 1);
+	} else {
+		uint8_t value = 0;
+		struct dp_chip_t *chip = conn->priv;
+
+		osal_printf("%s() enable dp\n", __func__);
+
+		osal_write32(0x18, osal_read32(0x18, conn) & (~BIT(4)), conn);
+		osal_write32(0x200, osal_read32(0x200, conn) & (~BIT(18)), conn);
+		inno_dp_dpcd_read(chip, DP_EDP_CONFIGURATION_SET, &value, 1);
+		value |= 0x0;
+		inno_dp_dpcd_write(chip, DP_EDP_CONFIGURATION_SET, &value, 1);
+	}
+
+	/* config pixel pll */
 	osal_printf("%s() pixel pll config\n", __func__);
+#if 1
+	if (hdisplay_2560) {
+		osal_write32(0x190, 0xb9000231, conn);
+		osal_write32(0x194, 0x1000401, conn);
+		osal_write32(0x198, 0x102012a, conn);
+		osal_write32(0x19c, 0x00, conn);
+		osal_write32(0x190, 0xb9000230, conn);
+		osal_msleep(2);
 
-	osal_write32(0x190, 0x63300181, conn);
+		osal_write32(0x190, 0xb9000232, conn);
+		osal_msleep(100);
 
-	osal_write32(0x194, 0x01000801, conn);
+		osal_read32(0x190, conn);
+		osal_read32(0x180, conn);
+	} else if (hdisplay_1920) {
+		osal_write32(0x190, 0x63300181, conn);
+		osal_write32(0x194, 0x01000801, conn);
+		osal_write32(0x198, 0x0102012a, conn);
+		osal_write32(0x190, 0x63300180, conn);
+		osal_msleep(2);
 
-	osal_write32(0x198, 0x0102012a, conn);
+		osal_write32(0x190, 0x63300182, conn);
+		osal_msleep(100);
 
-	osal_write32(0x190, 0x63300180, conn);
-
-	osal_msleep(2);
-
-	osal_write32(0x190, 0x63300182, conn);
-
+		osal_read32(0x190, conn);
+		osal_read32(0x180, conn);
+	}
+#else
+	osal_printf("%s() pixel pll clock %d\n", __func__, mode->clock);
+	index = inno_dp_pclk_index(conn, mode->clock);
+	inno_dp_pixel_pll_cfg(conn, index);
 	osal_msleep(100);
 
 	osal_read32(0x190, conn);
-
-	osal_read32(0x180, conn);
-
-	osal_read32(0x28, conn);
+#endif
 
 	// hpd
 	osal_printf("%s() hpd config\n", __func__);
 
 	osal_write32(0x18, osal_read32(0x18, conn) | BIT(28), conn);
-
 	// osal_write32(0x84, osal_read32(0x84, conn) | BIT(16), conn);
-
 	osal_write32(0x84, osal_read32(0x84, conn) | BIT(17), conn);
-
 	osal_write32(0x8c, osal_read32(0x8c, conn) | BIT(28), conn);
-
 	osal_write32(0x8c, osal_read32(0x8c, conn) | BIT(29), conn);
-
 	osal_write32(0x8c, osal_read32(0x8c, conn) | BIT(31), conn);
 
 	osal_read32(0x80, conn);
-
 	osal_read32(0x88, conn);
 
 	if (osal_read32(0x88, conn) & BIT(29) )
@@ -860,110 +953,82 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	udelay(1000);
 	osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
 
-	// ana_drv
+	// ana drv config
 	osal_printf("%s() ana drv config\n", __func__);
 	// output mode control of 4 data lanes
 	osal_write32(0x1B0, osal_read32(0x1B0, conn) & ~0xF000000, conn);
-
 	osal_write32(0x1c0, 0xf08000, conn);
-
 	osal_write32(0x1c4, 0x00, conn);
-
 	osal_write32(0x1c0, 0xf00000, conn);
-
 	osal_msleep(100);
 
 	osal_read32(0x1c0, conn);
-
 	osal_write32(0x1DC, (osal_read32(0x1DC, conn) & ~0xFF) | 0xFF, conn);
-
 	osal_write32(0x1DC, osal_read32(0x1DC, conn) & 0xFF0000FF, conn);
-	// output mode lane2 lane3 level value 0xf
-	osal_write32(0x1A4, (osal_read32(0x1A4, conn) & 0x00FFFFFF) | (0xff << 24), conn);
-	// output mode lane0 lane1 level value 0xf
-	osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0xFFFFFF00) | 0xff, conn);
+
+	if (conn->edp_enable) {
+		// output mode lane2 lane3 level value 0x5
+		osal_write32(0x1A4, (osal_read32(0x1A4, conn) & 0x00FFFFFF) | (0x55 << 24), conn);
+		// output mode lane0 lane1 level value 0x5
+		osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0xFFFFFF00) | 0x55, conn);
+	} else {
+		// output mode lane2 lane3 level value 0xf
+		osal_write32(0x1A4, (osal_read32(0x1A4, conn) & 0x00FFFFFF) | (0xff << 24), conn);
+		// output mode lane0 lane1 level value 0xf
+		osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0xFFFFFF00) | 0xff, conn);
+	}
 
 	osal_write32(0x1A8, (osal_read32(0x1A8, conn) & 0x0000FFFF) | (0x0B0B << 16), conn);
-
 	osal_write32(0x1AC, (osal_read32(0x1AC, conn) & 0xFFFF0000) | 0x0B0B, conn);
-
 	osal_write32(0x1AC, (osal_read32(0x1AC, conn) & 0x0000FFFF) | (0x2222 << 16), conn);
-
 	osal_write32(0x1B0, osal_read32(0x1B0, conn) & 0xFFFF0000, conn);
-
 	osal_write32(0x1B0, (osal_read32(0x1B0, conn) & ~(0xF << 24)) | (0xF << 24), conn);
-
 	osal_write32(0x1D0, (osal_read32(0x1D0, conn) & ~(0x3 << 12)) | (0x1 << 12), conn);
-
 	osal_write32(0x100, (osal_read32(0x100, conn) & ~(0x3 << 5)) | (0x2 << 5), conn);
-
 	osal_write32(0x100, (osal_read32(0x100, conn) & ~0x3) | 0x1, conn);
 
-	// bist mode
-	osal_printf("%s() bist mode config\n", __func__);
+	/* config video stream */
+	osal_printf("%s()video stream config\n", __func__);
 
-	osal_write32(0x200, 0x400000, conn);
+	/* video stream disable */
+	osal_write32(0x200, osal_read32(0x200, conn) & ~BIT(28), conn);
+	inno_dp_video_cfg(conn, &conn->out_mode);
+	if (conn->edp_enable && mode->hdisplay == 2560 && mode->vdisplay == 1600) {
+		// set 2.5K eDP polarity
+		osal_write32(0x20c, 0x3 << 28, conn);
+	}
+	/* video stream enable */
+	osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
 
-	osal_write32(0x224, 0xc00029, conn);
-
-	osal_write32(0x20c, 0x30000000, conn);
-
-	osal_write32(0x228, 0x20, conn);
-
-	osal_write32(0x22c, 0x00, conn);
-
-	osal_write32(0x214, 0x1180780, conn);
-
-	osal_write32(0x210, 0x438002d, conn);
-
-	osal_write32(0x21c, 0x58002c, conn);
-
-	osal_write32(0x220, 0x40005, conn);
-	osal_read32(0x220, conn);
-
-	// colorbar 148.5MZ
-	// osal_write32(0x230, 0x7f0000, conn);
-
-	// DPU 150MZ
-	osal_write32(0x230, 0x7e0000, conn);
-
-	osal_read32(0x230, conn);
-
-	// colorbar 148.5MZ
-	// osal_write32(0x218, 0x34804001, conn);
-
-	// DPU 150MZ
-	osal_write32(0x218, 0x34c04001, conn);
-
-	osal_read32(0x218, conn);
-
-	osal_write32(0x200, 0x10400000, conn);
-
-	osal_write32(0x238, 0x1000, conn);
-
-	// training
+	/* training config */
 	osal_printf("%s() training config\n", __func__);
-	inno_dp_compliance_config(inno);
 
+	// inno_dp_compliance_config(inno);
 	inno_dp_sink_power_ctrl(conn->priv, true);
-
 	inno_dp_link_train(conn->priv);
 
+	// PHY SSC disable
 	osal_write32(0x100, osal_read32(0x100, conn) | BIT(8), conn);
 
 	osal_write32(0x100, osal_read32(0x100, conn) & ~(0xF << 25), conn);
-
 	// osal_write32(0x28, osal_read32(0x28, conn) | BIT(0), conn);
 
-	// colorbar
+	// 1080P colorbar
 	// osal_printf("%s() colorbar mode\n", __func__);
 	// osal_write32(0x238, 0x1021, conn);
 
+	// 2.5K colorbar
+	// osal_printf("%s() colorbar mode\n", __func__);
+	//  osal_write32(0x238, 0x80000011, conn);
+
 	// DPU
 	osal_printf("%s() DPU mode\n", __func__);
-	osal_write32(0x238, 0x1020, conn);
 
-	osal_printf("%s() inno_dp_modeset end\n", __func__);
+	if (hdisplay_2560) {
+		osal_write32(0x238, 0x00, conn);
+	} else if (hdisplay_1920) {
+		osal_write32(0x238, 0x1020, conn);
+	}
 
 	return 0;
 }

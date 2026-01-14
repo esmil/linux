@@ -12,6 +12,7 @@
 #include <linux/component.h>
 #include <linux/proc_fs.h>
 #include <linux/clk.h>
+#include <linux/gpio.h>
 #include <linux/reset.h>
 #include <linux/delay.h>
 #include <drm/drm_of.h>
@@ -27,6 +28,8 @@
 
 #include "inno_conn.h"
 #include "inno_dp_api.h"
+
+#define INVALID_GPIO			0xFFFFFFFF
 
 #define INNO_DP_HPD_IRQ_EVENT		BIT(31)
 #define INNO_DP_HPD_PLUG_EVENT		BIT(29)
@@ -46,6 +49,10 @@ struct dp_dev {
 
 	struct reset_control *reset;
 	struct clk *pxclk;
+
+	u32 gpio_bl;
+	u32 gpio_power;
+	u32 gpio_enable;
 
 	struct inno_conn_t *conn;
 };
@@ -377,6 +384,39 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 		DRM_INFO("Failed to found pxclk\n");
 	}
 
+	ret = of_property_read_u32(dev->of_node, "gpios-bl", &dp_dev->gpio_bl);
+	if (ret || !gpio_is_valid(dp_dev->gpio_bl)) {
+		dev_info(dev, "missing dt property: gpios-bl\n");
+		dp_dev->gpio_bl = INVALID_GPIO;
+	} else {
+		ret = gpio_request(dp_dev->gpio_bl, NULL);
+		if (ret) {
+			pr_err("gpio_bl request fail\n");
+		}
+	}
+
+	ret = of_property_read_u32(dev->of_node, "gpios-enable", &dp_dev->gpio_enable);
+	if (ret || !gpio_is_valid(dp_dev->gpio_enable)) {
+		dev_info(dev, "missing dt property: gpios-enable\n");
+		dp_dev->gpio_enable = INVALID_GPIO;
+	} else {
+		ret = gpio_request(dp_dev->gpio_enable, NULL);
+		if (ret) {
+			pr_err("gpio_enable request fail\n");
+		}
+	}
+
+	ret = of_property_read_u32(dev->of_node, "gpios-power", &dp_dev->gpio_power);
+	if (ret || !gpio_is_valid(dp_dev->gpio_power)) {
+		dev_info(dev, "missing dt property: gpios-power\n");
+		dp_dev->gpio_power = INVALID_GPIO;
+	} else {
+		ret = gpio_request(dp_dev->gpio_power, NULL);
+		if (ret) {
+			pr_err("gpio_power request fail\n");
+		}
+	}
+
 	if (!IS_ERR_OR_NULL(dp_dev->reset)) {
 		ret = reset_control_deassert(dp_dev->reset);
 		if (ret < 0) {
@@ -386,6 +426,13 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 
 	if (dp_dev->pxclk)
 		clk_prepare_enable(dp_dev->pxclk);
+
+	if(INVALID_GPIO != dp_dev->gpio_power)
+		gpio_direction_output(dp_dev->gpio_power, 1);
+	if(INVALID_GPIO != dp_dev->gpio_enable)
+		gpio_direction_output(dp_dev->gpio_enable, 1);
+	if(INVALID_GPIO != dp_dev->gpio_bl)
+		gpio_direction_output(dp_dev->gpio_bl, 1);
 
 	ret = drm_connector_init(drm, &dp_dev->connector,
 				 &dp_connector_funcs,
@@ -461,6 +508,13 @@ static void inno_dp_unbind(struct device *dev, struct device *master, void *data
 	drm_encoder_cleanup(&dp_dev->encoder);
 	drm_connector_cleanup(&dp_dev->connector);
 
+	if(INVALID_GPIO != dp_dev->gpio_bl)
+		gpio_direction_output(dp_dev->gpio_bl, 0);
+	if(INVALID_GPIO != dp_dev->gpio_enable)
+		gpio_direction_output(dp_dev->gpio_enable, 0);
+	if(INVALID_GPIO != dp_dev->gpio_power)
+		gpio_direction_output(dp_dev->gpio_power, 0);
+
 	inno_exit(dp_dev->conn);
 
 	if (dp_dev->pxclk)
@@ -493,6 +547,8 @@ static void inno_dp_remove(struct platform_device *pdev)
 static const struct of_device_id inno_dp_match[] = {
 	{ .compatible = "spacemit,inno-dp0" },
 	{ .compatible = "spacemit,inno-dp1" },
+	{ .compatible = "spacemit,inno-edp0" },
+	{ .compatible = "spacemit,inno-edp1" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, inno_dp_match);
@@ -510,6 +566,6 @@ struct platform_driver inno_dp_driver = {
 
 static int inno_dp_driver_init(void)
 {
-       return platform_driver_register(&inno_dp_driver);
+	return platform_driver_register(&inno_dp_driver);
 }
 late_initcall(inno_dp_driver_init);

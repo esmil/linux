@@ -429,8 +429,16 @@ static void spacemit_crtc_atomic_enable(struct drm_crtc *crtc,
 	if (unlikely(spacemit_dpu_logo_booton)) {
 		spacemit_dpu_free_bootloader_mem();
 	} else {
-		spacemit_dpu_power_enable(a_crtc, true);
-		dpu_pm_resume(a_crtc->dev);
+		if (!a_crtc->power_on) {
+			spacemit_dpu_power_enable(a_crtc, true);
+			dpu_pm_resume(a_crtc->dev);
+		} else if (a_crtc->is_edp) {
+			dpu_pm_suspend(a_crtc->dev);
+			spacemit_dpu_power_enable(a_crtc, false);
+			msleep(10);
+			spacemit_dpu_power_enable(a_crtc, true);
+			dpu_pm_resume(a_crtc->dev);
+		}
 	}
 
 #ifdef CONFIG_SPACEMIT_DEBUG
@@ -459,9 +467,10 @@ static void spacemit_crtc_atomic_disable(struct drm_crtc *crtc,
 #ifdef CONFIG_SPACEMIT_DEBUG
 	a_crtc->is_working = false;
 #endif
-
-	dpu_pm_suspend(a_crtc->dev);
-	spacemit_dpu_power_enable(a_crtc, false);
+	if (!a_crtc->is_edp) {
+		dpu_pm_suspend(a_crtc->dev);
+		spacemit_dpu_power_enable(a_crtc, false);
+	}
 
 	spin_lock_irq(&drm->event_lock);
 	if (crtc->state->event) {

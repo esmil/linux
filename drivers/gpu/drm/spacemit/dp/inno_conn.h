@@ -46,7 +46,7 @@ struct inno_conn_t {
 	uint32_t width; /* need match with vic */
 	uint32_t height; /* need match with vic */
 
-	int edp_enable;
+	bool edp_enable;
 	struct inno_conn_func_t *func;
 	struct drm_display_mode out_mode;
 	bool edid_valid;
