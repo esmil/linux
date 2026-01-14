@@ -2126,23 +2126,13 @@
 		};
 
 		pcie0_rc: pcie@80000000 {
-			compatible = "spacemit,k3-pcie";
+			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x80000000 0x0 0x00001000>, /* dbi */
 				<0x0 0x80100000 0x0 0x00001000>, /* dbi2 */
 				<0x0 0x80300000 0x0 0x00003f20>, /* atu registers */
 				<0x11 0x00000000 0x0 0x00010000>, /* config space */
-				<0x0 0xd42829f0 0x0 0x00000008>, /* k3 soc config addr */
-				<0x0 0x82900000 0x0 0x00001000>; /* phy ahb */
-				reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
-
-				spacemit,apmu = <&syscon_apmu>;
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
-			clock-names = "pcie-master", "pcie-slave";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTA>;
-			reset-names = "pcie-reset";
-
-			spacemit,pcie-port = <0>;
+				<0x0 0x82900000 0x0 0x00001000>; /* phy ahb (link) */
+			reg-names = "dbi", "dbi2", "atu", "config", "link";
 			bus-range = <0x00 0xff>;
 			max-link-speed = <3>;
 			num-lanes = <8>;
@@ -2154,42 +2144,31 @@
 				<0x43000000 0x18 0x00000000 0x18 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <141 IRQ_TYPE_LEVEL_HIGH>, <219 IRQ_TYPE_LEVEL_HIGH>;
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0000 0 0 1 &pcie0_intc 1>, /* int_a */
-					<0000 0 0 2 &pcie0_intc 2>, /* int_b */
-					<0000 0 0 3 &pcie0_intc 3>, /* int_c */
-					<0000 0 0 4 &pcie0_intc 4>; /* int_d */
+			interrupts = <141>;
+			interrupt-names = "msi";
+				clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_MSTE>,
+					<&syscon_apmu CLK_APMU_PCIE_PORTA_MSTE>,
+					<&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
+				clock-names = "dbi", "mstr", "slv";
+				resets = <&syscon_apmu RESET_APMU_PCIE_PORTA>,
+					<&syscon_apmu RESET_APMU_PCIE_PORTA>,
+					<&syscon_apmu RESET_APMU_PCIE_PORTA>;
+				reset-names = "dbi", "mstr", "slv";
 			linux,pci-domain = <0>;
 			msi-parent = <&simsic>;
+			spacemit,apmu = <&syscon_apmu 0x1f0>;
 			status = "disabled";
-			pcie0_intc: interrupt-controller@0 {
-				interrupt-controller;
-				reg = <0 0 0 0 0>;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
-			};
 		};
 
 		pcie1_rc: pcie@80400000 {
-			compatible = "spacemit,k3-pcie";
+			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x80400000 0x0 0x00001000>, /* dbi */
 				<0x0 0x80500000 0x0 0x00001000>, /* dbi2 */
 				<0x0 0x80700000 0x0 0x00003f20>, /* atu registers */
 				<0x11 0x80000000 0x0 0x00010000>, /* config space */
-				<0x0 0xd42829d0 0x0 0x00000008>, /* k3 soc config addr */
-				<0x0 0x82c00000 0x0 0x00001000>; /* phy ahb */
-			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
+				<0x0 0x82c00000 0x0 0x00001000>; /* phy ahb (link) */
+			reg-names = "dbi", "dbi2", "atu", "config", "link";
 
-			spacemit,apmu = <&syscon_apmu>;
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTB_SLV>;
-			clock-names = "pcie-master", "pcie-slave";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTB>;
-			reset-names = "pcie-reset";
-
-			spacemit,pcie-port = <1>;
 			bus-range = <0x00 0xff>;
 			max-link-speed = <3>;
 			num-lanes = <2>;
@@ -2199,43 +2178,36 @@
 			ranges = <0x01000000 0x0 0x00010000 0x11 0x80010000 0x0 0x00100000>,
 				<0x02000000 0x0 0x80110000 0x11 0x80110000 0x0 0x7fef0000>,
 				<0x43000000 0x16 0x00000000 0x16 0x00000000 0x1 0x00000000>;
+
 			interrupt-parent = <&saplic>;
-			interrupts = <142 IRQ_TYPE_LEVEL_HIGH>, <220 IRQ_TYPE_LEVEL_HIGH>;
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0000 0 0 1 &pcie1_intc 1>, /* int_a */
-					<0000 0 0 2 &pcie1_intc 2>, /* int_b */
-					<0000 0 0 3 &pcie1_intc 3>, /* int_c */
-					<0000 0 0 4 &pcie1_intc 4>; /* int_d */
+			interrupts = <142>;
+			interrupt-names = "msi";
+
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTB_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTB_SLV>;
+			clock-names = "dbi", "mstr", "slv";
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTB>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTB>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTB>;
+			reset-names = "dbi", "mstr", "slv";
+
 			linux,pci-domain = <1>;
 			msi-parent = <&simsic>;
+			spacemit,pcie-port = <1>;
+			spacemit,apmu = <&syscon_apmu 0x1d0>;
 			status = "disabled";
-			pcie1_intc: interrupt-controller@0  {
-				interrupt-controller;
-				reg = <0 0 0 0 0>;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
-			};
 		};
 
 		pcie2_rc: pcie@80800000 {
-			compatible = "spacemit,k3-pcie";
+			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x80800000 0x0 0x00001000>, /* dbi */
 				<0x0 0x80900000 0x0 0x00001000>, /* dbi2 */
 				<0x0 0x80b00000 0x0 0x00003f20>, /* atu registers */
 				<0x12 0x00000000 0x0 0x00010000>, /* config space */
-				<0x0 0xd42829c8 0x0 0x00000008>, /* k3 soc config addr */
-				<0x0 0x82d00000 0x0 0x00001000>; /* phy ahb */
-			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
+				<0x0 0x82d00000 0x0 0x00001000>; /* phy ahb (link) */
+			reg-names = "dbi", "dbi2", "atu", "config", "link";
 
-			spacemit,apmu = <&syscon_apmu>;
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTC_SLV>;
-			clock-names = "pcie-master", "pcie-slave";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTC>;
-			reset-names = "pcie-reset";
-
-			spacemit,pcie-port = <2>;
 			bus-range = <0x00 0xff>;
 			max-link-speed = <3>;
 			num-lanes = <2>;
@@ -2245,43 +2217,36 @@
 			ranges = <0x01000000 0x00 0x00000000 0x12 0x00010000 0x0 0x00100000>,
 				<0x02000000 0x0 0x00110000 0x12 0x00110000 0x0 0x7fef0000>,
 				<0x43000000 0x15 0x00000000 0x15 0x00000000 0x1 0x00000000>;
+
 			interrupt-parent = <&saplic>;
-			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>, <221 IRQ_TYPE_LEVEL_HIGH>;
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0000 0 0 1 &pcie2_intc 1>, /* int_a */
-					<0000 0 0 2 &pcie2_intc 2>, /* int_b */
-					<0000 0 0 3 &pcie2_intc 3>, /* int_c */
-					<0000 0 0 4 &pcie2_intc 4>; /* int_d */
+			interrupts = <143>;
+			interrupt-names = "msi";
+
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTC_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTC_SLV>;
+			clock-names = "dbi", "mstr", "slv";
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTC>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTC>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTC>;
+			reset-names = "dbi", "mstr", "slv";
+
 			linux,pci-domain = <2>;
 			msi-parent = <&simsic>;
+			spacemit,pcie-port = <2>;
+			spacemit,apmu = <&syscon_apmu 0x1c8>;
 			status = "disabled";
-			pcie2_intc: interrupt-controller@0 {
-				interrupt-controller;
-				reg = <0 0 0 0 0>;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
-			};
 		};
 
 		pcie3_rc: pcie@80c00000 {
-			compatible = "spacemit,k3-pcie";
+			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x80c00000 0x0 0x00001000>, /* dbi */
 			      <0x0 0x80d00000 0x0 0x00001000>, /* dbi2 */
 			      <0x0 0x80f00000 0x0 0x00003f20>, /* atu registers */
 			      <0x12 0x80000000 0x0 0x00010000>, /* config space */
-			      <0x0 0xd42829e0 0x0 0x00000008>, /* k3 soc config addr */
-			      <0x0 0x82a00000 0x0 0x00001000>; /* phy ahb */
-			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
+			      <0x0 0x82a00000 0x0 0x00001000>; /* phy ahb (link) */
+			reg-names = "dbi", "dbi2", "atu", "config", "link";
 
-			spacemit,apmu = <&syscon_apmu>;
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTD_SLV>;
-			clock-names = "pcie-master", "pcie-slave";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTD>;
-			reset-names = "pcie-reset";
-
-			spacemit,pcie-port = <3>;
 			bus-range = <0x00 0xff>;
 			max-link-speed = <3>;
 			num-lanes = <1>;
@@ -2291,43 +2256,36 @@
 			ranges = <0x01000000 0x0 0x00010000 0x12 0x80010000 0x0 0x100000>,
 				<0x02000000 0x0 0x80110000 0x12 0x80110000 0x0 0x3fef0000>,
 				<0x43000000 0x14 0x00000000 0x14 0x00000000 0x1 0x00000000>;
+
 			interrupt-parent = <&saplic>;
-			interrupts = <145 IRQ_TYPE_LEVEL_HIGH>, <222 IRQ_TYPE_LEVEL_HIGH>;
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0000 0 0 1 &pcie2_intc 1>, /* int_a */
-					<0000 0 0 2 &pcie2_intc 2>, /* int_b */
-					<0000 0 0 3 &pcie2_intc 3>, /* int_c */
-					<0000 0 0 4 &pcie2_intc 4>; /* int_d */
+			interrupts = <145>;
+			interrupt-names = "msi";
+
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTD_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTD_SLV>;
+			clock-names = "dbi", "mstr", "slv";
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTD>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTD>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTD>;
+			reset-names = "dbi", "mstr", "slv";
+
 			linux,pci-domain = <3>;
 			msi-parent = <&simsic>;
+			spacemit,pcie-port = <3>;
+			spacemit,apmu = <&syscon_apmu 0x1e0>;
 			status = "disabled";
-			pcie3_intc: interrupt-controller@0 {
-				interrupt-controller;
-				reg = <0 0 0 0 0>;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
-			};
 		};
 
 		pcie4_rc: pcie@81000000 {
-			compatible = "spacemit,k3-pcie";
+			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x81000000 0x0 0x00001000>, /* dbi */
 			      <0x0 0x81100000 0x0 0x00001000>, /* dbi2 */
 			      <0x0 0x81300000 0x0 0x00003f20>, /* atu registers */
 			      <0x12 0xc0000000 0x0 0x00010000>, /* config space */
-			      <0x0 0xd42829e8 0x0 0x00000008>, /* k3 soc config addr */
-			      <0x0 0x82b00000 0x0 0x00001000>; /* phy ahb */
-			reg-names = "dbi", "dbi2", "atu", "config", "app", "phy_ahb";
+			      <0x0 0x82b00000 0x0 0x00001000>; /* phy ahb (link) */
+			reg-names = "dbi", "dbi2", "atu", "config", "link";
 
-			spacemit,apmu = <&syscon_apmu>;
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTE_SLV>;
-			clock-names = "pcie-master", "pcie-slave";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTE>;
-			reset-names = "pcie-reset";
-
-			spacemit,pcie-port = <4>;
 			bus-range = <0x00 0xff>;
 			max-link-speed = <3>;
 			num-lanes = <1>;
@@ -2337,23 +2295,25 @@
 			ranges = <0x01000000 0x0 0x00000000 0x12 0xc0010000 0x0 0x100000>,
 				<0x02000000 0x0 0xc0110000 0x12 0xc0110000 0x0 0x3fef0000>,
 				<0x43000000 0x13 0x00000000 0x13 0x00000000 0x1 0x00000000>;
+
 			interrupt-parent = <&saplic>;
-			interrupts = <146 IRQ_TYPE_LEVEL_HIGH>, <223 IRQ_TYPE_LEVEL_HIGH>;
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0000 0 0 1 &pcie2_intc 1>, /* int_a */
-					<0000 0 0 2 &pcie2_intc 2>, /* int_b */
-					<0000 0 0 3 &pcie2_intc 3>, /* int_c */
-					<0000 0 0 4 &pcie2_intc 4>; /* int_d */
+			interrupts = <146>;
+			interrupt-names = "msi";
+
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTE_MSTE>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTE_SLV>;
+			clock-names = "dbi", "mstr", "slv";
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTE>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTE>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTE>;
+			reset-names = "dbi", "mstr", "slv";
+
 			linux,pci-domain = <4>;
 			msi-parent = <&simsic>;
+			spacemit,pcie-port = <4>;
+			spacemit,apmu = <&syscon_apmu 0x1e8>;
 			status = "disabled";
-			pcie4_intc: interrupt-controller@0 {
-				interrupt-controller;
-				reg = <0 0 0 0 0>;
-				#address-cells = <0>;
-				#interrupt-cells = <1>;
-			};
 		};
 
 		ufshc: ufshc@0xc0e00000 {
