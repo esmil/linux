@@ -1176,7 +1176,7 @@ static void __init sdtrig_percpu_csrs_check(void *data)
 	 * by the hstateen0[H]/sstateen0 CSRs.
 	 */
 	if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_SMSTATEEN)) {
-		u64 hstateen_bit, sstateen_bit;
+		u64 hstateen_bit;
 
 		if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_h)) {
 #if __riscv_xlen > 32
@@ -1194,19 +1194,12 @@ static void __init sdtrig_percpu_csrs_check(void *data)
 				atomic_inc(&hcontext_disable);
 
 			/*
-			 * In RV32, the smstateen extension doesn't provide
+			 * The smstateen extension doesn't provide
 			 * high 32 bits of sstateen0 CSR which represent
 			 * accessibility for scontext CSR;
 			 * The decision is left on whether the dts has the
 			 * property to access the scontext CSR.
 			 */
-#if __riscv_xlen > 32
-			csr_set(CSR_SSTATEEN0, SMSTATEEN0_HSCONTEXT);
-			sstateen_bit = csr_read(CSR_SSTATEEN0);
-
-			if (!(sstateen_bit & SMSTATEEN0_HSCONTEXT))
-				atomic_inc(&scontext_disable);
-#endif
 		}
 	}
 
