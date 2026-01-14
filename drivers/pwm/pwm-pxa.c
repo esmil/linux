@@ -120,6 +120,9 @@ static int pxa_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	u64 duty_cycle;
 	int err;
 
+	if (state->duty_cycle > state->period)
+		return -EINVAL;
+
 	if (state->polarity != PWM_POLARITY_NORMAL)
 		return -EINVAL;
 
