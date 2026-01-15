@@ -675,6 +675,7 @@ static struct miscdevice tcm_misc_device = {
 	.minor		= MISC_DYNAMIC_MINOR,
 	.name		= TCM_NAME,
 	.fops		= &tcm_fops,
+	.mode		= 0666,
 };
 
 static const struct of_device_id tcm_dt_ids[] = {

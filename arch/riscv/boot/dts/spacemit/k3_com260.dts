@@ -5,6 +5,8 @@
 #include "k3-rdomain.dtsi"
 #include "k3-pinctrl.dtsi"
 #include "k3_opp_table.dtsi"
+#include "lcd/lcd_tc358762xbg_dpi_800x480.dtsi"
+#include "lcd_dsi_panel.dtsi"
 #include "k3-dp1.dtsi"
 
 / {
@@ -139,6 +141,12 @@
 		};
 	};
 
+	i2c3-2-cfg {
+		i2c3-0-pins {
+			power-source= <3300>;
+		};
+	};
+
 	i2c6-1-cfg {
 		i2c6-0-pins {
 			power-source = <3300>;
@@ -251,8 +259,9 @@
 };
 
 &sdcard {
-	pinctrl-names = "default";
+	pinctrl-names = "default","uhs";
 	pinctrl-0 = <&mmc1_cfg>;
+	pinctrl-1 = <&mmc1_uhs_cfg>;
 	bus-width = <4>;
 	wp-inverted;
 	cd-gpios = <&gpio 0 4 GPIO_ACTIVE_HIGH>;
@@ -343,9 +352,27 @@
 	status = "okay";
 };
 
+&phy0 {
+	status = "okay";
+};
+
+&phy1 {
+	status = "okay";
+};
+
+&phy4 {
+	status = "okay";
+};
+
+&phy5 {
+	status = "okay";
+};
+
 &pcie0_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie0_1_cfg>;
+	phys = <&phy0>, <&phy1>;
+	phy-names = "phy0", "phy1";
 
 	num-lanes = <4>;
 	status = "okay";
@@ -354,6 +381,8 @@
 &pcie3_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie3_0_cfg>;
+	phys = <&phy4>;
+	phy-names = "phy4";
 
 	status = "okay";
 };
@@ -361,6 +390,8 @@
 &pcie4_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie4_1_cfg>;
+	phys = <&phy5>;
+	phy-names = "phy5";
 
 	status = "okay";
 };
@@ -786,6 +817,71 @@
 			product_name: product-name {
 			};
 		};
+	};
+};
+
+&dpu_crtc0 {
+	memory-region = <&dpu_resv0>;
+	spacemit-dpu-bitclk = <700000000>;
+	status = "okay";
+};
+
+&dpu_crtc1 {
+	memory-region = <&dpu_resv1>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			dsi1_output: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&panel_in>;
+			};
+		};
+	};
+
+	panel0: panel0@0 {
+			status = "ok";
+			compatible = "raspberrypi,dpi-panel";
+			force-attached = "lcd_tc358762xbg_dpi_800x480";
+	};
+};
+
+&lcds {
+	status = "okay";
+};
+
+&i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3_2_cfg>;
+	status = "okay";
+
+	raspits-panel@45 {
+		status = "okay";
+		compatible = "raspberrypi,7inch-touchscreen-panel";
+		reg = <0x45>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi1_output>;
+			};
+		};
+	};
+
+	raspits-touch-ft5426@38 {
+		status = "okay";
+		compatible = "raspits_ft5426";
+		reg = <0x38>;
 	};
 };
 

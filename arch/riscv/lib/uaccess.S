@@ -17,8 +17,42 @@ SYM_FUNC_START(__asm_copy_to_user)
 	ALTERNATIVE("j fallback_scalar_usercopy", "nop", 0, RISCV_ISA_EXT_ZVE32X, CONFIG_RISCV_ISA_V)
 	REG_L	t0, riscv_v_usercopy_threshold
 	bltu	a2, t0, fallback_scalar_usercopy
+
+	/* Check if both src and dst buffers are cacheable */
+	/* Save caller-saved registers that we need to preserve */
+	addi	sp, sp, -32
+	REG_S	ra, 0(sp)
+	REG_S	a0, 8(sp)	/* dst */
+	REG_S	a1, 16(sp)	/* src */
+	REG_S	a2, 24(sp)	/* len */
+
+	/* Check dst buffer (a0) */
+	call	is_cacheable_safe
+	beqz	a0, .Lnon_cacheable_1	/* if dst is non-cacheable, skip vector */
+
+	/* Check src buffer (a1 has original src) */
+	REG_L	a0, 16(sp)	/* load src to a0 */
+	call	is_cacheable_safe
+	beqz	a0, .Lnon_cacheable_1	/* if src is non-cacheable, skip vector */
+
+	/* Both buffers are cacheable - restore registers and use vector */
+	REG_L	ra, 0(sp)
+	REG_L	a0, 8(sp)
+	REG_L	a1, 16(sp)
+	REG_L	a2, 24(sp)
+	addi	sp, sp, 32
 	li	a3, 1
 	tail 	enter_vector_usercopy
+
+.Lnon_cacheable_1:
+	/* Non-cacheable buffer detected - restore and use scalar copy */
+	REG_L	ra, 0(sp)
+	REG_L	a0, 8(sp)
+	REG_L	a1, 16(sp)
+	REG_L	a2, 24(sp)
+	addi	sp, sp, 32
+	/* Fall through to scalar copy */
+	tail	fallback_scalar_usercopy
 #endif
 SYM_FUNC_END(__asm_copy_to_user)
 EXPORT_SYMBOL(__asm_copy_to_user)
@@ -45,8 +79,42 @@ SYM_FUNC_START(__asm_copy_to_user_sum_enabled)
 	ALTERNATIVE("j fallback_scalar_usercopy_sum_enabled", "nop", 0, RISCV_ISA_EXT_ZVE32X, CONFIG_RISCV_ISA_V)
 	REG_L	t0, riscv_v_usercopy_threshold
 	bltu	a2, t0, fallback_scalar_usercopy_sum_enabled
+
+	/* Check if both src and dst buffers are cacheable */
+	/* Save caller-saved registers that we need to preserve */
+	addi	sp, sp, -32
+	REG_S	ra, 0(sp)
+	REG_S	a0, 8(sp)	/* dst */
+	REG_S	a1, 16(sp)	/* src */
+	REG_S	a2, 24(sp)	/* len */
+
+	/* Check dst buffer (a0) */
+	call	is_cacheable_safe
+	beqz	a0, .Lnon_cacheable_2	/* if dst is non-cacheable, skip vector */
+
+	/* Check src buffer (a1 has original src) */
+	REG_L	a0, 16(sp)	/* load src to a0 */
+	call	is_cacheable_safe
+	beqz	a0, .Lnon_cacheable_2	/* if src is non-cacheable, skip vector */
+
+	/* Both buffers are cacheable - restore registers and use vector */
+	REG_L	ra, 0(sp)
+	REG_L	a0, 8(sp)
+	REG_L	a1, 16(sp)
+	REG_L	a2, 24(sp)
+	addi	sp, sp, 32
 	li	a3, 0
 	tail 	enter_vector_usercopy
+
+.Lnon_cacheable_2:
+	/* Non-cacheable buffer detected - restore and use scalar copy */
+	REG_L	ra, 0(sp)
+	REG_L	a0, 8(sp)
+	REG_L	a1, 16(sp)
+	REG_L	a2, 24(sp)
+	addi	sp, sp, 32
+	/* Fall through to scalar copy */
+	tail	fallback_scalar_usercopy_sum_enabled
 #endif
 SYM_FUNC_END(__asm_copy_to_user_sum_enabled)
 SYM_FUNC_ALIAS(__asm_copy_from_user_sum_enabled, __asm_copy_to_user_sum_enabled)

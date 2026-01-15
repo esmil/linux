@@ -31,13 +31,13 @@
 #define TSEN_HIGH_THRESH_OFFSET		(0)
 #define TSEN_LOW_THRESH_OFFSET		(16)
 
-
 #define TEMP_RAW_DATA_DIV		(8)
 
 struct k3_thermal_sensor_desc {
 	void __iomem *base;
 	int temp_offset;
 	int index;
+	struct k3_thermal_sensor *ks;
 	struct thermal_zone_device *tzd;
 };
 
@@ -48,6 +48,7 @@ struct k3_thermal_sensor {
 	struct clk *fclk, *bclk;
 	struct reset_control *resets;
 	struct device *dev;
+	struct mutex lock;
 	/* sensor range */
 	unsigned int sr[2];
 	struct k3_thermal_sensor_desc *sdesc;

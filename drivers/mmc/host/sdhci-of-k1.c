@@ -18,6 +18,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
+#include <linux/pinctrl/consumer.h>
 
 #include "sdhci.h"
 #include "sdhci-pltfm.h"
@@ -116,12 +117,15 @@ struct rx_tuning {
 struct spacemit_sdhci_host {
 	struct clk *clk_core;
 	struct clk *clk_io;
-	struct clk *clk_aib_bus;
-	struct clk *clk_aib;
 	struct reset_control *reset;
 
 	struct rx_tuning rxtuning;
 	u8 phy_driver_sel;
+
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pins_default;
+	struct pinctrl_state *pins_uhs;
+	struct pinctrl_state *pins_debug;
 };
 
 static struct sdhci_host *sdio_host;
@@ -266,48 +270,19 @@ static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock
 	}
 };
 
-static void spacemit_set_aib_mmc1_io(struct sdhci_host *host)
-{
-#define MMC1_IO_V18EN	BIT(2)
-#define AKEY_ASFAR	0xBABA
-#define AKEY_ASSAR	0xEB10
-	void __iomem *aib_mmc1_io, *apbc_asfar, *apbc_assar;
-	int vol = host->mmc->ios.signal_voltage;
-	u32 reg;
-
-	aib_mmc1_io = ioremap(0xD401E81C, 4);
-	apbc_asfar = ioremap(0xD4015050, 4);
-	apbc_assar = ioremap(0xD4015054, 4);
-
-	writel(AKEY_ASFAR, apbc_asfar);
-	writel(AKEY_ASSAR, apbc_assar);
-	reg = readl(aib_mmc1_io);
-	switch (vol) {
-	case MMC_SIGNAL_VOLTAGE_180:
-		reg |= MMC1_IO_V18EN;
-		break;
-	default:
-		reg &= ~MMC1_IO_V18EN;
-		break;
-	}
-	writel(AKEY_ASFAR, apbc_asfar);
-	writel(AKEY_ASSAR, apbc_assar);
-	writel(reg, aib_mmc1_io);
-
-	iounmap(apbc_assar);
-	iounmap(apbc_asfar);
-	iounmap(aib_mmc1_io);
-}
-
 static void spacemit_sdhci_voltage_switch(struct sdhci_host *host)
 {
-	struct mmc_host *mmc = host->mmc;
-	/*
-	 * v18en(MS) bit should meet TSMC's requirement
-	 * when switch SOC SD IO voltage from 3.3v to 1.8v
-	 */
-	if (!(mmc->caps2 & MMC_CAP2_NO_SD))
-		spacemit_set_aib_mmc1_io(host);
+	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
+	int vol = host->mmc->ios.signal_voltage;
+
+	switch (vol) {
+	case MMC_SIGNAL_VOLTAGE_180:
+		if (sdhst->pinctrl && sdhst->pins_uhs)
+			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_uhs);
+		break;
+	default:
+		break;
+	}
 }
 
 static void spacemit_sdhci_phy_dll_init(struct sdhci_host *host)
@@ -394,7 +369,6 @@ static inline int spacemit_sdhci_get_clocks(struct device *dev,
 					    struct sdhci_pltfm_host *pltfm_host)
 {
 #if !defined(CONFIG_SOC_SPACEMIT_K1_FPGA) && !defined(CONFIG_SOC_SPACEMIT_K3_FPGA)
-	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(pltfm_host);
 	int ret;
 
@@ -413,16 +387,6 @@ static inline int spacemit_sdhci_get_clocks(struct device *dev,
 			dev_err(dev, "failed to set io clock rate\n");
 			return ret;
 		}
-	}
-
-	if (!(host->mmc->caps2 & MMC_CAP2_NO_SD)) {
-		sdhst->clk_aib_bus = devm_clk_get_enabled(dev, "aib-bus");
-		if (IS_ERR(sdhst->clk_aib_bus))
-			return PTR_ERR(sdhst->clk_aib_bus);
-
-		sdhst->clk_aib = devm_clk_get_enabled(dev, "aib");
-		if (IS_ERR(sdhst->clk_aib))
-			return PTR_ERR(sdhst->clk_aib);
 	}
 #endif
 	return 0;
@@ -476,8 +440,8 @@ static void spacemit_sw_tx_tuning_prepare(struct sdhci_host *host)
 	spacemit_sdhci_clrsetbits(host, SDHC_TX_DLINE_CODE,
 				  FIELD_PREP(SDHC_TX_DLINE_CODE, rxtuning->tx_delaycode),
 				  SPACEMIT_SDHC_DLINE_CTRL_REG);
-	/* set TX_MUX_SEL */
-	spacemit_sdhci_setbits(host, SDHC_TX_MUX_SEL, SPACEMIT_SDHC_TX_CFG_REG);
+	/* set TX_INT_CLK_SEL */
+	spacemit_sdhci_setbits(host, SDHC_TX_INT_CLK_SEL, SPACEMIT_SDHC_TX_CFG_REG);
 	spacemit_sdhci_setbits(host, SDHC_DLINE_PU, SPACEMIT_SDHC_DLINE_CTRL_REG);
 }
 
@@ -656,6 +620,29 @@ static void spacemit_sdhci_get_of_property(struct platform_device *pdev, struct 
 		sdhst->phy_driver_sel = (u8)property;
 	else
 		sdhst->phy_driver_sel = PHY_DRIVE_SEL_DEFAULT;
+
+	sdhst->pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (!IS_ERR(sdhst->pinctrl)) {
+		sdhst->pins_default = pinctrl_lookup_state(sdhst->pinctrl,
+							   "default");
+		if (IS_ERR(sdhst->pins_default))
+			sdhst->pins_default = NULL;
+
+		sdhst->pins_uhs = pinctrl_lookup_state(sdhst->pinctrl,
+						       "uhs");
+		if (IS_ERR(sdhst->pins_uhs))
+			sdhst->pins_uhs = NULL;
+
+		sdhst->pins_debug = pinctrl_lookup_state(sdhst->pinctrl,
+							 "debug");
+		if (IS_ERR(sdhst->pins_debug))
+			sdhst->pins_debug = NULL;
+
+		if (sdhst->pins_default)
+			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_default);
+	} else {
+		sdhst->pinctrl = NULL;
+	}
 }
 
 static ssize_t spacemit_tx_delaycode_show(struct device *dev,

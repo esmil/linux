@@ -68,10 +68,13 @@ static int k3_thermal_get_temp(struct thermal_zone_device *tz, int *temp)
 {
 	struct k3_thermal_sensor_desc *desc = (struct k3_thermal_sensor_desc *)tz->devdata;
 
+	mutex_lock(&desc->ks->lock);
 	/* select which sensor */
 	writel(desc->index, desc->base + REG_TSEN_LITE_CFG2);
 	msleep(1);
 	*temp = readl(desc->base + REG_TSEN_LITE_TEMP_DATA);
+	mutex_unlock(&desc->ks->lock);
+
 	*temp &= BITS_TEMP_DATA;
 	*temp /= TEMP_RAW_DATA_DIV;
 
@@ -183,6 +186,8 @@ static int k3_thermal_probe(struct platform_device *pdev)
 
 	clk_prepare_enable(s->bclk);
 
+	mutex_init(&s->lock);
+
 	s->sdesc = (struct k3_thermal_sensor_desc *)devm_kzalloc(dev,
 			sizeof(struct k3_thermal_sensor_desc) * MAX_SENSOR_NUMBER,
 			GFP_KERNEL);
@@ -213,6 +218,7 @@ static int k3_thermal_probe(struct platform_device *pdev)
 
 		s->sdesc[i].base = s->base;
 		s->sdesc[i].index = i;
+		s->sdesc[i].ks = s;
 		s->sdesc[i].temp_offset = s->temp_offset;
 		s->sdesc[i].tzd = devm_thermal_of_zone_register(dev,
 				i, s->sdesc + i, &k3_of_thermal_ops);

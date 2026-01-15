@@ -477,6 +477,11 @@ static inline void user_access_restore(unsigned long enabled) { }
 	if (__asm_copy_from_user_sum_enabled(_dst, _src, _len))		\
 		goto label;
 
+/* Memory cacheability check for vector uaccess optimization */
+#ifdef CONFIG_RISCV_ISA_V
+int is_cacheable_safe(const void *addr);
+#endif
+
 #else /* CONFIG_MMU */
 #include <asm-generic/uaccess.h>
 #endif /* CONFIG_MMU */

@@ -560,95 +560,6 @@ static int create_panel_name_blob(struct drm_connector *connector)
 	return 0;
 }
 
-static int spacemit_dsi_host_attach(struct mipi_dsi_host *host,
-			   struct mipi_dsi_device *slave)
-{
-	struct spacemit_dsi *dsi = host_to_dsi(host);
-	struct spacemit_dsi_device *ctx = &dsi->ctx;
-	struct spacemit_mipi_info *mipi_info = &ctx->mipi_info;
-	struct device_node *lcd_node;
-	int ret;
-
-	DRM_INFO("%s()\n", __func__);
-
-	dsi->slave = slave;
-
-	ret = spacemit_dsi_phy_attach(dsi);
-	if (ret)
-		return ret;
-
-	ret = spacemit_dsi_find_panel(dsi);
-	if (ret)
-		return ret;
-
-	lcd_node = dsi->panel->dev->of_node;
-
-	spacemit_dsi_get_mipi_info(lcd_node, mipi_info);
-	spacemit_dsi_get_advanced_info(dsi, mipi_info);
-	spacemit_dsi_get_phy_clock(lcd_node, dsi);
-
-	return 0;
-}
-
-static int spacemit_dsi_host_detach(struct mipi_dsi_host *host,
-			   struct mipi_dsi_device *slave)
-{
-	DRM_INFO("%s()\n", __func__);
-	/* do nothing */
-	return 0;
-}
-
-static ssize_t spacemit_dsi_host_transfer(struct mipi_dsi_host *host,
-				const struct mipi_dsi_msg *msg)
-{
-	struct spacemit_dsi *dsi = host_to_dsi(host);
-	struct spacemit_dsi_cmd_desc cmd;
-	struct spacemit_dsi_rx_buf dbuf = {0x0};
-
-	cmd.cmd_type = msg->type;
-	cmd.length = msg->tx_len;
-	memcpy(cmd.data, msg->tx_buf, cmd.length);
-
-	if (msg->flags & MIPI_DSI_MSG_USE_LPM)
-		cmd.lp = 1;
-	else
-		cmd.lp = 0;
-
-	if (msg->rx_buf && msg->rx_len) {
-		if (dsi->core && dsi->core->dsi_read_cmds)
-			dsi->core->dsi_read_cmds(&dsi->ctx, &dbuf, &cmd, 1);
-		memcpy(msg->rx_buf, dbuf.data, 1);
-		return 0;
-	}
-
-	if (msg->tx_buf && msg->tx_len) {
-		if (dsi->core && dsi->core->dsi_write_cmds)
-			dsi->core->dsi_write_cmds(&dsi->ctx, &cmd, 1);
-	}
-
-	return 0;
-}
-
-static const struct mipi_dsi_host_ops spacemit_dsi_host_ops = {
-	.attach = spacemit_dsi_host_attach,
-	.detach = spacemit_dsi_host_detach,
-	.transfer = spacemit_dsi_host_transfer,
-};
-
-static int spacemit_dsi_host_init(struct device *dev, struct spacemit_dsi *dsi)
-{
-	int ret;
-
-	dsi->host.dev = dev;
-	dsi->host.ops = &spacemit_dsi_host_ops;
-
-	ret = mipi_dsi_host_register(&dsi->host);
-	if (ret)
-		DRM_ERROR("failed to register dsi host\n");
-
-	return ret;
-}
-
 static int spacemit_dsi_connector_get_modes(struct drm_connector *connector)
 {
 	struct spacemit_dsi *dsi = connector_to_dsi(connector);
@@ -672,7 +583,7 @@ spacemit_dsi_connector_best_encoder(struct drm_connector *connector)
 {
 	struct spacemit_dsi *dsi = connector_to_dsi(connector);
 
-	DRM_INFO("%s()\n", __func__);
+	DRM_DEBUG("%s()\n", __func__);
 	return &dsi->encoder;
 }
 
@@ -858,6 +769,99 @@ static const struct component_ops dsi_component_ops = {
 	.unbind = spacemit_dsi_unbind,
 };
 
+static int spacemit_dsi_host_attach(struct mipi_dsi_host *host,
+			   struct mipi_dsi_device *slave)
+{
+	struct spacemit_dsi *dsi = host_to_dsi(host);
+	struct spacemit_dsi_device *ctx = &dsi->ctx;
+	struct spacemit_mipi_info *mipi_info = &ctx->mipi_info;
+	struct device_node *lcd_node;
+	int ret;
+
+	DRM_INFO("%s()\n", __func__);
+
+	ret = component_add(host->dev, &dsi_component_ops);
+	if (ret)
+		return ret;
+
+	dsi->slave = slave;
+
+	ret = spacemit_dsi_phy_attach(dsi);
+	if (ret)
+		return ret;
+
+	ret = spacemit_dsi_find_panel(dsi);
+	if (ret)
+		return ret;
+
+	lcd_node = dsi->panel->dev->of_node;
+
+	spacemit_dsi_get_mipi_info(lcd_node, mipi_info);
+	spacemit_dsi_get_advanced_info(dsi, mipi_info);
+	spacemit_dsi_get_phy_clock(lcd_node, dsi);
+
+	return 0;
+}
+
+static int spacemit_dsi_host_detach(struct mipi_dsi_host *host,
+			   struct mipi_dsi_device *slave)
+{
+	DRM_INFO("%s()\n", __func__);
+	component_del(host->dev, &dsi_component_ops);
+	return 0;
+}
+
+static ssize_t spacemit_dsi_host_transfer(struct mipi_dsi_host *host,
+				const struct mipi_dsi_msg *msg)
+{
+	struct spacemit_dsi *dsi = host_to_dsi(host);
+	struct spacemit_dsi_cmd_desc cmd;
+	struct spacemit_dsi_rx_buf dbuf = {0x0};
+
+	cmd.cmd_type = msg->type;
+	cmd.length = msg->tx_len;
+	memcpy(cmd.data, msg->tx_buf, cmd.length);
+
+	if (msg->flags & MIPI_DSI_MSG_USE_LPM)
+		cmd.lp = 1;
+	else
+		cmd.lp = 0;
+
+	if (msg->rx_buf && msg->rx_len) {
+		if (dsi->core && dsi->core->dsi_read_cmds)
+			dsi->core->dsi_read_cmds(&dsi->ctx, &dbuf, &cmd, 1);
+		memcpy(msg->rx_buf, dbuf.data, 1);
+		return 0;
+	}
+
+	if (msg->tx_buf && msg->tx_len) {
+		if (dsi->core && dsi->core->dsi_write_cmds)
+			dsi->core->dsi_write_cmds(&dsi->ctx, &cmd, 1);
+	}
+
+	return 0;
+}
+
+static const struct mipi_dsi_host_ops spacemit_dsi_host_ops = {
+	.attach = spacemit_dsi_host_attach,
+	.detach = spacemit_dsi_host_detach,
+	.transfer = spacemit_dsi_host_transfer,
+};
+
+static int spacemit_dsi_host_init(struct device *dev, struct spacemit_dsi *dsi)
+{
+	int ret;
+
+	dsi->host.dev = dev;
+	dsi->host.ops = &spacemit_dsi_host_ops;
+
+	ret = mipi_dsi_host_register(&dsi->host);
+	if (ret)
+		DRM_ERROR("failed to register dsi host\n");
+
+	return ret;
+}
+
 static int spacemit_dsi_device_create(struct spacemit_dsi *dsi, struct device *parent)
 {
 	int ret;
@@ -956,13 +960,11 @@ static int spacemit_dsi_probe(struct platform_device *pdev)
 
 	mutex_init(&dsi->disable_lock);
 
-	return component_add(&pdev->dev, &dsi_component_ops);
+	return 0;
 }
 
 static void spacemit_dsi_remove(struct platform_device *pdev)
 {
-	component_del(&pdev->dev, &dsi_component_ops);
-
 }
 
 static const struct of_device_id spacemit_dsi_of_match[] = {

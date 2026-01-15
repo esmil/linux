@@ -5,6 +5,7 @@
 #include "k3-rdomain.dtsi"
 #include "k3-pinctrl.dtsi"
 #include "k3_opp_table.dtsi"
+#include "k3-edp0.dtsi"
 #include "k3-dp1.dtsi"
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/input/cros-ec-keyboard.h>
@@ -114,7 +115,7 @@
 		* Full speed is treated as ~6000RPM.
 		* Linear distribution from 0 to 255
 		*/
-		cooling-levels = <0 50 64 75 102 128 179 204 255>;
+		cooling-levels = <0 50 64 75 102 118 153 178 204 229>;
 		#cooling-cells = <2>;
 	};
 };
@@ -165,6 +166,12 @@
 
 	i2c1-3-cfg {
 		i2c1-0-pins {
+			power-source = <3300>;
+		};
+	};
+
+	i2c3-1-cfg {
+		i2c3-0-pins {
 			power-source = <3300>;
 		};
 	};
@@ -272,6 +279,12 @@
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
+	sspa1_1_cfg: sspa1-1-cfg {
+		sspa1-0-pins {
 			power-source = <3300>;
 		};
 	};
@@ -576,31 +589,31 @@
 		trips {
 			thermal_cluster0_trip0: thermal_cluster0-trip0 {
 				temperature = <35000>;
-				hysteresis = <5000>;
+				hysteresis = <2000>;
 				type = "active";
 			};
 
 			thermal_cluster0_trip1: thermal_cluster0-trip1 {
-				temperature = <40000>;
-				hysteresis = <5000>;
+				temperature = <42000>;
+				hysteresis = <2000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip2: thermal_cluster0-trip2 {
-				temperature = <50000>;
-				hysteresis = <5000>;
+				temperature = <52000>;
+				hysteresis = <2000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip3: thermal_cluster0-trip3 {
-				temperature = <60000>;
-				hysteresis = <5000>;
+				temperature = <65000>;
+				hysteresis = <2000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip4: thermal_cluster0-trip4 {
-				temperature = <70000>;
-				hysteresis = <5000>;
+				temperature = <72000>;
+				hysteresis = <2000>;
 				type = "passive";
 			};
 		};
@@ -628,11 +641,10 @@
 
 			map4 {
 				trip = <&thermal_cluster0_trip4>;
-				cooling-device = <&fan0 8 8>;
+				cooling-device = <&fan0 8 9>;
 			};
 		};
 	};
-
 	thermal_cluster1 {
 		polling-delay = <1000>;
 		polling-delay-passive = <250>;
@@ -906,6 +918,24 @@
 	};
 };
 
+&i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3_1_cfg>;
+	status = "okay";
+
+	es8326: es8326@19{
+		compatible = "everest,es8326";
+		reg = <0x19>;
+		#sound-dai-cells = <0>;
+		interrupt-parent = <&gpio>;
+		interrupts = <3 31 IRQ_TYPE_EDGE_RISING>;
+		/* spk-ctl-gpio = <&gpio 127 0>; */
+		everest,mic1-src = [44];
+		everest,mic2-src = [66];
+		everest,jack-detect-inverted;
+		status = "okay";
+	};
+};
 /*
 &i2c8 {
 	pinctrl-names = "default";
@@ -1067,10 +1097,9 @@
 };
 */
 
-/*
 &dpu0_crtc0 {
 	memory-region = <&dpu_resv0>;
-	status = "okay";
+	status = "disabled";
 };
 
 &edp0 {
@@ -1079,10 +1108,8 @@
 	gpios-power = <101>;
 	gpios-enable = <118>;
 	gpios-bl = <106>;
-
-	status = "okay";
+	status = "disabled";
 };
-*/
 
 &dpu1_crtc0 {
 	memory-region = <&dpu_resv1>;
@@ -1113,6 +1140,30 @@
 		bitclock-master = <&dp1_link_cpu>;
 		dp1_link_codec: codec {
 			sound-dai = <&dp1>;
+		};
+	};
+};
+
+&i2s1 {
+	status = "okay";
+	pinctrl-0 = <&sspa1_1_cfg>;
+	pinctrl-names = "default";
+};
+
+&sound_card1 {
+	status = "okay";
+	simple-audio-card,mclk-fs = <256>;
+	simple-audio-card,dai-link@0 {
+		format = "i2s";
+		frame-master = <&link1_cpu>;
+		bitclock-master = <&link1_cpu>;
+
+		link1_cpu: cpu {
+			sound-dai = <&i2s1>;
+		};
+
+		link1_codec: codec {
+			sound-dai = <&es8326>;
 		};
 	};
 };
