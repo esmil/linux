@@ -476,8 +476,8 @@ static void spacemit_sw_tx_tuning_prepare(struct sdhci_host *host)
 	spacemit_sdhci_clrsetbits(host, SDHC_TX_DLINE_CODE,
 				  FIELD_PREP(SDHC_TX_DLINE_CODE, rxtuning->tx_delaycode),
 				  SPACEMIT_SDHC_DLINE_CTRL_REG);
-	/* set TX_MUX_SEL */
-	spacemit_sdhci_setbits(host, SDHC_TX_MUX_SEL, SPACEMIT_SDHC_TX_CFG_REG);
+	/* set TX_INT_CLK_SEL */
+	spacemit_sdhci_setbits(host, SDHC_TX_INT_CLK_SEL, SPACEMIT_SDHC_TX_CFG_REG);
 	spacemit_sdhci_setbits(host, SDHC_DLINE_PU, SPACEMIT_SDHC_DLINE_CTRL_REG);
 }
 
