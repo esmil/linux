@@ -259,8 +259,9 @@
 };
 
 &sdcard {
-	pinctrl-names = "default";
+	pinctrl-names = "default","uhs";
 	pinctrl-0 = <&mmc1_cfg>;
+	pinctrl-1 = <&mmc1_uhs_cfg>;
 	bus-width = <4>;
 	wp-inverted;
 	cd-gpios = <&gpio 0 4 GPIO_ACTIVE_HIGH>;
