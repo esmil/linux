@@ -8,6 +8,7 @@
 #include "lcd_dsi_panel.dtsi"
 #include "lcd/lcd_icnl9911c_mipi.dtsi"
 #include "k3-dp0.dtsi"
+#include "k3-dp1.dtsi"
 
 / {
 	compatible = "spacemit,k3-evb";
@@ -1087,6 +1088,17 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp0_2_cfg>;
 	status = "okay";
+};
+
+&dpu1_crtc0 {
+	memory-region = <&dpu_resv1>;
+	status = "disabled";
+};
+
+&dp1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp1_4_cfg>;
+	status = "disabled";
 };
 
 &adma2 {
