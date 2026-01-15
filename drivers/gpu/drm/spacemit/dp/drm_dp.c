@@ -73,7 +73,11 @@ static int
 dp_conn_probe_single_connector_modes(struct drm_connector *connector,
 				       uint32_t maxX, uint32_t maxY)
 {
-	return drm_helper_probe_single_connector_modes(connector, 2560, 1600);
+	struct dp_dev *dp_dev = container_of(connector, struct dp_dev, connector);
+	if (dp_dev->conn->edp_enable)
+		return drm_helper_probe_single_connector_modes(connector, 2560, 1600);
+	else
+		return drm_helper_probe_single_connector_modes(connector, 1920, 1080);
 }
 
 static const struct drm_connector_funcs dp_connector_funcs = {
