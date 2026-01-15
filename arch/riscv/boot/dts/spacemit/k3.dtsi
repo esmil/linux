@@ -1765,10 +1765,8 @@
 			compatible = "spacemit,k3-sdhci";
 			reg = <0x0 0xd4280000 0x0 0x200>;
 			clocks = <&syscon_apmu CLK_APMU_SDH_AXI>,
-				 <&syscon_apmu CLK_APMU_SDH0>,
-				 <&syscon_apbc CLK_APBC_AIB_BUS>,
-				 <&syscon_apbc CLK_APBC_AIB>;
-			clock-names = "core", "io", "aib-bus", "aib";
+				 <&syscon_apmu CLK_APMU_SDH0>;
+			clock-names = "core", "io";
 			interrupt-parent = <&saplic>;
 			interrupts = <99 IRQ_TYPE_LEVEL_HIGH>;
 			resets = <&syscon_apmu RESET_APMU_SDH_AXI>,
