@@ -396,6 +396,14 @@
 	status = "okay";
 };
 
+&ec_master {
+	states = "okay";
+
+        master0 {
+		main-device = <&eth1>;
+        };
+};
+
 &eth1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac1_cfg>;
