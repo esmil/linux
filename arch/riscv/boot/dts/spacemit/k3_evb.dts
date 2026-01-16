@@ -417,6 +417,10 @@
 	status = "okay";
 };
 
+&ec_master {
+	states = "okay";
+};
+
 &eth0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac0_cfg>;
