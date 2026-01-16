@@ -2,7 +2,7 @@
 /* Copyright (c) 2025 Spacemit, Inc */
 
 &soc {
-	display0: display0-subsystem {
+	display-subsystem-edp0 {
 		compatible = "spacemit,saturn-hee";
 		reg = <0 0xc0340000 0 0x54000>;
 		hw_ver = <2>;
