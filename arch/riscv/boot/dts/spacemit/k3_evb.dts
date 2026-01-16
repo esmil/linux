@@ -565,9 +565,35 @@
 	};
 };
 
+&phy0{
+	status = "okay";
+};
+
+&phy1{
+	status = "okay";
+};
+
+&phy2{
+	status = "okay";
+};
+
+&phy3{
+	status = "okay";
+};
+
+&phy4{
+	status = "okay";
+};
+
+&phy5{
+	status = "okay";
+};
+
 &pcie0_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie0_1_cfg>;
+	phys = <&phy0>;
+	phy-names = "phy0";
 
 	num-lanes = <2>;
 	status = "okay";
@@ -576,6 +602,8 @@
 &pcie1_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie1_1_cfg>;
+	phys = <&phy1>;
+	phy-names = "phy0";
 
 	status = "okay";
 };
@@ -583,6 +611,8 @@
 &pcie2_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie2_2_cfg>;
+	phys = <&phy2>, <&phy3>;
+	phy-names = "phy0", "phy1";
 
 	status = "okay";
 };
@@ -590,6 +620,8 @@
 &pcie3_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie3_1_cfg>;
+	phys = <&phy4>;
+	phy-names = "phy0";
 
 	status = "okay";
 };
@@ -597,6 +629,8 @@
 &pcie4_rc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie4_1_cfg>;
+	phys = <&phy5>;
+	phy-names = "phy0";
 
 	status = "okay";
 };
