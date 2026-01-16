@@ -30,6 +30,9 @@ struct of_serial_info {
 	int type;
 	int line;
 	struct notifier_block clk_notifier;
+#ifdef CONFIG_SOC_SPACEMIT
+	struct work_struct clk_work;	/* Deferred clock update work */
+#endif
 };
 
 /* Nuvoton NPCM timeout register */
@@ -67,10 +70,127 @@ static inline struct of_serial_info *clk_nb_to_info(struct notifier_block *nb)
 	return container_of(nb, struct of_serial_info, clk_notifier);
 }
 
+#ifdef CONFIG_SOC_SPACEMIT
+static inline struct of_serial_info *spacemit_8250_work_to_info(struct work_struct *work)
+{
+	return container_of(work, struct of_serial_info, clk_work);
+}
+
+/*
+ * Select optimal clock rate for ACPU UART based on baud rate.
+ * ACPU UART: 14.7MHz, 48MHz, 57.6MHz
+ */
+static unsigned long spacemit_acpu_match_clk_rate(struct device *dev, unsigned int baud)
+{
+	switch (baud) {
+	case 9600:
+	case 19200:
+	case 38400:
+	case 57600:
+	case 115200:
+	case 230400:
+		return 14700000;
+	case 500000:
+	case 1000000:
+	case 1500000:
+	case 3000000:
+		return 48000000;
+	case 460800:
+	case 576000:
+	case 921600:
+	case 1152000:
+	case 1800000:
+	case 2000000:
+	case 3500000:
+	case 3600000:
+		return 57600000;
+	default:
+		dev_warn(dev, "Baudrate: %d is unsupported", baud);
+		return 14700000;
+	}
+}
+
+/*
+ * Spacemit set_termios wrapper:
+ * - RCPU UART: pass baud*16 to clk framework (dynamic selection)
+ * - ACPU UART: use fixed lookup table (legacy method)
+ */
+static void spacemit_8250_set_termios(struct uart_port *port, struct ktermios *termios,
+				 const struct ktermios *old)
+{
+	struct platform_device *pdev = to_platform_device(port->dev);
+	struct of_serial_info *info = platform_get_drvdata(pdev);
+	unsigned int baud = tty_termios_baud_rate(termios);
+	bool is_rcpu = of_property_read_bool(port->dev->of_node, "spacemit,rcpu-uart");
+	unsigned long target_rate;
+	long rate;
+	int ret;
+
+	if (!info || !info->clk)
+		goto out;
+
+	if (is_rcpu) {
+		/* RCPU: Let clk framework select optimal clock source */
+		target_rate = baud * 16;
+
+		rate = clk_round_rate(info->clk, target_rate);
+		if (rate <= 0)
+			goto out;
+
+		ret = clk_set_rate(info->clk, rate);
+		if (ret)
+			goto out;
+
+		port->uartclk = rate;
+	} else {
+		/* ACPU: Use fixed lookup table */
+		target_rate = spacemit_acpu_match_clk_rate(&pdev->dev, baud);
+
+		ret = clk_set_rate(info->clk, target_rate);
+		if (ret < 0)
+			goto out;
+
+		/* Update port with actual clock rate */
+		port->uartclk = clk_get_rate(info->clk);
+	}
+
+out:
+	serial8250_do_set_termios(port, termios, old);
+}
+
+static void spacemit_8250_of_serial_clk_work_cb(struct work_struct *work)
+{
+	struct of_serial_info *info = spacemit_8250_work_to_info(work);
+	struct uart_8250_port *port8250;
+	unsigned long rate;
+
+	if (!info->clk)
+		return;
+
+	rate = clk_get_rate(info->clk);
+	if (rate <= 0)
+		return;
+
+	port8250 = serial8250_get_port(info->line);
+	serial8250_update_uartclk(&port8250->port, rate);
+}
+#endif /* CONFIG_SOC_SPACEMIT */
+
 static int of_platform_serial_clk_notifier_cb(struct notifier_block *nb, unsigned long event,
 					      void *data)
 {
 	struct of_serial_info *info = clk_nb_to_info(nb);
+
+#ifdef CONFIG_SOC_SPACEMIT
+	/*
+	 * more details about why use queue_work()
+	 * please see: https://gitlab.dc.com:8443/-/snippets/1
+	 */
+	if (event == POST_RATE_CHANGE) {
+		queue_work(system_unbound_wq, &info->clk_work);
+		return NOTIFY_OK;
+	}
+#else
 	struct uart_8250_port *port8250 = serial8250_get_port(info->line);
 	struct clk_notifier_data *ndata = data;
 
@@ -78,6 +198,7 @@ static int of_platform_serial_clk_notifier_cb(struct notifier_block *nb, unsigne
 		serial8250_update_uartclk(&port8250->port, ndata->new_rate);
 		return NOTIFY_OK;
 	}
+#endif
 
 	return NOTIFY_DONE;
 }
@@ -249,6 +370,14 @@ static int of_platform_serial_probe(struct platform_device *ofdev)
 	if (port_type == PORT_XSCALE && (port8250.capabilities & UART_CAP_FIFO))
 		port8250.capabilities |= UART_CAP_UUE | UART_CAP_RTOIE;
 
+#ifdef CONFIG_SOC_SPACEMIT
+	INIT_WORK(&info->clk_work, spacemit_8250_of_serial_clk_work_cb);
+
+	/* Use spacemit_set_termios wrapper for dynamic clock switching */
+	if (port_type == PORT_XSCALE)
+		port8250.port.set_termios = spacemit_8250_set_termios;
+#endif
+
 	/* Check for TX FIFO threshold & set tx_loadsz */
 	if ((of_property_read_u32(ofdev->dev.of_node, "tx-threshold",
 				  &tx_threshold) == 0) &&
@@ -278,6 +407,10 @@ static int of_platform_serial_probe(struct platform_device *ofdev)
 			dev_err_probe(port8250.port.dev, ret, "Failed to set the clock notifier\n");
 			goto err_unregister;
 		}
+#ifdef CONFIG_SOC_SPACEMIT
+		/* Queue initial work to set uartclk */
+		queue_work(system_unbound_wq, &info->clk_work);
+#endif
 	}
 
 	return 0;
@@ -298,8 +431,12 @@ static void of_platform_serial_remove(struct platform_device *ofdev)
 {
 	struct of_serial_info *info = platform_get_drvdata(ofdev);
 
-	if (info->clk)
+	if (info->clk) {
 		clk_notifier_unregister(info->clk, &info->clk_notifier);
+#ifdef CONFIG_SOC_SPACEMIT
+		flush_work(&info->clk_work);
+#endif
+	}
 
 	serial8250_unregister_port(info->line);
 

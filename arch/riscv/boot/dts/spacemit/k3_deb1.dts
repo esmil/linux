@@ -111,11 +111,12 @@
 		compatible = "pwm-fan";
 		pwms = <&cros_ec_pwm 0>;
 		/*
-		* Cooling states (0-6) -> PWM duty (0-255)
+		* Cooling states (0-8) -> PWM duty (0-255)
 		* Full speed is treated as ~6000RPM.
-		* Linear distribution from 0 to 255
+		* Custom ramp to balance noise and thermals
 		*/
-		cooling-levels = <0 50 64 75 102 118 153 178 204 229>;
+		/* Keep headroom by capping max duty below 255. */
+		cooling-levels = <0 30 60 90 120 140 179 204 242>;
 		#cooling-cells = <2>;
 	};
 };
@@ -588,31 +589,43 @@
 
 		trips {
 			thermal_cluster0_trip0: thermal_cluster0-trip0 {
-				temperature = <35000>;
+				temperature = <45000>;
 				hysteresis = <2000>;
 				type = "active";
 			};
 
 			thermal_cluster0_trip1: thermal_cluster0-trip1 {
-				temperature = <42000>;
+				temperature = <55000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip2: thermal_cluster0-trip2 {
-				temperature = <52000>;
-				hysteresis = <2000>;
-				type = "passive";
-			};
-
-			thermal_cluster0_trip3: thermal_cluster0-trip3 {
 				temperature = <65000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
 
+			thermal_cluster0_trip3: thermal_cluster0-trip3 {
+				temperature = <75000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
 			thermal_cluster0_trip4: thermal_cluster0-trip4 {
-				temperature = <72000>;
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster0_trip5: thermal_cluster0-trip5 {
+				temperature = <90000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster0_trip6: thermal_cluster0-trip6 {
+				temperature = <95000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
@@ -631,17 +644,27 @@
 
 			map2 {
 				trip = <&thermal_cluster0_trip2>;
-				cooling-device = <&fan0 4 5>;
+				cooling-device = <&fan0 3 4>;
 			};
 
 			map3 {
 				trip = <&thermal_cluster0_trip3>;
-				cooling-device = <&fan0 6 7>;
+				cooling-device = <&fan0 4 5>;
 			};
 
 			map4 {
 				trip = <&thermal_cluster0_trip4>;
-				cooling-device = <&fan0 8 9>;
+				cooling-device = <&fan0 6 6>;
+			};
+
+			map5 {
+				trip = <&thermal_cluster0_trip5>;
+				cooling-device = <&fan0 7 7>;
+			};
+
+			map6 {
+				trip = <&thermal_cluster0_trip6>;
+				cooling-device = <&fan0 8 8>;
 			};
 		};
 	};
