@@ -1027,7 +1027,7 @@
 			k1x,ssp-clock-rate = <26000000>;
 			dmas = <&pdma DMA_SSP0_TX
 				&pdma DMA_SSP0_RX>;
-			dma-names = "rx", "tx";
+			dma-names = "tx", "rx";
 			interrupt-parent = <&saplic>;
 			interrupts = <283 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon_apbc  CLK_APBC_SPI0>,
@@ -1046,7 +1046,7 @@
 			k1x,ssp-clock-rate = <26000000>;
 			dmas = <&pdma DMA_SSP1_TX
 				&pdma DMA_SSP1_RX>;
-			dma-names = "rx", "tx";
+			dma-names = "tx", "rx";
 			interrupt-parent = <&saplic>;
 			interrupts = <282 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon_apbc  CLK_APBC_SPI1>,
@@ -1084,7 +1084,7 @@
 			k1x,ssp-clock-rate = <26000000>;
 			dmas = <&pdma DMA_SSP3_TX
 				&pdma DMA_SSP3_RX>;
-			dma-names = "rx", "tx";
+			dma-names = "tx", "rx";
 			interrupt-parent = <&saplic>;
 			interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&syscon_apbc CLK_APBC_SPI3>,
