@@ -2391,6 +2391,10 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag,
 		__set_bit(lrbp->task_tag, &hba->outstanding_reqs);
 		ufshcd_writel(hba, 1 << lrbp->task_tag,
 			      REG_UTP_TRANSFER_REQ_DOOR_BELL);
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+		/* Flush posted doorbell write to avoid command loss on K3. */
+		ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
+#endif
 		spin_unlock_irqrestore(&hba->outstanding_lock, flags);
 	}
 }
@@ -10782,6 +10786,17 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 	/* Get Interrupt bit mask per version */
 	hba->intr_mask = ufshcd_get_intr_mask(hba);
+
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	if (hba->vops && hba->vops->name && !strcmp(hba->vops->name, "lark_ufs")) {
+		if (hba->nutrs > 16) {
+			dev_warn(hba->dev, "limiting nutrs from %d to 16 for K3 stability\n",
+				 hba->nutrs);
+			hba->nutrs = 16;
+			hba->reserved_slot = hba->nutrs - 1;
+		}
+	}
+#endif
 
 	err = ufshcd_set_dma_mask(hba);
 	if (err) {

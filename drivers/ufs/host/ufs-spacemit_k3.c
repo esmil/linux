@@ -19,6 +19,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <scsi/scsi_eh.h>
+#include <scsi/scsi_device.h>
 
 #include <ufs/ufshcd.h>
 #include <ufs/ufshci.h>
@@ -933,6 +934,12 @@ static void ufs_spacemit_k3_advertise_quirks(struct ufs_hba *hba)
 		hba->quirks |= UFSHCD_QUIRK_BROKEN_UFS_HCI_VERSION;
 	}
 
+	/*
+	 * hw_ver isn't initialized yet (see TODO above). Force-disable
+	 * interrupt aggregation to avoid completion loss under stress.
+	 */
+	hba->quirks |= UFSHCD_QUIRK_BROKEN_INTR_AGGR;
+
 	/* break auto hibern8 */
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8;
 }
@@ -946,10 +953,20 @@ static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
 	/* hba->caps |= UFSHCD_CAP_CRYPTO; */
 
 	/* support write booster */
-	hba->caps |= UFSHCD_CAP_WB_EN;
+	/* hba->caps |= UFSHCD_CAP_WB_EN; */
 
 	/* support runtime autosuspend - disabled for silicon bringup */
 	/* hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND; */
+}
+
+static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+
+	/* Serialize I/O to avoid command loss under high-concurrency stress. */
+	scsi_change_queue_depth(sdev, 1);
+	dev_info(hba->dev, "lu %llu scsi queue depth limited to %u\n",
+		 sdev->lun, sdev->queue_depth);
 }
 
 /**
@@ -992,6 +1009,12 @@ static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is
 
 	host->prev_request_crypto = curr_request_crypto;
 #endif
+
+	/*
+	 * Ensure UTRD/UPIU writes are visible before the core rings doorbell.
+	 * This mitigates command loss under high-concurrency random IO.
+	 */
+	wmb();
 }
 
 /**
@@ -1474,6 +1497,7 @@ static const struct ufs_hba_variant_ops ufs_hba_spacemit_k3_vops = {
 	.pwr_change_notify = ufs_spacemit_k3_pwr_change_notify,
 	.setup_clocks = ufs_spacemit_k3_setup_clocks,
 	.setup_xfer_req = ufs_spacemit_k3_setup_xfer_req,
+	.config_scsi_dev = ufs_spacemit_k3_config_scsi_dev,
 	.device_reset = ufs_spacemit_k3_device_reset,
 	.event_notify = ufs_spacemit_k3_event_notify,
 	.apply_dev_quirks = ufs_spacemit_k3_apply_dev_quirks,
