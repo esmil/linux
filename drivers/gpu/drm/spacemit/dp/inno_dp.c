@@ -458,7 +458,7 @@ static void inno_dp_video_cfg(struct inno_conn_t *conn, struct drm_display_mode 
 	uint16_t voffset = vtotal - vsync_start;
 	uint16_t video_map = 0;
 
-	osal_printf("%s() width %d height %d\n", __func__, hactive, vactive);
+	osal_printf("%s() width %d height %d clock %d\n", __func__, hactive, vactive, mode->clock);
 
 	value |= flags & DRM_MODE_FLAG_PHSYNC ? BIT(1) : 0;
 	value |= flags & DRM_MODE_FLAG_PVSYNC ? BIT(0) : 0;
@@ -810,6 +810,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	struct dp_chip_t *inno = (struct dp_chip_t *)conn->priv;
 	uint8_t edid[256];
 	bool hdisplay_1920 = false;
+	bool hdisplay_2256 = false;
 	bool hdisplay_2560 = false;
 	bool hdisplay_3840 = false;
 
@@ -819,6 +820,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 		hdisplay_3840 = true;
 	else if (mode->hdisplay == 2560)
 		hdisplay_2560 = true;
+	else if (mode->hdisplay == 2256)
+		hdisplay_2256 = true;
 	else if (mode->hdisplay == 1920)
 		hdisplay_1920 = true;
 	else
@@ -872,7 +875,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 		inno_dp_dpcd_write(chip, DP_EDP_CONFIGURATION_SET, &value, 1);
 	}
 
-	/* config pixel pll */
+	/* pixel pll config*/
 	osal_printf("%s() pixel pll config\n", __func__);
 #if 1
 	if (hdisplay_2560) {
@@ -884,6 +887,19 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 		osal_msleep(2);
 
 		osal_write32(0x190, 0xb9000232, conn);
+		osal_msleep(100);
+
+		osal_read32(0x190, conn);
+		osal_read32(0x180, conn);
+	} else if (hdisplay_2256) {
+		osal_write32(0x190, 0x9d000231, conn);
+		osal_write32(0x194, 0x1000401, conn);
+		osal_write32(0x198, 0x102012a, conn);
+		osal_write32(0x19c, 0x00, conn);
+		osal_write32(0x190, 0x9d000230, conn);
+		osal_msleep(2);
+
+		osal_write32(0x190, 0x9d000232, conn);
 		osal_msleep(100);
 
 		osal_read32(0x190, conn);
@@ -910,7 +926,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_read32(0x190, conn);
 #endif
 
-	// hpd
+	// hpd config
 	osal_printf("%s() hpd config\n", __func__);
 
 	osal_write32(0x18, osal_read32(0x18, conn) | BIT(28), conn);
@@ -928,33 +944,35 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 
 	osal_read32(0x88, conn);
 
-	osal_printf("%s() audio config\n", __func__);
-	/* init dp audio */
-	osal_write32(0x424, osal_read32(0x424, conn) | BIT(13), conn);
-	osal_write32(0x420, osal_read32(0x420, conn) | BIT(13), conn);
-	osal_write32(0x424, osal_read32(0x424, conn) | BIT(12), conn);
-	osal_write32(0x420, osal_read32(0x420, conn) | BIT(12), conn);
-	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(31), conn);    //i2s input
-	osal_write32(0x300, osal_read32(0x300, conn) | BIT(22), conn);     //i2s stream
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(16, 14))  //2 channel
-			    | (0x01 << 14), conn);
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(28, 25))  //channel 1-2
-			    | (0x01 << 25), conn);
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(21, 17))  //16bit
-			    | (0x10 << 17), conn);
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(24, 23))  //left-justified mode
-			    | (0x01 << 23), conn);
-	/* set Audio TimeStamp Packet Header, packet ID = 0, version number = 0x12 */
-	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(13, 0))
-			    | (0x12 << 0), conn);
+	if (!conn->edp_enable) {
+		osal_printf("%s() audio config\n", __func__);
+		/* init dp audio */
+		osal_write32(0x424, osal_read32(0x424, conn) | BIT(13), conn);
+		osal_write32(0x420, osal_read32(0x420, conn) | BIT(13), conn);
+		osal_write32(0x424, osal_read32(0x424, conn) | BIT(12), conn);
+		osal_write32(0x420, osal_read32(0x420, conn) | BIT(12), conn);
+		osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(31), conn);    //i2s input
+		osal_write32(0x300, osal_read32(0x300, conn) | BIT(22), conn);     //i2s stream
+		osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(16, 14))  //2 channel
+				| (0x01 << 14), conn);
+		osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(28, 25))  //channel 1-2
+				| (0x01 << 25), conn);
+		osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(21, 17))  //16bit
+				| (0x10 << 17), conn);
+		osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(24, 23))  //left-justified mode
+				| (0x01 << 23), conn);
+		/* set Audio TimeStamp Packet Header, packet ID = 0, version number = 0x12 */
+		osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(13, 0))
+				| (0x12 << 0), conn);
 
-	osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(30), conn);
-	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
-	udelay(1000);
-	osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
+		osal_write32(0x300, osal_read32(0x300, conn) & ~BIT(30), conn);
+		osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
+		udelay(1000);
+		osal_write32(0x01c, osal_read32(0x01c, conn) & ~BIT(28), conn);
+	}
 
-	// ana drv config
-	osal_printf("%s() ana drv config\n", __func__);
+	// analog config
+	osal_printf("%s() analog config\n", __func__);
 	// output mode control of 4 data lanes
 	osal_write32(0x1B0, osal_read32(0x1B0, conn) & ~0xF000000, conn);
 	osal_write32(0x1c0, 0xf08000, conn);
@@ -987,18 +1005,54 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	osal_write32(0x100, (osal_read32(0x100, conn) & ~(0x3 << 5)) | (0x2 << 5), conn);
 	osal_write32(0x100, (osal_read32(0x100, conn) & ~0x3) | 0x1, conn);
 
-	/* config video stream */
+	/* video stream config*/
 	osal_printf("%s()video stream config\n", __func__);
 
-	/* video stream disable */
-	osal_write32(0x200, osal_read32(0x200, conn) & ~BIT(28), conn);
-	inno_dp_video_cfg(conn, &conn->out_mode);
-	if (conn->edp_enable && mode->hdisplay == 2560 && mode->vdisplay == 1600) {
-		// set 2.5K eDP polarity
-		osal_write32(0x20c, 0x3 << 28, conn);
+	if (hdisplay_1920) {
+		/* video stream disable */
+		osal_write32(0x200, 0x400000, conn);
+
+		osal_write32(0x224, 0xc00029, conn);
+		osal_write32(0x20c, 0x30000000, conn);
+		osal_write32(0x228, 0x20, conn);
+		osal_write32(0x22c, 0x00, conn);
+		osal_write32(0x214, 0x1180780, conn);
+		osal_write32(0x210, 0x438002d, conn);
+		osal_write32(0x21c, 0x58002c, conn);
+		osal_write32(0x220, 0x40005, conn);
+		osal_read32(0x220, conn);
+
+		//colorbar 148.5MZ
+		// osal_write32(0x230, 0x7f0000, conn);
+
+		// DPU 150MZ
+		osal_write32(0x230, 0x7e0000, conn);
+		osal_read32(0x230, conn);
+
+		// colorbar 148.5MZ
+		// osal_write32(0x218, 0x34804001, conn);
+
+		// DPU 150MZ
+		osal_write32(0x218, 0x34c04001, conn);
+		osal_read32(0x218, conn);
+
+		/* video stream enable */
+		osal_write32(0x200, 0x10400000, conn);
+	} else {
+		/* video stream disable */
+		osal_write32(0x200, osal_read32(0x200, conn) & ~BIT(28), conn);
+		inno_dp_video_cfg(conn, &conn->out_mode);
+		if (conn->edp_enable && mode->hdisplay == 2560 && mode->vdisplay == 1600) {
+			// set 2.5K eDP polarity
+			osal_write32(0x20c, 0x3 << 28, conn);
+		}
+		if (conn->edp_enable && mode->hdisplay == 2256 && mode->vdisplay == 1504) {
+			// set 2.2K eDP polarity
+			osal_write32(0x20c, 0x3 << 28, conn);
+		}
+		/* video stream enable */
+		osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
 	}
-	/* video stream enable */
-	osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
 
 	/* training config */
 	osal_printf("%s() training config\n", __func__);
@@ -1021,10 +1075,9 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	// osal_printf("%s() colorbar mode\n", __func__);
 	//  osal_write32(0x238, 0x80000011, conn);
 
-	// DPU
-	osal_printf("%s() DPU mode\n", __func__);
-
 	if (hdisplay_2560) {
+		osal_write32(0x238, 0x00, conn);
+	} else if (hdisplay_2256) {
 		osal_write32(0x238, 0x00, conn);
 	} else if (hdisplay_1920) {
 		osal_write32(0x238, 0x1020, conn);
