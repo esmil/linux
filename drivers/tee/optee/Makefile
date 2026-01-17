@@ -7,7 +7,6 @@ optee-objs += rpc.o
 optee-objs += protmem.o
 optee-objs += supp.o
 optee-objs += device.o
-optee-objs += smc_abi.o
 optee-objs += ffa_abi.o
 
 ifeq ($(CONFIG_ARM),y)
