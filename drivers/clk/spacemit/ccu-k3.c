@@ -699,6 +699,12 @@ static const struct clk_parent_data cpu_c0_clk_parents[] = {
 CCU_MUX_DIV_FC_DEFINE(cpu_c0_core_clk, cpu_c0_clk_parents, APMU_CPU_C0_CLK_CTRL,
 		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
 
+static const struct clk_parent_data cpu_c1_pll_src_parents[] = {
+	CCU_PARENT_HW(pll4_d1),
+	CCU_PARENT_HW(pll3_d1),
+};
+CCU_MUX_DEFINE(cpu_c1_pll_src, cpu_c1_pll_src_parents, APMU_CPU_C1_CLK_CTRL, 13, 1, 0);
+
 static const struct clk_parent_data cpu_c1_clk_parents[] = {
 	CCU_PARENT_HW(pll1_d3_819p2),
 	CCU_PARENT_HW(pll1_d5_491p52),
@@ -707,7 +713,7 @@ static const struct clk_parent_data cpu_c1_clk_parents[] = {
 	CCU_PARENT_HW_NULL(),
 	CCU_PARENT_HW(pll1_d2_1228p8),
 	CCU_PARENT_HW(pll2_d2),
-	CCU_PARENT_HW(pll4_d1),
+	CCU_PARENT_HW(cpu_c1_pll_src),
 };
 CCU_MUX_DIV_FC_DEFINE(cpu_c1_core_clk, cpu_c1_clk_parents, APMU_CPU_C1_CLK_CTRL,
 		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
@@ -725,6 +731,12 @@ static const struct clk_parent_data cpu_c2_clk_parents[] = {
 CCU_MUX_DIV_FC_DEFINE(cpu_c2_core_clk, cpu_c2_clk_parents, APMU_CPU_C2_CLK_CTRL,
 		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
 
+static const struct clk_parent_data cpu_c3_pll_src_parents[] = {
+	CCU_PARENT_HW(pll8_d1),
+	CCU_PARENT_HW(pll5_d1),
+};
+CCU_MUX_DEFINE(cpu_c3_pll_src, cpu_c3_pll_src_parents, APMU_CPU_C3_CLK_CTRL, 13, 1, 0);
+
 static const struct clk_parent_data cpu_c3_clk_parents[] = {
 	CCU_PARENT_HW(pll1_d3_819p2),
 	CCU_PARENT_HW(pll1_d5_491p52),
@@ -733,7 +745,7 @@ static const struct clk_parent_data cpu_c3_clk_parents[] = {
 	CCU_PARENT_HW_NULL(),
 	CCU_PARENT_HW(pll1_d2_1228p8),
 	CCU_PARENT_HW(pll2_d2),
-	CCU_PARENT_HW(pll8_d1),
+	CCU_PARENT_HW(cpu_c3_pll_src),
 };
 CCU_MUX_DIV_FC_DEFINE(cpu_c3_core_clk, cpu_c3_clk_parents, APMU_CPU_C3_CLK_CTRL,
 		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
@@ -1705,6 +1717,8 @@ static const struct spacemit_ccu_data k3_ccu_apbc_data = {
 static struct clk_hw *k3_ccu_apmu_hws[] = {
 	[CLK_APMU_AXICLK]		= &axi_clk.common.hw,
 	[CLK_APMU_CCI550]		= &cci550_clk.common.hw,
+	[CLK_APMU_CPU_C1_PLL_SRC]	= &cpu_c1_pll_src.common.hw,
+	[CLK_APMU_CPU_C3_PLL_SRC]	= &cpu_c3_pll_src.common.hw,
 	[CLK_APMU_CPU_C0_CORE]		= &cpu_c0_core_clk.common.hw,
 	[CLK_APMU_CPU_C1_CORE]		= &cpu_c1_core_clk.common.hw,
 	[CLK_APMU_CPU_C2_CORE]		= &cpu_c2_core_clk.common.hw,

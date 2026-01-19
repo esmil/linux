@@ -275,11 +275,12 @@
 };
 
 &usb2_host_u2phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb2_host {
-	status = "disabled";
+	/* M2 BT */
+	status = "okay";
 };
 
 &usb3_porta_u2phy {
@@ -394,6 +395,14 @@
 	phy-names = "phy5";
 
 	status = "okay";
+};
+
+&ec_master {
+	states = "okay";
+
+        master0 {
+		main-device = <&eth1>;
+        };
 };
 
 &eth1 {

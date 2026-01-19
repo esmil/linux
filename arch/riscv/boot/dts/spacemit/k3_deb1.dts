@@ -376,7 +376,7 @@
 };
 
 &usb3_portc_u2phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portc_u3phy {
@@ -390,7 +390,7 @@
 	maximum-speed = "high-speed";
 	phys = <&usb3_portc_u2phy>;
 	phy-names = "usb2-phy";
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portd_u2phy {
@@ -501,6 +501,10 @@
 				CROS_STD_MAIN_KEYMAP
 		>;
 	};
+};
+
+&ec_master {
+	status = "okay";
 };
 
 &eth0 {

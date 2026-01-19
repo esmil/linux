@@ -1255,6 +1255,13 @@ void ec_master_receive_datagrams(
         datagram->working_counter = EC_READ_U16(cur_data);
         cur_data += EC_DATAGRAM_FOOTER_SIZE;
 
+        /*
+         * During warm-up, ensure that once the OP thread observes
+         * datagram->state == EC_DATAGRAM_RECEIVED, all other fields
+         * of the datagram are already visible.
+         */
+        smp_wmb();
+
         // dequeue the received datagram
         datagram->state = EC_DATAGRAM_RECEIVED;
 #ifdef EC_HAVE_CYCLES
@@ -2448,6 +2455,15 @@ int ecrt_master_send(ec_master_t *master)
     if (master->injection_seq_rt != master->injection_seq_fsm) {
         // inject datagram produced by master FSM
         ec_master_queue_datagram(master, &master->fsm_datagram);
+
+        /*
+         * During warm-up, if the OP thread gets scheduled and runs quickly,
+         * it may observe injection_seq_rt updated before the datagram->state
+         * update from ec_master_queue_datagram(), breaking the FSM.
+         * smp_wmb() enforces the required ordering.
+         */
+        smp_wmb();
+
         master->injection_seq_rt = master->injection_seq_fsm;
     }
 
