@@ -1138,7 +1138,7 @@
 			reset-names = "v2d_reset";
 			interrupt-parent = <&saplic>;
 			interrupts = <86 IRQ_TYPE_LEVEL_HIGH>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		mailbox0: mailbox0@cac90000 {
