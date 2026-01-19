@@ -6,8 +6,8 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		clocks = <&pll CLK_PLL3>, <&pll CLK_PLL4>;
-		clock-names = "pll_clst0", "pll_clst1";
+		clocks = <&pll CLK_PLL3>, <&pll CLK_PLL4>, <&pll CLK_PLL3_D1>, <&syscon_apmu CLK_APMU_CPU_C1_PLL_SRC>;
+		clock-names = "pll_clst0", "pll_clst1", "pll_src", "clt_pll_src";
 
 		opp2400000000 {
 			opp-hz = /bits/ 64 <2400000000>, /bits/ 64 <2400000000>;
@@ -127,8 +127,8 @@
 	clst_core_opp_table0_a100: opp_table0_a100 {
 		compatible = "operating-points-v2";
 		opp-shared;
-		clocks = <&pll CLK_PLL5>, <&pll CLK_PLL8>;
-		clock-names = "pll_clst0", "pll_clst1";
+		clocks = <&pll CLK_PLL5>, <&pll CLK_PLL8>, <&pll CLK_PLL5_D1>, <&syscon_apmu CLK_APMU_CPU_C3_PLL_SRC>;
+		clock-names = "pll_clst0", "pll_clst1", "pll_src", "clt_pll_src";
 
 		opp2000000000 {
 			opp-hz = /bits/ 64 <2000000000>, /bits/ 64 <2000000000>;
