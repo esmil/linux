@@ -343,16 +343,6 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	if (ret)
 		return ret;
 
-	/* Set the PCI vendor and device ID */
-	dw_pcie_dbi_ro_wr_en(pci);
-	dw_pcie_writew_dbi(pci, PCI_VENDOR_ID, PCI_VENDOR_ID_SPACEMIT);
-#ifdef CONFIG_SOC_SPACEMIT_K3
-	dw_pcie_writew_dbi(pci, PCI_DEVICE_ID, PCI_DEVICE_ID_SPACEMIT_K3);
-#else
-	dw_pcie_writew_dbi(pci, PCI_DEVICE_ID, PCI_DEVICE_ID_SPACEMIT_K1);
-#endif
-	dw_pcie_dbi_ro_wr_dis(pci);
-
 	/*
 	 * Start by asserting fundamental reset (drive PERST# low).  The
 	 * PCI CEM spec says that PERST# should be deasserted at least
@@ -405,6 +395,16 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 		return ret;
 	}
 #endif
+
+	/* Set the PCI vendor and device ID */
+	dw_pcie_dbi_ro_wr_en(pci);
+	dw_pcie_writew_dbi(pci, PCI_VENDOR_ID, PCI_VENDOR_ID_SPACEMIT);
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	dw_pcie_writew_dbi(pci, PCI_DEVICE_ID, PCI_DEVICE_ID_SPACEMIT_K3);
+#else
+	dw_pcie_writew_dbi(pci, PCI_DEVICE_ID, PCI_DEVICE_ID_SPACEMIT_K1);
+#endif
+	dw_pcie_dbi_ro_wr_dis(pci);
 
 	/* Deassert fundamental reset (drive PERST# high) */
 #ifndef CONFIG_SOC_SPACEMIT_K3
