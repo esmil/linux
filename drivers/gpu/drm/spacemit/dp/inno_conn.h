@@ -46,6 +46,8 @@ struct inno_conn_t {
 	uint32_t width; /* need match with vic */
 	uint32_t height; /* need match with vic */
 
+	bool use_ext_pixel_clock;
+	int pixel_clock;
 	bool edp_enable;
 	struct inno_conn_func_t *func;
 	struct drm_display_mode out_mode;
