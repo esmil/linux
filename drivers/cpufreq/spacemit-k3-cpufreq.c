@@ -30,7 +30,7 @@ static int spacemit_processor_notifier(struct notifier_block *nb,
 	struct cpufreq_policy *policy = ( struct cpufreq_policy *)freqs->policy;
 	struct opp_table *opp_table;
 	struct device_node *np;
-	struct clk *pll_clst0, *pll_clst1;
+	struct clk *pll_clst0, *pll_clst1, *pll_src, *clt_pll_src;
 	u64 rates;
 	u32 microvol;
 	int i;
@@ -50,6 +50,8 @@ static int spacemit_processor_notifier(struct notifier_block *nb,
 	/* get the pll clk handler */
 	pll_clst0 = of_clk_get_by_name(opp_table->np, "pll_clst0");
 	pll_clst1 = of_clk_get_by_name(opp_table->np, "pll_clst1");
+	pll_src = of_clk_get_by_name(opp_table->np, "pll_src");
+	clt_pll_src = of_clk_get_by_name(opp_table->np, "clt_pll_src");
 
 	if (event == CPUFREQ_PRECHANGE) {
 
@@ -70,6 +72,8 @@ static int spacemit_processor_notifier(struct notifier_block *nb,
 			}
 		}
 	}
+
+	i = clk_set_parent(clt_pll_src, pll_src);
 
 	if (event == CPUFREQ_POSTCHANGE) {
 		/* TODO */

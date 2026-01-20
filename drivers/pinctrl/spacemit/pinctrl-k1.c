@@ -14,6 +14,9 @@
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/interrupt.h>
+#include <linux/irqdomain.h>
+#include <linux/pm_wakeirq.h>
 
 #include <linux/pinctrl/pinconf-generic.h>
 #include <linux/pinctrl/pinconf.h>
@@ -115,6 +118,10 @@ struct spacemit_pinctrl {
 
 	struct regmap				*rm_gpio;
 	struct regmap				*rm_gpio_edge;
+
+	int					wake_irq;
+	struct irq_domain			*irq_domain;
+	struct irq_chip				irq_chip;
 };
 
 struct spacemit_pinctrl_data {
@@ -860,6 +867,149 @@ static const struct pinconf_ops spacemit_pinconf_ops = {
 	.is_generic			= true,
 };
 
+static void spacemit_pinctrl_clear_edge(struct spacemit_pinctrl *pctrl, uint32_t pin)
+{
+	void __iomem *reg = pctrl->regs + pctrl->data->pin_to_offset(pin);
+	u32 value = readl(reg);
+
+	value |= PAD_EDGE_CLEAR;
+	value &= ~(PAD_EDGE_RISE | PAD_EDGE_FALL);
+	writel(value, reg);
+}
+
+static void spacemit_pinctrl_wakeirq_mask(struct irq_data *d)
+{
+	struct spacemit_pinctrl *pctrl = irq_data_get_irq_chip_data(d);
+	void __iomem *reg;
+	u32 value;
+
+	reg = pctrl->regs + pctrl->data->pin_to_offset(d->hwirq);
+
+	value = readl(reg);
+	value |= PAD_EDGE_CLEAR;
+	writel(value, reg);
+}
+
+static void spacemit_pinctrl_wakeirq_unmask(struct irq_data *d)
+{
+	struct spacemit_pinctrl *pctrl = irq_data_get_irq_chip_data(d);
+	void __iomem *reg;
+	u32 value;
+
+	reg = pctrl->regs + pctrl->data->pin_to_offset(d->hwirq);
+
+	value = readl(reg);
+	value &= ~PAD_EDGE_CLEAR;
+	writel(value, reg);
+}
+
+static int spacemit_pinctrl_wakeirq_set_type(struct irq_data *d, unsigned int flow_type)
+{
+	struct spacemit_pinctrl *pctrl = irq_data_get_irq_chip_data(d);
+	void __iomem *reg;
+	u32 value;
+
+	reg = pctrl->regs + pctrl->data->pin_to_offset(d->hwirq);
+
+	value = readl(reg);
+	value &= ~(PAD_EDGE_RISE | PAD_EDGE_FALL);
+
+	if (flow_type == IRQ_TYPE_EDGE_RISING)
+		value |= PAD_EDGE_RISE;
+	else if (flow_type == IRQ_TYPE_EDGE_FALLING)
+		value |= PAD_EDGE_FALL;
+	else if (flow_type == IRQ_TYPE_EDGE_BOTH)
+		value |= (PAD_EDGE_RISE | PAD_EDGE_FALL);
+	else
+		dev_err(pctrl->dev, "Unsupported flow type: %d", flow_type);
+
+	value &= ~PAD_EDGE_CLEAR;
+
+	writel(value, reg);
+
+	return 0;
+}
+
+static irqreturn_t spacemit_pinctrl_wakeirq_handler(int irq, void *data)
+{
+	struct spacemit_pinctrl *pctrl = data;
+	unsigned long status, hwirq;
+	unsigned int i;
+	u32 reg_offset, hwirq_bit;
+	int num_banks = DIV_ROUND_UP(pctrl->data->npins, 32);
+
+	for (i = 0; i < num_banks; i++) {
+		reg_offset = i * 4;
+		regmap_read(pctrl->rm_gpio_edge, reg_offset, (u32 *)&status);
+
+		for_each_set_bit(hwirq_bit, &status, 32) {
+			hwirq = i * 32 + hwirq_bit;
+
+			/* Only handle the requested irq */
+			generic_handle_domain_irq(pctrl->irq_domain, hwirq);
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+
+static int spacemit_pinctrl_wakeirq_domain_map(struct irq_domain *d, unsigned int irq,
+				       irq_hw_number_t hwirq)
+{
+	struct spacemit_pinctrl *pctrl = d->host_data;
+
+	irq_set_chip_data(irq, pctrl);
+
+	/* Use level-triggered handler (mask clears edge flag via bit 6) */
+	irq_set_chip_and_handler(irq, &pctrl->irq_chip, handle_level_irq);
+	irq_set_noprobe(irq);
+
+	return 0;
+}
+
+static const struct irq_domain_ops spacemit_pinctrl_wakeirq_domain_ops = {
+	.map = spacemit_pinctrl_wakeirq_domain_map,
+	.xlate = irq_domain_xlate_twocell,
+};
+
+static int spacemit_pinctrl_wakeirq_init(struct spacemit_pinctrl *pctrl)
+{
+	struct device *dev = pctrl->dev;
+
+	pctrl->irq_chip.name = "spacemit-pinctrl-wakeirq";
+	pctrl->irq_chip.irq_mask = spacemit_pinctrl_wakeirq_mask;
+	pctrl->irq_chip.irq_unmask = spacemit_pinctrl_wakeirq_unmask;
+	pctrl->irq_chip.irq_set_type = spacemit_pinctrl_wakeirq_set_type;
+	pctrl->irq_chip.flags = IRQCHIP_SKIP_SET_WAKE;
+
+	pctrl->irq_domain = irq_domain_add_linear(dev->of_node,
+						  pctrl->data->npins,
+						  &spacemit_pinctrl_wakeirq_domain_ops,
+						  pctrl);
+	if (!pctrl->irq_domain)
+		return dev_err_probe(dev, PTR_ERR(pctrl->irq_domain),
+				     "Failed to create IRQ domain\n");
+
+	dev_pm_set_wake_irq(dev, pctrl->wake_irq);
+	device_init_wakeup(dev, true);
+
+	dev_info(dev, "Wake-up interrupt initialized (IRQ %d)\n", pctrl->wake_irq);
+
+	return 0;
+}
+
+static void spacemit_pinctrl_wakeirq_cleanup(void *data)
+{
+	struct platform_device *pdev = data;
+	struct spacemit_pinctrl *pctrl = platform_get_drvdata(pdev);
+
+	dev_pm_clear_wake_irq(pctrl->dev);
+	device_init_wakeup(pctrl->dev, false);
+
+	if (pctrl->irq_domain)
+		irq_domain_remove(pctrl->irq_domain);
+}
+
 static int spacemit_pinctrl_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -867,7 +1017,7 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 	struct spacemit_pinctrl *pctrl;
 	struct clk *func_clk, *bus_clk;
 	const struct spacemit_pinctrl_data *pctrl_data;
-	int ret;
+	int ret, irq;
 
 	pctrl_data = device_get_match_data(dev);
 	if (!pctrl_data)
@@ -887,7 +1037,6 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 	pctrl->io_pd_reg = devm_platform_ioremap_resource(pdev, 1);
 	if (IS_ERR(pctrl->io_pd_reg))
 		return PTR_ERR(pctrl->io_pd_reg);
-
 	pctrl->regmap_apbc =
 		syscon_regmap_lookup_by_phandle_args(np, "spacemit,apbc", 1,
 						     &pctrl->regmap_apbc_offset);
@@ -937,6 +1086,33 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 	if (ret)
 		return dev_err_probe(dev, ret,
 				     "fail to register pinctrl driver\n");
+
+	irq = platform_get_irq(pdev, 0);
+	if (!irq) {
+		dev_warn(dev, "No wake-up interrupt specified, wakeirq disabled\n");
+		return pinctrl_enable(pctrl->pctl_dev);
+	}
+
+	pctrl->wake_irq = irq;
+
+	for (int i = 0; i < pctrl_data->npins; i++)
+		 spacemit_pinctrl_clear_edge(pctrl, i);
+
+	ret = devm_request_threaded_irq(dev, irq, NULL, spacemit_pinctrl_wakeirq_handler,
+					IRQF_ONESHOT | IRQF_SHARED,
+					"spacemit-wakeirq", pctrl);
+	if (ret) {
+		dev_err(dev, "Failed to request wake IRQ: %d\n", ret);
+		return ret;
+	}
+
+	ret = spacemit_pinctrl_wakeirq_init(pctrl);
+	if (ret)
+		return dev_err_probe(dev, ret, "Failed to initialize wakeirq: %d\n", pctrl->wake_irq);
+
+	ret = devm_add_action_or_reset(dev, spacemit_pinctrl_wakeirq_cleanup, pdev);
+	if (ret)
+		return dev_err_probe(dev, ret, "Failed to register cleanup callback\n");
 
 	return pinctrl_enable(pctrl->pctl_dev);
 }
