@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/msi_api.h>
 #include <linux/platform_device.h>
+#include <linux/pm_wakeirq.h>
 #include <linux/mailbox/riscv-rpmi-message.h>
 
 /** RPMI rtc service IDs */
@@ -135,17 +136,19 @@ static int rpmi_read_time(struct device *dev, struct rtc_time *time)
 	rpmi_mbox_init_send_with_response(&msg, RPMI_RTC_SRV_GET_TIME,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
 	ret = rpmi_mbox_send_message(context->chan, &msg);
-	if (ret)
+	if (ret) {
 		return ret;
-	if (rx.status)
+	}
+	if (rx.status) {
 		return rpmi_to_linux_error(rx.status);
+	}
 
         time->tm_sec = rx.second;
         time->tm_min = rx.min;
         time->tm_hour = rx.hour;
-        time->tm_mday = rx.date + 1;
+        time->tm_mday = rx.date;
         time->tm_mon = rx.mon;
-        time->tm_year = rx.year + 100;
+        time->tm_year = rx.year;
 
 	return 0;
 }
@@ -160,9 +163,9 @@ static int rpmi_set_time(struct device *dev, struct rtc_time *time)
 
 	context = dev_get_drvdata(dev);
 
-	tx.year = time->tm_year - 100;
+	tx.year = time->tm_year;
 	tx.mon = time->tm_mon;
-	tx.date = time->tm_mday - 1;
+	tx.date = time->tm_mday;
 	tx.hour = time->tm_hour;
 	tx.min = time->tm_min;
 	tx.second = time->tm_sec;
@@ -201,9 +204,9 @@ static int rpmi_read_alarm(struct device *dev, struct rtc_wkalrm *alarm)
         alarm->time.tm_sec = rx.second;
         alarm->time.tm_min = rx.min;
         alarm->time.tm_hour = rx.hour;
-        alarm->time.tm_mday = rx.date + 1;
+        alarm->time.tm_mday = rx.date;
         alarm->time.tm_mon = rx.mon;
-        alarm->time.tm_year = rx.year + 100;
+        alarm->time.tm_year = rx.year;
 
 	rpmi_mbox_init_send_with_response(&msg, RPMI_RTC_SRV_ALARM_GET_EN,
 					  &alarmtx, sizeof(alarmtx), &alarmrx, sizeof(alarmrx));
@@ -228,9 +231,9 @@ static int rpmi_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 
 	context = dev_get_drvdata(dev);
 
-	tx.year = alarm->time.tm_year - 100;
+	tx.year = alarm->time.tm_year;
 	tx.mon = alarm->time.tm_mon;
-	tx.date = alarm->time.tm_mday - 1;
+	tx.date = alarm->time.tm_mday;
 	tx.hour = alarm->time.tm_hour;
 	tx.min = alarm->time.tm_min;
 	tx.second = alarm->time.tm_sec;
@@ -321,6 +324,8 @@ static irqreturn_t mpxy_rtc_irq_thread(int irq, void *dev_id)
 			return IRQ_HANDLED;
 	}
 
+	rtc_update_irq(context->rtc, 1, RTC_IRQF | RTC_AF);
+
 	return IRQ_HANDLED;
 }
 
@@ -373,22 +378,25 @@ static int rpmi_rtc_probe(struct platform_device *pdev)
 	}
 	context->max_msg_data_size = msg.attr.value;
 
-	context->rtc = devm_rtc_allocate_device(dev);
-	context->rtc->ops = &rpmi_rtc_class_ops;
-	context->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
-	context->rtc->range_max = RTC_TIMESTAMP_END_2063;
-
 	/* request msi irq */
 	context->virt_irq = platform_get_irq_byname(pdev, "rpmi rtc");
 	/* Request channel MSI handler */
 	ret = request_threaded_irq(context->virt_irq,
 				  mpxy_rtc_irq_event,
 				  mpxy_rtc_irq_thread,
-				  IRQF_SHARED, dev_name(dev), context);
+				  IRQF_SHARED | IRQF_ONESHOT, dev_name(dev), context);
 	if (ret) {
 		dev_err(dev, "failed to request MPXY channel IRQ\n");
 		return ret;
 	}
+
+	dev_pm_set_wake_irq(&pdev->dev, context->virt_irq);
+	device_init_wakeup(&pdev->dev, 1);
+
+	context->rtc = devm_rtc_allocate_device(dev);
+	context->rtc->ops = &rpmi_rtc_class_ops;
+	context->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
+	context->rtc->range_max = RTC_TIMESTAMP_END_2063;
 
 	return devm_rtc_register_device(context->rtc);
 
