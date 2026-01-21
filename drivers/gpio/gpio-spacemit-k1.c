@@ -375,7 +375,7 @@ static int spacemit_gpio_probe(struct platform_device *pdev)
 
 	sg->data = data;
 
-	sg->rm_gpio = syscon_regmap_lookup_by_phandle(np, "syscon-gpio");
+	sg->rm_gpio = syscon_regmap_lookup_by_phandle(np, "syscon-gpio-regs");
 	if (IS_ERR(sg->rm_gpio))
 		return dev_err_probe(dev, PTR_ERR(sg->rm_gpio),
 				     "Failed to get syscon-gpio regmap\n");

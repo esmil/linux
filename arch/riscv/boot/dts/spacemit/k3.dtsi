@@ -433,7 +433,7 @@
 			interrupt-parent = <&saplic>;
 			interrupt-controller;
 			#interrupt-cells = <3>;
-			syscon-gpio = <&syscon_gpio>;
+			syscon-gpio-regs = <&syscon_gpio>;
 			syscon-gpio-edge = <&syscon_gpio_edge>;
 			gpio-ranges = <&pinctrl 0 0 0 32>,
 				      <&pinctrl 1 0 32 32>,
