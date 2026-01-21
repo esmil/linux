@@ -1308,7 +1308,7 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <64 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rpmi rtc";
-			status = "disabled";
+			status = "okay";
 		};
 
 		rpmi_pwrkey: rpmi_pwrkey@0 {
