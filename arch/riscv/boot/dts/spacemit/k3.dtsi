@@ -452,8 +452,7 @@
 			#interrupt-cells = <2>;
 			interrupts = <60 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
-			syscon = <&syscon_gpio>;
-			syscon-edge = <&syscon_gpio_edge>;
+			spacemit,gpio-edge = <&syscon_gpio_edge>;
 			spacemit,apbc = <&syscon_apbc 0x50>;
 		};
 

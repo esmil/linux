@@ -116,7 +116,6 @@ struct spacemit_pinctrl {
 	struct regmap				*regmap_apbc;
 	u32					regmap_apbc_offset;
 
-	struct regmap				*rm_gpio;
 	struct regmap				*rm_gpio_edge;
 
 	int					wake_irq;
@@ -1045,13 +1044,8 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, PTR_ERR(pctrl->regmap_apbc),
 				     "failed to get syscon\n");
 
-	pctrl->rm_gpio = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
-							 "syscon");
-	if (IS_ERR(pctrl->rm_gpio))
-		return PTR_ERR(pctrl->rm_gpio);
-
 	pctrl->rm_gpio_edge = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
-							      "syscon-edge");
+							      "spacemit,gpio-edge");
 	if (IS_ERR(pctrl->rm_gpio_edge))
 		return PTR_ERR(pctrl->rm_gpio_edge);
 
