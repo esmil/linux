@@ -2145,7 +2145,7 @@
 				<0x43000000 0x18 0x00000000 0x18 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <141>;
+			interrupts = <141 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "msi";
 				clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_BUS>,
 					<&syscon_apmu CLK_APMU_PCIE_PORTA_MSTR>,
@@ -2181,7 +2181,7 @@
 				<0x43000000 0x16 0x00000000 0x16 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <142>;
+			interrupts = <142 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "msi";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_BUS>,
@@ -2220,7 +2220,7 @@
 				<0x43000000 0x15 0x00000000 0x15 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <143>;
+			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "msi";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_BUS>,
@@ -2259,7 +2259,7 @@
 				<0x43000000 0x14 0x00000000 0x14 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <145>;
+			interrupts = <145 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "msi";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_BUS>,
@@ -2298,7 +2298,7 @@
 				<0x43000000 0x13 0x00000000 0x13 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <146>;
+			interrupts = <146 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "msi";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_BUS>,
