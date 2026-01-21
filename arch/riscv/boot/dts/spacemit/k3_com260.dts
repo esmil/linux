@@ -141,6 +141,12 @@
 		};
 	};
 
+	i2c2-1-cfg {
+		i2c2-0-pins {
+			power-source = <1800>;
+		};
+	};
+
 	i2c3-2-cfg {
 		i2c3-0-pins {
 			power-source= <3300>;
@@ -827,6 +833,12 @@
 			};
 		};
 	};
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_1_cfg>;
+	status = "okay";
 };
 
 &dpu_crtc0 {
