@@ -2148,13 +2148,13 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <141>;
 			interrupt-names = "msi";
-				clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_MSTE>,
-					<&syscon_apmu CLK_APMU_PCIE_PORTA_MSTE>,
+				clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_BUS>,
+					<&syscon_apmu CLK_APMU_PCIE_PORTA_MSTR>,
 					<&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
 				clock-names = "dbi", "mstr", "slv";
-				resets = <&syscon_apmu RESET_APMU_PCIE_PORTA>,
-					<&syscon_apmu RESET_APMU_PCIE_PORTA>,
-					<&syscon_apmu RESET_APMU_PCIE_PORTA>;
+				resets = <&syscon_apmu RESET_APMU_PCIE_PORTA_DBI>,
+					<&syscon_apmu RESET_APMU_PCIE_PORTA_MSTR>,
+					<&syscon_apmu RESET_APMU_PCIE_PORTA_SLV>;
 				reset-names = "dbi", "mstr", "slv";
 			linux,pci-domain = <0>;
 			msi-parent = <&simsic>;
@@ -2185,13 +2185,13 @@
 			interrupts = <142>;
 			interrupt-names = "msi";
 
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTB_MSTE>,
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_BUS>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTB_MSTR>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTB_SLV>;
 			clock-names = "dbi", "mstr", "slv";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTB>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTB>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTB>;
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTB_DBI>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTB_MSTR>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTB_SLV>;
 			reset-names = "dbi", "mstr", "slv";
 
 			linux,pci-domain = <1>;
@@ -2224,13 +2224,13 @@
 			interrupts = <143>;
 			interrupt-names = "msi";
 
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTC_MSTE>,
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_BUS>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTC_MSTR>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTC_SLV>;
 			clock-names = "dbi", "mstr", "slv";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTC>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTC>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTC>;
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTC_DBI>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTC_MSTR>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTC_SLV>;
 			reset-names = "dbi", "mstr", "slv";
 
 			linux,pci-domain = <2>;
@@ -2263,13 +2263,13 @@
 			interrupts = <145>;
 			interrupt-names = "msi";
 
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTD_MSTE>,
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_BUS>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTD_MSTR>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTD_SLV>;
 			clock-names = "dbi", "mstr", "slv";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTD>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTD>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTD>;
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTD_DBI>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTD_MSTR>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTD_SLV>;
 			reset-names = "dbi", "mstr", "slv";
 
 			linux,pci-domain = <3>;
@@ -2302,13 +2302,13 @@
 			interrupts = <146>;
 			interrupt-names = "msi";
 
-			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_MSTE>,
-				<&syscon_apmu CLK_APMU_PCIE_PORTE_MSTE>,
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_BUS>,
+				<&syscon_apmu CLK_APMU_PCIE_PORTE_MSTR>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTE_SLV>;
 			clock-names = "dbi", "mstr", "slv";
-			resets = <&syscon_apmu RESET_APMU_PCIE_PORTE>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTE>,
-				<&syscon_apmu RESET_APMU_PCIE_PORTE>;
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTE_DBI>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTE_MSTR>,
+				<&syscon_apmu RESET_APMU_PCIE_PORTE_SLV>;
 			reset-names = "dbi", "mstr", "slv";
 
 			linux,pci-domain = <4>;
