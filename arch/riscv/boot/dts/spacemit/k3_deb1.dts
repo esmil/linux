@@ -326,7 +326,7 @@
 
 	hub@1 {
 		/* FE1.1S USB2.0 hub (4 ports) */
-		compatible = "usb5e3,608";
+		compatible = "usb1a40,101";
 		reg = <1>;
 	};
 };
