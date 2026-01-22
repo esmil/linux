@@ -280,4 +280,15 @@ config CORESIGHT_TNOC
 	  To compile this driver as a module, choose M here: the module will be
 	  called coresight-tnoc.
 
+config RVTRACE
+	tristate "RISC-V Trace Support"
+	help
+	  This enables support for the RISC-V trace drivers. drivers
+	  (including Trace Encoder, Trace Funnel and  ATB Bridge) are
+	  dynamically aggregated with CoreSight trace infrastructure
+	  at run time to form a complete trace path.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace.
+
 endif
