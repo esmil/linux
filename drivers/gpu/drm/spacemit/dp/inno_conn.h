@@ -57,6 +57,7 @@ struct inno_conn_t {
 	void *priv;
 	bool is_enable;
 	struct device *dev;
+	uint32_t aud_mode;
 };
 
 struct inno_conn_func_t {
