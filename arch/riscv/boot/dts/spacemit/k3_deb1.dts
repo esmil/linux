@@ -1159,13 +1159,13 @@
 
 &sound_card_dp1 {
 	status = "okay";
-	playback-only;
 	simple-audio-card,mclk-fs = <512>;
 	simple-audio-card,dai-link@0 {
 		format = "left_j";
 		frame-master = <&dp1_link_cpu>;
 		bitclock-master = <&dp1_link_cpu>;
 		dp1_link_codec: codec {
+			playback-only;
 			sound-dai = <&dp1>;
 		};
 	};
