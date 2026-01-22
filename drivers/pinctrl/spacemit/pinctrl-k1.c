@@ -80,6 +80,13 @@
 #define APBC_ASFAR_AKEY		0xbaba
 #define APBC_ASSAR_AKEY		0xeb10
 
+#define APMUA_EM_CLK_RES_CTRL	0x104
+/* enable EM EPHY GPIO mode */
+ #define EM_PHY_TMS_SW		BIT(20)
+
+#define EMMC_FIRST_PIN_K1	128
+#define EMMC_FIRST_PIN_K3	153
+
 struct spacemit_pin_drv_strength {
 	u8		val;
 	u32		mA;
@@ -116,6 +123,8 @@ struct spacemit_pinctrl {
 	struct regmap				*regmap_apbc;
 	u32					regmap_apbc_offset;
 
+	struct regmap				*regmap_apmu;
+
 	struct regmap				*rm_gpio_edge;
 
 	int					wake_irq;
@@ -129,6 +138,7 @@ struct spacemit_pinctrl_data {
 	u16					npins;
 	unsigned int				(*pin_to_offset)(unsigned int pin);
 	unsigned int				(*pin_to_io_pd_offset)(unsigned int pin);
+	unsigned int				emmc_first_pin;
 	struct spacemit_pinctrl_variant		variant;
 };
 
@@ -238,6 +248,13 @@ static unsigned int spacemit_k3_pin_to_io_pd_offset(unsigned int pin)
 	}
 
 	return offset;
+}
+
+
+static inline unsigned int spacemit_is_emmc_pin(unsigned int emmc_first_pin,
+						unsigned int pin)
+{
+	return pin >= emmc_first_pin ? 0 : 1;
 }
 
 static inline void __iomem *spacemit_pin_to_reg(struct spacemit_pinctrl *pctrl,
@@ -647,6 +664,12 @@ static int spacemit_request_gpio(struct pinctrl_dev *pctldev,
 	void __iomem *reg;
 	u32 val;
 
+	if (!spacemit_is_emmc_pin(pctrl->data->emmc_first_pin, pin)) {
+		regmap_update_bits(pctrl->regmap_apmu, APMUA_EM_CLK_RES_CTRL,
+				   EM_PHY_TMS_SW, EM_PHY_TMS_SW);
+		return 0;
+	}
+
 	reg = spacemit_pin_to_reg(pctrl, pin);
 
 	guard(raw_spinlock_irqsave)(&pctrl->lock);
@@ -1044,6 +1067,11 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, PTR_ERR(pctrl->regmap_apbc),
 				     "failed to get syscon\n");
 
+	pctrl->regmap_apmu = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+							     "spacemit,apmu");
+	if (IS_ERR(pctrl->regmap_apmu))
+		return PTR_ERR(pctrl->regmap_apmu);
+
 	pctrl->rm_gpio_edge = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 							      "spacemit,gpio-edge");
 	if (IS_ERR(pctrl->rm_gpio_edge))
@@ -1240,6 +1268,18 @@ static const struct pinctrl_pin_desc k1_pin_desc[] = {
 	PINCTRL_PIN(125, "GPIO_125"),
 	PINCTRL_PIN(126, "GPIO_126"),
 	PINCTRL_PIN(127, "GPIO_127"),
+	/* EMMC or GPIO, only 2 functions */
+	PINCTRL_PIN(128, "EMMC_D0"),
+	PINCTRL_PIN(129, "EMMC_D1"),
+	PINCTRL_PIN(130, "EMMC_D2"),
+	PINCTRL_PIN(131, "EMMC_D3"),
+	PINCTRL_PIN(132, "EMMC_D4"),
+	PINCTRL_PIN(133, "EMMC_D5"),
+	PINCTRL_PIN(134, "EMMC_D6"),
+	PINCTRL_PIN(135, "EMMC_D7"),
+	PINCTRL_PIN(136, "EMMC_DS"),
+	PINCTRL_PIN(137, "EMMC_CLK"),
+	PINCTRL_PIN(138, "EMMC_CMD"),
 };
 
 static const struct spacemit_pin k1_pin_data[ARRAY_SIZE(k1_pin_desc)] = {
@@ -1379,6 +1419,7 @@ static const struct spacemit_pinctrl_data k1_pinctrl_data = {
 	.npins = ARRAY_SIZE(k1_pin_desc),
 	.pin_to_offset = spacemit_k1_pin_to_offset,
 	.pin_to_io_pd_offset = spacemit_k1_pin_to_io_pd_offset,
+	.emmc_first_pin = EMMC_FIRST_PIN_K1,
 	.variant = {
 		.drive_mask = PAD_DRIVE_K1,
 		.schmitt_mask = PAD_SCHMITT_K1,
@@ -1543,6 +1584,18 @@ static const struct pinctrl_pin_desc k3_pin_desc[] = {
 	PINCTRL_PIN(150, "PWR_SSP_FRM"),
 	PINCTRL_PIN(151, "PWR_SSP_TXD"),
 	PINCTRL_PIN(152, "PWR_SSP_RXD"),
+	/* EMMC or GPIO, only 2 functions */
+	PINCTRL_PIN(153, "EMMC_D0"),
+	PINCTRL_PIN(154, "EMMC_D1"),
+	PINCTRL_PIN(155, "EMMC_D2"),
+	PINCTRL_PIN(156, "EMMC_D3"),
+	PINCTRL_PIN(157, "EMMC_D4"),
+	PINCTRL_PIN(158, "EMMC_D5"),
+	PINCTRL_PIN(159, "EMMC_D6"),
+	PINCTRL_PIN(160, "EMMC_D7"),
+	PINCTRL_PIN(161, "EMMC_DS"),
+	PINCTRL_PIN(162, "EMMC_CLK"),
+	PINCTRL_PIN(163, "EMMC_CMD"),
 };
 
 static const struct spacemit_pin k3_pin_data[ARRAY_SIZE(k3_pin_desc)] = {
@@ -1724,6 +1777,7 @@ static const struct spacemit_pinctrl_data k3_pinctrl_data = {
 	.npins = ARRAY_SIZE(k3_pin_desc),
 	.pin_to_offset = spacemit_k3_pin_to_offset,
 	.pin_to_io_pd_offset = spacemit_k3_pin_to_io_pd_offset,
+	.emmc_first_pin = EMMC_FIRST_PIN_K3,
 	.variant = {
 		.drive_mask = PAD_DRIVE_K3,
 		.schmitt_mask = PAD_SCHMITT_K3,
