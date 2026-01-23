@@ -454,6 +454,7 @@
 			interrupt-parent = <&saplic>;
 			spacemit,gpio-edge = <&syscon_gpio_edge>;
 			spacemit,apbc = <&syscon_apbc 0x50>;
+			spacemit,apmu = <&syscon_apmu>;
 		};
 
 		pdma: pdma@d4000000 {
