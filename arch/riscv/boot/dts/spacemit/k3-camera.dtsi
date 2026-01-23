@@ -4,125 +4,155 @@
  */
 
 &soc {
-	ccic0: cam_ccic@d420a000 {
-		status = "disabled";
-		compatible = "spacemit,vcam-ccic";
+	csiphy0: csiphy@d420a000 {
+		compatible = "spacemit,csi-dphy";
 		cell-index = <0>;
+		spacemit,apmu = <&syscon_apmu>;
+		spacemit,ctrl-offset = <0x37c>;
+		spacemit,bifmode-enable = <0>;
+		reg = <0x0 0xd420a000 0x0 0x13f>;
+		reg-names = "csiphy-regs";
+		clocks = <&syscon_apmu CLK_APMU_CCIC1PHY>;
+		clock-names = "csi_dphy";
+		resets = <&syscon_apmu RESET_APMU_CCIC1_PHY>;
+		reset-names = "csi_dphy_reset";
+		status = "okay";
+	};
+
+	csiphy1: csiphy@d420a800 {
+		compatible = "spacemit,csi-dphy";
+		cell-index = <1>;
+		spacemit,apmu = <&syscon_apmu>;
+		spacemit,ctrl-offset = <0x37c>;
+		spacemit,bifmode-enable = <0>;
+		reg = <0x0 0xd420a800 0x0 0x13f>;
+		reg-names = "csiphy-regs";
+		clocks = <&syscon_apmu CLK_APMU_CCIC2PHY>;
+		clock-names = "csi_dphy";
+		resets = <&syscon_apmu RESET_APMU_CCIC2PHY>;
+		reset-names = "csi_dphy_reset";
+		status = "okay";
+	};
+
+	csiphy2: csiphy@d4206000 {
+		compatible = "spacemit,csi-dphy";
+		cell-index = <2>;
+		spacemit,apmu = <&syscon_apmu>;
+		spacemit,ctrl-offset = <0x37c>;
+		spacemit,bifmode-enable = <1>;
+		reg = <0x0 0xd4206000 0x0 0x13f>;
+		reg-names = "csiphy-regs";
+		clocks = <&syscon_apmu CLK_APMU_CCIC3PHY>;
+		clock-names = "csi_dphy";
+		resets = <&syscon_apmu RESET_APMU_CCIC3PHY>;
+		reset-names = "csi_dphy_reset";
+		status = "okay";
+	};
+
+	ccic0: cam_ccic@d420a000 {
+		status = "okay";
+		compatible = "spacemit,ccic";
+		cell-index = <0>;
+		spacemit,csiphy = <&csiphy0>;
 		reg = <0x0 0xd420a000 0x0 0x3ff>;
 		reg-names = "ccic-regs";
 		interrupt-parent = <&saplic>;
 		interrupts = <81 4>;
-		interrupt-names = "ipe-irq";
-		clocks = <&syscon_apmu CLK_APMU_CCIC1PHY>,
-			 <&syscon_apmu CLK_APMU_CSI>,
+		interrupt-names = "ccic-irq";
+		clocks = <&syscon_apmu CLK_APMU_CSI>,
 			 <&syscon_apmu CLK_APMU_CCIC_4X>,
 			 <&syscon_apmu CLK_APMU_SC2_HCLK>,
 			 <&syscon_apmu CLK_APMU_ISP_BUS>;
-		clock-names = "csi_dphy", "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
-		clock-rates = <51200000>, <1000000000>, <1000000000>, <409600000>, <409600000>;
-		resets = <&syscon_apmu RESET_APMU_CCIC1_PHY>,
-			 <&syscon_apmu RESET_APMU_CSI>,
+		clock-names = "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
+		clock-rates = <1000000000>, <1000000000>, <409600000>, <409600000>;
+		resets = <&syscon_apmu RESET_APMU_CSI>,
 			 <&syscon_apmu RESET_APMU_CCIC_4X>,
 			 <&syscon_apmu RESET_APMU_SC2_HCLK>,
 			 <&syscon_apmu RESET_APMU_ISP_CIBUS>;
-		reset-names = "csi_dphy_reset", "csi_reset", "ccic_4x_reset",
+		reset-names = "csi_reset", "ccic_4x_reset",
 			      "sc2_hclk_reset", "isp_cibus_reset";
 	};
 
 	ccic1: cam_ccic@d420a800 {
-		status = "disabled";
-		compatible = "spacemit,vcam-ccic";
+		status = "okay";
+		compatible = "spacemit,ccic";
 		cell-index = <1>;
+		spacemit,csiphy = <&csiphy1>;
 		reg = <0x0 0xd420a800 0x0 0x3ff>;
 		reg-names = "ccic-regs";
 		interrupt-parent = <&saplic>;
 		interrupts = <82 4>;
-		interrupt-names = "ipe-irq";
-		clocks = <&syscon_apmu CLK_APMU_CCIC2PHY>,
-			 <&syscon_apmu CLK_APMU_CSI>,
+		interrupt-names = "ccic-irq";
+		clocks = <&syscon_apmu CLK_APMU_CSI>,
 			 <&syscon_apmu CLK_APMU_CCIC_4X>,
 			 <&syscon_apmu CLK_APMU_SC2_HCLK>,
 			 <&syscon_apmu CLK_APMU_ISP_BUS>;
-		clock-names = "csi_dphy", "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
-		clock-rates = <51200000>, <1000000000>, <1000000000>, <307200000>, <409600000>;
-		resets = <&syscon_apmu RESET_APMU_CCIC2PHY>,
-			 <&syscon_apmu RESET_APMU_CSI>,
+		clock-names = "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
+		clock-rates = <1000000000>, <1000000000>, <307200000>, <409600000>;
+		resets = <&syscon_apmu RESET_APMU_CSI>,
 			 <&syscon_apmu RESET_APMU_CCIC_4X>,
 			 <&syscon_apmu RESET_APMU_SC2_HCLK>,
 			 <&syscon_apmu RESET_APMU_ISP_CIBUS>;
-		reset-names = "csi_dphy_reset", "csi_reset", "ccic_4x_reset",
+		reset-names = "csi_reset", "ccic_4x_reset",
 			      "sc2_hclk_reset", "isp_cibus_reset";
 	};
 
 	ccic2: cam_ccic@d4206000 {
-		status = "disabled";
-		compatible = "spacemit,vcam-ccic";
+		status = "okay";
+		compatible = "spacemit,ccic";
 		cell-index = <2>;
+		spacemit,csiphy = <&csiphy2>;
 		reg = <0x0 0xd4206000 0x0 0x3ff>;
 		reg-names = "ccic-regs";
 		interrupt-parent = <&saplic>;
 		interrupts = <83 4>;
-		interrupt-names = "ipe-irq";
-		clocks = <&syscon_apmu CLK_APMU_CCIC3PHY>,
-			 <&syscon_apmu CLK_APMU_CSI>,
+		interrupt-names = "ccic-irq";
+		clocks = <&syscon_apmu CLK_APMU_CSI>,
 			 <&syscon_apmu CLK_APMU_CCIC_4X>,
 			 <&syscon_apmu CLK_APMU_SC2_HCLK>,
 			 <&syscon_apmu CLK_APMU_ISP_BUS>;
-		clock-names = "csi_dphy", "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
-		clock-rates = <51200000>, <1000000000>, <1000000000>, <307200000>, <409600000>;
-		resets = <&syscon_apmu RESET_APMU_CCIC3PHY>,
-			 <&syscon_apmu RESET_APMU_CSI>,
+		clock-names = "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
+		clock-rates = <1000000000>, <1000000000>, <307200000>, <409600000>;
+		resets = <&syscon_apmu RESET_APMU_CSI>,
 			 <&syscon_apmu RESET_APMU_CCIC_4X>,
 			 <&syscon_apmu RESET_APMU_SC2_HCLK>,
 			 <&syscon_apmu RESET_APMU_ISP_CIBUS>;
-		reset-names = "csi_dphy_reset", "csi_reset", "ccic_4x_reset",
+		reset-names = "csi_reset", "ccic_4x_reset",
 			      "sc2_hclk_reset", "isp_cibus_reset";
 	};
 
 	ccic3: cam_ccic@d4206800 {
-		status = "disabled";
-		compatible = "spacemit,vcam-ccic";
+		status = "okay";
+		compatible = "spacemit,ccic";
 		cell-index = <3>;
+		spacemit,csiphy = <&csiphy2>;
 		reg = <0x0 0xd4206800 0x0 0x3ff>;
 		reg-names = "ccic-regs";
 		interrupt-parent = <&saplic>;
 		interrupts = <71 4>;
-		interrupt-names = "ipe-irq";
-		clocks = <&syscon_apmu CLK_APMU_CCIC3PHY>,
-			 <&syscon_apmu CLK_APMU_CSI>,
+		interrupt-names = "ccic-irq";
+		clocks = <&syscon_apmu CLK_APMU_CSI>,
 			 <&syscon_apmu CLK_APMU_CCIC_4X>,
 			 <&syscon_apmu CLK_APMU_SC2_HCLK>,
 			 <&syscon_apmu CLK_APMU_ISP_BUS>;
-		clock-names = "csi_dphy", "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
-		clock-rates = <51200000>, <1000000000>, <1000000000>, <307200000>, <409600000>;
-		resets = <&syscon_apmu RESET_APMU_CCIC3PHY>,
-			 <&syscon_apmu RESET_APMU_CSI>,
+		clock-names = "csi_func", "ccic_func", "sc2_ahb", "sc2_axi";
+		clock-rates = <1000000000>, <1000000000>, <307200000>, <409600000>;
+		resets = <&syscon_apmu RESET_APMU_CSI>,
 			 <&syscon_apmu RESET_APMU_CCIC_4X>,
 			 <&syscon_apmu RESET_APMU_SC2_HCLK>,
 			 <&syscon_apmu RESET_APMU_ISP_CIBUS>;
-		reset-names = "csi_dphy_reset", "csi_reset", "ccic_4x_reset",
+		reset-names = "csi_reset", "ccic_4x_reset",
 			      "sc2_hclk_reset", "isp_cibus_reset";
 	};
 
 	ccic_dma: cam_ccic_dma@d420f000 {
-		status = "disabled";
-		compatible = "spacemit,vcam-ccic-dma";
+		status = "okay";
+		compatible = "spacemit,ccic-dma";
 		cell-index = <0>;
 		reg = <0x0 0xd420f000 0x0 0x1080>;
 		reg-names = "ccic-dma-regs";
 		interrupt-parent = <&saplic>;
 		interrupts = <93 4>, <80 4>;
 		interrupt-names = "ccic-dma-irq", "ccic-dma-mmu-irq";
-		clocks = <&syscon_apmu CLK_APMU_CSI>,
-			 <&syscon_apmu CLK_APMU_CCIC_4X>,
-			 <&syscon_apmu CLK_APMU_SC2_HCLK>,
-			 <&syscon_apmu CLK_APMU_ISP_BUS>;
-		clock-names = "csi_func","ccic_func", "sc2_ahb", "sc2_axi";
-		clock-rates = <1000000000>, <1000000000>, <307200000>, <409600000>;
-		resets = <&syscon_apmu RESET_APMU_CSI>,
-			 <&syscon_apmu RESET_APMU_CCIC_4X>,
-			 <&syscon_apmu RESET_APMU_SC2_HCLK>,
-			 <&syscon_apmu RESET_APMU_ISP_CIBUS>;
-		reset-names = "csi_reset", "ccic_4x_reset", "sc2_hclk_reset", "isp_cibus_reset";
 	};
 };
