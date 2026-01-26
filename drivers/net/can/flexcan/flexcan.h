@@ -75,6 +75,10 @@
  */
 #define FLEXCAN_QUIRK_SECONDARY_MB_IRQ	BIT(18)
 
+#ifdef CONFIG_SOC_SPACEMIT
+#define MAX_RX_MAILBOX	12
+#endif
+
 struct flexcan_devtype_data {
 	u32 quirks;		/* quirks needed for different IP cores */
 };
@@ -121,6 +125,12 @@ struct flexcan_priv {
 	/* Read and Write APIs */
 	u32 (*read)(void __iomem *addr);
 	void (*write)(u32 val, void __iomem *addr);
+#ifdef CONFIG_SOC_SPACEMIT
+	int rxmb_len;
+	u32 mb_ids[MAX_RX_MAILBOX];
+	u8 mb_bits[MAX_RX_MAILBOX];
+	bool fix_id;
+#endif
 };
 
 extern const struct ethtool_ops flexcan_ethtool_ops;
