@@ -9,7 +9,11 @@
 
 #include <linux/bits.h>
 
+#ifdef CONFIG_RVTRACE
+#define CORESIGHT_ETM_PMU_NAME "rvtrace"
+#else
 #define CORESIGHT_ETM_PMU_NAME "cs_etm"
+#endif /* CONFIG_RVTRACE */
 
 /*
  * The legacy Trace ID system based on fixed calculation from the cpu
