@@ -379,7 +379,7 @@ static int __init spacemit_timer_init(struct device_node *np, int tid, void __io
 			  unsigned int apb_freq, unsigned int freq)
 {
 	struct spacemit_timer *tm = spacemit_timers[tid];
-	struct clk *clk;
+	struct clk *clk, *clk_bus;
 	struct reset_control *resets;
 	u32 tmp, delay;
 
@@ -401,7 +401,20 @@ static int __init spacemit_timer_init(struct device_node *np, int tid, void __io
 		goto out;
 	}
 
+	clk_bus = of_clk_get(np, 1);
+	if (!clk_bus) {
+		pr_err("%s: get bus clk failed! %s\n", __func__, np->name);
+		clk_disable_unprepare(clk);
+		goto out;
+	}
+
+	if (clk_prepare_enable(clk_bus)) {
+		pr_err("Timer %d: fail to enable clk bus clock!\n", tid);
+		goto out;
+	}
+
 	if (clk_prepare_enable(clk)) {
+		clk_disable_unprepare(clk_bus);
 		pr_err("Timer %d: fail to enable clock!\n", tid);
 		goto out;
 	}
@@ -413,7 +426,9 @@ static int __init spacemit_timer_init(struct device_node *np, int tid, void __io
 
 	resets = of_reset_control_get(np, 0);
 	if(IS_ERR(resets)) {
+		pr_err("%s: get resets failed! %s\n", __func__, np->name);
 		clk_disable_unprepare(clk);
+		clk_disable_unprepare(clk_bus);
 		return PTR_ERR(resets);
 	}
 	reset_control_deassert(resets);
