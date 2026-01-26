@@ -998,7 +998,7 @@ static int fusb301_probe(struct i2c_client *client)
 	chip->state = FUSB_STATE_ERROR_RECOVERY;
 	chip->bc_lvl = FUSB301_STATUS_SNK_0MA;
 	chip->ufp_power = 0;
-	chip->try_snk_emulation = true;
+	chip->try_snk_emulation = false;
 	chip->triedsnk = !chip->try_snk_emulation;
 	chip->try_attcnt = 0;
 
