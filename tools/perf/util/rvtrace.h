@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
+#ifndef INCLUDE__UTIL_PERF_RVTRACE_H__
+#define INCLUDE__UTIL_PERF_RVTRACE_H__
+
+#include "debug.h"
+#include "auxtrace.h"
+#include "util/event.h"
+#include "util/session.h"
+#include <linux/bits.h>
+
+enum {
+	/* PMU->type (32 bit), total # of CPUs (32 bit) */
+	RVTRACE_PMU_TYPE_CPUS,
+	RVTRACE_HEADER_MAX,
+};
+
+/* Trace Encoder metadata */
+enum {
+	RVTRACE_ENCODER_CPU,
+	RVTRACE_ENCODER_NR_TRC_PARAMS,
+	RVTRACE_ENCODER_FORMAT,
+	RVTRACE_ENCODER_CONTEXT,
+	RVTRACE_ENCODER_INHB_SRC,
+	RVTRACE_ENCODER_SRCBITS,
+	RVTRACE_ENCODER_SRCID,
+	RVTRACE_ENCODER_PRIV_MAX,
+};
+
+#define RVTRACE_ENCODER_NR_TRC_PARAMS_LENGTH (RVTRACE_ENCODER_PRIV_MAX - RVTRACE_ENCODER_FORMAT)
+
+#define RVTRACE_HEADER_SIZE		(RVTRACE_HEADER_MAX * sizeof(u64))
+#define RVTRACE_ENCODER_PRIV_SIZE	(RVTRACE_ENCODER_PRIV_MAX * sizeof(u64))
+
+#endif
