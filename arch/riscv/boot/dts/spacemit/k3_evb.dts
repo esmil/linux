@@ -449,7 +449,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii0>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -485,7 +485,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii1>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -521,7 +521,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii2>;
 	snps,reset-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -557,7 +557,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii3>;
 	snps,reset-gpios = <&gpio 2 11 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
