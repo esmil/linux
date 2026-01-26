@@ -1130,7 +1130,7 @@
 			interrupt-parent = <&saplic>;
 			spacemit,qspi-tx-dma = <1>;
 			spacemit,qspi-rx-dma = <1>;
-			dmas = <&pdma 45>;
+			dmas = <&pdma DMA_QSPI_TX>;
 			dma-names = "tx-dma";
 			status = "disabled";
 		};
