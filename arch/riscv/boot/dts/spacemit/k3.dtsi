@@ -1385,19 +1385,22 @@
 
 		};
 
-		timer0: timer@d4014000 {
+		timer0: timer@d4016000 {
 			compatible = "spacemit,soc-timer";
-			reg = <0x0 0xd4014000 0x0 0xc8>;
+			reg = <0x0 0xd4016000 0x0 0xc8>;
 			spacemit,timer-id = <0>;
 			spacemit,timer-fastclk-frequency = <3250000>;
 			spacemit,timer-apb-frequency = <52000000>;
 			spacemit,timer-frequency = <32768>;
+			clocks = <&syscon_apbc CLK_APBC_TIMERS1>,
+				<&syscon_apbc CLK_APBC_TIMERS1_BUS>;
+			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC_TIMERS1>;
 			status = "okay";
 
 			counter0 {
 				compatible = "spacemit,timer-match";
-				interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <26 IRQ_TYPE_LEVEL_HIGH>;
 				interrupt-parent = <&saplic>;
 				spacemit,timer-broadcast;
 				spacemit,timer-counter-id = <0>;
