@@ -485,10 +485,24 @@ static void pvr_show_fdinfo(struct seq_file *seq_file, struct file *file)
 	struct pvr_drm_private *priv;
 	int my_pid;
 
+	/* Check for NULL driver_priv to avoid kernel crash */
+	if (!pvr_connection) {
+		/* Grab the PID first for logging */
+		my_pid = dfile->pid->numbers[0].nr;
+		DRM_DEBUG_DRIVER("driver_priv is NULL for PID %d, skipping PVR fdinfo\n", my_pid);
+		goto call_drm_show_fdinfo;
+	}
+
 	/* Grab the PID from the associated drm_file->pid->numbers[0].nr */
 	my_pid = dfile->pid->numbers[0].nr;
 
 	priv = (struct pvr_drm_private *)dev->dev_private;
+
+	/* Additional safety check for dev_private */
+	if (!priv) {
+		DRM_DEBUG_DRIVER("dev_private is NULL for PID %d, skipping PVR fdinfo\n", my_pid);
+		goto call_drm_show_fdinfo;
+	}
 
 	/* Generate driver-specific keys */
 	PVRDKFTraverse((DKF_VPRINTF_FUNC*)drm_vprintf,
@@ -496,6 +510,8 @@ static void pvr_show_fdinfo(struct seq_file *seq_file, struct file *file)
 	               priv->dev_node,
 	               my_pid,
 	               pvr_connection->ui32Type);
+
+call_drm_show_fdinfo:
 
 	/* Call into OS-specific drm_show_fdinfo if it is supported */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0))
