@@ -13,6 +13,7 @@
 #include <linux/rvtrace.h>
 
 #include "rvtrace-encoder.h"
+#include "coresight-etm-perf.h"
 
 static int boot_enable;
 module_param_named(boot_enable, boot_enable, int, S_IRUGO);
@@ -401,6 +402,7 @@ void encoder_set_default(struct rvtrace_component *comp)
 
 static int encoder_probe(struct platform_device *pdev)
 {
+	int ret;
 	struct device *dev = &pdev->dev;
 	struct coresight_platform_data *pdata;
 	struct encoder_data *encoder_data;
@@ -439,6 +441,12 @@ static int encoder_probe(struct platform_device *pdev)
 	if (IS_ERR(encoder_data->csdev))
 		return PTR_ERR(encoder_data->csdev);
 
+	ret = etm_perf_symlink(encoder_data->csdev, true);
+	if (ret) {
+		coresight_unregister(encoder_data->csdev);
+		return ret;
+	}
+
 	comp->id.data = encoder_data;
 
 	rvtrace_cpu_encoder[comp->cpu] = comp;
@@ -469,6 +477,8 @@ static void encoder_remove(struct platform_device *pdev)
 	struct rvtrace_component *comp = platform_get_drvdata(pdev);
 	struct encoder_data *encoder_data = rvtrace_component_data(comp);
 	struct device *dev = &pdev->dev;
+
+	etm_perf_symlink(encoder_data->csdev, false);
 
 	/*
 	 * Taking hotplug lock here to avoid racing between encoder_remove and
