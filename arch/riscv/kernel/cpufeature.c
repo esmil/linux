@@ -1126,7 +1126,7 @@ void __init riscv_user_isa_enable(void)
 		pr_warn("Zicboz disabled as it is unavailable on some harts\n");
 
 	if (riscv_has_extension_unlikely(RISCV_ISA_EXT_ZICBOM))
-		current->thread.envcfg |= ENVCFG_CBCFE;
+		current->thread.envcfg |= (ENVCFG_CBCFE | ENVCFG_CBIE);
 	else if (any_cpu_has_zicbom)
 		pr_warn("Zicbom disabled as it is unavailable on some harts\n");
 
