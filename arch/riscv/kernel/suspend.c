@@ -139,6 +139,11 @@ static int sbi_system_suspend(unsigned long sleep_type,
 {
 	struct sbiret ret;
 
+#if defined(CONFIG_SOC_SPACEMIT)
+        /* flush the local cache */
+        sbi_flush_local_dcache_all();
+#endif
+
 	ret = sbi_ecall(SBI_EXT_SUSP, SBI_EXT_SUSP_SYSTEM_SUSPEND,
 			sleep_type, resume_addr, opaque, 0, 0, 0);
 	if (ret.error)
@@ -176,6 +181,11 @@ static int sbi_suspend_finisher(unsigned long suspend_type,
 				unsigned long opaque)
 {
 	struct sbiret ret;
+
+#if defined(CONFIG_SOC_SPACEMIT)
+        /* flush the local cache */
+        sbi_flush_local_dcache_all();
+#endif
 
 	ret = sbi_ecall(SBI_EXT_HSM, SBI_EXT_HSM_HART_SUSPEND,
 			suspend_type, resume_addr, opaque, 0, 0, 0);
