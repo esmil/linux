@@ -660,21 +660,21 @@ static int inno_dp_irq_handle(struct dp_chip_t *inno)
 	osal_printf_func("dp hpd status %#.8x\n", hpd_plug);
 
 	if (value & CHIP_DP_HPD_EVENT) {
-		osal_printf_func("dp irq status %#.8x\n", value);
-		osal_printf_func("dp hpd status %#.8x\n", hpd_plug);
+		// osal_printf_func("dp irq status %#.8x\n", value);
+		// osal_printf_func("dp hpd status %#.8x\n", hpd_plug);
 
 		if (hpd_plug & CHIP_DP_HPD_IRQ) {
-			osal_printf_func("hpd irq event\n");
+			// osal_printf_func("hpd irq event\n");
 			irq_status |= INNODP_HPD_IRQ;
 		}
 
 		if (hpd_plug & CHIP_DP_HPD_PLUG_IN) {
-			osal_printf_func("hpd in irq\n");
+			// osal_printf_func("hpd in irq\n");
 			irq_status |= INNODP_HPD_IN;
 		}
 
 		if (hpd_plug & CHIP_DP_HPD_PLUG_OUT) {
-			osal_printf_func("hpd out irq\n");
+			// osal_printf_func("hpd out irq\n");
 			irq_status |= INNODP_HPD_OUT;
 		}
 
