@@ -30,6 +30,7 @@
 #include "thread-stack.h"
 #include "util.h"
 #include "rvtrace.h"
+#include "nexus-rv-decoder/nexus-rv-decoder.h"
 
 #define MAX_TIMESTAMP (~0ULL)
 
@@ -130,10 +131,79 @@ static int rvtrace_process_event(struct perf_session *session __maybe_unused,
 	return 0;
 }
 
-static int rvtrace_process_auxtrace_event(struct perf_session *session __maybe_unused,
-					  union perf_event *event __maybe_unused,
+static void rvtrace_dump(struct rvtrace_auxtrace *rvtrace,
+			 unsigned char *buf, size_t len)
+{
+	int ret;
+	struct nexus_rv_pkt_decoder_params params;
+	struct nexus_rv_pkt_decoder *decoder;
+	const char *color = PERF_COLOR_BLUE;
+
+	// TODO: Determine whether the trace data contains a CoreSight formatter frame
+	params.formatted = true;
+	if (!rvtrace->metadata[0][RVTRACE_ENCODER_INHB_SRC])
+		params.src_bits = rvtrace->metadata[0][RVTRACE_ENCODER_SRCBITS];
+
+	decoder = nexus_rv_pkt_decoder_new(&params);
+	if (!decoder) {
+		color_fprintf(stdout, color, " Faild to create decoder\n");
+		return;
+	}
+
+	color_fprintf(stdout, color,
+			". ... Trace Encoder Trace data: size %#zx bytes\n",
+			len);
+
+	ret = nexus_rv_pkt_desc(decoder, buf, len);
+	if (ret)
+		color_fprintf(stdout, color, " Bad packet!\n");
+
+	nexus_rv_pkt_decoder_free(decoder);
+}
+
+static void rvtrace_dump_event(struct rvtrace_auxtrace *rvtrace,
+			       unsigned char *buf, size_t len)
+{
+	printf(".\n");
+	rvtrace_dump(rvtrace, buf, len);
+}
+
+static int rvtrace_process_auxtrace_event(struct perf_session *session,
+					  union perf_event *event,
 					  const struct perf_tool *tool __maybe_unused)
 {
+	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
+								 struct rvtrace_auxtrace,
+								 auxtrace);
+	if (!rvtrace->data_queued) {
+		struct auxtrace_buffer *buffer;
+		off_t  data_offset;
+		int fd = perf_data__fd(session->data);
+		bool is_pipe = perf_data__is_pipe(session->data);
+		int err;
+
+		if (is_pipe)
+			data_offset = 0;
+		else {
+			data_offset = lseek(fd, 0, SEEK_CUR);
+			if (data_offset == -1)
+				return -errno;
+		}
+
+		err = auxtrace_queues__add_event(&rvtrace->queues, session,
+						 event, data_offset, &buffer);
+
+		if (err)
+			return err;
+
+		if (dump_trace)
+			if (auxtrace_buffer__get_data(buffer, fd)) {
+				rvtrace_dump_event(rvtrace, buffer->data, buffer->size);
+				auxtrace_buffer__put_data(buffer);
+			}
+	}
+
+
 	return 0;
 }
 
