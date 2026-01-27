@@ -33,6 +33,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu0_intc: interrupt-controller {
@@ -79,6 +80,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu1_intc: interrupt-controller {
@@ -125,6 +127,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu2_intc: interrupt-controller {
@@ -171,6 +174,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu3_intc: interrupt-controller {
@@ -217,6 +221,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu4_intc: interrupt-controller {
@@ -263,6 +268,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu5_intc: interrupt-controller {
@@ -309,6 +315,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu6_intc: interrupt-controller {
@@ -355,6 +362,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu7_intc: interrupt-controller {
@@ -402,6 +410,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu8_intc: interrupt-controller {
@@ -449,6 +458,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu9_intc: interrupt-controller {
@@ -496,6 +506,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu10_intc: interrupt-controller {
@@ -543,6 +554,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu11_intc: interrupt-controller {
@@ -590,6 +602,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu12_intc: interrupt-controller {
@@ -637,6 +650,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu13_intc: interrupt-controller {
@@ -684,6 +698,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu14_intc: interrupt-controller {
@@ -731,6 +746,7 @@
 				d-cache-size = <65536>;
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
+				cpu-idle-states = <&CPU_NONRET>, <&CLUSTER_NONRET>;
 				mmu-type = "riscv,sv39";
 				#cooling-cells = <2>;
 				cpu15_intc: interrupt-controller {
@@ -854,5 +870,33 @@
 					};
 				};
 			};
+	};
+
+	riscv-timer {
+		compatible = "riscv,timer";
+		riscv,timer-cannot-wake-cpu;
+	};
+
+	idle-states {
+		CPU_NONRET: cpu-nonret {
+			compatible = "riscv,idle-state";
+			idle-state-name = "riscv,cpu-nonret";
+			riscv,sbi-suspend-param = <0x90000000>;
+			local-timer-stop;
+			entry-latency-us = <200>;
+			exit-latency-us = <500>;
+			min-residency-us = <950>;
+		};
+
+		CLUSTER_NONRET: cluster-nonret {
+			compatible = "riscv,idle-state";
+			idle-state-name = "riscv,cluster-nonret";
+			riscv,sbi-suspend-param = <0x91000000>;
+			local-timer-stop;
+			entry-latency-us = <600>;
+			exit-latency-us = <1100>;
+			min-residency-us = <2700>;
+			wakeup-latency-us = <1500>;
+		};
 	};
 };
