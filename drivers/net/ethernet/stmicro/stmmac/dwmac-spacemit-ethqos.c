@@ -241,11 +241,16 @@ static int clk_phase_set(struct spacemit_ethqos *eqos, bool is_tx)
 		return clk_phase_rmii_set(eqos, is_tx);
 }
 
-static int spacemit_rgmii_dline_enable(struct spacemit_ethqos *eqos)
+static int k3_delayline_init(struct spacemit_ethqos *eqos)
 {
 	u32 mask, val;
 	int ret;
 
+	/*
+	 * On K3, TX/RX delayline must be enabled for reliable DMA init.
+	 * This is required for all phy-modes (rgmii/rmii/mii).
+	 * Also clear delay codes to remove any prior configuration residue.
+	 */
 	mask = EMAC_TX_DLINE_EN | EMAC_RX_DLINE_EN |
 	       EMAC_TX_DLINE_CODE_MASK | EMAC_RX_DLINE_CODE_MASK;
 
@@ -254,8 +259,7 @@ static int spacemit_rgmii_dline_enable(struct spacemit_ethqos *eqos)
 	ret = regmap_update_bits(eqos->apmu, eqos->dline_off,
 				 mask, val);
 	if (ret)
-		dev_err(&eqos->pdev->dev,
-			"failed to enable RGMII delayline\n");
+		dev_err(&eqos->pdev->dev, "failed to init delayline\n");
 
 	return ret;
 }
@@ -359,27 +363,6 @@ static const struct file_operations clk_tuning_fops = {
 
 #endif
 
-static int k3_validate_iface_and_refclk(struct spacemit_ethqos *eqos)
-{
-	switch (eqos->phy_iface) {
-	case PHY_INTERFACE_MODE_MII:
-		return 0;
-
-	case PHY_INTERFACE_MODE_RGMII:
-	case PHY_INTERFACE_MODE_RGMII_ID:
-	case PHY_INTERFACE_MODE_RGMII_RXID:
-	case PHY_INTERFACE_MODE_RGMII_TXID:
-		return 0;
-
-	case PHY_INTERFACE_MODE_RMII:
-		/* Only accept RMII when TX clock comes from PHY */
-		return eqos->tx_clk_from_soc ? -EOPNOTSUPP : 0;
-
-	default:
-		return -EOPNOTSUPP;
-	}
-}
-
 static int k3_parse_dt(struct platform_device *pdev, struct spacemit_ethqos *eqos)
 {
 	struct device *dev = &pdev->dev;
@@ -389,13 +372,16 @@ static int k3_parse_dt(struct platform_device *pdev, struct spacemit_ethqos *eqo
 
 	eqos->phy_iface = eqos->plat->phy_interface;
 
-	eqos->tx_clk = devm_clk_get_optional(dev, "tx_clk");
-	if (IS_ERR(eqos->tx_clk))
-		return dev_err_probe(dev, PTR_ERR(eqos->tx_clk), "tx clock");
+	eqos->tx_clk = NULL;
+	if (phy_interface_mode_is_rgmii(eqos->phy_iface)) {
+		eqos->tx_clk = devm_clk_get_optional(dev, "tx_clk");
+		if (IS_ERR(eqos->tx_clk))
+			return dev_err_probe(dev, PTR_ERR(eqos->tx_clk), "tx clock");
+		if (!eqos->tx_clk)
+			dev_info(dev, "rgmii tx clk is derived from the rx clk\n");
+	}
 
 	eqos->tx_clk_from_soc = !!eqos->tx_clk;
-	if (!eqos->tx_clk_from_soc)
-		dev_info(dev, "tx clk from rx clk\n");
 
 	eqos->phy_clk = devm_clk_get_optional(dev, "phy_clk");
 	if (IS_ERR(eqos->phy_clk))
@@ -405,13 +391,6 @@ static int k3_parse_dt(struct platform_device *pdev, struct spacemit_ethqos *eqo
 	if (!eqos->phy_clk_from_soc)
 		dev_info(dev, "phy clk is provided by a external crystal oscillator\n");
 
-	ret = k3_validate_iface_and_refclk(eqos);
-	if (ret)
-		return dev_err_probe(dev, ret,
-				     "unsupported phy-mode=%s with tx clk from %s\n",
-				     phy_modes(eqos->phy_iface),
-				     eqos->tx_clk_from_soc ? "soc" : "phy");
-
 	eqos->apmu = syscon_regmap_lookup_by_phandle(np, "spacemit,apmu");
 	if (IS_ERR(eqos->apmu))
 		return dev_err_probe(dev, PTR_ERR(eqos->apmu), "spacemit,apmu lookup failed");
@@ -420,48 +399,52 @@ static int k3_parse_dt(struct platform_device *pdev, struct spacemit_ethqos *eqo
 	if (ret)
 		return dev_err_probe(dev, ret, "missing spacemit,ctrl-offset");
 
+	ret = of_property_read_u32(np, "spacemit,dline-offset", &eqos->dline_off);
+	if (ret)
+		return dev_err_probe(dev, ret, "missing spacemit,dline-offset");
+
 	eqos->wol_irq_enable = of_property_read_bool(np, "spacemit,wake-irq-enable");
 
 	eqos->clk_tuning_enable = of_property_read_bool(np, "spacemit,clk-tuning-enable");
-	if (eqos->clk_tuning_enable) {
-		if (of_property_read_bool(np, "spacemit,clk-tuning-by-reg")) {
-			eqos->clk_tuning_way = CLK_TUNING_BY_REG;
-		} else if (of_property_read_bool(np, "spacemit,clk-tuning-by-clk-revert")) {
-			eqos->clk_tuning_way = CLK_TUNING_BY_CLK_REVERT;
-		} else if (of_property_read_bool(np, "spacemit,clk-tuning-by-delayline")) {
-			eqos->clk_tuning_way = CLK_TUNING_BY_DLINE;
-			ret = of_property_read_u32(np, "spacemit,dline-offset", &eqos->dline_off);
-			if (ret)
-				return dev_err_probe(dev, ret, "missing spacemit,dline-offset");
-		} else {
-			eqos->clk_tuning_way = CLK_TUNING_BY_REG;
-		}
+	if (!eqos->clk_tuning_enable)
+		return 0;
 
-		if (of_property_read_u32(np, "spacemit,tx-phase", &tx_phase))
-			eqos->tx_clk_phase = TXCLK_PHASE_DEFAULT;
-		else
-			eqos->tx_clk_phase = tx_phase;
-
-		if (of_property_read_u32(np, "spacemit,rx-phase", &rx_phase))
-			eqos->rx_clk_phase = RXCLK_PHASE_DEFAULT;
-		else
-			eqos->rx_clk_phase = rx_phase;
-#ifdef CONFIG_DEBUG_FS
-		if (!eqos->dbg_dir) {
-			eqos->dbg_dir = debugfs_create_dir(dev_name(dev), NULL);
-
-			if (IS_ERR_OR_NULL(eqos->dbg_dir)) {
-				dev_err(dev, "debugfs: failed to create dir\n");
-			} else {
-				eqos->dbg_clk_tuning = debugfs_create_file("clk_tuning", 0644,
-									   eqos->dbg_dir, eqos,
-									   &clk_tuning_fops);
-				if (IS_ERR_OR_NULL(eqos->dbg_clk_tuning))
-					dev_err(dev, "debugfs: failed to create file\n");
-			}
-		}
-#endif
+	if (of_property_read_bool(np, "spacemit,clk-tuning-by-reg")) {
+		eqos->clk_tuning_way = CLK_TUNING_BY_REG;
+	} else if (of_property_read_bool(np, "spacemit,clk-tuning-by-clk-revert")) {
+		eqos->clk_tuning_way = CLK_TUNING_BY_CLK_REVERT;
+	} else if (of_property_read_bool(np, "spacemit,clk-tuning-by-delayline")) {
+		eqos->clk_tuning_way = CLK_TUNING_BY_DLINE;
+	} else {
+		eqos->clk_tuning_way = CLK_TUNING_BY_REG;
 	}
+
+	if (of_property_read_u32(np, "spacemit,tx-phase", &tx_phase))
+		eqos->tx_clk_phase = TXCLK_PHASE_DEFAULT;
+	else
+		eqos->tx_clk_phase = tx_phase;
+
+	if (of_property_read_u32(np, "spacemit,rx-phase", &rx_phase))
+		eqos->rx_clk_phase = RXCLK_PHASE_DEFAULT;
+	else
+		eqos->rx_clk_phase = rx_phase;
+
+#ifdef CONFIG_DEBUG_FS
+	if (!eqos->dbg_dir) {
+		eqos->dbg_dir = debugfs_create_dir(dev_name(dev), NULL);
+
+		if (IS_ERR_OR_NULL(eqos->dbg_dir)) {
+			dev_err(dev, "debugfs: failed to create dir\n");
+		} else {
+			eqos->dbg_clk_tuning = debugfs_create_file("clk_tuning", 0644,
+								   eqos->dbg_dir, eqos,
+								   &clk_tuning_fops);
+			if (IS_ERR_OR_NULL(eqos->dbg_clk_tuning))
+				dev_err(dev, "debugfs: failed to create file\n");
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -592,19 +575,10 @@ static int k3_setup_plat(struct spacemit_ethqos *eqos)
 	 * will remove the TX clock and cause TX timeouts. Require RXC to run
 	 * in LPI.
 	 */
-	if (!eqos->tx_clk_from_soc)
+	if (phy_interface_mode_is_rgmii(eqos->phy_iface) && !eqos->tx_clk_from_soc)
 		eqos->plat->flags |= STMMAC_FLAG_RX_CLK_RUNS_IN_LPI;
 
-	/*
-	 * On k3 platforms, the delayline must be enabled during probe;
-	 * otherwise the GMAC will fail to operate.
-	 * Runtime phase tuning only updates the delay value.
-	 */
-	if (!eqos->clk_tuning_enable ||
-	    eqos->clk_tuning_way != CLK_TUNING_BY_DLINE)
-		return 0;
-
-	ret = spacemit_rgmii_dline_enable(eqos);
+	ret = k3_delayline_init(eqos);
 	if (ret)
 		goto err_disable_tx_clk;
 
