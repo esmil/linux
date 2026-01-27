@@ -306,22 +306,8 @@ struct st_context *RgxStInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 
 	platform->dev_config = psDevConfig;
 	platform->gpu_active = IMG_FALSE;
-#if defined(SUPPORT_LINUX_DVFS) && !defined(NO_HARDWARE)
-	psDevConfig->sDVFS.sDVFSDeviceCfg.bIdleReq = IMG_TRUE;
-	psDevConfig->sDVFS.sDVFSDeviceCfg.pfnSetFrequency = stSetFrequency;
-	psDevConfig->sDVFS.sDVFSDeviceCfg.pfnSetVoltage = stSetVoltage;
-	psDevConfig->sDVFS.sDVFSDeviceCfg.ui32PollMs = 300;
-	psDevConfig->sDVFS.sDVFSGovernorCfg.ui32UpThreshold = 90;
-	psDevConfig->sDVFS.sDVFSGovernorCfg.ui32DownDifferential = 10;
-#if defined(CONFIG_DEVFREQ_THERMAL) && defined(SUPPORT_LINUX_DVFS)
-	psDevConfig->sDVFS.sDVFSDeviceCfg.psPowerOps = &spacemit_power_model_simple_ops;
-	if (spacemit_power_model_simple_init(dev)) {
-		PVR_DPF((PVR_DBG_ERROR, "RgxStInit: spacemit_power_model_simple_init fail"));
-		goto fail;
-	}
-#endif
-#endif
 	platform->bEnablePd = IMG_FALSE;
+
 	pm_runtime_enable(dev);
 	platform->gpu_clk = devm_clk_get(dev, "clk_rgx");
 	if (IS_ERR_OR_NULL(platform->gpu_clk)) {

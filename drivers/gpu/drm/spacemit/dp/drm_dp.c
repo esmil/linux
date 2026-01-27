@@ -176,6 +176,7 @@ static void dp_encoder_enable(struct drm_encoder *encoder)
 		}
 
 		clk_val = clk_get_rate(dp_dev->pxclk);
+		dp_dev->conn->pixel_clock = clk_val / 1000;
 		DRM_INFO("get pxclk=%lld\n", clk_val);
 	}
 
@@ -314,6 +315,8 @@ static int dp_dev_resource_init(struct dp_dev *dp_dev,
 	else
 		dp_dev->conn = inno_get_conn_module(INNO_CONN_DP);
 
+	dp_dev->conn->use_ext_pixel_clock = true;
+
 	if (dp_id == 0 || edp_id == 0) {
 		// mux dp0
 		value = readl(ciu_addr + 0x12c);
@@ -326,10 +329,12 @@ static int dp_dev_resource_init(struct dp_dev *dp_dev,
 	// 	value = readl(pmu_addr + 0x23c);
 	// 	value |= BIT(2);
 	// 	writel(value, (pmu_addr + 0x23c));
+	// 	dp_dev->conn->use_ext_pixel_clock = false;
 	// } else {
 	// 	value = readl(pmu_addr + 0x23c);
 	// 	value |= BIT(18);
 	// 	writel(value, (pmu_addr + 0x23c));
+	// 	dp_dev->conn->use_ext_pixel_clock = false;
 	// }
 
 	iounmap(ciu_addr);

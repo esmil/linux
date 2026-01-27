@@ -519,7 +519,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii0>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -1159,13 +1159,13 @@
 
 &sound_card_dp1 {
 	status = "okay";
-	playback-only;
 	simple-audio-card,mclk-fs = <512>;
 	simple-audio-card,dai-link@0 {
 		format = "left_j";
 		frame-master = <&dp1_link_cpu>;
 		bitclock-master = <&dp1_link_cpu>;
 		dp1_link_codec: codec {
+			playback-only;
 			sound-dai = <&dp1>;
 		};
 	};

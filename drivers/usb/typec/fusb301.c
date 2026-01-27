@@ -123,7 +123,7 @@ struct fusb301_chip {
 	unsigned int state;
 	enum typec_orientation orient;
 	unsigned int bc_lvl;
-	unsigned int opmode;
+	unsigned int pwr_mode;
 	unsigned int dttime;
 	bool try_snk_emulation;
 	bool triedsnk;
@@ -156,10 +156,11 @@ enum fusb301_state {
 	FUSB_STATE_TRYWAIT_SNK,
 };
 
-static const char * const typec_pwr_opmodes[] = {
-	[TYPEC_PWR_MODE_USB]	= "default",
-	[TYPEC_PWR_MODE_1_5A]	= "1.5A",
-	[TYPEC_PWR_MODE_3_0A]	= "3.0A",
+static const char * const fusb301_pwr_mode_name[] = {
+	[FUSB301_HOST_CUR_0]		= "none",
+	[FUSB301_HOST_CUR_DEFAULT]	= "default",
+	[FUSB301_HOST_CUR_1500MA]	= "1.5A",
+	[FUSB301_HOST_CUR_3000MA]	= "3.0A",
 };
 
 static const char *const fusb301_toggle_name[] = {
@@ -242,11 +243,11 @@ static int fusb301_update_status(struct fusb301_chip *chip)
 		goto out;
 
 	chip->mode = FIELD_GET(FUSB301_MODES_MASK, mode);
-	chip->opmode = FIELD_GET(FUSB301_CONTROL_HOST_CUR_MASK, ctrl);
+	chip->pwr_mode = FIELD_GET(FUSB301_CONTROL_HOST_CUR_MASK, ctrl);
 	chip->dttime = FIELD_GET(FUSB301_CONTROL_TGL_MASK, ctrl);
 
 	dev_info(chip->dev, "mode[0x%02x], host_cur[0x%02x], dttime[0x%02x]\n",
-			chip->mode, chip->opmode, chip->dttime);
+			chip->mode, chip->pwr_mode, chip->dttime);
 out:
 	return ret;
 }
@@ -321,34 +322,30 @@ static int fusb301_set_mode(struct fusb301_chip *chip, unsigned int mode)
 }
 
 /* Set output current indicator */
-static int fusb301_set_opmode(struct fusb301_chip *chip, enum typec_pwr_opmode opmode)
+static int fusb301_set_pwr_mode(struct fusb301_chip *chip, unsigned int pwr_mode)
 {
-	unsigned int ctrl;
 	int ret;
 
-	switch (opmode) {
-	case TYPEC_PWR_MODE_USB:
-		ctrl = FUSB301_HOST_CUR_DEFAULT;
-		break;
-	case TYPEC_PWR_MODE_1_5A:
-		ctrl = FUSB301_HOST_CUR_1500MA;
-		break;
-	case TYPEC_PWR_MODE_3_0A:
-		ctrl = FUSB301_HOST_CUR_3000MA;
+	switch (pwr_mode) {
+	case FUSB301_HOST_CUR_0:
+	case FUSB301_HOST_CUR_DEFAULT:
+	case FUSB301_HOST_CUR_1500MA:
+	case FUSB301_HOST_CUR_3000MA:
 		break;
 	default:
-		ctrl = FUSB301_HOST_CUR_0;
-		break;
+		dev_err(chip->dev, "unexpected pwr mode: 0x%02x\n", pwr_mode);
+		return -EINVAL;
 	}
+
 	ret = regmap_write_bits(chip->regmap, FUSB301_REG_CONTROL,
 				FUSB301_CONTROL_HOST_CUR_MASK,
 				FIELD_PREP(FUSB301_CONTROL_HOST_CUR_MASK,
-				ctrl));
+				pwr_mode));
 	if (ret)
 		return ret;
 
-	chip->opmode = opmode;
-	dev_info(chip->dev, "fusb301 set opmode: %s\n", typec_pwr_opmodes[opmode]);
+	chip->pwr_mode = pwr_mode;
+	dev_info(chip->dev, "fusb301 set pwr_mode: %s\n", fusb301_pwr_mode_name[pwr_mode]);
 
 	return ret;
 }
@@ -387,7 +384,7 @@ static int fusb301_init_reg(struct fusb301_chip *chip)
 	int ret;
 
 	/* change current */
-	ret = fusb301_set_opmode(chip, TYPEC_PWR_MODE_1_5A);
+	ret = fusb301_set_pwr_mode(chip, FUSB301_HOST_CUR_1500MA);
 	if (ret)
 		dev_err(cdev, "%s: failed to force dfp power\n",
 				__func__);
@@ -460,9 +457,9 @@ static void fusb301_bclvl_changed(struct fusb301_chip *chip)
 
 	dev_dbg(cdev, "sts[0x%02x], type[0x%02x]\n", status, type);
 	if (type == FUSB301_TYPE_SRC ||
-			type == FUSB301_TYPE_PWR_AUD_ACC ||
-			type == FUSB301_TYPE_PWR_DBG_ACC ||
-			type == FUSB301_TYPE_PWR_ACC) {
+	    type == FUSB301_TYPE_PWR_AUD_ACC ||
+	    type == FUSB301_TYPE_PWR_DBG_ACC ||
+	    type == FUSB301_TYPE_PWR_ACC) {
 		chip->bc_lvl = status & 0x06;
 		chip->bc_lvl = (status & 0x06) >> 1;
 	}
@@ -522,7 +519,7 @@ static void fusb301_snk_detected(struct fusb301_chip *chip)
 		 * or
 		 * mode == FUSB301_MODES_SRC/FUSB301_MODES_SRC_ACC
 		 */
-		fusb301_set_opmode(chip, TYPEC_PWR_MODE_USB);
+		fusb301_set_pwr_mode(chip, FUSB301_HOST_CUR_DEFAULT);
 		if (chip->state == FUSB_STATE_TRYWAIT_SRC)
 			cancel_delayed_work(&chip->twork);
 		fusb_update_state(chip, FUSB_STATE_ATTACHED_SRC);
@@ -593,7 +590,7 @@ static void fusb301_detach(struct fusb301_chip *chip)
 
 	switch (chip->state) {
 	case FUSB_STATE_ATTACHED_SRC:
-		fusb301_set_opmode(chip, TYPEC_PWR_MODE_1_5A);
+		fusb301_set_pwr_mode(chip, FUSB301_HOST_CUR_1500MA);
 		fusb301_set_data_role(chip, TYPEC_DEVICE, false);
 		break;
 	case FUSB_STATE_ATTACHED_SNK:
@@ -670,8 +667,7 @@ static bool fusb301_bclvl_detect_wa(struct fusb301_chip *chip,
 		((type == FUSB301_TYPE_INVALID) && (status & FUSB301_STATUS_VBUS_OK))) &&
 		!(status & FUSB301_STATUS_BC_LVL_MASK) &&
 		(chip->try_attcnt < FUSB301_MAX_TRY_COUNT)) {
-		ret = fusb301_set_chip_state(chip,
-					FUSB_STATE_ERROR_RECOVERY);
+		ret = fusb301_set_chip_state(chip, FUSB_STATE_ERROR_RECOVERY);
 		if (ret) {
 			dev_err(cdev, "%s: failed to set error recovery state\n",
 					__func__);
@@ -998,7 +994,7 @@ static int fusb301_probe(struct i2c_client *client)
 	chip->state = FUSB_STATE_ERROR_RECOVERY;
 	chip->bc_lvl = FUSB301_STATUS_SNK_0MA;
 	chip->ufp_power = 0;
-	chip->try_snk_emulation = true;
+	chip->try_snk_emulation = false;
 	chip->triedsnk = !chip->try_snk_emulation;
 	chip->try_attcnt = 0;
 

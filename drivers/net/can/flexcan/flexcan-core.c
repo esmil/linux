@@ -1568,8 +1568,15 @@ static int flexcan_chip_start(struct net_device *dev)
 	 */
 	reg_mcr = priv->read(&regs->mcr);
 	reg_mcr &= ~FLEXCAN_MCR_MAXMB(0xff);
+#ifndef CONFIG_SOC_SPACEMIT
 	reg_mcr |= FLEXCAN_MCR_SUPV | FLEXCAN_MCR_WRN_EN | FLEXCAN_MCR_IRMQ |
 		FLEXCAN_MCR_IDAM_C | FLEXCAN_MCR_MAXMB(priv->tx_mb_idx);
+#else
+	reg_mcr |= FLEXCAN_MCR_SUPV | FLEXCAN_MCR_WRN_EN |
+		FLEXCAN_MCR_IDAM_C | FLEXCAN_MCR_MAXMB(priv->tx_mb_idx);
+	if (priv->fix_id == false)
+		reg_mcr |= FLEXCAN_MCR_IRMQ;
+#endif
 
 	/* MCR
 	 *
@@ -1678,6 +1685,14 @@ static int flexcan_chip_start(struct net_device *dev)
 			mb = flexcan_get_mb(priv, i);
 			priv->write(FLEXCAN_MB_CODE_RX_EMPTY,
 				    &mb->can_ctrl);
+#ifdef CONFIG_SOC_SPACEMIT
+			if (priv->fix_id == true) {
+				if (priv->mb_bits[i - 1] == 11)
+					priv->write(priv->mb_ids[i - 1] << 18, &mb->can_id);
+				else
+					priv->write(priv->mb_ids[i - 1], &mb->can_id);
+			}
+#endif
 		}
 	} else {
 		/* clear and invalidate unused mailboxes first */
@@ -1697,7 +1712,14 @@ static int flexcan_chip_start(struct net_device *dev)
 		    &priv->tx_mb->can_ctrl);
 
 	/* acceptance mask/acceptance code (accept everything) */
+#ifndef CONFIG_SOC_SPACEMIT
 	priv->write(0x0, &regs->rxgmask);
+#else
+	if (priv->fix_id == false)
+		priv->write(0x0, &regs->rxgmask);
+	else
+		priv->write(0x1fffffff, &regs->rxgmask);
+#endif
 	priv->write(0x0, &regs->rx14mask);
 	priv->write(0x0, &regs->rx15mask);
 
@@ -2177,6 +2199,9 @@ static int flexcan_probe(struct platform_device *pdev)
 	int err, irq;
 	u8 clk_src = 1;
 	u32 clock_freq = 0;
+#ifdef CONFIG_SOC_SPACEMIT
+	int ret;
+#endif
 
 	reg_xceiver = devm_regulator_get_optional(&pdev->dev, "xceiver");
 	if (PTR_ERR(reg_xceiver) == -EPROBE_DEFER)
@@ -2311,6 +2336,26 @@ static int flexcan_probe(struct platform_device *pdev)
 	priv->reset = reset;
 	priv->reg_xceiver = reg_xceiver;
 	priv->transceiver = transceiver;
+
+#ifdef CONFIG_SOC_SPACEMIT
+	priv->rxmb_len = device_property_count_u32(&pdev->dev, "flexcan-mailbox-id");
+	if (priv->rxmb_len < 0) {
+		priv->fix_id = false;
+	} else if (priv->rxmb_len > MAX_RX_MAILBOX) {
+		dev_err(&pdev->dev, "flexcan rx mailbox id num is more than the max num\n");
+		return -EINVAL;
+	} else {
+		ret = device_property_read_u32_array(&pdev->dev, "flexcan-mailbox-id", priv->mb_ids, priv->rxmb_len);
+		if (ret)
+			return -EINVAL;
+		priv->fix_id = true;
+		ret = device_property_read_u8_array(&pdev->dev, "flexcan-mailbox-id-bits", priv->mb_bits, priv->rxmb_len);
+		if (ret) {
+			dev_err(&pdev->dev, "please add flexcan fix id length:11/29\n");
+			return -EINVAL;
+		}
+	}
+#endif
 
 	if (transceiver)
 		priv->can.bitrate_max = transceiver->attrs.max_link_rate;

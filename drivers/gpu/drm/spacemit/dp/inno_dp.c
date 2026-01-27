@@ -409,6 +409,11 @@ static void inno_dp_tu_init(struct dp_chip_t *inno, struct drm_display_mode *mod
 	if (!htotal)
 		return;
 
+	if (conn->use_ext_pixel_clock && conn->pixel_clock > 0)
+		clock = conn->pixel_clock / 1000;
+
+	osal_printf("%s() clock %d \n", __func__, clock);
+
 	if (inno->phy_rate == 0x00) {
 		hb_num = hblank * (162 / 4) / clock;
 		link_rate = 162;
@@ -1008,6 +1013,21 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	/* video stream config*/
 	osal_printf("%s()video stream config\n", __func__);
 
+	/* video stream disable */
+	osal_write32(0x200, osal_read32(0x200, conn) & ~BIT(28), conn);
+	inno_dp_video_cfg(conn, &conn->out_mode);
+	if (conn->edp_enable && mode->hdisplay == 2560 && mode->vdisplay == 1600) {
+		// set 2.5K eDP polarity
+		osal_write32(0x20c, 0x3 << 28, conn);
+	}
+	if (conn->edp_enable && mode->hdisplay == 2256 && mode->vdisplay == 1504) {
+		// set 2.2K eDP polarity
+		osal_write32(0x20c, 0x3 << 28, conn);
+	}
+	/* video stream enable */
+	osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
+
+#if 0
 	if (hdisplay_1920) {
 		/* video stream disable */
 		osal_write32(0x200, 0x400000, conn);
@@ -1038,21 +1058,8 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 
 		/* video stream enable */
 		osal_write32(0x200, 0x10400000, conn);
-	} else {
-		/* video stream disable */
-		osal_write32(0x200, osal_read32(0x200, conn) & ~BIT(28), conn);
-		inno_dp_video_cfg(conn, &conn->out_mode);
-		if (conn->edp_enable && mode->hdisplay == 2560 && mode->vdisplay == 1600) {
-			// set 2.5K eDP polarity
-			osal_write32(0x20c, 0x3 << 28, conn);
-		}
-		if (conn->edp_enable && mode->hdisplay == 2256 && mode->vdisplay == 1504) {
-			// set 2.2K eDP polarity
-			osal_write32(0x20c, 0x3 << 28, conn);
-		}
-		/* video stream enable */
-		osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
 	}
+#endif
 
 	/* training config */
 	osal_printf("%s() training config\n", __func__);

@@ -28,11 +28,12 @@
 #include "k3-pm_domain.h"
 
 #define MAX_REGULATOR_PER_DOMAIN	5
+#define PRIFIX_OF_PM_QOS		2000000000	
 
-#define DEV_PM_QOS_CLK_GATE		1
-#define DEV_PM_QOS_REGULATOR_GATE	2
-#define DEV_PM_QOS_PM_DOMAIN_GATE	4
-#define DEV_PM_QOS_DEFAULT		7
+#define DEV_PM_QOS_CLK_GATE		(PRIFIX_OF_PM_QOS | 1)
+#define DEV_PM_QOS_REGULATOR_GATE	(PRIFIX_OF_PM_QOS | 2)
+#define DEV_PM_QOS_PM_DOMAIN_GATE	(PRIFIX_OF_PM_QOS | 4)
+#define DEV_PM_QOS_DEFAULT		(PRIFIX_OF_PM_QOS | 7)
 
 struct per_device_qos {
 	struct notifier_block notifier;

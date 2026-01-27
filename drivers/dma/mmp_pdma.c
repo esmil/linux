@@ -454,14 +454,16 @@ static void mmp_pdma_free_phy(struct mmp_pdma_chan *pchan)
 	unsigned long flags;
 	u32 reg;
 
-	if (!pchan->phy)
+	spin_lock_irqsave(&pdev->phy_lock, flags);
+	if (!pchan->phy) {
+		spin_unlock_irqrestore(&pdev->phy_lock, flags);
 		return;
+	}
 
 	/* clear the channel mapping in DRCMR */
 	reg = DRCMR(pchan->drcmr);
 	writel(0, pchan->phy->base + reg);
 
-	spin_lock_irqsave(&pdev->phy_lock, flags);
 	pchan->phy->vchan = NULL;
 	pchan->phy = NULL;
 	spin_unlock_irqrestore(&pdev->phy_lock, flags);
@@ -723,7 +725,7 @@ mmp_pdma_prep_slave_sg(struct dma_chan *dchan, struct scatterlist *sgl,
 
 	for_each_sg(sgl, sg, sg_len, i) {
 		addr = sg_dma_address(sg);
-		avail = sg_dma_len(sgl);
+		avail = sg_dma_len(sg);
 
 		do {
 			len = min_t(size_t, avail, PDMA_MAX_DESC_BYTES);

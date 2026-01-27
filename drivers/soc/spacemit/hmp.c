@@ -12,7 +12,6 @@
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
 #include <linux/of.h>
-#include <asm/vector.h>
 #include <linux/soc/spacemit/spacemit-hmp.h>
 
 
@@ -286,11 +285,6 @@ int hmp_set_ai_thread(pid_t pid)
 		 */
 		pr_warn("%s: pid:%u(%s), vector has been enabled already!!!\n",
 			__func__, t->pid, t->comm);
-		riscv_v_vstate_ctrl_init(t);
-		riscv_v_vstate_off(task_pt_regs(t));
-		kfree(t->thread.vstate.datap);
-		memset(&t->thread.vstate, 0, sizeof(struct __riscv_v_ext_state));
-		clear_tsk_thread_flag(t, TIF_RISCV_V_DEFER_RESTORE);
 	}
 
 	put_task_struct(t);

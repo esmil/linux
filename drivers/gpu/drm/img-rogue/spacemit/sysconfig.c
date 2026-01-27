@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */ /**************************************************************************/
 
 #include <linux/platform_device.h>
+#include <linux/pm_opp.h>
 
 #include "interrupt_support.h"
 #include "pvrsrv_device.h"
@@ -59,6 +60,23 @@ static RGX_DATA					gsRGXData;
 static PVRSRV_DEVICE_CONFIG		gsDevices[1];
 static PHYS_HEAP_FUNCTIONS		gsPhysHeapFuncs;
 static PHYS_HEAP_CONFIG			gsPhysHeapConfig[3];
+
+#if defined(SUPPORT_LINUX_DVFS) || defined(SUPPORT_PDVFS)
+
+/*
+ * Fallback OPP table matching device tree configuration.
+ * Used only if DT OPP loading fails in pvr_dvfs_device.c
+ */
+static const IMG_OPP asOPPTable[] = {
+	{ 8,  409 * 1000 * 1000},
+	{ 8,  491 * 1000 * 1000},
+	{ 8,  614 * 1000 * 1000},
+	{ 8,  819 * 1000 * 1000},
+};
+
+#define LEVEL_COUNT (sizeof(asOPPTable) / sizeof(IMG_OPP))
+
+#endif
 
 /*
 	CPU to Device physical address translation
@@ -211,6 +229,52 @@ PVRSRV_ERROR SysDevInit(void *pvOSDevice, PVRSRV_DEVICE_CONFIG **ppsDevConfig)
 		gsDevices[0].pvOSDevice = NULL;
 		return PVRSRV_ERROR_OUT_OF_MEMORY;
 	}
+
+#if defined(SUPPORT_LINUX_DVFS) || defined(SUPPORT_PDVFS)
+	/*
+	 * Provide fallback OPP table for system layer.
+	 * The actual OPP table will be loaded from device tree by pvr_dvfs_device.c
+	 * If DT loading fails, this hardcoded table will be used as fallback.
+	 */
+	gsDevices[0].sDVFS.sDVFSDeviceCfg.pasOPPTable = asOPPTable;
+	gsDevices[0].sDVFS.sDVFSDeviceCfg.ui32OPPTableSize = LEVEL_COUNT;
+	gsDevices[0].sDVFS.sDVFSDeviceCfg.pfnSetFrequency = stSetFrequency;
+	gsDevices[0].sDVFS.sDVFSDeviceCfg.pfnSetVoltage = stSetVoltage;
+#endif
+#if defined(SUPPORT_LINUX_DVFS)
+	/* Load DVFS parameters from device tree with fallback defaults */
+	{
+		struct device_node *np = ((struct device *)pvOSDevice)->of_node;
+		IMG_UINT32 poll_ms = 300;
+		IMG_UINT32 up_threshold = 75;
+		IMG_UINT32 down_differential = 15;
+		IMG_BOOL idle_req = IMG_TRUE;
+		IMG_UINT32 dvfs_config[4];
+
+		/*
+		 * Try to read compact format from DT:
+		 * dvfs-config = <poll_ms up_threshold down_differential idle_req>
+		 */
+		if (np && !of_property_read_u32_array(np, "dvfs-config", dvfs_config, 4)) {
+			poll_ms = dvfs_config[0];
+			up_threshold = dvfs_config[1];
+			down_differential = dvfs_config[2];
+			idle_req = dvfs_config[3] ? IMG_TRUE : IMG_FALSE;
+			PVR_DPF((PVR_DBG_MESSAGE, "DVFS: Loaded config from DT (compact format)"));
+		} else {
+			PVR_DPF((PVR_DBG_MESSAGE, "DVFS: Using default parameters"));
+		}
+
+		/* Apply parameters */
+		gsDevices[0].sDVFS.sDVFSDeviceCfg.ui32PollMs = poll_ms;
+		gsDevices[0].sDVFS.sDVFSDeviceCfg.bIdleReq = idle_req;
+		gsDevices[0].sDVFS.sDVFSGovernorCfg.ui32UpThreshold = up_threshold;
+		gsDevices[0].sDVFS.sDVFSGovernorCfg.ui32DownDifferential = down_differential;
+
+		PVR_DPF((PVR_DBG_MESSAGE, "DVFS config: poll=%ums, up=%u%%, down=%u%%, idle=%s",
+			 poll_ms, up_threshold, down_differential, idle_req ? "Y" : "N"));
+	}
+#endif
 
 	/* Setup other system specific stuff */
 #if defined(SUPPORT_ION)

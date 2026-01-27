@@ -8,6 +8,8 @@ ccflags-y += $(call cc-option,-Wno-unused-const-variable)
 ccflags-y += $(call cc-option,-Wno-unused-but-set-variable)
 ccflags-y += $(call cc-option,-Wno-missing-format-attribute)
 
+ccflags-$(CONFIG_POWERVR_DVFS) += -I$(srctree)/drivers/devfreq
+
 obj-$(CONFIG_POWERVR_ROGUE) += pvrsrvkm.o
 pvrsrvkm-y += \
  client_cache_direct_bridge.o \
@@ -155,6 +157,7 @@ pvrsrvkm-y += \
  rgxkicksync.o \
  pvr_sync_ioctl_common.o \
  pvr_sync_ioctl_drm.o
+pvrsrvkm-$(CONFIG_POWERVR_DVFS)   += pvr_dvfs_device.o pvr_dvfs_common.o
 pvrsrvkm-$(CONFIG_ARM)   += osfunc_arm.o
 pvrsrvkm-$(CONFIG_ARM64) += osfunc_arm64.o
 pvrsrvkm-$(CONFIG_EVENT_TRACING) += trace_events.o pvr_gputrace.o

@@ -251,18 +251,34 @@
 		};
 	};
 
+	pcie0-1-cfg {
+		pcie0-0-pins {
+			bias-pull-up = <1>;		/* pull up */
+			drive-strength = <38>;		/* DS15 */
+			power-source = <3300>;
+		};
+	};
+
 	pcie1-1-cfg {
 		pcie1-0-pins {
 			bias-pull-up;			/* pull up */
-			drive-strength = <38>;		/* DS8 */
+			drive-strength = <38>;		/* DS15 */
 			power-source = <3300>;
+		};
+	};
+
+	pcie2-2-cfg {
+		pcie2-0-pins {
+			bias-pull-up;			/* pull up  */
+			drive-strength = <33>;		/* DS15 */
+			power-source = <1800>;
 		};
 	};
 
 	pcie3-1-cfg {
 		pcie3-0-pins {
 			bias-pull-up;			/* pull up  */
-			drive-strength = <33>;		/* DS8 */
+			drive-strength = <33>;		/* DS15 */
 			power-source = <1800>;
 		};
 	};
@@ -270,7 +286,7 @@
 	pcie4-1-cfg {
 		pcie4-0-pins {
 			bias-pull-up;			/* pull up */
-			drive-strength = <38>;		/* DS8 */
+			drive-strength = <38>;		/* DS15 */
 			power-source = <3300>;
 		};
 	};
@@ -433,7 +449,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii0>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -469,7 +485,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii1>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -505,7 +521,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii2>;
 	snps,reset-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -541,7 +557,7 @@
 	phy-mode = "rgmii";
 	phy-handle = <&rgmii3>;
 	snps,reset-gpios = <&gpio 2 11 GPIO_ACTIVE_LOW>;
-	snps,reset-delays-us = <2 10000 10000>;
+	snps,reset-delays-us = <0 20000 100000>;
 
 	spacemit,wake-irq-enable;
 
@@ -1151,13 +1167,13 @@
 
 &sound_card_dp0 {
 	status = "okay";
-	playback-only;
 	simple-audio-card,mclk-fs = <512>;
 	simple-audio-card,dai-link@0 {
 		format = "left_j";
 		frame-master = <&dp0_link_cpu>;
 		bitclock-master = <&dp0_link_cpu>;
 		dp0_link_codec: codec {
+			playback-only;
 			sound-dai = <&dp0>;
 		};
 	};

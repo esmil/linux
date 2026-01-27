@@ -27,6 +27,7 @@ static int inno_dp_dai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	default:
 		return -EINVAL;
 	}
+	conn->aud_mode = mode;
 	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(24, 23))
 			    | (mode << 23), conn);
 	return 0;
@@ -54,6 +55,8 @@ static int inno_dp_dai_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(21, 17))
 			    | (data_bits << 17), conn);
+	osal_write32(0x300, (osal_read32(0x300, conn) & ~GENMASK(24, 23))
+			    | (conn->aud_mode << 23), conn);
 	osal_write32(0x01c, osal_read32(0x01c, conn) | BIT(28), conn);
 	return 0;
 }
