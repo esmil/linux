@@ -105,7 +105,10 @@ static void rvtrace_free(struct perf_session *session)
 							auxtrace);
 	rvtrace_free_events(session);
 	session->auxtrace = NULL;
+	for (int i = 0; i < rvtrace->num_cpu; i++)
+		zfree(&rvtrace->metadata[i]);
 
+	zfree(&rvtrace->metadata);
 	zfree(&rvtrace);
 }
 
@@ -152,17 +155,74 @@ static bool rvtrace_is_timeless_decoding(struct rvtrace_auxtrace *rvtrace)
 	return timeless_decoding;
 }
 
+static const char * const rvtrace_global_header_fmts[] = {
+	[RVTRACE_PMU_TYPE_CPUS]		    = "	    PMU type/num cpus	    %llx\n",
+};
+
+static const char * const rvtrace_encoder_priv_fmts[] = {
+	[RVTRACE_ENCODER_CPU]		    = "	    CPU			    %lld\n",
+	[RVTRACE_ENCODER_NR_TRC_PARAMS]	    = "	    NR_TRC_PARAMS	    %lld\n",
+	[RVTRACE_ENCODER_FORMAT]	    = "	    FORMAT		    %lld\n",
+	[RVTRACE_ENCODER_CONTEXT]	    = "	    CONTEXT		    %lld\n",
+	[RVTRACE_ENCODER_INHB_SRC]	    = "	    INHB_SRC		    %lld\n",
+	[RVTRACE_ENCODER_SRCBITS]	    = "	    SRCBITS		    %lld\n",
+	[RVTRACE_ENCODER_SRCID]		    = "	    SRCID		    %lld\n",
+};
+
+static void rvtrace_print_auxtrace_info(u64 *val, int num_cpu)
+{
+	int i, j, cpu = 0, nr_params = 0, fmt_offset = 0;
+
+	for (i = 0; i < RVTRACE_HEADER_MAX; i++)
+		fprintf(stdout, rvtrace_global_header_fmts[i], val[i]);
+
+	for (i = RVTRACE_HEADER_MAX; cpu < num_cpu; cpu++) {
+		fprintf(stdout, rvtrace_encoder_priv_fmts[RVTRACE_ENCODER_CPU], val[i++]);
+		nr_params = val[i++];
+		fmt_offset = RVTRACE_ENCODER_FORMAT;
+		for (j = fmt_offset; j < nr_params + fmt_offset; j++, i++)
+			fprintf(stdout, rvtrace_encoder_priv_fmts[j], val[i]);
+	}
+}
+
 int rvtrace_process_auxtrace_info(union perf_event *event,
 				  struct perf_session *session)
 {
 	struct perf_record_auxtrace_info *auxtrace_info = &event->auxtrace_info;
 	struct rvtrace_auxtrace *rvtrace = NULL;
 	int err = 0;
+	int i;
+	int num_cpu = 0;
+	u64 *ptr = NULL;
+	u64 **metadata = NULL;
+
+	/* First the global part */
+	ptr = (u64 *) auxtrace_info->priv;
+	num_cpu = ptr[RVTRACE_PMU_TYPE_CPUS] & 0xffffffff;
+	metadata = zalloc(sizeof(*metadata) * num_cpu);
+	if (!metadata)
+		err = -ENOMEM;
+
+	/* Start parsing after the common part of the header */
+	i = RVTRACE_HEADER_MAX;
+
+	for (int j = 0; j < num_cpu; j++) {
+		metadata[j] = zalloc(sizeof(*metadata[j]) * RVTRACE_ENCODER_PRIV_MAX);
+		if (!metadata[j]) {
+			err = -ENOMEM;
+			goto err_free_metadata;
+		}
+
+		for (int k = 0; k < RVTRACE_ENCODER_PRIV_MAX; k++)
+			metadata[j][k] = ptr[i + k];
+		i += RVTRACE_ENCODER_PRIV_MAX;
+	}
 
 	rvtrace = zalloc(sizeof(*rvtrace));
-
-	if (!rvtrace)
+	if (!rvtrace) {
 		err = -ENOMEM;
+		goto err_free_metadata;
+	}
 
 	err = auxtrace_queues__init(&rvtrace->queues);
 	if (err)
@@ -170,6 +230,8 @@ int rvtrace_process_auxtrace_info(union perf_event *event,
 
 	rvtrace->session = session;
 	rvtrace->machine = &session->machines.host;
+	rvtrace->num_cpu = num_cpu;
+	rvtrace->metadata = metadata;
 
 	rvtrace->auxtrace_type = auxtrace_info->type;
 	rvtrace->timeless_decoding = rvtrace_is_timeless_decoding(rvtrace);
@@ -182,8 +244,10 @@ int rvtrace_process_auxtrace_info(union perf_event *event,
 	rvtrace->auxtrace.evsel_is_auxtrace = rvtrace_evsel_is_auxtrace;
 	session->auxtrace = &rvtrace->auxtrace;
 
-	if (dump_trace)
+	if (dump_trace) {
+		rvtrace_print_auxtrace_info(ptr, num_cpu);
 		return 0;
+	}
 
 	err = auxtrace_queues__process_index(&rvtrace->queues, session);
 	if (err)
@@ -198,6 +262,10 @@ err_free_queues:
 	session->auxtrace = NULL;
 err_free_rvtrace:
 	zfree(&rvtrace);
+err_free_metadata:
+	for (int j = 0; j < num_cpu; j++)
+		zfree(&metadata[j]);
+	zfree(&metadata);
 
 	return -EINVAL;
 }
