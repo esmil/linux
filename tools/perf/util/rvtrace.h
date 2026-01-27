@@ -32,4 +32,6 @@ enum {
 #define RVTRACE_HEADER_SIZE		(RVTRACE_HEADER_MAX * sizeof(u64))
 #define RVTRACE_ENCODER_PRIV_SIZE	(RVTRACE_ENCODER_PRIV_MAX * sizeof(u64))
 
+int rvtrace_process_auxtrace_info(union perf_event *event, struct perf_session *session);
+
 #endif
