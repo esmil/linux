@@ -1111,6 +1111,8 @@ static const struct of_device_id rtl_bluetooth_of_match[] = {
 	  .data = (const void *)&h5_data_rtl8723bs },
 	{ .compatible = "realtek,rtl8723ds-bt",
 	  .data = (const void *)&h5_data_rtl8723bs },
+	{ .compatible = "realtek,rtl8852bs-bt",
+	  .data = (const void *)&h5_data_rtl8723bs },
 #endif
 	{ },
 };
