@@ -35,8 +35,11 @@
 #define SMLH_LINK_UP			BIT(1)
 #define RDLH_LINK_UP			BIT(12)
 
+#define INTR_STATUS				0x0010
+
 #define INTR_ENABLE				0x0014
 #define MSI_CTRL_INT			BIT(11)
+#define RDLH_LINK_UP_INT		BIT(20)
 
 /* Some controls require APMU regmap access */
 #define SYSCON_APMU			"spacemit,apmu"
@@ -330,12 +333,38 @@ static void spacemit_pcie_disable_phy(struct k1_pcie *pcie)
 }
 #endif
 
+static irqreturn_t spacemit_pcie_irq_thread(int irq, void *data)
+{
+	struct k1_pcie *k1 = data;
+	struct dw_pcie_rp *pp = &k1->pci.pp;
+	struct device *dev = k1->pci.dev;
+	u32 status;
+
+	status = readl_relaxed(k1->link + INTR_STATUS);
+	writel_relaxed(status, k1->link + INTR_STATUS);
+
+	if (FIELD_GET(RDLH_LINK_UP_INT, status)) {
+		msleep(PCIE_RESET_CONFIG_WAIT_MS);
+		dev_dbg(dev, "Received Link up event. Starting enumeration!\n");
+		/* Rescan the bus to enumerate endpoint devices */
+		pci_lock_rescan_remove();
+		pci_rescan_bus(pp->bridge->bus);
+		pci_unlock_rescan_remove();
+	} else {
+		dev_WARN_ONCE(dev, 1, "Received unknown event. INT_STATUS: 0x%08x\n",
+			      status);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static int k1_pcie_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct k1_pcie *k1 = to_k1_pcie(pci);
 	u32 reset_ctrl;
 	int ret;
+	u32 val;
 
 	k1_pcie_toggle_soft_reset(k1);
 
@@ -470,6 +499,11 @@ static int k1_pcie_start_link(struct dw_pcie *pci)
 	val |= PCIE_INTERRUPT_EN;
 	writel_relaxed(val, k1->link + K1_PHY_AHB_IRQ_EN);
 
+	/* Link Up Interrupt Enable */
+	val = readl_relaxed(k1->link + INTR_ENABLE);
+	val |= RDLH_LINK_UP_INT;
+	writel_relaxed(val, k1->link + INTR_ENABLE);
+
 #ifdef CONFIG_SOC_SPACEMIT_K3
 	/* Enable INTx */
 	val = readl_relaxed(k1->link + SPACEMIT_PHY_AHB_IRQENABLE_SET_INTX);
@@ -585,7 +619,9 @@ static int k1_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct k1_pcie *k1;
-	int ret;
+	struct dw_pcie_rp *pp;
+	int ret, irq;
+	char *name;
 
 	k1 = devm_kzalloc(dev, sizeof(*k1), GFP_KERNEL);
 	if (!k1)
@@ -609,6 +645,7 @@ static int k1_pcie_probe(struct platform_device *pdev)
 	dw_pcie_cap_set(&k1->pci, REQ_RES);
 
 	k1->pci.pp.ops = &k1_pcie_host_ops;
+	pp = &k1->pci.pp;
 
 	/* Hold the PHY in reset until we start the link */
 	regmap_set_bits(k1->pmu, k1->pmu_off + PCIE_CLK_RESET_CONTROL,
@@ -628,12 +665,38 @@ static int k1_pcie_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, k1);
 
 	ret = k1_pcie_parse_port(k1);
-	if (ret)
-		return dev_err_probe(dev, ret, "failed to parse root port\n");
+	if (ret) {
+		dev_err_probe(dev, ret, "failed to parse port\n");
+		goto err_pm_runtime_put;
+	}
+
+	irq = platform_get_irq_byname_optional(pdev, "pcie_irq");
+	if (irq > 0)
+		pp->use_linkup_irq = true;
 
 	ret = dw_pcie_host_init(&k1->pci.pp);
-	if (ret)
-		return dev_err_probe(dev, ret, "failed to initialize host\n");
+	if (ret) {
+		dev_err(dev, "failed to initialize host\n");
+		goto err_pm_runtime_put;
+	}
+
+	name = devm_kasprintf(dev, GFP_KERNEL, "spacemit_pcie_irq%d",
+			      pci_domain_nr(pp->bridge->bus));
+	if (!name) {
+		ret = -ENOMEM;
+		goto err_host_deinit;
+	}
+
+	if (irq > 0) {
+		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+						spacemit_pcie_irq_thread,
+						IRQF_ONESHOT, name, k1);
+		if (ret) {
+			dev_err_probe(&pdev->dev, ret,
+				      "Failed to request PCIe IRQ\n");
+			goto err_host_deinit;
+		}
+	}
 
 #ifdef CONFIG_SOC_SPACEMIT_K3
 	if (dw_pcie_link_up(&k1->pci))
@@ -642,6 +705,14 @@ static int k1_pcie_probe(struct platform_device *pdev)
 		dev_info(dev, "spacemit-pcie: link is down after host_init\n");
 #endif
 	return 0;
+
+err_host_deinit:
+	dw_pcie_host_deinit(pp);
+
+err_pm_runtime_put:
+	pm_runtime_disable(dev);
+
+	return ret;
 }
 
 static void k1_pcie_remove(struct platform_device *pdev)
