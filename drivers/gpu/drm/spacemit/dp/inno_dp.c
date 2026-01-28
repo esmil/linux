@@ -1027,7 +1027,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 	/* video stream enable */
 	osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
 
-#if 0
+#if 1
 	if (hdisplay_1920) {
 		/* video stream disable */
 		osal_write32(0x200, 0x400000, conn);
