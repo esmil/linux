@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# spacemit camera configuration
+#
+
+comment "SPACEMIT K3 Camera And Video"
+
+config SPACEMIT_K3_CCIC
+    tristate "SPACEMIT K3 camera CCIC support"
+    select VIDEOBUF2_CORE
+    select VIDEOBUF2_V4L2
+    select VIDEOBUF2_DMA_CONTIG
+    select VIDEOBUF2_DMA_SG
+    depends on VIDEO_DEV
+    help
+      Enable support for camera ccic
+
+config SPACEMIT_K3_CCIC_IOMMU
+	bool "SPACEMIT K3 camera CCIC IOMMU support"
+	depends on SPACEMIT_K3_CCIC
+    help
+      Enable support for camera ccic iommu

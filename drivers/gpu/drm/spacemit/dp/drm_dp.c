@@ -29,6 +29,13 @@
 #include "inno_conn.h"
 #include "inno_dp_api.h"
 
+#define HOT_PLUG_THREAD_ENABLED		1
+#define HPD_POLL_INTERVAL_MS		200
+
+#if HOT_PLUG_THREAD_ENABLED
+#include <linux/workqueue.h>
+#endif
+
 #define INVALID_GPIO			0xFFFFFFFF
 
 #define INNO_DP_HPD_IRQ_EVENT		BIT(31)
@@ -54,6 +61,11 @@ struct dp_dev {
 	u32 gpio_power;
 	u32 gpio_enable;
 
+#if HOT_PLUG_THREAD_ENABLED
+	struct delayed_work hpd_work;
+#else
+	int irq;
+#endif
 	struct inno_conn_t *conn;
 };
 
@@ -254,6 +266,29 @@ static void dp_proc_irq_debug_exit(struct dp_dev *dp_dev)
 	dp_dev->proc_irq = NULL;
 }
 
+#if HOT_PLUG_THREAD_ENABLED
+static void soc_dp_hpd_poll_work(struct work_struct *work)
+{
+	struct dp_dev *dp_dev = container_of(work, struct dp_dev, hpd_work.work);
+	enum drm_connector_status old_status, new_status;
+	u32 hpd_status;
+
+	old_status = dp_dev->connector_status;
+	hpd_status = readl(dp_dev->conn->reg_mmap_addr + 0x88);
+	if (hpd_status & INNO_DP_HPD_STATUS)
+		new_status = connector_status_connected;
+	else
+		new_status = connector_status_disconnected;
+
+	if (new_status != old_status) {
+		dp_dev->connector_status = new_status;
+		DRM_INFO("%s() hpd status 0x%x\n", __func__, hpd_status);
+		drm_kms_helper_hotplug_event(dp_dev->drm);
+	}
+
+	schedule_delayed_work(&dp_dev->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
+}
+#else
 static irqreturn_t soc_dp_irq_handler(int irq, void *data)
 {
 	struct dp_dev *dp_dev = data;
@@ -294,6 +329,7 @@ static irqreturn_t soc_dp_irq_thread_handler(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static int dp_dev_resource_init(struct dp_dev *dp_dev,
 				struct platform_device *pdev)
@@ -484,23 +520,28 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 	else
 		dp_dev->connector_status = connector_status_disconnected;
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0) {
-		dev_err(&pdev->dev, "Failed to obtain interrupt ret = %d.\n", irq);
-		return irq;
-	}
-
 	status = readl(dp_dev->conn->reg_mmap_addr + 0x84);
 	status &= ~BIT(16);
 	status |= BIT(17);
 	writel(status, (dp_dev->conn->reg_mmap_addr + 0x84));
 
-	ret = devm_request_threaded_irq(&pdev->dev, irq, soc_dp_irq_handler,
+#if HOT_PLUG_THREAD_ENABLED
+	INIT_DELAYED_WORK(&dp_dev->hpd_work, soc_dp_hpd_poll_work);
+	dev_info(&pdev->dev, "Starting HPD Polling Thread...\n");
+	schedule_delayed_work(&dp_dev->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
+#else
+	dp_dev->irq = platform_get_irq(pdev, 0);
+	if (dp_dev->irq < 0) {
+		dev_err(&pdev->dev, "Failed to obtain interrupt ret = %d.\n", dp_dev->irq);
+		return dp_dev->irq;
+	}
+	ret = devm_request_threaded_irq(&pdev->dev, dp_dev->irq, soc_dp_irq_handler,
 			soc_dp_irq_thread_handler, 0, dev_name(&pdev->dev), dp_dev);
 	if (ret) {
-		dev_err(&pdev->dev, "Failure requesting irq %d: %d.\n", irq, ret);
+		dev_err(&pdev->dev, "Failure requesting irq %d: %d.\n", dp_dev->irq, ret);
 		return ret;
 	}
+#endif
 
 	return 0;
 }
@@ -512,6 +553,10 @@ static void inno_dp_unbind(struct device *dev, struct device *master, void *data
 	int ret;
 
 	DRM_INFO("%s()\n", __func__);
+
+#if HOT_PLUG_THREAD_ENABLED
+	cancel_delayed_work_sync(&dp_dev->hpd_work);
+#endif
 
 	// dp_proc_irq_debug_exit(dp_dev);
 	drm_encoder_cleanup(&dp_dev->encoder);

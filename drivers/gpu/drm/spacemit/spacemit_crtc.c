@@ -1593,13 +1593,10 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	 * on/off lcd power domain before/after probe func.
 	 */
 	pm_runtime_enable(&pdev->dev);
-	// if (spacemit_dpu_logo_booton) {
-	// 	spacemit_dpu_power_enable(a_crtc, true);
-	// 	dpu_pm_resume(&pdev->dev);
-	// }
-
-	spacemit_dpu_power_enable(a_crtc, true);
-	dpu_pm_resume(&pdev->dev);
+	if (spacemit_dpu_logo_booton) {
+		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(&pdev->dev);
+	}
 
 	return component_add(dev, &dpu_component_ops);
 }
