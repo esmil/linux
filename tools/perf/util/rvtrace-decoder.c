@@ -12,6 +12,7 @@
 #include <linux/kernel.h>
 #include <linux/log2.h>
 #include <linux/types.h>
+#include <sys/mman.h>
 
 #include <stdlib.h>
 
@@ -29,6 +30,9 @@
 #include "thread_map.h"
 #include "thread-stack.h"
 #include "util.h"
+#include "dso.h"
+#include "addr_location.h"
+#include <inttypes.h>
 #include "rvtrace.h"
 #include "nexus-rv-decoder/nexus-rv-decoder.h"
 
@@ -60,6 +64,7 @@ struct rvtrace_auxtrace {
 struct rvtrace_queue {
 	struct rvtrace_auxtrace *rvtrace;
 	struct thread *thread;
+	struct nexus_rv_insn_decoder *decoder;
 	struct auxtrace_buffer *buffer;
 	union perf_event *event_buf;
 	unsigned int queue_nr;
@@ -69,6 +74,55 @@ struct rvtrace_queue {
 	u64 timestamp;
 	u64 offset;
 };
+
+static void rvtrace_set_pid_tid_cpu(struct rvtrace_auxtrace *rvtrace,
+				    struct auxtrace_queue *queue)
+{
+	struct rvtrace_queue *rvtraceq = queue->priv;
+
+	/* CPU-wide tracing isn't supported yet */
+	if (queue->tid == -1)
+		return;
+
+	if ((!rvtraceq->thread) && (rvtraceq->tid != -1))
+		rvtraceq->thread = machine__find_thread(rvtrace->machine, -1, rvtraceq->tid);
+
+	if (rvtraceq->thread) {
+		rvtraceq->pid = rvtraceq->thread->pid_;
+		if (queue->cpu == -1)
+			rvtraceq->cpu = rvtraceq->thread->cpu;
+	}
+}
+
+static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
+{
+	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
+
+	if (!rvtrace->kernel_start)
+		rvtrace->kernel_start = machine__kernel_start(rvtrace->machine);
+
+	return nexus_rv_insn_decode(rvtraceq->decoder);
+}
+
+static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
+						  pid_t tid, u64 time_)
+{
+	unsigned int i;
+	struct auxtrace_queues *queues = &rvtrace->queues;
+	for (i = 0; i < queues->nr_queues; i++) {
+		struct auxtrace_queue *queue = &rvtrace->queues.queue_array[i];
+		struct rvtrace_queue *rvtraceq = queue->priv;
+
+		if (rvtraceq && ((tid == -1) || (rvtraceq->tid == tid))) {
+			rvtraceq->time = time_;
+			rvtrace_set_pid_tid_cpu(rvtrace, queue);
+			rvtrace_run_decoder(rvtraceq);
+		}
+	}
+
+	return 0;
+}
+
 
 static int rvtrace_flush_events(struct perf_session *session __maybe_unused,
 				const struct perf_tool *tool __maybe_unused)
@@ -80,6 +134,12 @@ static void rvtrace_free_queue(void *priv)
 {
 	struct rvtrace_queue *rvtraceq = priv;
 
+	if (!rvtraceq)
+		return;
+
+	thread__zput(rvtraceq->thread);
+	nexus_rv_insn_decoder_free(rvtraceq->decoder);
+	zfree(&rvtraceq->event_buf);
 	free(rvtraceq);
 }
 
@@ -123,11 +183,264 @@ static bool rvtrace_evsel_is_auxtrace(struct perf_session *session,
 	return evsel->core.attr.type == aux->pmu_type;
 }
 
-static int rvtrace_process_event(struct perf_session *session __maybe_unused,
-				 union perf_event *event __maybe_unused,
-				 struct perf_sample *sample __maybe_unused,
-				 const struct perf_tool *tool __maybe_unused)
+static int rvtrace_get_trace(struct nexus_rv_buffer *buffer, void *data)
 {
+	struct rvtrace_queue *rvtraceq = data;
+	struct auxtrace_buffer *aux_buffer = rvtraceq->buffer;
+	struct auxtrace_buffer *old_buffer = aux_buffer;
+	struct auxtrace_queue *queue;
+
+	queue = &rvtraceq->rvtrace->queues.queue_array[rvtraceq->queue_nr];
+
+	aux_buffer = auxtrace_buffer__next(queue, aux_buffer);
+
+	/* If no more data, drop the previous auxtrace_buffer and return */
+	if (!aux_buffer->data) {
+		if (old_buffer)
+			auxtrace_buffer__drop_data(old_buffer);
+		buffer->len = 0;
+		return 0;
+	}
+
+	rvtraceq->buffer = aux_buffer;
+
+	/* If the aux_buffer doesn't have data associated, try to load it */
+	if (!aux_buffer->data) {
+		/* get the file desc associated with the perf data file */
+		int fd = perf_data__fd(rvtraceq->rvtrace->session->data);
+
+		aux_buffer->data = auxtrace_buffer__get_data(aux_buffer, fd);
+		if (!aux_buffer->data)
+			return -ENOMEM;
+	}
+
+	/* If valid, drop the previous buffer */
+	if (old_buffer)
+		auxtrace_buffer__drop_data(old_buffer);
+
+	buffer->len = aux_buffer->size;
+	buffer->buf = aux_buffer->data;
+
+	return 0;
+}
+
+static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
+{
+	int fd;
+	void *map_base, *virt_addr;
+	unsigned int page_size = 4096, mapped_size = 4096;
+	unsigned int offset_in_page = address & (page_size - 1);
+	unsigned int width = 8 * sizeof(int);
+
+	if (offset_in_page + width > page_size)
+		mapped_size *= 2;
+
+	fd = open("/dev/mem", O_RDONLY | O_SYNC);
+	if (fd < 0)
+		return 0;
+
+	map_base = mmap(NULL, mapped_size, PROT_READ, MAP_SHARED, fd, address & ~(page_size - 1));
+	if (map_base == MAP_FAILED) {
+		pr_debug("failed to mmap device address 0x%lx\n", address);
+		close(fd);
+		return 0;
+	}
+
+	virt_addr = (char*)map_base + offset_in_page;
+
+	memcpy(buffer, virt_addr, size);
+
+	munmap(map_base, mapped_size);
+	close(fd);
+	return size;
+}
+
+static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode prv,
+			      size_t size, u8 *buffer)
+{
+	u8 cpumode;
+	u64 offset;
+	int len;
+	struct machine *machine;
+	struct addr_location al;
+	struct dso *dso;
+	int ret = 0;
+
+	struct rvtrace_queue *rvtraceq = data;
+	if (!rvtraceq)
+		goto out;
+
+	addr_location__init(&al);
+
+	/* If the riscv_privilege_mode is machine mode, access physical address by /dev/mem */
+	if (prv == RISCV_PRIV_MACHINE_MODE)
+		return rvtrace_devmem_access(address, size, buffer);
+
+	machine = rvtraceq->rvtrace->machine;
+	if (address >= machine__kernel_start(machine))
+		cpumode = PERF_RECORD_MISC_KERNEL;
+	else
+		cpumode = PERF_RECORD_MISC_USER;
+
+	if (!thread__find_map(rvtraceq->thread, cpumode, address, &al))
+		goto out;
+
+	dso = map__dso(al.map);
+	if (!dso)
+		goto out;
+
+	if (dso__data(dso)->status == DSO_DATA_STATUS_ERROR &&
+	    dso__data_status_seen(dso, DSO_DATA_STATUS_SEEN_ITRACE))
+		goto out;
+
+	offset = map__map_ip(al.map, address);
+
+	map__load(al.map);
+
+	len = dso__data_read_offset(dso, machine, offset, buffer, size);
+	if (len <= 0) {
+		ui__warning_once("RISC-V Nexus Trace: Missing DSO. Use 'perf archive' or debuginfod to export data from the traced system.\n"
+				 "                  Enable CONFIG_PROC_KCORE or use option '-k /path/to/vmlinux' for kernel symbols.\n");
+		if (!dso__auxtrace_warned(dso)) {
+			pr_err("RISC-V Nexus Trace: Debug data not found for address %#"PRIx64" in %s\n",
+				address,
+				dso__long_name(dso) ? dso__long_name(dso) : "Unknown");
+			dso__set_auxtrace_warned(dso);
+		}
+		goto out;
+	}
+	ret = len;
+out:
+	addr_location__exit(&al);
+	return ret;
+}
+
+static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrace,
+                                               unsigned int queue_nr)
+{
+	struct nexus_rv_insn_decoder_params params;
+	struct rvtrace_queue *rvtraceq;
+
+	rvtraceq = zalloc(sizeof(*rvtraceq));
+	if (!rvtraceq)
+		return NULL;
+
+	rvtraceq->event_buf = malloc(PERF_SAMPLE_MAX_SIZE);
+	if (!rvtraceq->event_buf)
+		goto out_free;
+
+	rvtraceq->rvtrace = rvtrace;
+	rvtraceq->queue_nr = queue_nr;
+	rvtraceq->pid = -1;
+	rvtraceq->tid = -1;
+	rvtraceq->cpu = -1;
+
+	params.get_trace = rvtrace_get_trace;
+	params.mem_access = rvtrace_mem_access;
+	params.data = rvtraceq;
+	params.formatted = true;
+	if (!rvtrace->metadata[0][RVTRACE_ENCODER_INHB_SRC])
+		params.src_bits = rvtrace->metadata[0][RVTRACE_ENCODER_SRCBITS];
+
+	rvtraceq->decoder = nexus_rv_insn_decoder_new(&params);
+	if (!rvtraceq->decoder)
+		goto out_free;
+
+	rvtraceq->offset = 0;
+
+	return rvtraceq;
+
+out_free:
+	zfree(&rvtraceq->event_buf);
+	free(rvtraceq);
+
+	return NULL;
+}
+
+static int rvtrace_setup_queue(struct rvtrace_auxtrace *rvtrace,
+                              struct auxtrace_queue *queue,
+                              unsigned int queue_nr)
+{
+	struct rvtrace_queue *rvtraceq = queue->priv;
+
+	if (list_empty(&queue->head) || rvtraceq)
+		return 0;
+
+	rvtraceq = rvtrace_alloc_queue(rvtrace, queue_nr);
+
+	if (!rvtraceq)
+		return -ENOMEM;
+
+	queue->priv = rvtraceq;
+
+	if (queue->cpu != -1)
+		rvtraceq->cpu = queue->cpu;
+
+	rvtraceq->tid = queue->tid;
+
+	return 0;
+}
+
+static int rvtrace_setup_queues(struct rvtrace_auxtrace *rvtrace)
+{
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < rvtrace->queues.nr_queues; i++) {
+		ret = rvtrace_setup_queue(rvtrace, &rvtrace->queues.queue_array[i], i);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int rvtrace_update_queues(struct rvtrace_auxtrace *rvtrace)
+{
+	if (rvtrace->queues.new_data) {
+		rvtrace->queues.new_data = false;
+		return rvtrace_setup_queues(rvtrace);
+	}
+
+	return 0;
+}
+
+static int rvtrace_process_event(struct perf_session *session,
+				 union perf_event *event,
+				 struct perf_sample *sample,
+				 const struct perf_tool *tool)
+{
+	int err = 0;
+	u64 timestamp;
+	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
+							struct rvtrace_auxtrace,
+							auxtrace);
+
+	if (dump_trace)
+		return 0;
+
+	if (!tool->ordered_events) {
+		pr_err("RISCV Trace requires ordered events\n");
+		return -EINVAL;
+	}
+
+	if (!rvtrace->timeless_decoding)
+		return -EINVAL;
+
+	if (sample->time && (sample->time != (u64) -1))
+		timestamp = sample->time;
+	else
+		timestamp = 0;
+
+	if (timestamp || rvtrace->timeless_decoding) {
+		err = rvtrace_update_queues(rvtrace);
+		if (err)
+			return err;
+	}
+
+	if (event->header.type == PERF_RECORD_EXIT)
+		return rvtrace_process_timeless_queues(rvtrace, event->fork.tid, sample->time);
+
 	return 0;
 }
 
