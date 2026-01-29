@@ -227,45 +227,6 @@ static const struct drm_encoder_helper_funcs dp_encoder_helper_funcs = {
 	.mode_set = dp_mode_set,
 };
 
-static ssize_t dp_irq_proc_write(struct file *filp, const char __user *buf,
-				 size_t count, loff_t *ppos)
-{
-	struct dp_dev *dp_dev = pde_data(file_inode(filp));
-	char write_status[2] = { 0 };
-
-	if (copy_from_user(write_status, buf, 1))
-		write_status[0] = '1';
-
-	if (write_status[0] == '1')
-		dp_dev->connector_status = connector_status_connected;
-	else if (write_status[0] == '0')
-		dp_dev->connector_status = connector_status_disconnected;
-	else
-		return -EINVAL;
-
-	drm_kms_helper_hotplug_event(dp_dev->drm);
-	return count;
-}
-
-static const struct proc_ops dp_irq_proc_ops = {
-	.proc_flags = PROC_ENTRY_PERMANENT,
-	.proc_write = dp_irq_proc_write,
-};
-
-static void dp_proc_irq_debug_init(struct dp_dev *dp_dev)
-{
-	dp_dev->proc_irq = proc_create_data(dp_dev->connector.name,
-					    S_IWUSR, NULL,
-					    &dp_irq_proc_ops, dp_dev);
-}
-
-static void dp_proc_irq_debug_exit(struct dp_dev *dp_dev)
-{
-	if (dp_dev->proc_irq)
-		proc_remove(dp_dev->proc_irq);
-	dp_dev->proc_irq = NULL;
-}
-
 #if HOT_PLUG_THREAD_ENABLED
 static void soc_dp_hpd_poll_work(struct work_struct *work)
 {
@@ -401,9 +362,6 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 	struct dp_dev *dp_dev;
 	struct drm_device *drm = (struct drm_device *)data;
 	struct platform_device *pdev = to_platform_device(dev);
-	uint64_t clk_val;
-	uint64_t set_clk_val;
-	int irq;
 	u32 status;
 
 	DRM_INFO("%s()\n", __func__);
@@ -505,7 +463,6 @@ static int inno_dp_bind(struct device *dev, struct device *master, void *data)
 				     &dp_dev->encoder);
 
 	platform_set_drvdata(pdev, dp_dev);
-	// dp_proc_irq_debug_init(dp_dev);
 
 	ret = dp_dev_resource_init(dp_dev, pdev);
 	if (ret) {
@@ -558,7 +515,6 @@ static void inno_dp_unbind(struct device *dev, struct device *master, void *data
 	cancel_delayed_work_sync(&dp_dev->hpd_work);
 #endif
 
-	// dp_proc_irq_debug_exit(dp_dev);
 	drm_encoder_cleanup(&dp_dev->encoder);
 	drm_connector_cleanup(&dp_dev->connector);
 
