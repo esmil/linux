@@ -9,6 +9,7 @@
 #include "lcd/lcd_icnl9911c_mipi.dtsi"
 #include "k3-dp0.dtsi"
 #include "k3-dp1.dtsi"
+#include "k3-camera.dtsi"
 
 / {
 	compatible = "spacemit,k3-evb";
@@ -1177,4 +1178,32 @@
 			sound-dai = <&dp0>;
 		};
 	};
+};
+
+&ccic0 {
+	status = "okay";
+};
+
+&ccic1 {
+	status = "okay";
+};
+
+&ccic2 {
+	status = "okay";
+};
+
+&ccic3 {
+	status = "okay";
+};
+
+&csiphy0 {
+	status = "okay";
+};
+
+&csiphy1 {
+	status = "okay";
+};
+
+&csiphy2 {
+	status = "okay";
 };
