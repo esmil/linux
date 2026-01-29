@@ -1685,6 +1685,8 @@
 			clocks = <&syscon_apmu CLK_APMU_GPU>;
 			clock-names = "clk_rgx";
 			resets = <&syscon_apmu RESET_APMU_GPU>;
+			#cooling-cells = <2>;
+			thermal-zone = "thermal_gpu";
 			status = "okay";
 		};
 
