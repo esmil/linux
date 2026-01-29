@@ -34,6 +34,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu0_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -79,6 +80,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu1_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -124,6 +126,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu2_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -169,6 +172,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache1>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu3_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -214,6 +218,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu4_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -259,6 +264,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu5_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -304,6 +310,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu6_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -349,6 +356,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache2>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu7_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -395,6 +403,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu8_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -441,6 +450,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu9_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -487,6 +497,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu10_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -533,6 +544,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache3>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu11_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -579,6 +591,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu12_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -625,6 +638,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu13_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -671,6 +685,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu14_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
@@ -717,6 +732,7 @@
 				d-cache-sets = <256>;
 				next-level-cache = <&l2_cache4>;
 				mmu-type = "riscv,sv39";
+				#cooling-cells = <2>;
 				cpu15_intc: interrupt-controller {
 					#interrupt-cells = <1>;
 					compatible = "riscv,cpu-intc";
