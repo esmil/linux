@@ -1421,8 +1421,9 @@
 		ircrx0: irc-rx0@d4017e00 {
 			compatible = "spacemit-k1,irc";
 			reg = <0x0 0xd4017e00 0x0 0x100>;
-			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <69 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apbc CLK_APBC_IR0>;
 			resets = <&syscon_apbc RESET_APBC_IR0>;
 			clock-frequency = <102400000>;
 			status = "disabled";
@@ -1431,8 +1432,9 @@
 		ircrx1: irc-rx1@d4017f00 {
 			compatible = "spacemit-k1,irc";
 			reg = <0x0 0xd4017f00 0x0 0x100>;
-			interrupts = <69 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apbc CLK_APBC_IR1>;
 			resets = <&syscon_apbc RESET_APBC_IR1>;
 			clock-frequency = <102400000>;
 			status = "disabled";
