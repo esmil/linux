@@ -14,7 +14,6 @@
 #include <linux/amba/bus.h>
 #include <linux/coresight.h>
 #include <linux/cpumask.h>
-#include <asm/smp_plat.h>
 
 #include "coresight-priv.h"
 

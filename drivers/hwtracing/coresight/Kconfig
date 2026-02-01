@@ -4,7 +4,7 @@
 #
 menuconfig CORESIGHT
 	tristate "CoreSight Tracing Support"
-	depends on ARM || ARM64
+	depends on ARM || ARM64 || RISCV
 	depends on OF || ACPI
 	select ARM_AMBA
 	select PERF_EVENTS
@@ -279,5 +279,52 @@ config CORESIGHT_TNOC
 
 	  To compile this driver as a module, choose M here: the module will be
 	  called coresight-tnoc.
+
+config RVTRACE
+	tristate "RISC-V Trace Support"
+	help
+	  This enables support for the RISC-V trace drivers. drivers
+	  (including Trace Encoder, Trace Funnel and  ATB Bridge) are
+	  dynamically aggregated with CoreSight trace infrastructure
+	  at run time to form a complete trace path.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace.
+
+config RVTRACE_ATBBRIDGE
+	tristate "RISCV Trace ATB Bridge driver"
+	depends on RVTRACE
+	help
+	  This driver provides support for the ATB Bridge driver. The ATB
+	  Bridge allows sending RISC-V trace to Arm CoreSight infrastructure
+	  (instead of RISC-V compliant sink) as an ATB initiator.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace-atbbridge.
+
+config RVTRACE_FUNNEL
+	tristate "RISCV Trace Funnel driver"
+	depends on RVTRACE
+	help
+	  his driver provides support for the Trace Funnel driver. The Funnel
+	  aggregates the trace from each of its inputs and sends the combined
+	  trace stream to its designated Trace Sink or ATB Bridge.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace-funnel.
+
+config RVTRACE_ENCODER
+	tristate "RISCV Trace Encoder driver"
+	depends on RVTRACE
+	select RVTRACE_FUNNEL
+	select RVTRACE_ATBBRIDGE
+	help
+	  This driver provides support for the Trace Encoder module, tracing
+	  the instructions that a processor is executing. This is primarily
+	  useful for instruction level tracing. Depending on the implemented
+	  version data tracing may also be available.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called rvtrace-encoder.
 
 endif

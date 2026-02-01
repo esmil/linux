@@ -58,6 +58,9 @@ struct st_context {
 	struct mutex set_power_state;
 	IMG_BOOL            gpu_active;
 	IMG_BOOL            bEnablePd;
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+	struct thermal_zone_device *thermal_zone;
+#endif
 };
 
 struct st_context * RgxStInit(PVRSRV_DEVICE_CONFIG* psDevConfig);
@@ -74,4 +77,9 @@ PVRSRV_ERROR STPostPowerState(IMG_HANDLE hSysData,
 							  PVRSRV_POWER_FLAGS ePwrFlags);
 void stSetFrequency(IMG_HANDLE hSysData, IMG_UINT32 ui32Frequency);
 void stSetVoltage(IMG_HANDLE hSysData, IMG_UINT32 ui32Voltage);
+
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+int spacemit_power_model_simple_init(struct device *dev);
+#endif
+
 #endif

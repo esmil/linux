@@ -10,6 +10,7 @@
 #include "k3-dp1.dtsi"
 
 / {
+	model = "spacemit k3 com260 board";
 	compatible = "spacemit,k3-com260";
 	cpus: cpus {
 		#address-cells = <1>;
@@ -650,14 +651,49 @@
 
 	thermal_gpu {
 		polling-delay = <1000>;
-		polling-delay-passive = <250>;
+		polling-delay-passive = <500>;
 		thermal-sensors = <&thermal 3>;
 
 		trips {
-			thermal_gpu_trip0: thermal_gpu-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
+			gpu_alert0: gpu-alert0 {
+				temperature = <65000>;
+				hysteresis = <2000>;
 				type = "passive";
+			};
+
+			gpu_alert1: gpu-alert1 {
+				temperature = <75000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			gpu_alert2: gpu-alert2 {
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			gpu_crit: gpu-crit {
+				temperature = <95000>;
+				hysteresis = <2000>;
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&gpu_alert0>;
+				cooling-device = <&imggpu 0 1>;
+			};
+
+			map1 {
+				trip = <&gpu_alert1>;
+				cooling-device = <&imggpu 1 2>;
+			};
+
+			map2 {
+				trip = <&gpu_alert2>;
+				cooling-device = <&imggpu 2 3>;
 			};
 		};
 	};
@@ -734,9 +770,65 @@
 
 		trips {
 			thermal_cluster1_trip0: thermal_cluster1-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster1_trip1: thermal_cluster1-trip1 {
+				temperature = <95000>;
+				hysteresis = <2000>;
 				type = "passive";
+			};
+
+			thermal_cluster1_trip2: thermal_cluster1-trip2 {
+				temperature = <105000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster1_trip3: thermal_cluster1-trip3 {
+				temperature = <115000>;
+				hysteresis = <2000>;
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&thermal_cluster1_trip0>;
+				cooling-device = <&cpu_0 2 2>,
+						<&cpu_1 2 2>,
+						<&cpu_2 2 2>,
+						<&cpu_3 2 2>,
+						<&cpu_4 2 2>,
+						<&cpu_5 2 2>,
+						<&cpu_6 2 2>,
+						<&cpu_7 2 2>;
+			};
+
+			map1 {
+				trip = <&thermal_cluster1_trip1>;
+				cooling-device = <&cpu_0 3 5>,
+						<&cpu_1 3 5>,
+						<&cpu_2 3 5>,
+						<&cpu_3 3 5>,
+						<&cpu_4 3 5>,
+						<&cpu_5 3 5>,
+						<&cpu_6 3 5>,
+						<&cpu_7 3 5>;
+			};
+
+			map2 {
+				trip = <&thermal_cluster1_trip2>;
+				cooling-device = <&cpu_0 6 8>,
+						<&cpu_1 6 8>,
+						<&cpu_2 6 8>,
+						<&cpu_3 6 8>,
+						<&cpu_4 6 8>,
+						<&cpu_5 6 8>,
+						<&cpu_6 6 8>,
+						<&cpu_7 6 8>;
 			};
 		};
 	};
@@ -748,9 +840,65 @@
 
 		trips {
 			thermal_cluster2_trip0: thermal_cluster2-trip0 {
-				temperature = <40000>;
-				hysteresis = <5000>;
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster2_trip1: thermal_cluster2-trip1 {
+				temperature = <95000>;
+				hysteresis = <2000>;
 				type = "passive";
+			};
+
+			thermal_cluster2_trip2: thermal_cluster2-trip2 {
+				temperature = <105000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster2_trip3: thermal_cluster2-trip3 {
+				temperature = <115000>;
+				hysteresis = <2000>;
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&thermal_cluster2_trip0>;
+				cooling-device = <&cpu_8 3 3>,
+						<&cpu_9 3 3>,
+						<&cpu_10 3 3>,
+						<&cpu_11 3 3>,
+						<&cpu_12 3 3>,
+						<&cpu_13 3 3>,
+						<&cpu_14 3 3>,
+						<&cpu_15 3 3>;
+			};
+
+			map1 {
+				trip = <&thermal_cluster2_trip1>;
+				cooling-device = <&cpu_8 4 5>,
+						<&cpu_9 4 5>,
+						<&cpu_10 4 5>,
+						<&cpu_11 4 5>,
+						<&cpu_12 4 5>,
+						<&cpu_13 4 5>,
+						<&cpu_14 4 5>,
+						<&cpu_15 4 5>;
+			};
+
+			map2 {
+				trip = <&thermal_cluster2_trip2>;
+				cooling-device = <&cpu_8 6 8>,
+						<&cpu_9 6 8>,
+						<&cpu_10 6 8>,
+						<&cpu_11 6 8>,
+						<&cpu_12 6 8>,
+						<&cpu_13 6 8>,
+						<&cpu_14 6 8>,
+						<&cpu_15 6 8>;
 			};
 		};
 	};

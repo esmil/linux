@@ -24,6 +24,7 @@
 #include <asm/kvm_vcpu_sbi_fwft.h>
 #include <asm/kvm_vcpu_timer.h>
 #include <asm/kvm_vcpu_pmu.h>
+#include <asm/kvm_vcpu_debug.h>
 
 #define KVM_MAX_VCPUS			1024
 
@@ -100,6 +101,9 @@ struct kvm_arch {
 
 	/* KVM_CAP_RISCV_MP_STATE_RESET */
 	bool mp_state_reset;
+
+	/* hcontext ID for guest VM */
+	unsigned long hcontext;
 };
 
 struct kvm_cpu_trap {
@@ -180,6 +184,10 @@ struct kvm_vcpu_reset_state {
 	unsigned long a1;
 };
 
+struct kvm_vcpu_sdtrig_csr {
+	unsigned long scontext;
+};
+
 struct kvm_vcpu_arch {
 	/* VCPU ran at least once */
 	bool ran_atleast_once;
@@ -202,6 +210,9 @@ struct kvm_vcpu_arch {
 	unsigned long host_senvcfg;
 	unsigned long host_sstateen0;
 
+	/* SCONTEXT of Host */
+	unsigned long host_scontext;
+
 	/* CPU context of Host */
 	struct kvm_cpu_context host_context;
 
@@ -213,6 +224,9 @@ struct kvm_vcpu_arch {
 
 	/* CPU Smstateen CSR context of Guest VCPU */
 	struct kvm_vcpu_smstateen_csr smstateen_csr;
+
+	/* CPU Sdtrig CSR context of Guest VCPU */
+	struct kvm_vcpu_sdtrig_csr sdtrig_csr;
 
 	/* CPU reset state of Guest VCPU */
 	struct kvm_vcpu_reset_state reset_state;

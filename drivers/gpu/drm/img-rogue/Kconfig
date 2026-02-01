@@ -23,3 +23,18 @@ config POWERVR_DVFS
 	  Operating Performance Points (CONFIG_PM_OPP).
 
 	  Say Y here if you want to enable DVFS.
+
+config POWERVR_THERMAL
+	tristate "PowerVR GPU Thermal"
+	default n
+	depends on POWERVR_ROGUE && POWERVR_DVFS && DEVFREQ_THERMAL && K3_THERMAL
+	help
+	  Enable thermal management support for PowerVR GPU.
+	  This allows the GPU to adjust frequency and voltage
+	  based on thermal conditions.
+
+	  Requires kernel support for devfreq thermal
+	  (CONFIG_DEVFREQ_THERMAL) and K3 thermal
+	  (CONFIG_K3_THERMAL).
+
+	  Say Y here if you want to enable PowerVR thermal management.

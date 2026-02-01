@@ -88,7 +88,7 @@ bool inno_hpd_detect(struct inno_conn_t *conn)
 
 int inno_get_edid(struct inno_conn_t *conn)
 {
-	int i, ret;
+	int ret;
 	uint8_t edid[256];
 
 	memset(edid, 0, sizeof(edid));

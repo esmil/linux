@@ -44,7 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if !defined(NO_HARDWARE)
 
 #include <linux/devfreq.h>
-#if defined(CONFIG_DEVFREQ_THERMAL)
+#if defined(CONFIG_POWERVR_THERMAL)
 #include <linux/devfreq_cooling.h>
 #endif
 #include <linux/version.h>
@@ -966,7 +966,7 @@ static int FillOPPTable(struct device *dev, PVRSRV_DEVICE_NODE *psDeviceNode)
 }
 
 
-#if defined(CONFIG_DEVFREQ_THERMAL)
+#if defined(CONFIG_POWERVR_THERMAL)
 static int RegisterCoolingDevice(struct device *dev,
 								 IMG_DVFS_DEVICE *psDVFSDevice,
 								 struct devfreq_cooling_power *powerOps)
@@ -1248,7 +1248,7 @@ PVRSRV_ERROR RegisterDVFSDevice(PPVRSRV_DEVICE_NODE psDeviceNode)
 		goto err_exit;
 	}
 
-#if defined(CONFIG_DEVFREQ_THERMAL)
+#if defined(CONFIG_POWERVR_THERMAL)
 	if (!PVRSRV_VZ_MODE_IS(GUEST, DEVNODE, psDeviceNode))
 	{
 		err = RegisterCoolingDevice(psDev, psDVFSDevice, psDVFSDeviceCfg->psPowerOps);
@@ -1294,7 +1294,7 @@ void UnregisterDVFSDevice(PPVRSRV_DEVICE_NODE psDeviceNode)
 		return;
 	}
 
-#if defined(CONFIG_DEVFREQ_THERMAL)
+#if defined(CONFIG_POWERVR_THERMAL)
 	if (!IS_ERR_OR_NULL(psDVFSDevice->psDevfreqCoolingDevice))
 	{
 		devfreq_cooling_unregister(psDVFSDevice->psDevfreqCoolingDevice);

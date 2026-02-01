@@ -8,7 +8,6 @@
 #include "inno_edid.h"
 #include "inno_conn.h"
 #include "inno_dp_common.h"
-#include "inno_dp_vcodiv.h"
 #include "inno_dp.h"
 #include "inno_utils.h"
 #include "inno_dp_phy_board.h"
@@ -25,57 +24,6 @@
 #define CHIP_DP_HPD_PLUG_IN		BIT(29)
 #define CHIP_DP_HPD_PLUG_OUT		BIT(28)
 #define CHIP_DP_AUX_REPLY_EVENT		BIT(16)
-
-#if (INNODP_REF_CLOCK == INNODP_REF_CLOCK_24M)
-static uint32_t g_pll_map[][9] = {
-	/*
-	 * vic, fbdiv, prediv, pclkdiva, pclkdivb, pclkdivc, pclkfrac,
-	 * refclksel, targetfreq
-	 */
-	{97,	99, 1, 1, 1, 1, 0, 0, INNODP_PCLK_594_00M},	/* 3840*2160p 60Hz 594MHz */
-	{95,	99, 1, 1, 1, 2, 0, 0, INNODP_PCLK_297_00M},	/* 3840*2160p 30Hz 297MHz */
-	{235,	81, 1, 1, 1, 3, 0, 0, INNODP_PCLK_162_00M},	/* 1600*1200p 60Hz 162MHz */
-	{16,	99, 1, 1, 1, 4, 0, 0, INNODP_PCLK_148_50M},	/* 1920*1080p 60Hz 148.5MHz */
-	{0,	99, 1, 1, 1, 4, 0, 0, INNODP_PCLK_154_12M},	/* 1920*1200p 60Hz 154.12MHz */
-	{240,	73, 1, 1, 1, 3, 0, 0, INNODP_PCLK_146_25M},	/* 1680*1050p 60Hz 146MHz */
-	{229,	61, 1, 1, 1, 3, 0, 0, INNODP_PCLK_121_75M},	/* 1400*1050p 60Hz 122MHz */
-	{225,	72, 1, 1, 1, 4, 0, 0, INNODP_PCLK_108_00M},	/* 1600*900p 60Hz  108MHz */
-	{232,	71, 1, 1, 1, 4, 0, 0, INNODP_PCLK_106_50M},	/* 1400*900p 60Hz */
-	{48,	57, 1, 1, 1, 4, 0, 0, INNODP_PCLK_85_50M},	/* 1366*768p 60Hz 85.5MHz */
-	{220,	167, 1, 1, 1, 12, 0, 0, INNODP_PCLK_83_50M},	/* 1280*800p 60Hz 83.5MHz */
-	{4,	99, 1, 1, 1, 8, 0, 0, INNODP_PCLK_74_25M},	/* 1280*720p 60Hz 74.25MHz */
-	{120,	65, 1, 1, 2, 4, 0, 0, INNODP_PCLK_65_00M},	/* 1024*768p 60Hz 65MHz */
-	{52,	80, 1, 2, 1, 12, 0, 0, INNODP_PCLK_40_00M},	/* 800*600p 60Hz  40MHz */
-	{2,	81, 1, 1, 2, 12, 0, 0, INNODP_PCLK_27_00M},	/* 720*480p 60Hz  27MHz */
-	{1,	63, 1, 1, 3, 6, 0, 0, INNODP_PCLK_25_175M},	/* 640*480p 60Hz  25.175MHz */
-	{0,	0, 0, 0, 0, 0, 0, 0, INNODP_PCLK_AUTO_CALC},	/* auto calc */
-};
-
-#elif (INNODP_REF_CLOCK == INNODP_REF_CLOCK_50M)
-static uint32_t g_pll_map[][9] = {
-	/*
-	 * vic, fbdiv, prediv, pclkdiva, pclkdivb, pclkdivc, pclkfrac,
-	 * refclksel, targetfreq
-	 */
-	{97,	99, 2, 1, 1, 1, 0, 0, INNODP_PCLK_594_00M},	/* 3840*2160p 60Hz 594MHz */
-	{95,	99, 2, 1, 1, 2, 0, 0, INNODP_PCLK_297_00M},	/* 3840*2160p 30Hz 297MHz */
-	{235,	81, 2, 1, 1, 3, 0, 0, INNODP_PCLK_162_00M},	/* 1600*1200p 60Hz 162MHz */
-	{16,	1188, 25, 0, 8, 1, 0, 0, INNODP_PCLK_148_50M},	/* 1920*1080p 60Hz 148.5MHz */
-	{0,	1188, 25, 0, 8, 1, 0, 0, INNODP_PCLK_154_12M},	/* 1920*1200p 60Hz 154.12MHz */
-	{240,	73, 2, 1, 1, 3, 0, 0, INNODP_PCLK_146_25M},	/* 1680*1050p 60Hz 146MHz */
-	{229,	61, 2, 1, 1, 3, 0, 0, INNODP_PCLK_121_75M},	/* 1400*1050p 60Hz 122MHz */
-	{225,	72, 2, 1, 1, 4, 0, 0, INNODP_PCLK_108_00M},	/* 1600*900p 60Hz  108MHz */
-	{232,	71, 2, 1, 1, 4, 0, 0, INNODP_PCLK_106_50M},	/* 1400*900p 60Hz */
-	{48,	57, 2, 1, 1, 4, 0, 0, INNODP_PCLK_85_50M},	/* 1366*768p 60Hz 85.5MHz */
-	{220,	167, 2, 1, 1, 12, 0, 0, INNODP_PCLK_83_50M},	/* 1280*800p 60Hz 83.5MHz */
-	{4,	99, 2, 1, 1, 8, 0, 0, INNODP_PCLK_74_25M},	/* 1280*720p 60Hz 74.25MHz */
-	{120,	65, 2, 1, 2, 4, 0, 0, INNODP_PCLK_65_00M},	/* 1024*768p 60Hz 65MHz */
-	{52,	80, 2, 2, 1, 12, 0, 0, INNODP_PCLK_40_00M},	/* 800*600p 60Hz  40MHz */
-	{2,	81, 2, 1, 2, 12, 0, 0, INNODP_PCLK_27_00M},	/* 720*480p 60Hz  27MHz */
-	{1,	63, 2, 1, 3, 6, 0, 0, INNODP_PCLK_25_175M},	/* 640*480p 60Hz  25.175MHz */
-	{0,	0, 0, 0, 0, 0, 0, 0, INNODP_PCLK_AUTO_CALC},	/* auto calc */
-};
-#endif
 
 static uint32_t inno_dp_aux_write(uint32_t cmd, uint32_t addr,
 				  uint32_t *wr_buf, uint32_t length,
@@ -201,76 +149,6 @@ static void inno_dp_phy_cfg(struct dp_chip_t *inno)
 			     osal_read32(0x100, conn), conn);
 }
 
-static void inno_dp_core_pll_cfg(struct dp_chip_t *inno)
-{
-#define pll_prediv		(0)
-#define pll_fbdiv		(1)
-#define pll_postdiv		(2)
-#define pll_clkdiv_16m		(3)
-#define pll_postdiv_en		(4)
-#define pll_vcoclk_div8_en	(5)
-
-	osal_printf("%s() \n", __func__);
-
-	/* for reference clk 50mhz config */
-	/*
-	uint32_t pll_table[][6] = {
-		{2, 64, 0, 12, 1, 1},
-		{1, 54, 0, 21, 1, 1},
-		{1, 54, 0, 42, 0, 0},
-	};
-	*/
-
-	/* for reference clk 24mhz config */
-	uint32_t pll_table[][6] = {
-		{2, 135, 0, 12, 1, 1},
-		{2, 225, 0, 21, 1, 1},
-		{2, 225, 0, 42, 0, 0},
-	};
-	struct inno_conn_t *conn = (struct inno_conn_t *)inno->priv;
-
-	if (inno->phy_rate >= ARRAY_SIZE(pll_table) || inno->phy_rate < 0)
-		inno->phy_rate = 1;
-
-	/* power down core pll */
-	osal_write32(0x180, BIT(0) | osal_read32(0x180, conn), conn);
-
-	/* (0x188), INNODP_SPREAD_CFG */
-	osal_write32(0x188,
-		     (osal_read32(0x188, conn) & ~(0x3 << 8)) |
-		     (pll_table[inno->phy_rate][pll_postdiv] << 8) |
-		     (pll_table[inno->phy_rate][pll_postdiv_en] << 11) |
-		     (pll_table[inno->phy_rate][pll_vcoclk_div8_en] << 16), conn);
-
-	/* (0x1a0), INNODP_CLKDIV_16M */
-	osal_write32(0x1a0,
-		     (osal_read32(0x1a0, conn) & ~(0x3f << 8)) |
-		     (pll_table[inno->phy_rate][pll_clkdiv_16m] << 8), conn);
-
-	/* (0x180) pll config */
-	osal_write32(0x180,
-		     (osal_read32(0x180, conn) &
-		      ~(0x3f << 8) & ~(0xf << 16) & ~(0xff << 24)) |
-		     ((pll_table[inno->phy_rate][pll_fbdiv] >> 8) << 16) |
-		     ((pll_table[inno->phy_rate][pll_fbdiv] & 0xff) << 24) |
-		     (pll_table[inno->phy_rate][pll_prediv] << 8), conn);
-
-	/* turn off frac ctr */
-	osal_write32(0x180, (0x3 << 4) | osal_read32(0x180, conn), conn);
-
-	/* power up core pll */
-	osal_write32(0x180, ~(BIT(0)) & osal_read32(0x180, conn), conn);
-
-	osal_msleep(10);
-
-#undef pll_fbdiv
-#undef pll_prediv
-#undef pll_postdiv
-#undef pll_clkdiv_16m
-#undef pll_postdiv_en
-#undef pll_vcoclk_div8_en
-}
-
 static void inno_dp_phy_init(struct inno_conn_t *conn)
 {
 	/* core pll cfg */
@@ -300,94 +178,6 @@ static void inno_dp_phy_reset(struct inno_conn_t *conn)
 	osal_msleep(5);
 	osal_write32(0x1c, (~(BIT(31) | BIT(30) | BIT(28) | BIT(0))) & osal_read32(0x1c, conn), conn);
 	osal_msleep(2);
-}
-
-static int inno_dp_pclk_calc(unsigned int pclk, unsigned int *div)
-{
-	unsigned long long mod = 0;
-	unsigned long long tmp1, tmp2 = 0;
-	int i, j;
-
-	/* match when fb is inter */
-	for (i = 0; i < ARRAY_SIZE(pixvco_freq); i++) {
-		tmp1 = pixvco_freq[i][1];
-		for (j = 0; j < ARRAY_SIZE(pclk_divabc); j++) {
-			tmp2 = pclk * pclk_divabc[j][0];
-			if (tmp1 == tmp2) {
-				div[DP_PLL_FBDIV] = pixvco_freq[i][0];
-				div[DP_PLL_PREDIV] = 1;
-				div[DP_PLL_DIVA] = pclk_divabc[j][1];
-				div[DP_PLL_DIVB] = pclk_divabc[j][2];
-				div[DP_PLL_DIVC] = pclk_divabc[j][3];
-				div[DP_PLL_FRAC] = 0;
-				return 0;
-			}
-		}
-	}
-
-	/* match frac div */
-	for (j = 0; j < ARRAY_SIZE(pclk_divabc); j++) {
-		tmp1 = pclk * pclk_divabc[j][0];
-		tmp2 = pclk * (pclk_divabc[j][0] + 2);
-		if (tmp1 <= 2000000 && 2000000 < tmp2) {
-			mod = do_div(tmp1, 24000);	/* tmp1 -> fbdiv */
-			tmp2 = mod * (0x1 << 24);
-			mod = do_div(tmp2, 24000);	/* tmp2 -> frac */
-			div[DP_PLL_FBDIV] = (unsigned int)tmp1; /* fbdiv */
-			div[DP_PLL_PREDIV] = 1;
-			div[DP_PLL_DIVA] = pclk_divabc[j][1];
-			div[DP_PLL_DIVB] = pclk_divabc[j][2];
-			div[DP_PLL_DIVC] = pclk_divabc[j][3];
-			div[DP_PLL_FRAC] = (unsigned int)tmp2; /* frac */
-			return 0;
-		}
-	}
-	return -1;
-}
-
-static uint32_t inno_dp_pclk_index(struct inno_conn_t *conn, uint32_t pclk)
-{
-	uint32_t i;
-
-	for (i = 0; i < ARRAY_SIZE(g_pll_map); i++) {
-		if ((g_pll_map[i][8] / MATCH_PRECISION) ==
-		    (pclk / MATCH_PRECISION)) {
-			return i;
-		}
-	}
-
-	i = ARRAY_SIZE(g_pll_map) - 1;
-	inno_dp_pclk_calc(pclk, &g_pll_map[i][0]);
-
-	return i;
-}
-
-static void inno_dp_pixel_pll_cfg(struct inno_conn_t *conn, uint32_t index)
-{
-	osal_printf("%s() \n", __func__);
-	osal_printf_func("pll table index: %d  fbdiv:%d\n", index,
-			 g_pll_map[index][DP_PLL_FBDIV]);
-	/* power down pix pll */
-	osal_write32(0x190, 0x1 | osal_read32(0x190, conn), conn);
-
-	osal_write32(0x190, (~(0x3f << 8) & ~(0xf << 16) & ~(0xff << 24) &
-		     osal_read32(0x190, conn)) |
-		     ((g_pll_map[index][DP_PLL_FBDIV] & 0xff) << 24) |
-		     ((g_pll_map[index][DP_PLL_FBDIV] >> 8) << 16) |
-		     (g_pll_map[index][DP_PLL_PREDIV] << 8), conn);
-
-	/* turn off frac ctr */
-	osal_write32(0x190, (0x3 << 4) | osal_read32(0x190, conn), conn);
-
-	osal_write32(0x194, (~(0x1f << 8) & (0x3 << 16) & osal_read32(0x194, conn)) |
-		     (g_pll_map[index][DP_PLL_DIVA] << 16) |
-		     (g_pll_map[index][DP_PLL_DIVB] << 8), conn);
-
-	osal_write32(0x198, (~(0x1f << 24) & osal_read32(0x198, conn)) |
-		     (g_pll_map[index][DP_PLL_DIVC] << 24), conn);
-
-	/* power up pixel pll */
-	osal_write32(0x190, ~0x1 & osal_read32(0x190, conn), conn);
 }
 
 static void inno_dp_tu_init(struct dp_chip_t *inno, struct drm_display_mode *mode)
@@ -811,19 +601,14 @@ static int inno_dp_show_edid(struct inno_conn_t *conn, uint8_t *buff)
 
 static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mode)
 {
-	uint32_t index = 0;
 	struct dp_chip_t *inno = (struct dp_chip_t *)conn->priv;
-	uint8_t edid[256];
 	bool hdisplay_1920 = false;
 	bool hdisplay_2256 = false;
 	bool hdisplay_2560 = false;
-	bool hdisplay_3840 = false;
 
 	osal_printf("%s() hdisplay %d vdisplay %d\n", __func__, mode->hdisplay, mode->vdisplay);
 
-	if (mode->hdisplay == 3840)
-		hdisplay_3840 = true;
-	else if (mode->hdisplay == 2560)
+	if (mode->hdisplay == 2560)
 		hdisplay_2560 = true;
 	else if (mode->hdisplay == 2256)
 		hdisplay_2256 = true;
@@ -882,7 +667,7 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 
 	/* pixel pll config*/
 	osal_printf("%s() pixel pll config\n", __func__);
-#if 1
+
 	if (hdisplay_2560) {
 		osal_write32(0x190, 0xb9000231, conn);
 		osal_write32(0x194, 0x1000401, conn);
@@ -922,14 +707,6 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 		osal_read32(0x190, conn);
 		osal_read32(0x180, conn);
 	}
-#else
-	osal_printf("%s() pixel pll clock %d\n", __func__, mode->clock);
-	index = inno_dp_pclk_index(conn, mode->clock);
-	inno_dp_pixel_pll_cfg(conn, index);
-	osal_msleep(100);
-
-	osal_read32(0x190, conn);
-#endif
 
 	// hpd config
 	osal_printf("%s() hpd config\n", __func__);
@@ -1024,10 +801,14 @@ static int inno_dp_modeset(struct inno_conn_t *conn, struct drm_display_mode *mo
 		// set 2.2K eDP polarity
 		osal_write32(0x20c, 0x3 << 28, conn);
 	}
+	if (mode->hdisplay == 1920 && mode->vdisplay == 1080) {
+		// set 1080P DP polarity
+		osal_write32(0x20c, 0x3 << 28, conn);
+	}
 	/* video stream enable */
 	osal_write32(0x200, osal_read32(0x200, conn) | BIT(28), conn);
 
-#if 1
+#if 0
 	if (hdisplay_1920) {
 		/* video stream disable */
 		osal_write32(0x200, 0x400000, conn);

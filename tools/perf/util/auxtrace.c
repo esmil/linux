@@ -48,6 +48,7 @@
 #include "debug.h"
 #include <subcmd/parse-options.h>
 
+#include "rvtrace.h"
 #include "cs-etm.h"
 #include "intel-pt.h"
 #include "intel-bts.h"
@@ -1393,6 +1394,9 @@ int perf_event__process_auxtrace_info(struct perf_session *session,
 		break;
 	case PERF_AUXTRACE_VPA_DTL:
 		err = powerpc_vpadtl_process_auxtrace_info(event, session);
+		break;
+	case PERF_AUXTRACE_RISCV_TRACE:
+		err = rvtrace_process_auxtrace_info(event, session);
 		break;
 	case PERF_AUXTRACE_UNKNOWN:
 	default:

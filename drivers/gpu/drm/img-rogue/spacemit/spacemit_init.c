@@ -13,6 +13,10 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/version.h>
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+#include <linux/thermal.h>
+#include <linux/devfreq_cooling.h>
+#endif
 #include "power.h"
 #include "sysconfig.h"
 #include "spacemit_init.h"
@@ -54,7 +58,7 @@ void stSetVoltage(IMG_HANDLE hSysData, IMG_UINT32 ui32Volt)
 }
 #endif
 
-#if defined(CONFIG_DEVFREQ_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
 
 #define FALLBACK_STATIC_TEMPERATURE 55000
 
@@ -63,17 +67,22 @@ static u32 static_coefficient;
 static s32 ts[4];
 static struct thermal_zone_device *gpu_tz;
 
-static unsigned long model_static_power(struct devfreq *df, unsigned long voltage)
+static int model_real_power(struct devfreq *df, u32 *power, unsigned long freq, unsigned long voltage)
 {
 	int temperature;
 	unsigned long temp;
 	unsigned long temp_squared, temp_cubed, temp_scaling_factor;
 	const unsigned long voltage_cubed = (voltage * voltage * voltage) >> 10;
+	unsigned long static_power, dynamic_power;
 
 	if (gpu_tz) {
 		int ret;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0))
+		ret = thermal_zone_get_temp(gpu_tz, &temperature);
+#else
 		ret = gpu_tz->ops->get_temp(gpu_tz, &temperature);
+#endif
 		if (ret) {
 			pr_warn_ratelimited("Error reading temperature for gpu thermal zone: %d\n",
 					ret);
@@ -90,34 +99,33 @@ static unsigned long model_static_power(struct devfreq *df, unsigned long voltag
 	temp_squared = temp * temp;
 	temp_cubed = temp_squared * temp;
 	temp_scaling_factor =
-			(ts[3] * temp_cubed)
-			+ (ts[2] * temp_squared)
-			+ (ts[1] * temp)
-			+ ts[0];
+		  (ts[3] * temp_cubed)
+		+ (ts[2] * temp_squared)
+		+ (ts[1] * temp)
+		+ ts[0];
 
-	return (((static_coefficient * voltage_cubed) >> 20)
-			* temp_scaling_factor)
-				/ 1000000;
-}
+	static_power = (((static_coefficient * voltage_cubed) >> 20)
+					* temp_scaling_factor)
+					/ 1000000;
 
-static unsigned long model_dynamic_power(struct devfreq *df, unsigned long freq,
-		unsigned long voltage)
-{
-	/* The inputs: freq (f) is in Hz, and voltage (v) in mV.
-	 * The coefficient (c) is in mW/(MHz mV mV).
-	 *
-	 * This function calculates the dynamic power after this formula:
-	 * Pdyn (mW) = c (mW/(MHz*mV*mV)) * v (mV) * v (mV) * f (MHz)
-	 */
+	/* Calculate dynamic power */
 	const unsigned long v2 = (voltage * voltage) / 1000; /* m*(V*V) */
 	const unsigned long f_mhz = freq / 1000000; /* MHz */
+	dynamic_power = (dynamic_coefficient * v2 * f_mhz) / 1000000; /* mW */
 
-	return (dynamic_coefficient * v2 * f_mhz) / 1000000; /* mW */
+	*power = static_power + dynamic_power;
+
+	/* Log thermal events for debugging */
+	if (temperature > 80000) { /* Above 80°C */
+		pr_warn_ratelimited("GPU thermal warning: temp=%d°C, power=%umW, freq=%luMHz\n",
+				    temperature / 1000, *power, f_mhz);
+	}
+
+	return 0;
 }
 
 struct devfreq_cooling_power spacemit_power_model_simple_ops = {
-	.get_static_power = model_static_power,
-	.get_dynamic_power = model_dynamic_power,
+	.get_real_power = model_real_power,
 };
 
 int spacemit_power_model_simple_init(struct device *dev)
@@ -128,43 +136,60 @@ int spacemit_power_model_simple_init(struct device *dev)
 	power_model_node = of_get_child_by_name(dev->of_node,
 			"power_model");
 	if (!power_model_node) {
-		dev_err(dev, "could not find power_model node\n");
-		return -ENODEV;
-	}
-	if (!of_device_is_compatible(power_model_node,
-			"img,pvr-simple-power-model")) {
-		dev_err(dev, "power_model incompatible with simple power model\n");
-		return -ENODEV;
+		/* Fallback to reading thermal-zone from device node */
+		if (of_property_read_string(dev->of_node, "thermal-zone", &tz_name)) {
+			dev_err(dev, "could not find power_model node or thermal-zone\n");
+			return -ENODEV;
+		}
+		dev_info(dev, "Using default thermal zone: %s with default power model parameters\n", tz_name);
+
+		/* Use default parameters when no power_model node exists */
+		dynamic_coefficient = 1024;
+		static_coefficient = 512;
+		ts[0] = 10;
+		ts[1] = -100;
+		ts[2] = 500;
+		ts[3] = -200;
+	} else {
+		/* Original logic when power_model node exists */
+		if (!of_device_is_compatible(power_model_node, "img,pvr-simple-power-model")) {
+			dev_err(dev, "power_model incompatible with simple power model\n");
+			of_node_put(power_model_node);
+			return -ENODEV;
+		}
+
+		if (of_property_read_string(power_model_node, "thermal-zone", &tz_name)) {
+			dev_err(dev, "thermal-zone in power_model not available\n");
+			of_node_put(power_model_node);
+			return -EINVAL;
+		}
+
+		if (of_property_read_u32(power_model_node, "dynamic-coefficient", &dynamic_coefficient)) {
+			dev_err(dev, "dynamic-coefficient in power_model not available\n");
+			of_node_put(power_model_node);
+			return -EINVAL;
+		}
+		if (of_property_read_u32(power_model_node, "static-coefficient", &static_coefficient)) {
+			dev_err(dev, "static-coefficient in power_model not available\n");
+			of_node_put(power_model_node);
+			return -EINVAL;
+		}
+		if (of_property_read_u32_array(power_model_node, "ts", (u32 *)ts, 4)) {
+			dev_err(dev, "ts in power_model not available\n");
+			of_node_put(power_model_node);
+			return -EINVAL;
+		}
+
+		of_node_put(power_model_node);
 	}
 
-	if (of_property_read_string(power_model_node, "thermal-zone",
-			&tz_name)) {
-		dev_err(dev, "ts in power_model not available\n");
-		return -EINVAL;
-	}
-
+	/* Initialize thermal zone for both cases */
 	gpu_tz = thermal_zone_get_zone_by_name(tz_name);
 	if (IS_ERR(gpu_tz)) {
 		pr_warn_ratelimited("Error getting gpu thermal zone (%ld), not yet ready?\n",
 				PTR_ERR(gpu_tz));
 		gpu_tz = NULL;
-
 		return -EPROBE_DEFER;
-	}
-
-	if (of_property_read_u32(power_model_node, "dynamic-coefficient",
-			&dynamic_coefficient)) {
-		dev_err(dev, "dynamic-coefficient in power_model not available\n");
-		return -EINVAL;
-	}
-	if (of_property_read_u32(power_model_node, "static-coefficient",
-			&static_coefficient)) {
-		dev_err(dev, "static-coefficient in power_model not available\n");
-		return -EINVAL;
-	}
-	if (of_property_read_u32_array(power_model_node, "ts", (u32 *)ts, 4)) {
-		dev_err(dev, "ts in power_model not available\n");
-		return -EINVAL;
 	}
 
 	return 0;
@@ -280,6 +305,14 @@ void RgxStUnInit(struct st_context *platform)
 
 	RgxSuspend(platform);
 
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+	/* Unregister thermal zone if it was registered */
+	if (platform->thermal_zone) {
+		thermal_zone_device_unregister(platform->thermal_zone);
+		platform->thermal_zone = NULL;
+	}
+#endif
+
 	if (platform->gpu_clk) {
 		devm_clk_put(dev, platform->gpu_clk);
 		platform->gpu_clk = NULL;
@@ -323,6 +356,18 @@ struct st_context *RgxStInit(PVRSRV_DEVICE_CONFIG* psDevConfig)
 	}
 
 	mutex_init(&platform->set_power_state);
+
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+	/* Initialize power model for thermal cooling */
+	if (spacemit_power_model_simple_init(dev) == 0) {
+		/* Configure power model for thermal cooling */
+		psDevConfig->sDVFS.sDVFSDeviceCfg.psPowerOps = &spacemit_power_model_simple_ops;
+	} else {
+		dev_warn(dev, "Failed to initialize GPU power model, thermal cooling may not work\n");
+	}
+	/* Don't register a separate thermal zone - use the existing thermal_gpu zone from DTS */
+	platform->thermal_zone = NULL;
+#endif
 
 	return platform;
 

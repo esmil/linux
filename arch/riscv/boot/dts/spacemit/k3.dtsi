@@ -1421,8 +1421,9 @@
 		ircrx0: irc-rx0@d4017e00 {
 			compatible = "spacemit-k1,irc";
 			reg = <0x0 0xd4017e00 0x0 0x100>;
-			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <69 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apbc CLK_APBC_IR0>;
 			resets = <&syscon_apbc RESET_APBC_IR0>;
 			clock-frequency = <102400000>;
 			status = "disabled";
@@ -1431,8 +1432,9 @@
 		ircrx1: irc-rx1@d4017f00 {
 			compatible = "spacemit-k1,irc";
 			reg = <0x0 0xd4017f00 0x0 0x100>;
-			interrupts = <69 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
+			clocks = <&syscon_apbc CLK_APBC_IR1>;
 			resets = <&syscon_apbc RESET_APBC_IR1>;
 			clock-frequency = <102400000>;
 			status = "disabled";
@@ -1683,6 +1685,8 @@
 			clocks = <&syscon_apmu CLK_APMU_GPU>;
 			clock-names = "clk_rgx";
 			resets = <&syscon_apmu RESET_APMU_GPU>;
+			#cooling-cells = <2>;
+			thermal-zone = "thermal_gpu";
 			status = "okay";
 		};
 
@@ -2154,7 +2158,7 @@
 
 			interrupt-parent = <&saplic>;
 			interrupts = <141 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
+			interrupt-names = "pcie_irq";
 				clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_BUS>,
 					<&syscon_apmu CLK_APMU_PCIE_PORTA_MSTR>,
 					<&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
@@ -2190,7 +2194,7 @@
 
 			interrupt-parent = <&saplic>;
 			interrupts = <142 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
+			interrupt-names = "pcie_irq";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTB_MSTR>,
@@ -2229,7 +2233,7 @@
 
 			interrupt-parent = <&saplic>;
 			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
+			interrupt-names = "pcie_irq";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTC_MSTR>,
@@ -2268,7 +2272,7 @@
 
 			interrupt-parent = <&saplic>;
 			interrupts = <145 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
+			interrupt-names = "pcie_irq";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTD_MSTR>,
@@ -2307,7 +2311,7 @@
 
 			interrupt-parent = <&saplic>;
 			interrupts = <146 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi";
+			interrupt-names = "pcie_irq";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTE_MSTR>,

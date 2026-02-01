@@ -68,10 +68,10 @@ static PHYS_HEAP_CONFIG			gsPhysHeapConfig[3];
  * Used only if DT OPP loading fails in pvr_dvfs_device.c
  */
 static const IMG_OPP asOPPTable[] = {
-	{ 8,  409 * 1000 * 1000},
-	{ 8,  491 * 1000 * 1000},
-	{ 8,  614 * 1000 * 1000},
-	{ 8,  819 * 1000 * 1000},
+	{ 750000,  409 * 1000 * 1000},  /* 0.75V @ 409MHz - lowest power */
+	{ 800000,  491 * 1000 * 1000},  /* 0.80V @ 491MHz */
+	{ 850000,  614 * 1000 * 1000},  /* 0.85V @ 614MHz */
+	{ 900000,  819 * 1000 * 1000},  /* 0.90V @ 819MHz - highest performance */
 };
 
 #define LEVEL_COUNT (sizeof(asOPPTable) / sizeof(IMG_OPP))

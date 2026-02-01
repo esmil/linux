@@ -659,7 +659,11 @@ static int tmc_panic_sync_etf(struct coresight_device *csdev)
 	 * Make sure all previous writes are ordered,
 	 * before we mark valid
 	 */
+#if defined(__riscv)
+	__mb();
+#else
 	dmb(sy);
+#endif
 	mdata->valid = true;
 	/*
 	 * Below order need to maintained, since crc of metadata

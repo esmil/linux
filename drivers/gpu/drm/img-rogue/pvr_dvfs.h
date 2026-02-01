@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  #include <linux/devfreq.h>
  #include <linux/thermal.h>
 
- #if defined(CONFIG_DEVFREQ_THERMAL)
+ #if defined(CONFIG_POWERVR_THERMAL)
   #include <linux/devfreq_cooling.h>
  #endif
 
@@ -80,7 +80,7 @@ typedef struct _IMG_DVFS_DEVICE_CFG_
 	PFN_SYS_DEV_DVFS_SET_FREQUENCY  pfnSetFrequency;
 	PFN_SYS_DEV_DVFS_SET_VOLTAGE    pfnSetVoltage;
 
-#if defined(CONFIG_DEVFREQ_THERMAL) && defined(SUPPORT_LINUX_DVFS)
+#if defined(CONFIG_POWERVR_THERMAL) && defined(SUPPORT_LINUX_DVFS)
 	struct devfreq_cooling_power *psPowerOps;
 #endif
 } IMG_DVFS_DEVICE_CFG;
@@ -125,7 +125,7 @@ typedef struct _IMG_DVFS_DEVICE_
 #else
 	struct devfreq_simple_ondemand_data data;
 #endif
-#if defined(CONFIG_DEVFREQ_THERMAL)
+#if defined(CONFIG_POWERVR_THERMAL)
 	struct thermal_cooling_device	*psDevfreqCoolingDevice;
 #endif
 #if defined(CONFIG_PM_DEVFREQ_EVENT) && defined(SUPPORT_PVR_DVFS_GOVERNOR)

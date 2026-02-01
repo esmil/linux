@@ -45,6 +45,19 @@ struct riscv_isainfo hart_isa[NR_CPUS];
 
 u32 thead_vlenb_of;
 
+atomic_t hcontext_disable;
+atomic_t scontext_disable;
+
+DEFINE_STATIC_KEY_FALSE_RO(use_hcontext);
+EXPORT_SYMBOL(use_hcontext);
+
+DEFINE_STATIC_KEY_FALSE_RO(use_scontext);
+EXPORT_SYMBOL(use_scontext);
+
+/* Record the maximum number that the hcontext CSR allowed to hold */
+atomic_long_t hcontext_id_share;
+EXPORT_SYMBOL(hcontext_id_share);
+
 /**
  * riscv_isa_extension_base() - Get base extension word
  *
@@ -540,6 +553,7 @@ const struct riscv_isa_ext_data riscv_isa_ext[] = {
 	__RISCV_ISA_EXT_DATA(svnapot, RISCV_ISA_EXT_SVNAPOT),
 	__RISCV_ISA_EXT_DATA(svpbmt, RISCV_ISA_EXT_SVPBMT),
 	__RISCV_ISA_EXT_DATA(svvptc, RISCV_ISA_EXT_SVVPTC),
+	__RISCV_ISA_EXT_DATA(sdtrig, RISCV_ISA_EXT_SDTRIG),
 };
 
 const size_t riscv_isa_ext_count = ARRAY_SIZE(riscv_isa_ext);
@@ -1118,6 +1132,147 @@ unsigned long riscv_get_elf_hwcap(void)
 	return hwcap;
 }
 
+static void __init sdtrig_percpu_csrs_check(void *data)
+{
+	struct device_node *node;
+	struct device_node *debug_node;
+	struct device_node *trigger_module;
+
+	unsigned int cpu = smp_processor_id();
+
+	/*
+	 * Expect every cpu node has the [h/s]context-present property
+	 * otherwise, jump to sdtrig_csrs_disable_all to disable all access to
+	 * [h/s]context CSRs
+	 */
+	node = of_cpu_device_node_get(cpu);
+	if (!node)
+		goto sdtrig_csrs_disable_all;
+
+	debug_node = of_get_compatible_child(node, "riscv,debug-v1.0.0");
+	of_node_put(node);
+
+	if (!debug_node)
+		goto sdtrig_csrs_disable_all;
+
+	trigger_module = of_get_child_by_name(debug_node, "trigger-module");
+	of_node_put(debug_node);
+
+	if (!trigger_module)
+		goto sdtrig_csrs_disable_all;
+
+	if (!(IS_ENABLED(CONFIG_KVM) &&
+	      of_property_read_bool(trigger_module, "hcontext-present")))
+		atomic_inc(&hcontext_disable);
+
+	if (!of_property_read_bool(trigger_module, "scontext-present"))
+		atomic_inc(&scontext_disable);
+
+	of_node_put(trigger_module);
+
+	/*
+	 * Before access to hcontext/scontext CSRs, if the smstateen
+	 * extension is present, the accessibility will be controlled
+	 * by the hstateen0[H]/sstateen0 CSRs.
+	 */
+	if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_SMSTATEEN)) {
+		u64 hstateen_bit;
+
+		if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_h)) {
+#if __riscv_xlen > 32
+			csr_set(CSR_HSTATEEN0, SMSTATEEN0_HSCONTEXT);
+			hstateen_bit = csr_read(CSR_HSTATEEN0);
+#else
+			csr_set(CSR_HSTATEEN0H, SMSTATEEN0_HSCONTEXT >> 32);
+			hstateen_bit = csr_read(CSR_HSTATEEN0H) << 32;
+#endif
+			if (!(hstateen_bit & SMSTATEEN0_HSCONTEXT))
+				goto sdtrig_csrs_disable_all;
+
+		} else {
+			if (IS_ENABLED(CONFIG_KVM))
+				atomic_inc(&hcontext_disable);
+
+			/*
+			 * The smstateen extension doesn't provide
+			 * high 32 bits of sstateen0 CSR which represent
+			 * accessibility for scontext CSR;
+			 * The decision is left on whether the dts has the
+			 * property to access the scontext CSR.
+			 */
+		}
+	}
+
+	/*
+	 * The code can only access hcontext/scontext CSRs if:
+	 * The cpu dts node have [h/s]context-present;
+	 * If Smstateen extension is presented, then the accessibility bit
+	 * toward hcontext/scontext CSRs is enabled; Or the Smstateen extension
+	 * isn't available, thus the access won't be blocked by it.
+	 *
+	 * With writing 1 to the every bit of these CSRs, we retrieve the
+	 * maximum bits that is available on the CSRs. and decide
+	 * whether it's suit for its context recording operation.
+	 */
+	if (IS_ENABLED(CONFIG_KVM) &&
+	    !atomic_read(&hcontext_disable)) {
+		unsigned long hcontext_available_bits = 0;
+
+		csr_write(CSR_HCONTEXT, -1UL);
+		hcontext_available_bits = csr_swap(CSR_HCONTEXT, hcontext_available_bits);
+
+		/* hcontext CSR is required by at least 1 bit */
+		if (hcontext_available_bits)
+			atomic_long_and(hcontext_available_bits, &hcontext_id_share);
+		else
+			atomic_inc(&hcontext_disable);
+	}
+
+	if (!atomic_read(&scontext_disable)) {
+		unsigned long scontext_available_bits = 0;
+
+		csr_write(CSR_SCONTEXT, -1UL);
+		scontext_available_bits = csr_swap(CSR_SCONTEXT, scontext_available_bits);
+
+		/* scontext CSR is required by at least the sizeof pid_t */
+		if (scontext_available_bits < ((1UL << (sizeof(pid_t) << 3)) - 1))
+			atomic_inc(&scontext_disable);
+	}
+
+	return;
+
+sdtrig_csrs_disable_all:
+	if (IS_ENABLED(CONFIG_KVM))
+		atomic_inc(&hcontext_disable);
+
+	atomic_inc(&scontext_disable);
+}
+
+static int __init sdtrig_enable_csrs_fill(void)
+{
+	if (__riscv_isa_extension_available(NULL, RISCV_ISA_EXT_SDTRIG)) {
+		atomic_long_set(&hcontext_id_share, -1UL);
+
+		/* check every CPUs sdtrig extension optional CSRs */
+		sdtrig_percpu_csrs_check(NULL);
+		smp_call_function(sdtrig_percpu_csrs_check, NULL, 1);
+
+		if (IS_ENABLED(CONFIG_KVM) &&
+		    !atomic_read(&hcontext_disable)) {
+			pr_info("riscv-sdtrig: Writing 'GuestOS ID' to hcontext CSR is enabled\n");
+			static_branch_enable(&use_hcontext);
+		}
+
+		if (!atomic_read(&scontext_disable)) {
+			pr_info("riscv-sdtrig: Writing 'PID' to scontext CSR is enabled\n");
+			static_branch_enable(&use_scontext);
+		}
+	}
+	return 0;
+}
+
+arch_initcall(sdtrig_enable_csrs_fill);
+
 void __init riscv_user_isa_enable(void)
 {
 	if (riscv_has_extension_unlikely(RISCV_ISA_EXT_ZICBOZ))
@@ -1126,7 +1281,7 @@ void __init riscv_user_isa_enable(void)
 		pr_warn("Zicboz disabled as it is unavailable on some harts\n");
 
 	if (riscv_has_extension_unlikely(RISCV_ISA_EXT_ZICBOM))
-		current->thread.envcfg |= ENVCFG_CBCFE;
+		current->thread.envcfg |= (ENVCFG_CBCFE | ENVCFG_CBIE);
 	else if (any_cpu_has_zicbom)
 		pr_warn("Zicbom disabled as it is unavailable on some harts\n");
 

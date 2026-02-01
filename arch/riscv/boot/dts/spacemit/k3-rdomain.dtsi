@@ -481,4 +481,26 @@
 			};
 		};
 	};
+
+	r_ircrx0: r-irc-rx0@c0887000 {
+		compatible = "spacemit-k1,irc";
+		reg = <0x0 0xc0887000 0x0 0x100>;
+		interrupts = <274 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RIRC0>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RIRC0>;
+		clock-frequency = <102400000>;
+		status = "disabled";
+	};
+
+	r_ircrx1: r-irc-rx1@c088e000 {
+		compatible = "spacemit-k1,irc";
+		reg = <0x0 0xc088e000 0x0 0x100>;
+		interrupts = <275 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&saplic>;
+		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RIRC1>;
+		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RIRC1>;
+		clock-frequency = <102400000>;
+		status = "disabled";
+	};
 };

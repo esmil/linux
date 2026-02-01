@@ -168,12 +168,16 @@ static int __init riscv_kvm_init(void)
 		return rc;
 	}
 
+	kvm_riscv_debug_init();
+
 	return 0;
 }
 module_init(riscv_kvm_init);
 
 static void __exit riscv_kvm_exit(void)
 {
+	kvm_riscv_debug_exit();
+
 	kvm_exit();
 
 	kvm_riscv_teardown();
