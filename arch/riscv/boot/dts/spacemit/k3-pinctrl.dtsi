@@ -628,6 +628,15 @@
 		};
 	};
 
+	touchpad_int_cfg: touchpad-int-cfg {
+		touchpad-int-pins {
+			pinmux = <K3_PADCONF(26, 0)>;	/* gpio26 */
+
+			bias-pull-up;
+			power-source = <3300>;
+		};
+	};
+
 	i2c5_0_cfg: i2c5-0-cfg {
 		i2c5-0-pins {
 			pinmux = <K3_PADCONF(25, 6)>,	/* i2c5 sda */
