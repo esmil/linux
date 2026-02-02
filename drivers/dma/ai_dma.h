@@ -102,3 +102,5 @@ int ai_dmac_pack_start(struct ai_dmac *c, struct ai_pack_param *param,
 
 int ai_dmac_memcpy(struct ai_dmac *c, dma_addr_t dma_dst,
 		   dma_addr_t dma_src, size_t len);
+
+int ai_dmac_memcpy_by_2d(struct ai_dmac *c, dma_addr_t dma_dst, dma_addr_t dma_src, size_t len);

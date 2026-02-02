@@ -333,7 +333,7 @@ void start_transfer() {
 					params->kr_size = param->ai_param.kr_size;
 					ai_dmac_pack_start(dma, params, dst_addr, src_addr);
 				} else {
-					ai_dmac_memcpy(dma, dst_addr, src_addr, param->size);
+					ai_dmac_memcpy_by_2d(dma, dst_addr, src_addr, param->size);
 				}
 			}
 		}

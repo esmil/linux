@@ -215,6 +215,65 @@ int ai_dmac_memcpy(struct ai_dmac *c, dma_addr_t dma_dst,
 	return 0;
 }
 
+int ai_dmac_memcpy_by_2d(struct ai_dmac *c, dma_addr_t dma_dst, dma_addr_t dma_src, size_t len)
+{
+	struct ai_dmac_desc *desc;
+	struct ai_dmac_sg *dsg;
+	u32 y_length = len / 512;
+	u32 residue = len % 512;
+	int num_sgs = residue == 0 ? 2 : 3;
+	unsigned int i;
+	unsigned int flags = 0;
+
+	desc = axi_dmac_alloc_desc(c, num_sgs);
+	if (!desc)
+		return -1;
+	dsg = desc->sg;
+	for (i = 0; i < 2; i++) {
+		dsg->hw->x_len = 255;
+		dsg->hw->y_len = y_length - 1;
+		dsg->hw->src_stride = 512;
+		dsg->hw->dst_stride = 512;
+		if (c->id % 2) {
+			if (i == 0) {
+				dsg->hw->src_addr = dma_src;
+				dsg->hw->dest_addr = dma_dst;
+			} else {
+				dsg->hw->src_addr = dma_src + 256;
+				dsg->hw->dest_addr = dma_dst + 256;
+			}
+		} else {
+			if (i == 0) {
+				dsg->hw->src_addr = dma_src + 256;
+				dsg->hw->dest_addr = dma_dst + 256;
+			} else {
+				dsg->hw->src_addr = dma_src;
+				dsg->hw->dest_addr = dma_dst;
+			}
+		}
+		dsg++;
+	}
+
+	if (num_sgs == 3) {
+		dsg->hw->x_len = residue;
+		dsg->hw->y_len = 0;
+		dsg->hw->src_addr = dma_src + len - residue;
+		dsg->hw->dest_addr = dma_dst + len - residue;
+	}
+
+	dsg = desc->sg;
+	dsg->hw->id = ai_dmac_read(c, AXI_DMAC_REG_TRANSFER_ID);
+	ai_dmac_write(c, AXI_DMAC_REG_CTRL, AXI_DMAC_CTRL_ENABLE | AXI_DMAC_CTRL_ENABLE_SG);
+
+	ai_dmac_write(c, AXI_DMAC_REG_SG_ADDRESS, (u32)dsg->hw_phys);
+	ai_dmac_write(c, AXI_DMAC_REG_SG_ADDRESS_HIGH, (u64)dsg->hw_phys >> 32);
+	ai_dmac_write(c, AXI_DMAC_REG_IRQ_PENDING, 3);
+	ai_dmac_write(c, AXI_DMAC_REG_FLAGS, flags);
+	ai_dmac_write(c, AXI_DMAC_REG_START_TRANSFER, 1);
+
+	return 0;
+}
+
 int ai_dmac_pack_start(struct ai_dmac *c, struct ai_pack_param *param,
 		       dma_addr_t dma_dst, dma_addr_t dma_src)
 {
