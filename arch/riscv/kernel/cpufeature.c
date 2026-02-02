@@ -28,6 +28,7 @@
 #include <asm/vector.h>
 #include <asm/vendor_extensions.h>
 #include <asm/vendor_extensions/thead.h>
+#include <linux/soc/spacemit/spacemit-hmp.h>
 
 #define NUM_ALPHA_EXTS ('z' - 'a' + 1)
 
@@ -88,6 +89,16 @@ bool __riscv_isa_extension_available(const unsigned long *isa_bitmap, unsigned i
 
 	if (bit >= RISCV_ISA_EXT_MAX)
 		return false;
+
+#ifdef CONFIG_SPACEMIT_HMP
+	if ((bit == RISCV_ISA_EXT_h) && test_bit(bit, bmap)) {
+		struct cpumask	cpumask;
+		unsigned int cpu = smp_processor_id();
+
+		hmp_get_cpumask(&cpumask, HMP_REGULAR);
+		return cpumask_test_cpu(cpu, &cpumask);
+	}
+#endif
 
 	return test_bit(bit, bmap);
 }
@@ -873,14 +884,36 @@ static void __init riscv_fill_hwcap_from_isa_string(unsigned long *isa2hwcap)
 		 * have.
 		 */
 		if (elf_hwcap)
+#ifndef CONFIG_SPACEMIT_HMP
 			elf_hwcap &= this_hwcap;
+#else
+			/*
+			 * The hypervisor extension is supported on X100 cores,
+			 * but not A100 cores. So, make some special processing
+			 * to support hypervisor on spacemit k3 soc.
+			 */
+			elf_hwcap &= (this_hwcap | isa2hwcap[RISCV_ISA_EXT_h]);
+#endif
 		else
 			elf_hwcap = this_hwcap;
 
 		if (bitmap_empty(riscv_isa, RISCV_ISA_EXT_MAX))
 			bitmap_copy(riscv_isa, isainfo->isa, RISCV_ISA_EXT_MAX);
 		else
+#ifndef CONFIG_SPACEMIT_HMP
 			bitmap_and(riscv_isa, riscv_isa, isainfo->isa, RISCV_ISA_EXT_MAX);
+#else
+		{
+			/*
+			 * The hypervisor extension is supported on X100 cores,
+			 * but not A100 cores. So, make some special processing
+			 * to support hypervisor on spacemit k3 soc.
+			 */
+			bitmap_copy(source_isa, isainfo->isa, RISCV_ISA_EXT_MAX);
+			bitmap_set(source_isa, RISCV_ISA_EXT_h, 1);
+			bitmap_and(riscv_isa, riscv_isa, source_isa, RISCV_ISA_EXT_MAX);
+		}
+#endif
 	}
 
 	if (!acpi_disabled && rhct)
@@ -1024,15 +1057,36 @@ static int __init riscv_fill_hwcap_from_ext_list(unsigned long *isa2hwcap)
 		 * common capabilities of every "okay" hart, in case they don't.
 		 */
 		if (elf_hwcap)
+#ifndef CONFIG_SPACEMIT_HMP
 			elf_hwcap &= this_hwcap;
+#else
+			/*
+			 * The hypervisor extension is supported on X100 cores,
+			 * but not A100 cores. So, make some special processing
+			 * to support hypervisor on spacemit k3 soc.
+			 */
+			elf_hwcap &= (this_hwcap | isa2hwcap[RISCV_ISA_EXT_h]);
+#endif
 		else
 			elf_hwcap = this_hwcap;
 
 		if (bitmap_empty(riscv_isa, RISCV_ISA_EXT_MAX))
 			bitmap_copy(riscv_isa, isainfo->isa, RISCV_ISA_EXT_MAX);
 		else
+#ifndef CONFIG_SPACEMIT_HMP
 			bitmap_and(riscv_isa, riscv_isa, isainfo->isa, RISCV_ISA_EXT_MAX);
-
+#else
+		{
+			/*
+			 * The hypervisor extension is supported on X100 cores,
+			 * but not A100 cores. So, make some special processing
+			 * to support hypervisor on spacemit k3 soc.
+			 */
+			bitmap_copy(source_isa, isainfo->isa, RISCV_ISA_EXT_MAX);
+			bitmap_set(source_isa, RISCV_ISA_EXT_h, 1);
+			bitmap_and(riscv_isa, riscv_isa, source_isa, RISCV_ISA_EXT_MAX);
+		}
+#endif
 		riscv_fill_vendor_ext_list(cpu);
 	}
 

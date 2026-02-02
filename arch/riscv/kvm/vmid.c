@@ -17,6 +17,7 @@
 #include <asm/kvm_mmu.h>
 #include <asm/kvm_tlb.h>
 #include <asm/kvm_vmid.h>
+#include <linux/soc/spacemit/spacemit-hmp.h>
 
 static unsigned long vmid_version = 1;
 static unsigned long vmid_next;
@@ -106,8 +107,14 @@ void kvm_riscv_gstage_vmid_update(struct kvm_vcpu *vcpu)
 		 * running, we force VM exits on all host CPUs using IPI and
 		 * flush all Guest TLBs.
 		 */
-		on_each_cpu_mask(cpu_online_mask, __local_hfence_gvma_all,
-				 NULL, 1);
+#ifndef CONFIG_SPACEMIT_HMP
+		on_each_cpu_mask(cpu_online_mask, __local_hfence_gvma_all, NULL, 1);
+#else
+		struct cpumask	cpumask;
+		hmp_get_cpumask(&cpumask, HMP_REGULAR);
+		cpumask_and(&cpumask, &cpumask, cpu_online_mask);
+		on_each_cpu_mask(&cpumask, __local_hfence_gvma_all, NULL, 1);
+#endif
 	}
 
 	vmid->vmid = vmid_next;

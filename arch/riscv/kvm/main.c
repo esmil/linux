@@ -14,6 +14,7 @@
 #include <asm/kvm_mmu.h>
 #include <asm/kvm_nacl.h>
 #include <asm/sbi.h>
+#include <linux/soc/spacemit/spacemit-hmp.h>
 
 long kvm_arch_dev_ioctl(struct file *filp,
 			unsigned int ioctl, unsigned long arg)
@@ -24,6 +25,15 @@ long kvm_arch_dev_ioctl(struct file *filp,
 int kvm_arch_enable_virtualization_cpu(void)
 {
 	int rc;
+
+#ifdef CONFIG_SPACEMIT_HMP
+	struct cpumask	cpumask;
+	unsigned int cpu = smp_processor_id();
+
+	hmp_get_cpumask(&cpumask, HMP_REGULAR);
+	if (!cpumask_test_cpu(cpu, &cpumask))
+		return 0;
+#endif
 
 	rc = kvm_riscv_nacl_enable();
 	if (rc)
@@ -44,6 +54,15 @@ int kvm_arch_enable_virtualization_cpu(void)
 
 void kvm_arch_disable_virtualization_cpu(void)
 {
+#ifdef CONFIG_SPACEMIT_HMP
+	struct cpumask	cpumask;
+	unsigned int cpu = smp_processor_id();
+
+	hmp_get_cpumask(&cpumask, HMP_REGULAR);
+	if (!cpumask_test_cpu(cpu, &cpumask))
+		return;
+#endif
+
 	kvm_riscv_aia_disable();
 
 	/*
