@@ -16,8 +16,8 @@ CLEAN_CMD="make distclean && make -C tools/perf clean &&
     rm -f ../${PACKAGE_SRC_NAME}_*_riscv64.*
 "
 BUILD_CMD="make $CONFIG_FILE && make -j\${JOBS:-\$(nproc)}"
-BUILD_DEB_CMD="make $CONFIG_FILE &&
-    sed -i '/CONFIG_INITRAMFS_SOURCE=/d' arch/riscv/configs/$CONFIG_FILE
+BUILD_DEB_CMD="sed -i '/CONFIG_INITRAMFS_SOURCE=/d' arch/riscv/configs/$CONFIG_FILE &&
+    make $CONFIG_FILE &&
     VERSION=\$(grep -oP '^VERSION\\s*=\\s*\\K\\d+' Makefile)
     PATCHLEVEL=\$(grep -oP '^PATCHLEVEL\\s*=\\s*\\K\\d+' Makefile)
     SUBLEVEL=\$(grep -oP '^SUBLEVEL\\s*=\\s*\\K\\d+' Makefile)
