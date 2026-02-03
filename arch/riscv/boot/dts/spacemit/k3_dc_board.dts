@@ -73,7 +73,7 @@
 	};
 */
 	chosen {
-                bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused nohlt loglevel=8 random.trust_bootloader=1";
+                bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused loglevel=8 random.trust_bootloader=1";
                 rng-seed = <0x25d69b2 0xff555073 0xd23238ea 0x57aa5455 0x792478ed 0xa744f28e 0x6ba4fc54 0xa2bf20fc>;
 		stdout-path = "serial0:115200";
 	};
@@ -321,8 +321,99 @@
 		keypad,num-rows = <8>;
 		keypad,num-columns = <16>;
 		linux,keymap = <
-				CROS_STD_TOP_ROW_KEYMAP
-				CROS_STD_MAIN_KEYMAP
+			/* Row 0 */
+			MATRIX_KEY(0x00, 0x00, KEY_C)           /* ID: 48 */
+			MATRIX_KEY(0x00, 0x01, KEY_DELETE)      /* ID: 76 */
+			MATRIX_KEY(0x00, 0x02, KEY_Q)           /* ID: 17 */
+			MATRIX_KEY(0x00, 0x03, KEY_RIGHTALT)    /* ID: 62 */
+			MATRIX_KEY(0x00, 0x05, KEY_X)           /* ID: 47 */
+			MATRIX_KEY(0x00, 0x06, KEY_V)           /* ID: 49 */
+			MATRIX_KEY(0x00, 0x07, KEY_M)           /* ID: 52 */
+			MATRIX_KEY(0x00, 0x08, KEY_DOT)         /* ID: 54 */
+			MATRIX_KEY(0x00, 0x09, KEY_RIGHTSHIFT)  /* ID: 57 */
+			MATRIX_KEY(0x00, 0x0a, KEY_COMMA)       /* ID: 53 */
+			MATRIX_KEY(0x00, 0x0c, KEY_RIGHTCTRL)   /* ID: 64 */
+			MATRIX_KEY(0x00, 0x0d, KEY_SLASH)       /* ID: 55 */
+			MATRIX_KEY(0x00, 0x0e, KEY_APOSTROPHE)  /* ID: 41 (' ) */
+
+			/* Row 1 */
+			MATRIX_KEY(0x01, 0x03, KEY_LEFTALT)     /* ID: 60 */
+			MATRIX_KEY(0x01, 0x04, KEY_SPACE)       /* ID: 61 */
+			MATRIX_KEY(0x01, 0x05, KEY_Z)           /* ID: 46 */
+			MATRIX_KEY(0x01, 0x06, KEY_B)           /* ID: 50 */
+			MATRIX_KEY(0x01, 0x07, KEY_N)           /* ID: 51 */
+			MATRIX_KEY(0x01, 0x08, KEY_DOWN)        /* ID: 84-1 */
+			MATRIX_KEY(0x01, 0x09, KEY_LEFTSHIFT)   /* ID: 44 */
+			MATRIX_KEY(0x01, 0x0c, KEY_LEFTCTRL)    /* ID: 58 */
+			MATRIX_KEY(0x01, 0x0d, KEY_UP)          /* ID: 83-1 */
+			MATRIX_KEY(0x01, 0x0e, KEY_ENTER)       /* ID: 43 */
+			MATRIX_KEY(0x01, 0x0f, KEY_F8)          /* ID: 119 */
+
+			/* Row 2 */
+			MATRIX_KEY(0x02, 0x02, KEY_FN)          /* ID: 59 */
+			MATRIX_KEY(0x02, 0x04, KEY_E)           /* ID: 19 */
+			MATRIX_KEY(0x02, 0x05, KEY_F2)          /* ID: 113 */
+			MATRIX_KEY(0x02, 0x06, KEY_G)           /* ID: 35 */
+			MATRIX_KEY(0x02, 0x07, KEY_H)           /* ID: 36 */
+			MATRIX_KEY(0x02, 0x08, KEY_BACKSLASH)   /* ID: 29/42 */
+			MATRIX_KEY(0x02, 0x0a, KEY_F7)          /* ID: 118 */
+			MATRIX_KEY(0x02, 0x0d, KEY_MINUS)       /* ID: 12 */
+			MATRIX_KEY(0x02, 0x0f, KEY_RIGHT)       /* ID: 89-1 */
+
+			/* Row 3 */
+			MATRIX_KEY(0x03, 0x01, KEY_LEFTMETA)    /* ID: 127 (Win) */
+			MATRIX_KEY(0x03, 0x02, KEY_TAB)         /* ID: 16 */
+			MATRIX_KEY(0x03, 0x04, KEY_F4)          /* ID: 115 */
+			MATRIX_KEY(0x03, 0x05, KEY_F1)          /* ID: 112 */
+			MATRIX_KEY(0x03, 0x06, KEY_T)           /* ID: 21 */
+			MATRIX_KEY(0x03, 0x07, KEY_Y)           /* ID: 22 */
+			MATRIX_KEY(0x03, 0x08, KEY_O)           /* ID: 25 */
+			MATRIX_KEY(0x03, 0x0a, KEY_F6)          /* ID: 117 */
+			MATRIX_KEY(0x03, 0x0b, KEY_F9)          /* ID: 120 */
+			MATRIX_KEY(0x03, 0x0d, KEY_F12)         /* ID: 123 */
+
+			/* Row 4 */
+			MATRIX_KEY(0x04, 0x02, KEY_GRAVE)       /* ID: 1 (~) */
+			MATRIX_KEY(0x04, 0x04, KEY_CAPSLOCK)    /* ID: 30 */
+			MATRIX_KEY(0x04, 0x05, KEY_S)           /* ID: 32 */
+			MATRIX_KEY(0x04, 0x06, KEY_5)           /* ID: 6 */
+			MATRIX_KEY(0x04, 0x07, KEY_6)           /* ID: 7 */
+			MATRIX_KEY(0x04, 0x08, KEY_F10)         /* ID: 121 */
+			MATRIX_KEY(0x04, 0x0a, KEY_F5)          /* ID: 116 */
+			MATRIX_KEY(0x04, 0x0d, KEY_0)           /* ID: 11 */
+			MATRIX_KEY(0x04, 0x0e, KEY_EQUAL)       /* ID: 13 */
+
+			/* Row 5 */
+			MATRIX_KEY(0x05, 0x02, KEY_1)           /* ID: 2 */
+			MATRIX_KEY(0x05, 0x04, KEY_3)           /* ID: 4 */
+			MATRIX_KEY(0x05, 0x05, KEY_2)           /* ID: 3 */
+			MATRIX_KEY(0x05, 0x06, KEY_4)           /* ID: 5 */
+			MATRIX_KEY(0x05, 0x07, KEY_7)           /* ID: 8 */
+			MATRIX_KEY(0x05, 0x08, KEY_9)           /* ID: 10 */
+			MATRIX_KEY(0x05, 0x0a, KEY_8)           /* ID: 9 */
+			MATRIX_KEY(0x05, 0x0d, KEY_P)           /* ID: 26 */
+			MATRIX_KEY(0x05, 0x0e, KEY_BACKSPACE)   /* ID: 15 */
+
+			/* Row 6 */
+			MATRIX_KEY(0x06, 0x04, KEY_F3)          /* ID: 114 */
+			MATRIX_KEY(0x06, 0x05, KEY_W)           /* ID: 18 */
+			MATRIX_KEY(0x06, 0x06, KEY_R)           /* ID: 20 */
+			MATRIX_KEY(0x06, 0x07, KEY_U)           /* ID: 23 */
+			MATRIX_KEY(0x06, 0x08, KEY_F11)         /* ID: 122 */
+			MATRIX_KEY(0x06, 0x0a, KEY_I)           /* ID: 24 */
+			MATRIX_KEY(0x06, 0x0b, KEY_LEFT)        /* ID: 79-1 */
+			MATRIX_KEY(0x06, 0x0d, KEY_LEFTBRACE)   /* ID: 27 ([) */
+			MATRIX_KEY(0x06, 0x0e, KEY_RIGHTBRACE)  /* ID: 28 (]) */
+
+			/* Row 7 */
+			MATRIX_KEY(0x07, 0x02, KEY_A)           /* ID: 31 */
+			MATRIX_KEY(0x07, 0x05, KEY_ESC)         /* ID: 110 */
+			MATRIX_KEY(0x07, 0x06, KEY_F)           /* ID: 34 */
+			MATRIX_KEY(0x07, 0x07, KEY_J)           /* ID: 37 */
+			MATRIX_KEY(0x07, 0x08, KEY_L)           /* ID: 39 */
+			MATRIX_KEY(0x07, 0x0a, KEY_K)           /* ID: 38 */
+			MATRIX_KEY(0x07, 0x0d, KEY_SEMICOLON)   /* ID: 40 */
+			MATRIX_KEY(0x07, 0x0e, KEY_D)           /* ID: 33 */
 		>;
 	};
 };
@@ -864,6 +955,25 @@
 		status = "okay";
 	};
 };
+
+&i2c4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c4_2_cfg>;
+	status = "okay";
+
+	touchpad: hid@2c {
+		compatible = "hid-over-i2c";
+		reg = <0x2c>;
+		hid-descr-addr = <0x0020>;
+		post-power-on-delay-ms = <200>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&touchpad_int_cfg>;
+		interrupt-parent = <&gpio>;
+		interrupts = <0 26 IRQ_TYPE_EDGE_FALLING>;
+		status = "okay";
+	};
+};
+
 /*
 &i2c8 {
 	pinctrl-names = "default";

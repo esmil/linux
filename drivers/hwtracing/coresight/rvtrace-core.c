@@ -89,10 +89,23 @@ struct rvtrace_component *rvtrace_register_component(struct platform_device *pde
 	comp->base = base;
 
 	comp->cpu = -1;
-	node = of_parse_phandle(dev->of_node, "cpu", 0);
-	if (node) {
-		comp->cpu = of_cpu_node_to_id(node);
+	for (int i = 0; ; i++) {
+		node = of_parse_phandle(dev->of_node, "cpus", i);
+		if (!node)
+			break;
+
+		ret = of_cpu_node_to_id(node);
 		of_node_put(node);
+		if (ret >= 0 && cpu_online(ret)) {
+			comp->cpu = ret;
+			break;
+		}
+	}
+
+	if (comp->cpu < 0) {
+		dev_err(dev, "No valid CPU found in 'cpus' property\n");
+		ret = -EINVAL;
+		goto err_out;
 	}
 
 	ret = rvtrace_component_reset(comp);
@@ -107,11 +120,6 @@ struct rvtrace_component *rvtrace_register_component(struct platform_device *pde
 		RVTRACE_COMPONENT_IMPL_VERMAJOR_MASK;
 	minor = (impl >> RVTRACE_COMPONENT_IMPL_VERMINOR_SHIFT) &
 		RVTRACE_COMPONENT_IMPL_VERMINOR_MASK;
-
-	if (comp->cpu >= 0 && !cpu_present(comp->cpu)) {
-		ret = -EINVAL;
-		goto err_out;
-	}
 
 	comp->id.type = type;
 	comp->id.version = rvtrace_component_mkversion(major, minor);

@@ -74,6 +74,7 @@ static DEFINE_PER_CPU(struct clock_event_device, riscv_clock_event) = {
 	.rating			= 100,
 	.set_next_event		= riscv_clock_next_event,
 	.set_state_shutdown	= riscv_clock_shutdown,
+	.set_state_oneshot_stopped = riscv_clock_shutdown,
 };
 
 /*

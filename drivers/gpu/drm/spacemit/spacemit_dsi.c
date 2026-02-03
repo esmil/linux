@@ -780,10 +780,6 @@ static int spacemit_dsi_host_attach(struct mipi_dsi_host *host,
 
 	DRM_INFO("%s()\n", __func__);
 
-	ret = component_add(host->dev, &dsi_component_ops);
-	if (ret)
-		return ret;
-
 	dsi->slave = slave;
 
 	ret = spacemit_dsi_phy_attach(dsi);
@@ -800,6 +796,9 @@ static int spacemit_dsi_host_attach(struct mipi_dsi_host *host,
 	spacemit_dsi_get_advanced_info(dsi, mipi_info);
 	spacemit_dsi_get_phy_clock(lcd_node, dsi);
 
+	ret = component_add(host->dev, &dsi_component_ops);
+	if (ret)
+		return ret;
 	return 0;
 }
 
@@ -969,7 +968,6 @@ static void spacemit_dsi_remove(struct platform_device *pdev)
 
 static const struct of_device_id spacemit_dsi_of_match[] = {
 	{ .compatible = "spacemit,dsi-host" },
-	{ .compatible = "asr,dsi-fake" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, spacemit_dsi_of_match);

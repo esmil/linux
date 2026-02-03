@@ -32,6 +32,11 @@
 #include "coresight-priv.h"
 #include "coresight-tmc.h"
 
+static int sysfs_etb_activated, sysfs_etf_activated, sysfs_etr_activated;
+module_param_named(sysfs_etb_activated, sysfs_etb_activated, int, S_IRUGO);
+module_param_named(sysfs_etf_activated, sysfs_etf_activated, int, S_IRUGO);
+module_param_named(sysfs_etr_activated, sysfs_etr_activated, int, S_IRUGO);
+
 DEFINE_CORESIGHT_DEVLIST(etb_devs, "tmc_etb");
 DEFINE_CORESIGHT_DEVLIST(etf_devs, "tmc_etf");
 DEFINE_CORESIGHT_DEVLIST(etr_devs, "tmc_etr");
@@ -875,6 +880,11 @@ static int __tmc_probe(struct device *dev, struct resource *res)
 		ret = PTR_ERR(drvdata->csdev);
 		goto out;
 	}
+
+	if ((drvdata->config_type == TMC_CONFIG_TYPE_ETB && sysfs_etb_activated) ||
+		(drvdata->config_type == TMC_CONFIG_TYPE_ETR && sysfs_etr_activated) ||
+		(drvdata->config_type == TMC_CONFIG_TYPE_ETF && sysfs_etf_activated))
+		drvdata->csdev->sysfs_sink_activated = true;
 
 	drvdata->miscdev.name = desc.name;
 	drvdata->miscdev.minor = MISC_DYNAMIC_MINOR;

@@ -375,7 +375,7 @@ static int rpi_touchscreen_probe(struct i2c_client *i2c)
 	struct device_node *dsi_host_node = NULL;
 	struct device_node *node = NULL;
 	struct mipi_dsi_host *host;
-	int ver, rc;
+	int ver, rc, ret;
 
 	struct device_node *lcd_node;
 	const char *lcd_name = NULL;
@@ -498,7 +498,11 @@ static int rpi_touchscreen_probe(struct i2c_client *i2c)
 		return PTR_ERR(ts->dsi);
 	}
 
-	return 0;
+	ret = mipi_dsi_attach(ts->dsi);
+	if (ret)
+		dev_err(&ts->dsi->dev, "failed to attach dsi to host: %d\n", ret);
+
+	return ret;
 
 err:
 	of_node_put(node);
@@ -524,7 +528,6 @@ static void rpi_touchscreen_remove(struct i2c_client *i2c)
 
 static int rpi_touchscreen_dsi_probe(struct mipi_dsi_device *dsi)
 {
-	int ret;
 	dsi->mode_flags = (MIPI_DSI_MODE_VIDEO |
 			   MIPI_DSI_MODE_VIDEO_BURST |
 			   MIPI_DSI_MODE_LPM);
@@ -532,12 +535,7 @@ static int rpi_touchscreen_dsi_probe(struct mipi_dsi_device *dsi)
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->lanes = 1;
 
-	ret = mipi_dsi_attach(dsi);
-
-	if (ret)
-		dev_err(&dsi->dev, "failed to attach dsi to host: %d\n", ret);
-
-	return ret;
+	return 0;
 }
 
 static const struct of_device_id rpi_dpi_of_match[] = {
