@@ -1358,12 +1358,6 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 	slave->format = panel->info.format;
 	slave->mode_flags = panel->info.mode_flags;
 
-	ret = mipi_dsi_attach(slave);
-	if (ret) {
-		DRM_ERROR("failed to attach dsi panel to host\n");
-		drm_panel_remove(&panel->base);
-		return ret;
-	}
 	panel->slave = slave;
 
 	spacemit_mipi_panel_sysfs_init(&panel->dev);
@@ -1390,6 +1384,12 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 	mutex_init(&panel->face_lock);
 	vh_lcd_tp_event_handler = lcd_tp_event_handler;
 #endif
+	ret = mipi_dsi_attach(slave);
+	if (ret) {
+		DRM_ERROR("failed to attach dsi panel to host\n");
+		drm_panel_remove(&panel->base);
+		return ret;
+	}
 	DRM_INFO("panel driver probe success\n");
 
 	return 0;
