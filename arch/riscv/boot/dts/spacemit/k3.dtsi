@@ -141,6 +141,12 @@
 			no-map;
 		};
 
+		/* vring2 */
+		rcpu0_vdev0vring2: vdev0vring2@c087c000 {
+			reg = <0x0 0xc087c000 0x0 0x1000>;
+			no-map;
+		};
+
 		/* the rcpu0's share memory buffer */
 		rcpu0_vdev0buffer: vdev0buffer@100700000 {
 			compatible = "shared-dma-pool";
@@ -2387,6 +2393,11 @@
 			compatible = "spacemit,ddr-qos";
 			reg = <0x0 0xd4282c00 0x0 0x200>;
 			status = "okay";
+		};
+
+		reboot_mode_helper: reboot-mode-helper@c087c000 {
+			compatible = "spacemit,k3-reboot";
+			reg = <0x0 0xc087c000 0x0 0x1000>;
 		};
 	};
 };
