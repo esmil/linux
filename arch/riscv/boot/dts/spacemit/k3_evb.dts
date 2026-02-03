@@ -108,6 +108,12 @@
 };
 
 &pinctrl {
+	i2c0-2-cfg {
+		i2c0-0-pins {
+			power-source = <1800>;
+		};
+	};
+
 	i2c1-1-cfg {
 		i2c1-0-pins {
 			power-source = <1800>;
@@ -117,6 +123,12 @@
 	i2c2-1-cfg {
 		i2c2-0-pins {
 			power-source = <1800>;
+		};
+	};
+
+	i2c3-2-cfg {
+		i2c3-0-pins {
+			power-source = <3300>;
 		};
 	};
 
@@ -1048,14 +1060,30 @@
 	};
 };
 
-&i2c1 {
+&i2c0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c1_1_cfg>;
-	status = "ok";
+	pinctrl-0 = <&i2c0_2_cfg>;
+	status = "okay";
 
 	ov5647@36 {
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
+		csi-id = <0>;
+		pwdn-gpios = <&gpio 1 18 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_1_cfg>;
+	status = "okay";
+
+	ov5647@36 {
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		csi-id = <1>;
 		pwdn-gpios = <&gpio 1 10 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1069,7 +1097,8 @@
 	imx219@10 {
 		compatible = "sony,imx219";
 		reg = <0x10>;
-		pwdn-gpios = <&gpio 1 11 GPIO_ACTIVE_HIGH>;
+		csi-id = <2>;
+		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 };
