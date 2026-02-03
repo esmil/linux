@@ -73,6 +73,9 @@ static struct regval_list ov5647_1080p_2lane_regs[] = {
 	{0x3000, 0x00},
 	{0x3001, 0x00},
 	{0x3002, 0x00},
+	/* 2x io drive */
+	{0x3011, 0x42},
+	/* end */
 	{0x3016, 0x08},
 	{0x3017, 0xe0},
 	{0x3018, 0x44},
@@ -162,9 +165,9 @@ static struct regval_list ov5647_1080p_1lane_regs[] = {
 	{0x3000, 0x00},
 	{0x3001, 0x00},
 	{0x3002, 0x00},
-	//2x io drive
+	/* 2x io drive */
 	{0x3011, 0x42},
-	//end
+	/* end */
 	{0x3016, 0x08},
 	{0x3017, 0xe0},
 	{0x3018, 0x24},
@@ -233,7 +236,7 @@ static struct regval_list ov5647_1080p_1lane_regs[] = {
 	{0x0100, 0x00},
 };
 
-static struct regval_list ov5647_640x480_10bpp[] = {
+static struct regval_list ov5647_640x480_2lane_10bpp[] __maybe_unused = {
 	{0x0100, 0x00},
 	{0x0103, 0x01},
 	{0x3035, 0x11},
@@ -429,7 +432,7 @@ static int ov5647_set_virtual_channel(struct ov5647 *sensor, int channel);
 
 static long ov5647_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	struct ov5647 *sensor = global_ov5647;
+	struct ov5647 *sensor = file->private_data;
 	int ret = 0;
 
 	if (!sensor)
@@ -465,8 +468,24 @@ static long ov5647_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
+
+static int ov5647_dev_open(struct inode *inode, struct file *file)
+{
+	struct miscdevice *misc = file->private_data;
+	struct ov5647 *sensor;
+
+	if (!misc)
+		return -ENODEV;
+
+	sensor = container_of(misc, struct ov5647, miscdev);
+	/* replace private_data with sensor pointer for use in ioctl */
+	file->private_data = sensor;
+	return 0;
+}
+
 static const struct file_operations ov5647_fops = {
 	.owner = THIS_MODULE,
+	.open = ov5647_dev_open,
 	.unlocked_ioctl = ov5647_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = ov5647_ioctl,
@@ -627,9 +646,25 @@ static int ov5647_probe(struct i2c_client *client)
 	}
 
 	sensor->miscdev.minor = MISC_DYNAMIC_MINOR;
-	sensor->miscdev.name = "ov5647-test";
 	sensor->miscdev.fops = &ov5647_fops;
 	sensor->miscdev.parent = dev;
+	if (client->dev.of_node) {
+		u32 csi_id;
+		if (of_property_read_u32(client->dev.of_node, "csi-id",
+					 &csi_id) == 0) {
+			sensor->miscdev.name = devm_kasprintf(
+				dev, GFP_KERNEL, "ov5647-%u", csi_id);
+			dev_info(dev, "ov5647-test: ov5647-%u \n", csi_id);
+		} else {
+			sensor->miscdev.name = devm_kasprintf(
+				dev, GFP_KERNEL, "ov5647-%02x", client->addr);
+			dev_info(dev, "ov5647-test: ov5647-%02x \n",
+				 client->addr);
+		}
+	} else {
+		sensor->miscdev.name = devm_kasprintf(
+			dev, GFP_KERNEL, "ov5647-%02x", client->addr);
+	}
 
 	ret = misc_register(&sensor->miscdev);
 	if (ret) {
