@@ -24,4 +24,10 @@ config CONFIG_SPACEMIT_DDR_QOS
 	help
 	  Say y here to enable ddr qos config function.
 
+config SPACEMIT_REBOOT_CONTROL
+	bool "Spacemit k3 reboot handler"
+	depends on SOC_SPACEMIT_K3
+	help
+	  Say y here to support go to uboot fastboot when reset.
+
 source "drivers/soc/spacemit/v2d/Kconfig"
