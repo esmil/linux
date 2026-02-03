@@ -592,8 +592,8 @@ static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 	/* config sysclk and tx symbol clk before link startup */
 	reg_val = UFS_MAX_LINKSTARTUP_TIMER;
 
-	/* clear bit0 and bit1, select b0 design */
-	reg_val &= ~0x3;
+	/* clear bit0~bit3, select b0 design */
+	reg_val &= ~0xf;
 
 	ufshcd_writel(hba, reg_val, UFS_PA_LINK_STARTUP_TIMER);
 
