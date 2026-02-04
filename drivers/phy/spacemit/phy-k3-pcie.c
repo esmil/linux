@@ -23,6 +23,17 @@
 #define APB_SPARE_PU_CAL		0x178
 #define PU_CAL				BIT(17)
 
+#define APB_SPARE_PU_STATUS		0x17c
+#define PU_CAL_DONE			BIT(8)
+
+/* Trim override fields in APB_SPARE_PU_STATUS (0x17c) */
+#define RCAL_TRIM0			GENMASK(23, 20)
+#define RCAL_TRIM1			GENMASK(27, 24)
+#define RCAL_TRIM2			GENMASK(30, 28)
+#define RCAL_TRIM_OVRD_EN		BIT(31)
+
+#define RCAL_TIMEOUT_US			1000000		/* ~1s, match K2 BSP */
+
 /* Offset between lane 0 and lane 1 blocks inside a single PHY base */
 #define PHY_LANE_OFFSET			0x0400
 
@@ -91,6 +102,20 @@ static inline void k3_phy_update_bits(void __iomem *base, u32 offset,
 	k3_phy_writel(base, offset, tmp);
 }
 
+static inline void k3_phy_rmw_seq(void __iomem *base, u32 offset,
+				  u32 mask, u32 bits)
+{
+	u32 v;
+
+	v = k3_phy_readl(base, offset);
+	v &= ~mask;
+	k3_phy_writel(base, offset, v);
+
+	v = k3_phy_readl(base, offset);
+	v |= bits & mask;
+	k3_phy_writel(base, offset, v);
+}
+
 static void k3_pcie_init_lanes(struct k3_pcie_phy *k3_phy, int num_lanes)
 {
 	void __iomem *phy_base = k3_phy->base;
@@ -121,26 +146,36 @@ static void k3_pcie_init_lanes(struct k3_pcie_phy *k3_phy, int num_lanes)
 	for (i = 0; i < num_lanes; i++) {
 		void __iomem *lane_base = phy_base + (PHY_LANE_OFFSET * i);
 
+		/* set cfg_tx_send_dummy_data to be 1'b1 for disable dash data */
 		k3_phy_mod_bit(lane_base, (0x10 << 2), BIT(13), 1);
-
-		/* Program initial internal timer/other bits */
-		k3_phy_writel(lane_base, PCIE_PU_ADDR_CLK_CFG, 0xf << 3);
-
-		k3_phy_mod_bit(lane_base, (0x50 << 2), BIT(4), 1);
-
-		/* TX register lives at the same offset as upstream PCIE_TX_REG1 */
-		k3_phy_mod_bit(lane_base, PCIE_TX_REG1, BIT(22), 1);
-	}
-
-	/* Force RCV Good / Dynamic Lock */
-	for (i = 0; i < num_lanes; i++) {
-		void __iomem *lane_base = phy_base + (PHY_LANE_OFFSET * i);
-
-		/* cdr fix bypass */
-		k3_phy_mod_bit(lane_base, 0x4, BIT(6), 0);
+		/* disable en_sample_data_after_cdr_locked */
+		k3_phy_mod_bit(lane_base, (0x01 << 2), BIT(6), 0);
 		/* dynamic lock */
 		k3_phy_mod_bit(lane_base, 0xC, BIT(2), 1);
 	}
+
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x60, GENMASK(7, 0), 0x10 << 0);
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x60, GENMASK(15, 8), 0x78 << 8);
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x60, GENMASK(23, 16), 0x98 << 16);
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x60, GENMASK(31, 24), 0xdf << 24);
+
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x64, GENMASK(7, 0), 0xb4 << 0);
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x64, GENMASK(15, 8), 0x88 << 8);
+	for (i = 0; i < num_lanes; i++)
+		k3_phy_rmw_seq(phy_base + (PHY_LANE_OFFSET * i),
+			       0x64, GENMASK(23, 16), 0x28 << 16);
 
 	/* Set init done */
 	for (i = 0; i < num_lanes; i++) {
@@ -149,11 +184,6 @@ static void k3_pcie_init_lanes(struct k3_pcie_phy *k3_phy, int num_lanes)
 		/* cfg_sw_phy_init_done */
 		k3_phy_mod_bit(lane_base, PCIE_PU_ADDR_CLK_CFG,
 			       CFG_SW_PHY_INIT_DONE, 1);
-
-		/* aux clk 24M: value 0x2 in CFG_INTERNAL_TIMER_ADJ field */
-		k3_phy_update_bits(lane_base, PCIE_PU_ADDR_CLK_CFG,
-				   CFG_INTERNAL_TIMER_ADJ,
-				   FIELD_PREP(CFG_INTERNAL_TIMER_ADJ, 0x2));
 	}
 }
 
@@ -186,14 +216,40 @@ EXPORT_SYMBOL_GPL(spacemit_k3_pcie_phy_is_busy);
 static int k3_pcie_phy_init(struct phy *phy)
 {
 	struct k3_pcie_phy *k3_phy = phy_get_drvdata(phy);
+	u32 val;
+	int ret;
 
 	if (k3_phy->inited)
 		return 0;
 
-	if (k3_phy->apb_spare)
-		regmap_update_bits(k3_phy->apb_spare,
-				   APB_SPARE_PU_CAL,
+	if (k3_phy->apb_spare) {
+		regmap_update_bits(k3_phy->apb_spare, APB_SPARE_PU_CAL,
 				   PU_CAL, PU_CAL);
+
+		ret = regmap_read_poll_timeout(k3_phy->apb_spare,
+					       APB_SPARE_PU_STATUS,
+					       val, val & PU_CAL_DONE,
+					       10000, RCAL_TIMEOUT_US);
+		if (ret) {
+			dev_err(k3_phy->dev,
+				"PCIe RCAL timeout, trim override\n");
+
+			regmap_read(k3_phy->apb_spare,
+				    APB_SPARE_PU_STATUS, &val);
+			val &= ~(RCAL_TRIM0 | RCAL_TRIM1 | RCAL_TRIM2);
+			val |= FIELD_PREP(RCAL_TRIM0, 0xa) |
+			       FIELD_PREP(RCAL_TRIM1, 0x6) |
+			       FIELD_PREP(RCAL_TRIM2, 0x7);
+			regmap_write(k3_phy->apb_spare,
+				     APB_SPARE_PU_STATUS, val);
+
+			regmap_read(k3_phy->apb_spare,
+				    APB_SPARE_PU_STATUS, &val);
+			val |= RCAL_TRIM_OVRD_EN;
+			regmap_write(k3_phy->apb_spare,
+				     APB_SPARE_PU_STATUS, val);
+		}
+	}
 
 	k3_pcie_init_lanes(k3_phy, k3_phy->lane_count);
 	k3_pcie_wait_pll_lock(k3_phy);

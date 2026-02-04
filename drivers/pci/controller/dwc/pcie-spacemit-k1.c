@@ -211,8 +211,8 @@ static void spacemit_pcie_eq_preset(struct k1_pcie *pcie)
 	u32 val;
 
 	val = dw_pcie_readl_dbi(pci, GEN3_EQ_CONTROL_OFF);
-	val &= ~(0xffff << 8);
-	val |= ((0x1 << 4) << 8);
+	val &= ~GEN3_EQ_CONTROL_OFF_PSET_REQ_VEC;
+	val |= FIELD_PREP(GEN3_EQ_CONTROL_OFF_PSET_REQ_VEC, (0x1 << 7));
 	dw_pcie_writel_dbi(pci, GEN3_EQ_CONTROL_OFF, val);
 }
 
