@@ -22,6 +22,9 @@ config DRM_SPACEMIT
 config SPACEMIT_INNO_DP
 	tristate "Spacemit specific extensions for inno dp/edp"
 	depends on DRM_SPACEMIT
+	select DRM_DISPLAY_HELPER
+	select DRM_DISPLAY_DP_HELPER
+	select DRM_DISPLAY_DP_AUX_BUS
 	default n
 	help
 	  Support for Spacemit SoC specific extensions for
