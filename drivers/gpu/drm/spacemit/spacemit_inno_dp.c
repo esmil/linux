@@ -241,8 +241,11 @@ static const struct soc_dp_pixel_pll_cfg pixel_pll_cfg_table[] = {
 	{ 277440, 2770000, 0x05, 578,  0x3, 0x0, 0x0, 0x3, 0x01, 0x1, 277440, true },
 	{ 245760, 2457600, 0x05, 512,  0x3, 0x0, 0x0, 0x3, 0x01, 0x1, 245760, true },
 	{ 241500, 1932000, 0x02, 161,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 241500, true },
+	{ 236000, 2830000, 0x01, 118,  0x3, 0x0, 0x0, 0x0, 0x06, 0x1, 235690, true },
 	{ 204800, 2048000, 0x03, 256,  0x3, 0x0, 0x0, 0x3, 0x01, 0x1, 204800, true },
 	{ 193250, 2320000, 0x08, 773,  0x3, 0x0, 0x0, 0x0, 0x06, 0x1, 193250, true },
+	{ 189000, 1510000, 0x01,  63,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 188550, true },
+	{ 187500, 3000000, 0x01, 125,  0x3, 0x0, 0x0, 0x0, 0x08, 0x1, 187500, true },
 	{ 162000, 2592000, 0x01, 108,  0x3, 0x0, 0x0, 0x0, 0x08, 0x1, 162000, true },
 	{ 156000, 2810000, 0x01, 117,  0x3, 0x0, 0x0, 0x0, 0x09, 0x1, 156000, true },
 	{ 150000, 3000000, 0x01, 125,  0x3, 0x0, 0x0, 0x0, 0x0a, 0x1, 150000, true },
@@ -1737,7 +1740,8 @@ static int soc_dp_resource_init(struct soc_dp_dev *dp, struct platform_device *p
 		writel(value, (ciu_addr + 0x12c));
 	}
 
-	dp->use_ext_pixel_clock = false;
+	/* use external pixel clock */
+	dp->use_ext_pixel_clock = true;
 
 	/* use DP pixel clock */
 	if (dp_id == 0 ) {
@@ -1752,17 +1756,16 @@ static int soc_dp_resource_init(struct soc_dp_dev *dp, struct platform_device *p
 		dp->use_ext_pixel_clock = false;
 	}
 
-	/* use external pixel clock */
 	if (edp_id == 0 ) {
 		value = readl(pmu_addr + 0x23c);
 		value |= BIT(2);
 		writel(value, (pmu_addr + 0x23c));
-		dp->use_ext_pixel_clock = true;
+		dp->use_ext_pixel_clock = false;
 	} else if (edp_id == 1) {
 		value = readl(pmu_addr + 0x23c);
 		value |= BIT(18);
 		writel(value, (pmu_addr + 0x23c));
-		dp->use_ext_pixel_clock = true;
+		dp->use_ext_pixel_clock = false;
 	}
 
 	iounmap(ciu_addr);
