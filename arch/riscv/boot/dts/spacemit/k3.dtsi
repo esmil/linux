@@ -1032,8 +1032,6 @@
 		spi0: spi@d4040000 {
 			compatible = "spacemit,k3-spi";
 			reg = <0x0 0xd4040000 0x0 0x30>;
-			k1x,ssp-id = <0>;
-			k1x,ssp-clock-rate = <26000000>;
 			dmas = <&pdma DMA_SSP0_TX
 				&pdma DMA_SSP0_RX>;
 			dma-names = "tx", "rx";
@@ -1052,8 +1050,6 @@
 		spi1: spi@d4040800 {
 			compatible = "spacemit,k3-spi";
 			reg = <0x0 0xd4040800 0x0 0x30>;
-			k1x,ssp-id = <1>;
-			k1x,ssp-clock-rate = <26000000>;
 			dmas = <&pdma DMA_SSP1_TX
 				&pdma DMA_SSP1_RX>;
 			dma-names = "tx", "rx";
@@ -1072,8 +1068,6 @@
 		spi2: spi@f0613000 {
 			compatible = "spacemit,k3-spi";
 			reg = <0x0 0xf0613000 0x0 0x30>;
-			k1x,ssp-id = <2>;
-			k1x,ssp-clock-rate = <26000000>;
 			// dmas = <&pdma 19
 			// 	&pdma 20>;
 			// dma-names = "rx", "tx";
@@ -1092,8 +1086,6 @@
 		spi3: spi@d401c000 {
 			compatible = "spacemit,k3-spi";
 			reg = <0x0 0xd401c000 0x0 0x30>;
-			k1x,ssp-id = <3>;
-			k1x,ssp-clock-rate = <26000000>;
 			dmas = <&pdma DMA_SSP3_TX
 				&pdma DMA_SSP3_RX>;
 			dma-names = "tx", "rx";
