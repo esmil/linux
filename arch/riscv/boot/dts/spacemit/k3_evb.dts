@@ -138,6 +138,12 @@
 		};
 	};
 
+	uart2-0-cfg {
+		uart2-0-pins {
+			power-source = <1800>;
+		};
+	};
+
 	ssp0-2-cfg  {
 		ssp0-0-pins {
 			power-source = <3300>;
@@ -323,6 +329,19 @@
 	status = "okay";
 };
 
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_0_cfg>;
+	status = "disabled";
+
+	bluetooth {
+		compatible = "realtek,rtl8852bs-bt";
+		device-wake-gpios = <&gpio 2 30 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&gpio 2 29 GPIO_ACTIVE_HIGH>;
+		host-wake-gpios = <&gpio 2 28 GPIO_ACTIVE_HIGH>;
+	};
+};
+
 &qspi {
 	status = "disabled";
 };
@@ -341,7 +360,7 @@
 	no-sdio;
 	clock-frequency = <204800000>;
 	spacemit,tx_delaycode = <0x1f>;
-	status = "okay";
+	status = "disabled";
 };
 
 &sdio {
