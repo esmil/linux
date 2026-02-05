@@ -386,7 +386,7 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct k1_pcie *k1 = to_k1_pcie(pci);
-	u32 reset_ctrl;
+	u32 reset_ctrl = k1->pmu_off + PCIE_CLK_RESET_CONTROL;
 	int ret;
 	u32 val;
 
@@ -396,6 +396,29 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	regmap_set_bits(k1->pmu, reset_ctrl, PCIE_AUX_PWR_DET);
+	regmap_update_bits(k1->pmu, reset_ctrl, APP_HOLD_PHY_RST, 0);
+
+	ret = spacemit_pcie_config_lane_mux(k1);
+	if (ret)
+		return ret;
+
+	ret = spacemit_pcie_enable_phy(k1);
+	if (ret)
+		return ret;
+#else
+	regmap_set_bits(k1->pmu, reset_ctrl, DEVICE_TYPE_RC | PCIE_AUX_PWR_DET);
+
+	ret = phy_init(k1->phy);
+	if (ret) {
+		k1_pcie_disable_resources(k1);
+
+		return ret;
+	}
+#endif
+
+	regmap_update_bits(k1->pmu, reset_ctrl, LTSSM_EN, 0);
 	/*
 	 * Start by asserting fundamental reset (drive PERST# low).  The
 	 * PCI CEM spec says that PERST# should be deasserted at least
@@ -403,7 +426,6 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	 * delay first.  Write, then read it back to guarantee the write
 	 * reaches the device before we start the delay.
 	 */
-	reset_ctrl = k1->pmu_off + PCIE_CLK_RESET_CONTROL;
 #ifdef CONFIG_SOC_SPACEMIT_K3
 	/* K3: Set IGNORE_PERSTN and drive PERSTN_OE high (assert reset) */
 	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC,
@@ -422,31 +444,10 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	 * Vaux (3.3v) is present.
 	 */
 #ifdef CONFIG_SOC_SPACEMIT_K3
-	regmap_set_bits(k1->pmu, reset_ctrl, PCIE_AUX_PWR_DET);
-
 	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC,
 			   PCIE_PERSTN_OUT | PCIE_PERSTN_OE,
 			   PCIE_PERSTN_OUT | PCIE_PERSTN_OE);
-	regmap_update_bits(k1->pmu, reset_ctrl, APP_HOLD_PHY_RST, 0);
-
-	ret = spacemit_pcie_config_lane_mux(k1);
-	if (ret)
-		return ret;
-
-	ret = spacemit_pcie_enable_phy(k1);
-	if (ret)
-		return ret;
-
 	spacemit_pcie_eq_preset(k1);
-#else
-	regmap_set_bits(k1->pmu, reset_ctrl, DEVICE_TYPE_RC | PCIE_AUX_PWR_DET);
-
-	ret = phy_init(k1->phy);
-	if (ret) {
-		k1_pcie_disable_resources(k1);
-
-		return ret;
-	}
 #endif
 
 	/* Set the PCI vendor and device ID */
