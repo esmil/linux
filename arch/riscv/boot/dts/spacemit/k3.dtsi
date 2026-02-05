@@ -1043,6 +1043,7 @@
 				<&syscon_apbc CLK_APBC_SPI0_BUS>;
 			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC_SPI0>;
+			spi-max-frequency = <51200000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -1062,6 +1063,7 @@
 				<&syscon_apbc CLK_APBC_SPI1_BUS>;
 			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC_SPI1>;
+			spi-max-frequency = <51200000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -1081,6 +1083,7 @@
 				<&syscon_apbc CLK_APBC2_SEC_SPI2_BUS>;
 			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC2_SEC_SPI2>;
+			spi-max-frequency = <51200000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -1100,6 +1103,7 @@
 				<&syscon_apbc CLK_APBC_SPI3_BUS>;
 			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC_SPI3>;
+			spi-max-frequency = <51200000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
