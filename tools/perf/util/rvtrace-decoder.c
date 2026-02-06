@@ -228,9 +228,10 @@ static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
 {
 	int fd;
 	void *map_base, *virt_addr;
-	unsigned int page_size = 4096, mapped_size = 4096;
-	unsigned int offset_in_page = address & (page_size - 1);
-	unsigned int width = 8 * sizeof(int);
+	u64 page_size = 4096, mapped_size = 4096;
+	u64 page_base = address & ~(page_size - 1);
+	u64 offset_in_page = address - page_base;
+	unsigned int width = 8 * size;
 
 	if (offset_in_page + width > page_size)
 		mapped_size *= 2;
@@ -239,7 +240,7 @@ static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
 	if (fd < 0)
 		return 0;
 
-	map_base = mmap(NULL, mapped_size, PROT_READ, MAP_SHARED, fd, address & ~(page_size - 1));
+	map_base = mmap(NULL, mapped_size, PROT_READ, MAP_SHARED, fd, (off_t)(page_base));
 	if (map_base == MAP_FAILED) {
 		pr_debug("failed to mmap device address 0x%lx\n", address);
 		close(fd);
