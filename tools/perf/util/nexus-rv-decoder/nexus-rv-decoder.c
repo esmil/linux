@@ -340,22 +340,29 @@ int nexus_rv_pkt_desc(struct nexus_rv_pkt_decoder *decoder, const unsigned char 
 	return err;
 }
 
-static void nexus_rv_init_stack(struct nexus_rv_stack *stack, int capacity)
+static int nexus_rv_init_stack(struct nexus_rv_stack *stack)
 {
-	if (stack->data == NULL)
-		stack->data = (u64 *)malloc(sizeof(u64) * capacity);
+	stack->data = (u64 *)malloc(sizeof(u64) * STACK_SIZE);
+	if (!stack->data)
+		return -ENOMEM;
+
 	stack->top = -1;
-	stack->capacity = capacity;
+	stack->capacity = STACK_SIZE;
+
+	return 0;
 }
 
-static void nexus_rv_stack_push(struct nexus_rv_stack *stack, u64 value)
+static int nexus_rv_stack_push(struct nexus_rv_stack *stack, u64 value)
 {
 	if (stack->top == stack->capacity - 1) {
 		stack->capacity *= 2;
 		stack->data = (u64 *)realloc(stack->data, sizeof(u64) * stack->capacity);
+		if (!stack->data)
+			return -ENOMEM;
 	}
-
 	stack->data[++stack->top] = value;
+
+	return 0;
 }
 
 static int nexus_rv_stack_pop(struct nexus_rv_stack *stack)
@@ -482,7 +489,8 @@ static int nexus_rv_emit_icnt(struct nexus_rv_insn_decoder *decoder, int n, u32 
 
 		if (info & INFO_CALL) {
 			u64 ret = decoder->nexdeco_pc + ((info & INFO_4) ? 4 : 2);
-			nexus_rv_stack_push(&decoder->stack, ret);
+			if (nexus_rv_stack_push(&decoder->stack, ret))
+				return emit_error_msg("failed to push value to stack");
 		}
 
 		if (info & INFO_INDIRECT) { // Cannot continue over indirect...
@@ -761,8 +769,6 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 
 	decoder->msg_field_cnt = 0;  // No fields
 
-	nexus_rv_init_stack(&decoder->stack, STACK_SIZE);
-
 	for (;;) {
 		prev_byte = msg_byte;
 		if (fread(&msg_byte, 1, 1, decoder->nexus) != 1)
@@ -887,8 +893,7 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 				while (cnt > 0) { // Handle (1 or many times ...)
 					int err = nexus_rv_msg_handle(decoder);
 					if (err < 0)
-						nexus_rv_init_stack(&decoder->stack, STACK_SIZE);
-						//return err;
+						return err;
 					cnt--;
 				}
 
@@ -912,6 +917,7 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 
 struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_decoder_params *params)
 {
+	int err;
 	struct nexus_rv_insn_decoder *decoder;
 	char *dir;
 	char filename[PATH_MAX];
@@ -938,7 +944,16 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 	decoder->nexdeco_pc = 1;
 	decoder->nexdeco_lastaddr = 1;
 
+	err = nexus_rv_init_stack(&decoder->stack);
+	if (err)
+		goto err_out;
+
 	return decoder;
+
+err_out:
+	fclose(decoder->nexus);
+	free(decoder);
+	return NULL;
 }
 
 void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder)
