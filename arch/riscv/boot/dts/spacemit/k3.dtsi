@@ -1073,10 +1073,10 @@
 			// dma-names = "rx", "tx";
 			interrupt-parent = <&saplic>;
 			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&syscon_apbc CLK_APBC2_SEC_SPI2>,
-				<&syscon_apbc CLK_APBC2_SEC_SPI2_BUS>;
+			clocks = <&syscon_apbc2 CLK_APBC2_SEC_SPI2>,
+				 <&syscon_apbc2 CLK_APBC2_SEC_SPI2_BUS>;
 			clock-names = "func", "bus";
-			resets = <&syscon_apbc RESET_APBC2_SEC_SPI2>;
+			resets = <&syscon_apbc2 RESET_APBC2_SEC_SPI2>;
 			spi-max-frequency = <51200000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
