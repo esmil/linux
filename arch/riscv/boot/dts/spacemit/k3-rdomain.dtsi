@@ -503,4 +503,49 @@
 		clock-frequency = <102400000>;
 		status = "disabled";
 	};
+
+	rspi0: rspi0@c0885000 {
+		compatible = "spacemit,k3-spi";
+		reg = <0x0 0xc0885000 0x0 0x30>;
+		interrupt-parent = <&saplic>;
+		interrupts = <269 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&syscon_rcpu_spictrl  CLK_RCPU_SPICTRL_RSPI0>,
+			 <&syscon_rcpu_spictrl CLK_RCPU_SPICTRL_RSPI0_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_spictrl RESET_RCPU_SPICTRL_RSPI0>;
+		spi-max-frequency = <51200000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	rspi1: rspi1@c0885100 {
+		compatible = "spacemit,k3-spi";
+		reg = <0x0 0xc0885100 0x0 0x30>;
+		interrupt-parent = <&saplic>;
+		interrupts = <270 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&syscon_rcpu_spictrl  CLK_RCPU_SPICTRL_RSPI1>,
+			 <&syscon_rcpu_spictrl CLK_RCPU_SPICTRL_RSPI1_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_spictrl RESET_RCPU_SPICTRL_RSPI1>;
+		spi-max-frequency = <51200000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	rspi2: rspi2@c0885200 {
+		compatible = "spacemit,k3-spi";
+		reg = <0x0 0xc0885200 0x0 0x30>;
+		interrupt-parent = <&saplic>;
+		interrupts = <271 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&syscon_rcpu_spictrl  CLK_RCPU_SPICTRL_RSPI2>,
+			 <&syscon_rcpu_spictrl CLK_RCPU_SPICTRL_RSPI2_BUS>;
+		clock-names = "func", "bus";
+		resets = <&syscon_rcpu_spictrl RESET_RCPU_SPICTRL_RSPI2>;
+		spi-max-frequency = <51200000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
 };
