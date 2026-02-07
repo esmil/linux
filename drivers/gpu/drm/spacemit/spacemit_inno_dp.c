@@ -234,6 +234,8 @@ struct soc_dp_pixel_pll_cfg {
 static const struct soc_dp_pixel_pll_cfg pixel_pll_cfg_table[] = {
 	{ 614400, 2460000, 0x05, 512,  0x3, 0x0, 0x0, 0x1, 0x01, 0x1, 614400, true },
 	{ 594000, 2376000, 0x01, 99,   0x3, 0x0, 0x0, 0x1, 0x01, 0x1, 594000, true },
+	{ 551040, 2760000, 0x05, 574,  0x3, 0x0, 0x1, 0x0, 0x00, 0x0, 551040, true },
+	{ 533250, 2130000, 0x08, 711,  0x3, 0x0, 0x0, 0x1, 0x01, 0x1, 533250, true },
 	{ 443250, 1770000, 0x08, 591,  0x3, 0x0, 0x0, 0x1, 0x01, 0x1, 443250, true },
 	{ 375000, 3000000, 0x01, 125,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 375000, true },
 	{ 348500, 2790000, 0x06, 697,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 348500, true },
@@ -304,6 +306,7 @@ struct soc_dp_dev {
 	bool edp_mode;
 	bool use_ext_pixel_clock;
 	int pixel_clock;
+	struct mutex mode_lock;
 
 	uint32_t ref;
 	uint32_t color_format;
@@ -912,6 +915,14 @@ static void soc_dp_phy_enable_lanes(struct soc_dp_dev *dp, enum soc_dp_lane_coun
 	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, lane_en);
 }
 
+static void soc_dp_phy_disable_lanes(struct soc_dp_dev *dp)
+{
+	dev_info(dp->dev, "Disabling PHY Transmitters\n");
+
+	/* Disable Transmitters */
+	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
+}
+
 /*
  * Check Hot Plug Detect (HPD) Status
  */
@@ -1439,19 +1450,20 @@ static enum drm_connector_status soc_dp_conn_detect(struct drm_connector *connec
 {
 	struct soc_dp_dev *dp = container_of(connector, struct soc_dp_dev, connector);
 
-	return dp->connector_status;
+	enum drm_connector_status status;
+
+	mutex_lock(&dp->mode_lock);
+	status = dp->connector_status;
+	mutex_unlock(&dp->mode_lock);
+
+	return status;
 }
 
 static int
 soc_dp_conn_probe_single_connector_modes(struct drm_connector *connector,
 				       uint32_t maxX, uint32_t maxY)
 {
-	struct soc_dp_dev *dp = container_of(connector, struct soc_dp_dev, connector);
-
-	if (dp->edp_mode)
-		return drm_helper_probe_single_connector_modes(connector, 2560, 1600);
-	else
-		return drm_helper_probe_single_connector_modes(connector, 1920, 1080);
+	return drm_helper_probe_single_connector_modes(connector, 3840, 2160);
 }
 
 static const struct drm_connector_funcs soc_dp_connector_funcs = {
@@ -1534,6 +1546,16 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 		}
 	}
 
+	list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
+		if (mode->hdisplay == 3840) {
+			if (drm_mode_vrefresh(mode) > 60) {
+				list_del(&mode->head);
+				drm_mode_destroy(dev, mode);
+				count--;
+			}
+		}
+	}
+
 	if (count > 1) {
 		list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
 			mode->type &= ~DRM_MODE_TYPE_PREFERRED;
@@ -1588,6 +1610,8 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 	DRM_INFO("%s()\n", __func__);
 
+	mutex_lock(&dp->mode_lock);
+
 	if (dp->pxclk) {
 		set_clk_val = adjusted_mode->clock * 1000;
 		if (set_clk_val) {
@@ -1622,6 +1646,8 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 		dev_info(dp->dev, "DP: Attempting Config: R=%d, L=%d (Cap: %d > Req: %d)\n",
 			cfg->rate, cfg->lanes, capacity, req_bw);
+
+		soc_dp_phy_disable_lanes(dp);
 
 		/* Apply Hardware Settings */
 		if (dp->use_ext_pixel_clock) {
@@ -1666,11 +1692,14 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 	}
 
 	if (!config_success) {
+		mutex_unlock(&dp->mode_lock);
 		dev_err(dp->dev, "DP: Critical Failure - No valid link config found.\n");
 		return;
 	}
 
 	soc_dp_hw_set_msa_and_enable_video(dp, adjusted_mode, cfg->rate, cfg->lanes);
+
+	mutex_unlock(&dp->mode_lock);
 	dev_info(dp->dev, "DP: Stream Active\n");
 }
 
@@ -1766,6 +1795,8 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 	struct soc_dp_dev *dp = container_of(work, struct soc_dp_dev, hpd_work.work);
 	enum drm_connector_status old_status, new_status;
 
+	mutex_lock(&dp->mode_lock);
+
 	old_status = dp->connector_status;
 	new_status = soc_dp_hw_detect_hpd(dp);
 
@@ -1775,9 +1806,12 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 		dp->connector_status = new_status;
 		if (dp->connector_status == connector_status_connected)
 			soc_dp_hw_read_sink_caps(dp);
+
+		mutex_unlock(&dp->mode_lock);
 		DRM_INFO("%s() dp hpd event\n", __func__);
 		drm_kms_helper_hotplug_event(dp->drm);
-	}
+	} else
+		mutex_unlock(&dp->mode_lock);
 
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
 }
@@ -1809,8 +1843,13 @@ static irqreturn_t soc_dp_hotplug_event_handler(int irq, void *data)
 {
 	struct soc_dp_dev *dp = data;
 
+	mutex_lock(&dp->mode_lock);
+
 	if (dp->connector_status == connector_status_connected)
 		soc_dp_hw_read_sink_caps(dp);
+
+	mutex_unlock(&dp->mode_lock);
+
 	drm_kms_helper_hotplug_event(dp->drm);
 
 	return IRQ_HANDLED;
@@ -2137,6 +2176,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	dp->dev = dev;
 	dp->drm = drm;
 	dp->connector_status = connector_status_disconnected;
+	mutex_init(&dp->mode_lock);
 
 #ifdef CONFIG_SOC_DP_DRIVER_QEMU
 	dp->proc_irq = NULL;
@@ -2283,6 +2323,8 @@ static void soc_dp_unbind(struct device *dev, struct device *master, void *data)
 #endif
 	drm_encoder_cleanup(&dp->encoder);
 	drm_connector_cleanup(&dp->connector);
+
+	mutex_destroy(&dp->mode_lock);
 
 	if(INVALID_GPIO != dp->gpio_bl)
 		gpio_direction_output(dp->gpio_bl, 0);
