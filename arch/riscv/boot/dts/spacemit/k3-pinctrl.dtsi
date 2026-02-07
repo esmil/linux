@@ -2248,10 +2248,10 @@
 
 		/* MII extra pins: add on top of (base + rgmii extra pins) */
 		gmac1_mii_add_pins: gmac1-2-pins {
-			pinmux = <K3_PADCONF(36, 1)>,	/* gmac1 rxer */
-				 <K3_PADCONF(37, 1)>,	/* gmac1 txer */
-				 <K3_PADCONF(38, 1)>,	/* gmac1 crs */
-				 <K3_PADCONF(39, 1)>;	/* gmac1 col */
+			pinmux = <K3_PADCONF(37, 1)>,	/* gmac1 rxer */
+				 <K3_PADCONF(38, 1)>,	/* gmac1 txer */
+				 <K3_PADCONF(39, 1)>,	/* gmac1 crs */
+				 <K3_PADCONF(40, 1)>;	/* gmac1 col */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
@@ -2267,7 +2267,7 @@
 
 		/* Optional pps pins */
 		gmac1_pps_pins: gmac1-4-pins {
-			pinmux = <K3_PADCONF(40, 1)>;	/* gmac1 pps (tsn/1588) */
+			pinmux = <K3_PADCONF(41, 1)>;	/* gmac1 pps (tsn/1588) */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
@@ -2275,7 +2275,7 @@
 
 		/* Optional reference clock output */
 		gmac1_refclk_pins: gmac1-5-pins {
-			pinmux = <K3_PADCONF(41, 1)>;	/* gmac1 clk ref */
+			pinmux = <K3_PADCONF(36, 1)>;	/* gmac1 clk ref */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
