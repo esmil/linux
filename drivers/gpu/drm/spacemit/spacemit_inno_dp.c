@@ -26,6 +26,8 @@
 #include <drm/display/drm_dp_aux_bus.h>
 #include <drm/display/drm_dp.h>
 #include <drm/display/drm_dp_helper.h>
+#include <sound/pcm_params.h>
+#include <sound/soc.h>
 
 #include "spacemit_inno_dp.h"
 
@@ -315,6 +317,9 @@ struct soc_dp_dev {
 #else
 	int irq;
 #endif
+#if IS_ENABLED(CONFIG_SND_SOC)
+	uint32_t aud_mode;
+#endif
 };
 
 static int soc_dp_reg_write(struct soc_dp_dev *dp,
@@ -361,6 +366,131 @@ static int soc_dp_reg_read_range(struct soc_dp_dev *dp,
 
 	return ret;
 }
+
+#if IS_ENABLED(CONFIG_SND_SOC)
+static int inno_dp_dai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+	uint32_t mode = 0x00;
+
+	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
+	case SND_SOC_DAIFMT_I2S:
+		mode = 0x00;
+		break;
+	case SND_SOC_DAIFMT_LEFT_J:
+		mode = 0x01;
+		break;
+	case SND_SOC_DAIFMT_RIGHT_J:
+		mode = 0x02;
+		break;
+	default:
+		return -EINVAL;
+	}
+	dp->aud_mode = mode;
+	soc_dp_reg_write_range(dp, SOC_DPTX_I2S_AUDIO_MODE, mode);
+	return 0;
+}
+
+static int inno_dp_dai_pcm_hw_params(struct snd_pcm_substream *substream,
+				     struct snd_pcm_hw_params *params,
+				     struct snd_soc_dai *dai)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+	unsigned int data_bits = 0;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		data_bits = 0x10;
+		break;
+	case SNDRV_PCM_FORMAT_S20_3LE:
+		data_bits = 0x14;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		data_bits = 0x18;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_DATA_WIDTH, data_bits);
+	soc_dp_reg_write_range(dp, SOC_DPTX_I2S_AUDIO_MODE, dp->aud_mode);
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_RESET, 1);
+
+	return 0;
+}
+
+static int inno_dp_dai_mute(struct snd_soc_dai *dai, int mute, int direction)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+
+	if (mute)
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_MUTE, 1);
+	else
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_MUTE, 0);
+
+	return 0;
+}
+
+static int inno_dp_dai_trigger(struct snd_pcm_substream *substream,
+				int cmd, struct snd_soc_dai *dai)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_RESET, 0);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_RESET, 1);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+const struct snd_soc_dai_ops inno_dp_dai_ops = {
+	.hw_params = inno_dp_dai_pcm_hw_params,
+	.set_fmt = inno_dp_dai_set_dai_fmt,
+	.trigger = inno_dp_dai_trigger,
+	.mute_stream = inno_dp_dai_mute,
+	.no_capture_mute = 0,
+};
+
+struct snd_soc_dai_driver inno_dp_dai_driver = {
+	.name = "dp audio",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_8000_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE
+			   | SNDRV_PCM_FMTBIT_S20_3LE
+			   | SNDRV_PCM_FMTBIT_S24_LE,
+		},
+	.ops = &inno_dp_dai_ops,
+};
+
+const struct snd_soc_component_driver soc_component_inno_dp = {
+	.name = "inno-dp-audio",
+};
+
+static int inno_dp_audio_register(struct device *dev)
+{
+	return snd_soc_register_component(dev,
+					  &soc_component_inno_dp,
+					  &inno_dp_dai_driver, 1);
+}
+
+static void inno_dp_audio_unregister(struct device *dev)
+{
+	snd_soc_unregister_component(dev);
+}
+#endif
 
 static uint32_t soc_dp_aux_get_cmd(struct drm_dp_aux_msg *msg)
 {
@@ -1935,6 +2065,32 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_MODE_D0, tx_mode);
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_AUX_RX_VSEL, 0x0);
 
+#if IS_ENABLED(CONFIG_SND_SOC)
+	// init Audio
+	if (!dp->edp_mode) {
+		dev_info(dp->dev, "init audio\n");
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUD_STREAM_VERTICAL_EN, 1);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUD_STREAM_HORIZONTAL_EN, 1);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUD_TIMESTAMP_VERTICAL_EN, 1);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUD_TIMESTAMP_HORIZONTAL_EN, 1);
+
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_INF_SELECT, 0);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUD_ADJUST_SEL, 1);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_NUM_CHANNELS, 0x1);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_DATA_IN_EN, 0x1);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_DATA_WIDTH, 0x10);
+		soc_dp_reg_write_range(dp, SOC_DPTX_I2S_AUDIO_MODE, 0x01);
+
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_PACKET_ID, 0);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_TIMESTAMP_VERSION_NUM, 0x12);
+
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_MUTE, 0);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_RESET, 1);
+		udelay(1000);
+		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_RESET, 0);
+	}
+#endif
+
 	// Update connector status using hardware detection interface
 #if HPD_BYPASS
 	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
@@ -2089,6 +2245,14 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC)
+	if (!dp->edp_mode) {
+		ret = inno_dp_audio_register(dp->dev);
+		if (ret)
+			dev_err(dev, "failed to register dp auido component\n");
+	}
+#endif
+
 	return 0;
 }
 
@@ -2101,6 +2265,12 @@ static void soc_dp_unbind(struct device *dev, struct device *master, void *data)
 	DRM_INFO("%s()\n", __func__);
 
 	soc_dp_hw_disable(dp);
+
+#if IS_ENABLED(CONFIG_SND_SOC)
+	if (!dp->edp_mode) {
+		inno_dp_audio_unregister(dp->dev);
+	}
+#endif
 
 #if HOT_PLUG_THREAD_ENABLED
 	cancel_delayed_work_sync(&dp->hpd_work);

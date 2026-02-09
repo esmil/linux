@@ -19,6 +19,7 @@
 #define SOC_DPTX_CONTROLLER_RESET                     0x001c,31,31 // CONTROLLER_RESET;0: normal;1: reset
 #define SOC_DPTX_PHY_RESET                            0x001c,30,30 // PHY_RESET;0: normal;1: reset
 #define SOC_DPTX_HDCP_RESET                           0x001c,29,29 // HDCP_RESET;0: normal;1: reset
+#define SOC_DPTX_AUDIO_RESET                          0x001c,28,28 // AUDIO_RESET;0: normal;1: reset
 #define SOC_DPTX_AUX_RESET                            0x001c,27,27 // AUX_RESET;0: normal;1:reset
 #define SOC_DPTX_VIDEO_RESET                          0x001c,3,0   // VIDEO_RESET;video soft reset,up to 4 streams.;0: noraml;1:reset
 
@@ -230,6 +231,18 @@
 // SOC_DPTX_VIDEO_COLORBAR_CFG: 0x0238
 #define SOC_DPTX_VID_BIST_EN                          0x0238,0,0   // VID_BIST_EN;video bist mode enable.
 
+// SOC_DPTX_AUDIO_CONFIG1: 0x0300
+#define SOC_DPTX_AUDIO_INF_SELECT                     0x0300,31,31 // AUDIO_INF_SELECT;1’b0:select i2S as input(default);1’b1:select spdif as input
+#define SOC_DPTX_AUDIO_MUTE                           0x0300,30,30 // AUDIO_MUTE;1’b0: Clears the AudioMute_Flag in VB-ID.;1’b1: Sets the AudioMute_Flag in VB-ID.
+#define SOC_DPTX_HBR_MODE_ENABLE                      0x0300,29,29 // HBR_MODE_ENABLE
+#define SOC_DPTX_AUDIO_DATA_IN_EN                     0x0300,28,25 // AUDIO_DATA_IN_EN;Indicates whether the input data is vaild.;Bit 1:indicates whether the channels 1,2  input data is vaild.;Bit 2:indicates whether the channels 3,4  input data is vaild.;Bit 3:indicates whether the channels 5,6  input data is vaild.;Bit 4:indicates whether the channels 7,8  input data is vaild.;tips: must be consistent with audio_channel_num(0x0300[16:14])
+#define SOC_DPTX_I2S_AUDIO_MODE                       0x0300,24,23 // I2S_AUDIO_MODE ;1: left adjusted.;2: right adjusted.;others: standard mode.
+#define SOC_DPTX_AUD_ADJUST_SEL                       0x0300,22,22 // AUD_ADJUST_SEL;0: I2S origin data;1: I2S format adjust data
+#define SOC_DPTX_AUDIO_DATA_WIDTH                     0x0300,21,17 // AUDIO_DATA_WIDTH;Indicates the bit width of the data samples at input.;16: 16 bits;17: 17 bits;18: 18 bits;19: 19 bits;20: 20 bits;21: 21 bits;22: 22 bits;23: 23 bits;others: 24 bits
+#define SOC_DPTX_AUDIO_NUM_CHANNELS                   0x0300,16,14 // AUDIO_NUM_CHANNELS;Number of audio channels.;0: 1 channel;1: 2 channel;Others:8 channel
+#define SOC_DPTX_AUDIO_PACKET_ID                      0x0300,13,6  // AUDIO_PACKET_ID;audio packrt packet ID.
+#define SOC_DPTX_AUDIO_TIMESTAMP_VERSION_NUM          0x0300,5,0   // AUDIO_TIMESTAMP_VERSION_NUM;audio packet version num.
+
 // SOC_DPTX_AUX_STS_REG: 0x0400
 #define SOC_DPTX_AUX_STATUS                           0x0400,31,24 // Aux_reply_cmd;4’b0000:ack;4’b0001:nack
 #define SOC_DPTX_AUX_REPLY_ERR_CODE                   0x0400,6,4   // AUX_REPLY_ERR_CODE;0: no error;1: AUX DATA PAYLOAD detect less than 8.;4: AUX STOP_L STATE detect greater than 2.;5: AUX SYNC_H STATE detect greater than 2.;6: AUX SYNC_L STATE detect greater than 2.;7: AUX STOP_H STATE detect greater than 2.;others: reserved
@@ -253,5 +266,13 @@
 
 // SOC_DPTX_AUX_DATA1_REG: 0x0418
 #define SOC_DPTX_AUX_DATA1                            0x0418,31,0  // cfg_phy_aux_data[31:0],cfg_phy_aux_data composed of 0x0418,0x0414,0x0410,0x040C,totally 16bytes,including data(8bits*16),payload for RWite request or read request.;tips: for a RWite request ,filled attached data needs to be transmitted;for a read reply ,stored the replied data.
+
+// SOC_DPTX_SDP_HORIZONTAL_CTRL: 0x0420
+#define SOC_DPTX_AUD_STREAM_HORIZONTAL_EN             0x0420,13,13 // AUD_STREAM_HORIZONTAL_EN;1’b0:disable audio stream is transmitted during horizontal blanking period.;1’b1:Enable audio stream is transmitted during horizontal blanking period.
+#define SOC_DPTX_AUD_TIMESTAMP_HORIZONTAL_EN          0x0420,12,12 // AUD_TIMESTAMP_HORIZONTAL_EN;1’b0:disable send audio timestamp SDP once every video frame during horizontal blanking period.;1’b1:Enable send audio timestamp SDP once every video frame during horizontal blanking period.
+
+// SOC_DPTX_SDP_VERTICAL_CTRL: 0x0424
+#define SOC_DPTX_AUD_STREAM_VERTICAL_EN               0x0424,13,13 // AUD_STREAM_VERTICAL_EN;1’b0:disable audio stream is transmitted during vertical blanking period.;1’b1:Enable audio stream is transmitted during vertical blanking period.
+#define SOC_DPTX_AUD_TIMESTAMP_VERTICAL_EN            0x0424,12,12 // AUD_TIMESTAMP_VERTICAL_EN;1’b0:disable send audio timestamp SDP once every video frame during vertical blanking period.;1’b1:Enable send audio timestamp SDP once every video frame during vertical blanking period.
 
 #endif /* __SPACEMIT_INNO_DP_H__ */
