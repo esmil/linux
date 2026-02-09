@@ -405,7 +405,7 @@
 };
 
 &ec_master {
-	states = "okay";
+	status = "okay";
 
         master0 {
 		main-device = <&eth1>;
