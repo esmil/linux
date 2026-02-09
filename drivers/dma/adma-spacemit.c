@@ -209,6 +209,7 @@ static void adma_free_desc_list(struct adma_ch *chan,
 
 	list_for_each_entry_safe(desc, _desc, list, node) {
 		list_del(&desc->node);
+		desc->desc->nxt_desc = 0;
 		gen_pool_free(chan->hw_desc_pool, (long)desc->desc, sizeof(struct adma_desc_hw));
 		dma_pool_free(chan->sw_desc_pool, desc, sizeof(struct adma_desc_sw));
 	}
@@ -438,7 +439,8 @@ static void adma_issue_pending(struct dma_chan *dchan)
 
 	spin_lock_irqsave(&achan->desc_lock, flags);
 	if (achan->status == DMA_IN_PROGRESS) {
-		dev_dbg(achan->dev, "DMA controller still busy\n");
+		dev_err(achan->dev, "DMA controller still busy\n");
+		spin_unlock_irqrestore(&achan->desc_lock, flags);
 		return;
 	}
 	phy = achan->phy;
@@ -533,6 +535,7 @@ static enum dma_status adma_tx_status(struct dma_chan *dchan,
 		return chan->status;
 }
 
+#if 0
 static void disable_chan(struct adma_pchan *phy)
 {
 	u32 reg_val = adma_ch_read_reg(phy, DCR);
@@ -545,8 +548,8 @@ static void disable_chan(struct adma_pchan *phy)
 	reg_val &= ~ADMA_CH_EN;
 	adma_ch_write_reg(phy, DCR, reg_val);
 	adma_ch_write_reg(phy, IER, 0);
-	disable_irq_nosync(phy->irq);
 }
+#endif
 
 static int adma_terminate_all(struct dma_chan *dchan)
 {
@@ -554,10 +557,12 @@ static int adma_terminate_all(struct dma_chan *dchan)
 	unsigned long flags;
 
 	spin_lock_irqsave(&achan->desc_lock, flags);
-	disable_chan(achan->phy);
-	achan->status = DMA_COMPLETE;
+	adma_ch_write_reg(achan->phy, ISR, 0);
+	adma_ch_write_reg(achan->phy, IER, 0);
+	disable_irq_nosync(achan->phy->irq);
 	adma_free_desc_list(achan, &achan->chain_pending);
 	adma_free_desc_list(achan, &achan->chain_running);
+	achan->status = DMA_COMPLETE;
 	spin_unlock_irqrestore(&achan->desc_lock, flags);
 
 	return 0;

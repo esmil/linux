@@ -7775,6 +7775,13 @@ static int ufshcd_abort(struct scsi_cmnd *cmd)
 	bool outstanding;
 	u32 reg;
 
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	/* Bypass "Task Management Abort" and force SCSI error
+	 * recovery to take a more aggressive Reset/Re-link path
+	 * to accelerate the recovery process. */
+	return err;
+#endif
+
 	ufshcd_hold(hba);
 
 	if (!hba->mcq_enabled) {

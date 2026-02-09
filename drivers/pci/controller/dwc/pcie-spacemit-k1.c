@@ -60,12 +60,14 @@
 #define PCIE_PERSTN_OUT			BIT(25)
 #define PCIE_IGNORE_PERSTN		BIT(31)
 
+#define SPACEMIT_PHY_AHB_IRQSTATUS_INTX		0x0008
 #define SPACEMIT_PHY_AHB_IRQENABLE_SET_INTX	0x000c
 #define LEG_EP_INTERRUPTS (BIT(6) | BIT(7) | BIT(8) | BIT(9))
 
 #define SPACEMIT_PHY_AHB_IRQENABLE_SET_MSI	0x0014
 /* MSI defined as BIT(11) in existing INTR_ENABLE, reusing */
 
+#define ADDR_INTR_STATUS1		0x0018
 #define ADDR_INTR_ENABLE1		0x001C
 #define MSI_INT			BIT(0)
 #define MSIX_INT			GENMASK(8, 1)
@@ -211,8 +213,8 @@ static void spacemit_pcie_eq_preset(struct k1_pcie *pcie)
 	u32 val;
 
 	val = dw_pcie_readl_dbi(pci, GEN3_EQ_CONTROL_OFF);
-	val &= ~(0xffff << 8);
-	val |= ((0x1 << 4) << 8);
+	val &= ~GEN3_EQ_CONTROL_OFF_PSET_REQ_VEC;
+	val |= FIELD_PREP(GEN3_EQ_CONTROL_OFF_PSET_REQ_VEC, (0x1 << 7));
 	dw_pcie_writel_dbi(pci, GEN3_EQ_CONTROL_OFF, val);
 }
 
@@ -235,6 +237,21 @@ static int spacemit_pcie_msi_host_init(struct dw_pcie_rp *pp)
 
 #define to_k1_pcie(dw_pcie) \
 		platform_get_drvdata(to_platform_device((dw_pcie)->dev))
+
+static void k1_pcie_clear_irq_status(struct k1_pcie *k1)
+{
+	u32 status0;
+	u32 status1;
+	u32 status2;
+
+	status0 = readl_relaxed(k1->link + SPACEMIT_PHY_AHB_IRQSTATUS_INTX);
+	status1 = readl_relaxed(k1->link + INTR_STATUS);
+	status2 = readl_relaxed(k1->link + ADDR_INTR_STATUS1);
+
+	writel_relaxed(status0, k1->link + SPACEMIT_PHY_AHB_IRQSTATUS_INTX);
+	writel_relaxed(status1, k1->link + INTR_STATUS);
+	writel_relaxed(status2, k1->link + ADDR_INTR_STATUS1);
+}
 
 static void k1_pcie_toggle_soft_reset(struct k1_pcie *k1)
 {
@@ -338,22 +355,29 @@ static irqreturn_t spacemit_pcie_irq_thread(int irq, void *data)
 	struct k1_pcie *k1 = data;
 	struct dw_pcie_rp *pp = &k1->pci.pp;
 	struct device *dev = k1->pci.dev;
-	u32 status;
+	u32 status0;
+	u32 status1;
+	u32 status2;
 
-	status = readl_relaxed(k1->link + INTR_STATUS);
-	writel_relaxed(status, k1->link + INTR_STATUS);
+	status0 = readl_relaxed(k1->link + SPACEMIT_PHY_AHB_IRQSTATUS_INTX);
+	status1 = readl_relaxed(k1->link + INTR_STATUS);
+	status2 = readl_relaxed(k1->link + ADDR_INTR_STATUS1);
 
-	if (FIELD_GET(RDLH_LINK_UP_INT, status)) {
+	writel_relaxed(status0, k1->link + SPACEMIT_PHY_AHB_IRQSTATUS_INTX);
+	writel_relaxed(status1, k1->link + INTR_STATUS);
+	writel_relaxed(status2, k1->link + ADDR_INTR_STATUS1);
+
+	if (FIELD_GET(RDLH_LINK_UP_INT, status1)) {
 		msleep(PCIE_RESET_CONFIG_WAIT_MS);
 		dev_dbg(dev, "Received Link up event. Starting enumeration!\n");
 		/* Rescan the bus to enumerate endpoint devices */
 		pci_lock_rescan_remove();
 		pci_rescan_bus(pp->bridge->bus);
 		pci_unlock_rescan_remove();
-	} else {
-		dev_WARN_ONCE(dev, 1, "Received unknown event. INT_STATUS: 0x%08x\n",
-			      status);
-	}
+	} else if (!status0 && !status1 && !status2)
+		dev_WARN_ONCE(dev, 1,
+			      "Received unknown event. status0=0x%08x status1=0x%08x status2=0x%08x\n",
+			      status0, status1, status2);
 
 	return IRQ_HANDLED;
 }
@@ -362,7 +386,7 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct k1_pcie *k1 = to_k1_pcie(pci);
-	u32 reset_ctrl;
+	u32 reset_ctrl = k1->pmu_off + PCIE_CLK_RESET_CONTROL;
 	int ret;
 	u32 val;
 
@@ -372,6 +396,29 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	regmap_set_bits(k1->pmu, reset_ctrl, PCIE_AUX_PWR_DET);
+	regmap_update_bits(k1->pmu, reset_ctrl, APP_HOLD_PHY_RST, 0);
+
+	ret = spacemit_pcie_config_lane_mux(k1);
+	if (ret)
+		return ret;
+
+	ret = spacemit_pcie_enable_phy(k1);
+	if (ret)
+		return ret;
+#else
+	regmap_set_bits(k1->pmu, reset_ctrl, DEVICE_TYPE_RC | PCIE_AUX_PWR_DET);
+
+	ret = phy_init(k1->phy);
+	if (ret) {
+		k1_pcie_disable_resources(k1);
+
+		return ret;
+	}
+#endif
+
+	regmap_update_bits(k1->pmu, reset_ctrl, LTSSM_EN, 0);
 	/*
 	 * Start by asserting fundamental reset (drive PERST# low).  The
 	 * PCI CEM spec says that PERST# should be deasserted at least
@@ -379,7 +426,6 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	 * delay first.  Write, then read it back to guarantee the write
 	 * reaches the device before we start the delay.
 	 */
-	reset_ctrl = k1->pmu_off + PCIE_CLK_RESET_CONTROL;
 #ifdef CONFIG_SOC_SPACEMIT_K3
 	/* K3: Set IGNORE_PERSTN and drive PERSTN_OE high (assert reset) */
 	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC,
@@ -398,31 +444,10 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	 * Vaux (3.3v) is present.
 	 */
 #ifdef CONFIG_SOC_SPACEMIT_K3
-	regmap_set_bits(k1->pmu, reset_ctrl, PCIE_AUX_PWR_DET);
-
 	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC,
 			   PCIE_PERSTN_OUT | PCIE_PERSTN_OE,
 			   PCIE_PERSTN_OUT | PCIE_PERSTN_OE);
-	regmap_update_bits(k1->pmu, reset_ctrl, APP_HOLD_PHY_RST, 0);
-
-	ret = spacemit_pcie_config_lane_mux(k1);
-	if (ret)
-		return ret;
-
-	ret = spacemit_pcie_enable_phy(k1);
-	if (ret)
-		return ret;
-
 	spacemit_pcie_eq_preset(k1);
-#else
-	regmap_set_bits(k1->pmu, reset_ctrl, DEVICE_TYPE_RC | PCIE_AUX_PWR_DET);
-
-	ret = phy_init(k1->phy);
-	if (ret) {
-		k1_pcie_disable_resources(k1);
-
-		return ret;
-	}
 #endif
 
 	/* Set the PCI vendor and device ID */
@@ -503,18 +528,6 @@ static int k1_pcie_start_link(struct dw_pcie *pci)
 	val = readl_relaxed(k1->link + INTR_ENABLE);
 	val |= RDLH_LINK_UP_INT;
 	writel_relaxed(val, k1->link + INTR_ENABLE);
-
-#ifdef CONFIG_SOC_SPACEMIT_K3
-	/* Enable INTx */
-	val = readl_relaxed(k1->link + SPACEMIT_PHY_AHB_IRQENABLE_SET_INTX);
-	val |= LEG_EP_INTERRUPTS;
-	writel_relaxed(val, k1->link + SPACEMIT_PHY_AHB_IRQENABLE_SET_INTX);
-
-	/* Enable MSI/MSIX specific to K3 */
-	val = readl_relaxed(k1->link + ADDR_INTR_ENABLE1);
-	val |= (MSI_INT | MSIX_INT);
-	writel_relaxed(val, k1->link + ADDR_INTR_ENABLE1);
-#endif
 
 	return 0;
 }
@@ -673,6 +686,8 @@ static int k1_pcie_probe(struct platform_device *pdev)
 	irq = platform_get_irq_byname_optional(pdev, "pcie_irq");
 	if (irq > 0)
 		pp->use_linkup_irq = true;
+
+	k1_pcie_clear_irq_status(k1);
 
 	ret = dw_pcie_host_init(&k1->pci.pp);
 	if (ret) {

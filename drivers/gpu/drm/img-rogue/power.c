@@ -993,8 +993,14 @@ PVRSRV_ERROR PVRSRVSetDeviceSystemPowerState(PPVRSRV_DEVICE_NODE psDeviceNode,
 	_PVRSRVForcedPowerLock(psDeviceNode);
 	psPowerDevice = psDeviceNode->psPowerDev;
 
-	eNewDevicePowerState = _IsSystemStatePowered(eNewSysPowerState)
-	    ? psPowerDevice->eDefaultPowerState : PVRSRV_DEV_POWER_STATE_OFF;
+	if (psPowerDevice){
+		eNewDevicePowerState = _IsSystemStatePowered(eNewSysPowerState)
+			? psPowerDevice->eDefaultPowerState : PVRSRV_DEV_POWER_STATE_OFF;
+	}
+	else{
+		eNewDevicePowerState = _IsSystemStatePowered(eNewSysPowerState)
+			? PVRSRV_DEV_POWER_STATE_DEFAULT : PVRSRV_DEV_POWER_STATE_OFF;
+	}
 
 	/* If setting devices to default state, force idle all devices whose default state is off */
 	pfnIsDefaultStateOff =
@@ -1030,9 +1036,9 @@ PVRSRV_ERROR PVRSRVSetDeviceSystemPowerState(PPVRSRV_DEVICE_NODE psDeviceNode,
 	}
 
 	/* Call power function if the state change or if this is an OS request. */
-	if (OSAtomicRead(&psPowerDevice->eCurrentPowerState) != eNewDevicePowerState ||
+	if (psPowerDevice && (OSAtomicRead(&psPowerDevice->eCurrentPowerState) != eNewDevicePowerState ||
 			 BITMASK_ANY(ePwrFlags,
-			 PVRSRV_POWER_FLAGS_OSPM_SUSPEND_REQ | PVRSRV_POWER_FLAGS_OSPM_RESUME_REQ))
+			 PVRSRV_POWER_FLAGS_OSPM_SUSPEND_REQ | PVRSRV_POWER_FLAGS_OSPM_RESUME_REQ)))
 	{
 		eError = PVRSRVDeviceSystemPrePowerStateKM(psPowerDevice,
 												   eNewDevicePowerState,

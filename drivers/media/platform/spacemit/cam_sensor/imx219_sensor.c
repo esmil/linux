@@ -193,7 +193,7 @@ static int imx219_detect(struct imx219 *sensor);
 
 static long imx219_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	struct imx219 *sensor = global_imx219;
+	struct imx219 *sensor = file->private_data;
 	int ret = 0;
 
 	if (!sensor)
@@ -226,8 +226,23 @@ static long imx219_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
+static int imx219_dev_open(struct inode *inode, struct file *file)
+{
+	struct miscdevice *misc = file->private_data;
+	struct imx219 *sensor;
+
+	if (!misc)
+		return -ENODEV;
+
+	sensor = container_of(misc, struct imx219, miscdev);
+	/* replace private_data with sensor pointer for use in ioctl */
+	file->private_data = sensor;
+	return 0;
+}
+
 static const struct file_operations imx219_fops = {
 	.owner = THIS_MODULE,
+	.open = imx219_dev_open,
 	.unlocked_ioctl = imx219_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = imx219_ioctl,
@@ -303,7 +318,7 @@ static int imx219_power_on(struct imx219 *sensor)
 		gpiod_set_value_cansleep(sensor->pwdn, 0);
 	}
 
-	usleep_range(1000, 1200);
+	usleep_range(10000, 12000);
 
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev,
@@ -354,23 +369,33 @@ static int imx219_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, sensor);
 
 	dev_info(dev, "imx219-test: get PWDN gpio\n");
-	sensor->pwdn = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_HIGH);
+	sensor->pwdn = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_LOW);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "imx219-test: Failed to get PWDN GPIO\n");
 		return PTR_ERR(sensor->pwdn);
 	}
 	dev_info(dev, "imx219-test: get i2c gpio\n");
-	sensor->i2c = devm_gpiod_get_optional(dev, "i2c", GPIOD_OUT_HIGH);
-	if (IS_ERR(sensor->i2c)) {
-		dev_err(dev, "imx219-test: Failed to get I2C GPIO\n");
-		return PTR_ERR(sensor->i2c);
-	}
-	gpiod_set_value_cansleep(sensor->i2c, 1);
 
 	sensor->miscdev.minor = MISC_DYNAMIC_MINOR;
-	sensor->miscdev.name = "imx219-test";
 	sensor->miscdev.fops = &imx219_fops;
 	sensor->miscdev.parent = dev;
+	if (client->dev.of_node) {
+		u32 csi_id;
+		if (of_property_read_u32(client->dev.of_node, "csi-id",
+					 &csi_id) == 0) {
+			sensor->miscdev.name = devm_kasprintf(
+				dev, GFP_KERNEL, "imx219-%u", csi_id);
+			dev_info(dev, "imx219-test: imx219-%u \n", csi_id);
+		} else {
+			sensor->miscdev.name = devm_kasprintf(
+				dev, GFP_KERNEL, "imx219-%02x", client->addr);
+			dev_info(dev, "imx219-test: imx219-%02x \n",
+				 client->addr);
+		}
+	} else {
+		sensor->miscdev.name = devm_kasprintf(
+			dev, GFP_KERNEL, "imx219-%02x", client->addr);
+	}
 
 	ret = misc_register(&sensor->miscdev);
 	if (ret) {

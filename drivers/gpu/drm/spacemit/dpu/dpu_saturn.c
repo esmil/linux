@@ -973,9 +973,8 @@ static uint8_t pll_make_range_reg(int range_idx)
 }
 
 /* pll_reg7 */
-static uint8_t pll_make_rate_reg(uint32_t vco_freq)
+static uint8_t pll_make_rate_reg(int rate_sel)
 {
-	int rate_sel = pll_get_rate_sel(vco_freq);
 	if (rate_sel < 0)
 		return 0xFF;
 
@@ -986,17 +985,22 @@ static uint8_t pll_make_rate_reg(uint32_t vco_freq)
 }
 
 /* ===================== ctrl_reg0 ===================== */
-static u32 pll_make_ctrl_reg0(u32 vco_freq)
+static u32 pll_make_ctrl_reg0(u32 vco_freq, int rate_sel)
 {
-	u32 denom = 24;
+	u32 denom = PLL_REF_FREQ_MHZ;
 	u32 div_int;
 	u64 frac22;
+	u32 remainder;
+
+	if (rate_sel >= 0)
+		denom = PLL_REF_FREQ_MHZ  * (rate_sel + 1);
 
 	/* integer part */
 	div_int = vco_freq / denom;
 
 	/* fractional part: round((vco % denom) / denom * 2^22) */
-	frac22 = (u64)(vco_freq % denom) << 22;
+	remainder = vco_freq % denom;
+	frac22 = (u64)remainder << 22;
 	frac22 += denom / 2;
 	do_div(frac22, denom);   /* frac22 is 22-bit */
 
@@ -1004,10 +1008,8 @@ static u32 pll_make_ctrl_reg0(u32 vco_freq)
 }
 
 /* ===================== ctrl_reg1 ===================== */
-static uint32_t pll_make_ctrl_reg1(uint32_t bitclock, int pllmode)
+static uint32_t pll_make_ctrl_reg1(uint32_t bitclock, int pllmode, int rate_sel)
 {
-	uint32_t vco_freq = bitclock * 2;
-
 	int range_idx = pll_get_range_index(bitclock);
 	if (range_idx < 0)
 		return 0xFFFFFFFF;
@@ -1015,7 +1017,7 @@ static uint32_t pll_make_ctrl_reg1(uint32_t bitclock, int pllmode)
 	uint8_t pll_reg4 = (uint8_t)(3 + pllmode * 8);
 	uint8_t pll_reg5 = pll_make_range_reg(range_idx);
 	uint8_t pll_reg6 = pll_reg5;
-	uint8_t pll_reg7 = pll_make_rate_reg(vco_freq);
+	uint8_t pll_reg7 = pll_make_rate_reg(rate_sel);
 
 	return (pll_reg7 << 24) | (pll_reg6 << 16) |
 		(pll_reg5 << 8) | pll_reg4;
@@ -1025,16 +1027,16 @@ static int spacemit_calc_pll_regs(uint32_t bitclock,
 			   uint32_t *pll_ctrl_reg0,
 			   uint32_t *pll_ctrl_reg1)
 {
-	const int pllmode = PLLMODE_DEFALUT;
-
+	const int pllmode = PLL_MODE_5G_PLL;
 	uint32_t vco_freq = bitclock * 2;
+	int rate_sel;
 
-	int rate_sel = pll_get_rate_sel(vco_freq);
+	rate_sel = pll_get_rate_sel(vco_freq);
 	if (rate_sel < 0)
 		return -EINVAL;
 
-	*pll_ctrl_reg0 = pll_make_ctrl_reg0(vco_freq);
-	*pll_ctrl_reg1 = pll_make_ctrl_reg1(bitclock, pllmode);
+	*pll_ctrl_reg0 = pll_make_ctrl_reg0(vco_freq, rate_sel);
+	*pll_ctrl_reg1 = pll_make_ctrl_reg1(bitclock, pllmode, rate_sel);
 
 	DRM_INFO("pll_ctrl_reg0 = 0x%08X\n", *pll_ctrl_reg0);
 	DRM_INFO("pll_ctrl_reg1 = 0x%08X\n", *pll_ctrl_reg1);

@@ -184,6 +184,7 @@
 	#size-cells = <0>;
 	status = "okay";
 
+	/* For BT, FG, CAM */
 	hub@1 {
 		/* FE1.1S USB2.0 hub (4 ports) */
 		compatible = "usb5e3,608";
@@ -225,14 +226,12 @@
 	status = "okay";
 };
 
+&usb3_portb_u3phy {
+	status = "okay";
+};
+
 &usb3_portb {
-	/* M2.B Socket, only enable USB2 phy */
-	/delete-property/ phys;
-	/delete-property/ phy-names;
-	maximum-speed = "high-speed";
-	phys = <&usb3_portb_u2phy>;
-	phy-names = "usb2-phy";
-	status = "disabled";
+	/* TypeC */
 	status = "okay";
 };
 
@@ -241,16 +240,11 @@
 };
 
 &usb3_portc_u3phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_portc {
-	/* Bluetooth, only enable USB2 phy */
-	/delete-property/ phys;
-	/delete-property/ phy-names;
-	maximum-speed = "high-speed";
-	phys = <&usb3_portc_u2phy>;
-	phy-names = "usb2-phy";
+	/* TypeC */
 	status = "okay";
 };
 
@@ -263,7 +257,7 @@
 };
 
 &usb3_portd {
-	/* TypeC (USB3/DP/Power) (with ANX7447 chip) */
+	/* TypeC */
 	status = "okay";
 };
 
