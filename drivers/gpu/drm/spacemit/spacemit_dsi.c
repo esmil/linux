@@ -28,7 +28,6 @@ LIST_HEAD(dsi_core_head);
 static void spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 {
 	struct spacemit_dsi *dsi = encoder_to_dsi(encoder);
-	struct spacemit_panel *panel = NULL;
 	struct spacemit_crtc *a_crtc = to_spacemit_crtc(encoder->crtc);
 	struct spacemit_dsi_device *ctx = &dsi->ctx;
 	struct spacemit_dphy *spacemit_dphy = ctx->phy;
@@ -39,61 +38,30 @@ static void spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 	if (dsi->panel == NULL)
 		return;
 
-	panel = container_of(dsi->panel, struct spacemit_panel, base);
 	if (spacemit_dpu_logo_booton) {
 		dsi->panel->enabled = true;
 		dsi->panel->prepared = true;
-		atomic_set(&panel->prepare_refcnt, 1);
-		atomic_set(&panel->enable_refcnt, 1);
 		dphy_ctx->status = DPHY_STATUS_INIT;
-
-		/* for tp proximity when first boot up */
-		if (panel->encoder == NULL)
-			panel->encoder = encoder;
-
-		if (panel->gpio_te_irq)
-			mod_timer(&panel->te_esd_timer,
-				jiffies + msecs_to_jiffies(2000));
-
 		return;
 	}
-
-
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528_FACE_DETECT)
-	mutex_lock(&panel->face_lock);
-#endif
 
 	if (!dsi->core || !dsi->core->dsi_open) {
 		DRM_ERROR("%s(), dsi->core is null!\n", __func__);
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528_FACE_DETECT)
-		mutex_unlock(&panel->face_lock);
-#endif
 		return;
 	}
-
-	if (panel->encoder == NULL)
-		panel->encoder = encoder;
 
 	dsi->core->dsi_open(&dsi->ctx, false);
 
 	if (dsi->panel) {
 		drm_panel_prepare(dsi->panel);
 		drm_panel_enable(dsi->panel);
-		if ((spacemit_dpu_logo_booton == false) && (panel->info.bl_enable_delay))
-			backlight_disable(dsi->panel->backlight);
 	}
 
 	if (dsi->core && dsi->core->dsi_ready_for_datatx)
 		dsi->core->dsi_ready_for_datatx(&dsi->ctx);
 
-	if (panel->esd_restarting)
-		spacemit_dpu_esd_restart(a_crtc);
 	a_crtc->is_stopped = false;
 	dsi->is_disabled = false;
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528_FACE_DETECT)
-	panel->user_panel_disabled = false;
-	mutex_unlock(&panel->face_lock);
-#endif
 }
 
 static void spacemit_dsi_encoder_disable(struct drm_encoder *encoder)
@@ -101,16 +69,9 @@ static void spacemit_dsi_encoder_disable(struct drm_encoder *encoder)
 	struct spacemit_dsi *dsi = encoder_to_dsi(encoder);
 	struct spacemit_crtc *a_crtc = to_spacemit_crtc(encoder->crtc);
 	int ret = 0;
-	struct spacemit_panel *panel;
 
 	if (dsi->panel == NULL)
 		return;
-
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528_FACE_DETECT)
-	panel = container_of(dsi->panel, struct spacemit_panel, base);
-	mutex_lock(&panel->face_lock);
-	panel->user_panel_disabled = true;
-#endif
 
 	mutex_lock(&dsi->disable_lock);
 	DRM_INFO("%s()\n", __func__);
@@ -137,13 +98,6 @@ static void spacemit_dsi_encoder_disable(struct drm_encoder *encoder)
 		dsi->core->dsi_close(&dsi->ctx);
 	dsi->is_disabled = true;
 	mutex_unlock(&dsi->disable_lock);
-
-	panel = to_spacemit_panel(dsi->panel);
-	if (panel->gpio_te_irq)
-		cancel_work_sync(&panel->work_reset_panel);
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528_FACE_DETECT)
-	mutex_unlock(&panel->face_lock);
-#endif
 }
 
 static void spacemit_dsi_encoder_mode_set(struct drm_encoder *encoder,

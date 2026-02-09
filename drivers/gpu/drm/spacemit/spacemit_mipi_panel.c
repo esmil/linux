@@ -25,115 +25,6 @@
 #include "./backlight/spacemit-backlight.h"
 
 const char *lcd_name;
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-#include <linux/notifier.h>
-#include "../../../input/touchscreen/sitronix_ts/sitronix_ts.h"
-#endif
-
-
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)
-#include <linux/notifier.h>
-#include "../../../input/touchscreen/omnivision_tcm/omnivision_tcm_core.h"
-#endif
-
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-struct spacemit_panel *face_panel;
-int (*vh_lcd_tp_event_handler)(struct notifier_block *nb, unsigned long event, void *data) = NULL;
-EXPORT_SYMBOL_GPL(vh_lcd_tp_event_handler);
-
-/* tp_ps face in/out */
-static void tp_ps_spacemit_dsi_encoder_disable(struct drm_encoder *encoder)
-{
-	struct spacemit_dsi *dsi = encoder_to_dsi(encoder);
-	struct spacemit_panel *panel = container_of(dsi->panel, struct spacemit_panel, base);
-	struct spacemit_crtc *a_crtc = to_spacemit_crtc(encoder->crtc);
-	int ret = 0;
-
-	if (a_crtc->is_stopped)
-		return;
-	mutex_lock(&panel->face_lock);
-	DRM_INFO("%s(0)\n", __func__);
-
-	if (dsi->panel && dsi->panel->backlight) {
-		ret = backlight_disable(dsi->panel->backlight);
-		if (ret < 0)
-			DRM_DEV_INFO(dsi->panel->dev, "failed to disable backlight: %d\n", ret);
-	}
-
-	if (dsi->panel) {
-		drm_panel_disable(dsi->panel);
-		drm_panel_unprepare(dsi->panel);
-	}
-
-	if (dsi->core && dsi->core->dsi_enable_irq)
-		dsi->core->dsi_enable_irq(&dsi->ctx, false);
-
-	DRM_INFO("%s(1)\n", __func__);
-	mutex_unlock(&panel->face_lock);
-}
-
-int spacemit_drm_panel_enable(struct drm_panel *panel)
-{
-	int ret;
-
-	if (!panel)
-		return -EINVAL;
-
-	DRM_INFO("%s()\n", __func__);
-
-	if (panel->enabled) {
-		dev_warn(panel->dev, "Skipping enable of already enabled panel\n");
-		return 0;
-	}
-
-	if (panel->funcs && panel->funcs->enable) {
-		ret = panel->funcs->enable(panel);
-		if (ret < 0)
-			return ret;
-	}
-	panel->enabled = true;
-
-	return 0;
-}
-
-static void __maybe_unused tp_ps_spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
-{
-	struct spacemit_dsi *dsi = encoder_to_dsi(encoder);
-	struct spacemit_panel *panel = container_of(dsi->panel, struct spacemit_panel, base);
-	struct spacemit_crtc *a_crtc = to_spacemit_crtc(encoder->crtc);
-	int ret = 0;
-
-	if (a_crtc->is_stopped)
-		return;
-	mutex_lock(&panel->face_lock);
-	DRM_INFO("%s(0)\n", __func__);
-
-	if (!dsi->core || !dsi->core->dsi_open) {
-		DRM_ERROR("%s(), dsi->core is null!\n", __func__);
-		return;
-	}
-
-	if (panel->encoder == NULL)
-		panel->encoder = encoder;
-
-	if (dsi->panel) {
-		drm_panel_prepare(dsi->panel);
-		spacemit_drm_panel_enable(dsi->panel);
-	}
-
-	if (dsi->core && dsi->core->dsi_enable_irq)
-		dsi->core->dsi_enable_irq(&dsi->ctx, true);
-
-	msleep(220);
-	ret = backlight_enable(dsi->panel->backlight);
-	if (ret < 0)
-		DRM_DEV_INFO(dsi->panel->dev, "failed to enable backlight: %d\n",
-			     ret);
-
-	DRM_INFO("%s(1)\n", __func__);
-	mutex_unlock(&panel->face_lock);
-}
-#endif
 
 static void _spacemit_dsi_encoder_disable(struct drm_encoder *encoder)
 {
@@ -200,35 +91,6 @@ static void _spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 		spacemit_dpu_esd_restart(a_crtc);
 	a_crtc->is_stopped = false;
 }
-
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-static void spacemit_mipi_wq_facerecover_panel(struct work_struct *work)
-{
-	struct spacemit_panel *panel = container_of(work, struct spacemit_panel, work_facerecover_panel);
-	struct drm_encoder *encoder = NULL;
-	DRM_INFO("%s()\n", __func__);
-	encoder = panel->encoder;
-	if (encoder == NULL)
-		return;
-
-	tp_ps_spacemit_dsi_encoder_enable(encoder);
-	panel->tp_ps_restarting = 0;
-}
-
-static void spacemit_mipi_wq_facereset_panel(struct work_struct *work)
-{
-	struct spacemit_panel *panel = container_of(work, struct spacemit_panel, work_facereset_panel);
-	struct drm_encoder *encoder = NULL;
-
-	DRM_INFO("%s()\n", __func__);
-	encoder = panel->encoder;
-	if (encoder == NULL)
-		return;
-
-	panel->tp_ps_restarting = 1;
-	tp_ps_spacemit_dsi_encoder_disable(encoder);
-}
-#endif
 
 #if IS_ENABLED(CONFIG_DRM_SPACEMIT_BACKLIGHT)
 static int spacemit_mipi_panel_set_brightness(void *devdata, int value)
@@ -403,7 +265,6 @@ static int __maybe_unused spacemit_panel_send_cmds(struct mipi_dsi_device *dsi,
 static int spacemit_panel_unprepare(struct drm_panel *p)
 {
 	struct spacemit_panel *panel = to_spacemit_panel(p);
-#if !IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528)
 	struct spacemit_drm_notifier noti_blank;
 
 	/* do nothing before spacemit_panel_prepare been called */
@@ -415,36 +276,19 @@ static int spacemit_panel_unprepare(struct drm_panel *p)
 		return 0;
 
 	DRM_INFO("mipi: POWERDOWN!!\n");
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	noti_blank.blank = blank;
-	if (panel->tp_ps_enabled == false)
-		spacemit_drm_notifier_call_chain(DRM_PANEL_EARLY_EVENT_BLANK, &noti_blank);
-#else
 	spacemit_drm_notifier_call_chain(DRM_PANEL_EARLY_EVENT_BLANK, &noti_blank);
-#endif
-#endif
+
 	DRM_INFO("%s()\n", __func__);
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	if (panel->tp_ps_enabled == false)
-		gpio_direction_output(panel->gpio_reset, panel->info.reset_on_state);
-#else
 	gpio_direction_output(panel->gpio_reset, panel->info.reset_on_state);
-#endif
+
 	if (panel->gpio_bl != INVALID_GPIO)
 		gpio_direction_output(panel->gpio_bl, 0);
 	msleep(150);
 
 	if (panel->gpio_dc[0] != INVALID_GPIO &&
 		panel->gpio_dc[1] != INVALID_GPIO) {
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-		if (panel->tp_ps_enabled == false) {
-			gpio_direction_output(panel->gpio_dc[0], 0);
-			gpio_direction_output(panel->gpio_dc[1], 0);
-		}
-#else
 		gpio_direction_output(panel->gpio_dc[0], 0);
 		gpio_direction_output(panel->gpio_dc[1], 0);
-#endif
 	}
 
 	if (panel->vdd_1v2)
@@ -452,10 +296,9 @@ static int spacemit_panel_unprepare(struct drm_panel *p)
 	if (panel->vdd_1v8)
 		regulator_disable(panel->vdd_1v8);
 
-#if !IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
 	if (panel->vdd_2v8)
 		regulator_disable(panel->vdd_2v8);
-#endif
+
 	atomic_set(&panel->prepare_refcnt, 0);
 	return 0;
 }
@@ -515,22 +358,7 @@ static int spacemit_panel_prepare(struct drm_panel *p)
 		goto out;
 
 	noti_blank.blank = blank_;
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	if (panel->tp_ps_enabled == false) {
-#if !IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528)
-		spacemit_drm_notifier_call_chain(DRM_PANEL_EVENT_BLANK, &noti_blank);
-#endif
-		gpio_direction_output(panel->gpio_reset, 1);
-		for (; i < panel->reset_toggle_cnt; i++) {
-			msleep(10);
-			gpio_direction_output(panel->gpio_reset, 0);
-			msleep(10);
-			gpio_direction_output(panel->gpio_reset, 1);
-		}
-		msleep(panel->delay_after_reset);
-	}
-	spacemit_drm_notifier_call_chain(DRM_PANEL_TOUCH_INT, &noti_blank);
-#else
+
 	spacemit_drm_notifier_call_chain(DRM_PANEL_EVENT_BLANK, &noti_blank);
 	gpio_direction_output(panel->gpio_reset, 1);
 	for (; i < panel->reset_toggle_cnt; i++) {
@@ -541,7 +369,7 @@ static int spacemit_panel_prepare(struct drm_panel *p)
 	}
 	msleep(panel->delay_after_reset);
 	spacemit_drm_notifier_call_chain(DRM_PANEL_TOUCH_INT, &noti_blank);
-#endif
+
 	DRM_INFO("mipi: UNBLANK!!\n");
 
 out:
@@ -568,30 +396,11 @@ static int spacemit_panel_disable(struct drm_panel *p)
 
 	if (panel->gpio_te_irq)
 		timer_delete(&panel->te_esd_timer);
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	if (panel->tp_ps_enabled) {
-		DRM_INFO("%s(face IN)\n", __func__);
-		spacemit_panel_send_cmds(panel->slave,
-				panel->info.cmds[CMD_FACE_IN],
-				panel->info.cmds_len[CMD_FACE_IN]);
-	} else {
-		DRM_INFO("%s(sleep IN)\n", __func__);
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528)
-		struct spacemit_drm_notifier noti_blank;
-		int blank = DRM_PANEL_BLANK_POWERDOWN;
 
-		noti_blank.blank = blank;
-		spacemit_drm_notifier_call_chain(DRM_PANEL_EARLY_EVENT_BLANK, &noti_blank);
-#endif
-		spacemit_panel_send_cmds(panel->slave,
-				panel->info.cmds[CMD_CODE_SLEEP_IN],
-				panel->info.cmds_len[CMD_CODE_SLEEP_IN]);
-	}
-#else
 	spacemit_panel_send_cmds(panel->slave,
 			panel->info.cmds[CMD_CODE_SLEEP_IN],
 			panel->info.cmds_len[CMD_CODE_SLEEP_IN]);
-#endif
+
 	atomic_set(&panel->enable_refcnt, 0);
 	return 0;
 }
@@ -612,31 +421,10 @@ static int spacemit_panel_enable(struct drm_panel *p)
 	if (unlikely(spacemit_dpu_logo_booton))
 		goto out;
 
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT) || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	if (panel->tp_ps_enabled) {
-		DRM_INFO("%s(face OUT)\n", __func__);
-		spacemit_panel_send_cmds(panel->slave,
-				panel->info.cmds[CMD_FACE_OUT],
-				panel->info.cmds_len[CMD_FACE_OUT]);
-	} else {
-		DRM_INFO("%s(sleep OUT)\n", __func__);
-		spacemit_panel_send_cmds(panel->slave,
-				panel->info.cmds[CMD_CODE_INIT],
-				panel->info.cmds_len[CMD_CODE_INIT]);
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_NT36528)
-		struct spacemit_drm_notifier noti_blank;
-		int blank_ = DRM_PANEL_BLANK_UNBLANK;
-
-		noti_blank.blank = blank_;
-		spacemit_drm_notifier_call_chain(DRM_PANEL_EVENT_BLANK, &noti_blank);
-#endif
-	}
-#else
-
 	spacemit_panel_send_cmds(panel->slave,
 			panel->info.cmds[CMD_CODE_INIT],
 			panel->info.cmds_len[CMD_CODE_INIT]);
-#endif
+
 	if (panel->info.cmds[CMD_CODE_DSC_PPS]) {
 		spacemit_panel_send_cmds(panel->slave,
 				panel->info.cmds[CMD_CODE_DSC_PPS],
@@ -945,23 +733,6 @@ static int spacemit_panel_parse_dt(struct device_node *np, struct spacemit_panel
 	} else
 		DRM_ERROR("can't find sleep-out-command property\n");
 
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	p = of_get_property(lcd_node, "face-in-command", &bytes);
-	if (p) {
-		info->cmds[CMD_FACE_IN] = p;
-		info->cmds_len[CMD_FACE_IN] = bytes;
-	} else
-		DRM_ERROR("can't find CMD_FACE_IN property\n");
-
-	p = of_get_property(lcd_node, "face-out-command", &bytes);
-	if (p) {
-		info->cmds[CMD_FACE_OUT] = p;
-		info->cmds_len[CMD_FACE_OUT] = bytes;
-	} else
-		DRM_ERROR("can't find CMD_FACE_OUT property\n");
-#endif
-
-
 	rc = of_property_read_u32(lcd_node, "dsc-enable", &val);
 	if (rc)
 		val = 0;
@@ -1033,65 +804,6 @@ static irqreturn_t spacemit_mipi_gpio_te_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 
 }
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-extern int gcore_proximity_reg_notifier(struct notifier_block *nb);
-extern int gcore_proximity_unreg_notifier(struct notifier_block *nb);
-
-static int lcd_tp_event_handler(struct notifier_block *nb, unsigned long event, void *data)
-{
-	switch (event) {
-	case PS_NOTIFY_NEAR:
-		DRM_DEBUG("LCD: Received NEAR event\n");
-		if (face_panel->user_panel_disabled == true) {
-			DRM_DEBUG("user space disable panel now, ignore tp_ps\n");
-			break;
-		}
-
-		if (face_panel->tp_ps_neared == true) {
-			DRM_DEBUG("tp_ps_neared enabled, ignore tp_ps\n");
-			break;
-		}
-		if (face_panel->tp_ps_enabled == false) {
-			DRM_DEBUG("tp_ps disabled, ignore tp_ps\n");
-			break;
-		}
-		face_panel->tp_ps_neared = true;
-		queue_work(system_wq, &face_panel->work_facereset_panel);
-		break;
-	case PS_NOTIFY_FAR:
-		DRM_DEBUG("LCD: Received AWAY event\n");
-		if (face_panel->user_panel_disabled == true) {
-			DRM_DEBUG("user space disable panel now, ignore tp_ps\n");
-			break;
-		}
-		if (face_panel->tp_ps_neared == false) {
-			DRM_DEBUG("tp_ps_neared disabled, ignore tp_ps\n");
-			break;
-		}
-		if (face_panel->tp_ps_enabled == false) {
-			DRM_DEBUG("tp_ps disabled, ignore tp_ps\n");
-			break;
-		}
-		face_panel->tp_ps_neared = false;
-		queue_work(system_wq, &face_panel->work_facerecover_panel);
-		break;
-	case PS_NOTIFY_ENABLE:
-		DRM_DEBUG("LCD: Received ENABLE event\n");
-		face_panel->tp_ps_enabled = true;
-		break;
-	case PS_NOTIFY_DISABLE:
-		DRM_DEBUG("LCD: Received ENABLE event\n");
-		face_panel->tp_ps_enabled = false;
-		break;
-	default:
-		DRM_DEBUG("LCD: Unknown TP Event\n");
-		break;
-	}
-
-	return NOTIFY_OK;
-}
-
-#endif
 
 /* based on of_node_put */
 static void spacemit_of_node_put(struct device_node *node)
@@ -1275,11 +987,6 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 		panel->gpio_dc[1] = desc_to_gpio(gpiod);
 	}
 
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-	INIT_WORK(&panel->work_facereset_panel, spacemit_mipi_wq_facereset_panel);
-	INIT_WORK(&panel->work_facerecover_panel, spacemit_mipi_wq_facerecover_panel);
-#endif
-
 	if (of_property_read_u32(dev->of_node, "reset-toggle-cnt", &panel->reset_toggle_cnt))
 		panel->reset_toggle_cnt = LCD_PANEL_RESET_CNT;
 
@@ -1343,10 +1050,7 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 	if (ret || panel->base.backlight == NULL) {
 		ret = spacemit_drm_panel_of_backlight(&panel->base, &slave->dev);
 		if (ret || panel->base.backlight == NULL) {
-			DRM_ERROR("panel device get backlight failed\n");
-			/* not return to support oled backlight */
-			// if (!panel->info.is_oled)
-				// return ret;
+			DRM_INFO("panel device can not get backlight\n");
 		}
 	}
 
@@ -1378,12 +1082,6 @@ static int spacemit_panel_probe(struct mipi_dsi_device *slave)
 	atomic_set(&panel->enable_refcnt, 0);
 	atomic_set(&panel->prepare_refcnt, 0);
 
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_OMNIVISION_TCM_FACE_DETECT)  || IS_ENABLED(CONFIG_TOUCHSCREEN_SITRONIX_FACE_DETECT)
-
-	face_panel = panel;
-	mutex_init(&panel->face_lock);
-	vh_lcd_tp_event_handler = lcd_tp_event_handler;
-#endif
 	ret = mipi_dsi_attach(slave);
 	if (ret) {
 		DRM_ERROR("failed to attach dsi panel to host\n");
