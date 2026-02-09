@@ -478,7 +478,7 @@
 };
 
 &ec_master {
-	states = "okay";
+	status = "okay";
 };
 
 &eth0 {
