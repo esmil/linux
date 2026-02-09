@@ -489,7 +489,6 @@
 		interrupt-parent = <&saplic>;
 		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RIRC0>;
 		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RIRC0>;
-		clock-frequency = <102400000>;
 		status = "disabled";
 	};
 
@@ -500,7 +499,6 @@
 		interrupt-parent = <&saplic>;
 		clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_RIRC1>;
 		resets = <&syscon_rcpu_sysctrl RESET_RCPU_SYSCTRL_RIRC1>;
-		clock-frequency = <102400000>;
 		status = "disabled";
 	};
 
