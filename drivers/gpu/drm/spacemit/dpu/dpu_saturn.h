@@ -112,7 +112,9 @@ struct pll_freq_range_t{
 	u16 high;
 };
 
-#define PLLMODE_DEFALUT 1
+#define PLL_MODE_LWG_PLL 0
+#define PLL_MODE_5G_PLL  1
+#define PLL_REF_FREQ_MHZ 24
 /* DSI bitclk pll control regs */
 #define PLL_CTRL_REG0   0xc0
 #define PLL_CTRL_REG1   0xc4
