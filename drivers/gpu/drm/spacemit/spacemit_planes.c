@@ -239,10 +239,23 @@ static int spacemit_plane_atomic_check(struct drm_plane *plane,
 			scl_in_height = src_h;
 		}
 
-		if (scl_in_width != crtc_w || scl_in_height != crtc_h)
+		if (scl_in_width != crtc_w || scl_in_height != crtc_h) {
+			if ((scl_in_width * SPACEMIT_MAX_SCALE_FACTOR < crtc_w) ||
+				   (crtc_w * SPACEMIT_MAX_SCALE_FACTOR < scl_in_width)) {
+				DRM_ERROR("Width scaling exceeds %dx limit: %d -> %d\n",
+					SPACEMIT_MAX_SCALE_FACTOR, scl_in_width, crtc_w);
+				return -EINVAL;
+			}
+			if ((scl_in_height * SPACEMIT_MAX_SCALE_FACTOR < crtc_h) ||
+				   (crtc_h * SPACEMIT_MAX_SCALE_FACTOR < scl_in_height)) {
+				DRM_ERROR("Height scaling exceeds %dx limit: %d -> %d\n",
+					SPACEMIT_MAX_SCALE_FACTOR, scl_in_height, crtc_h);
+				return -EINVAL;
+			}
 			cur_state->use_scl = true;
-		else
+		} else {
 			cur_state->use_scl = false;
+		}
 		if (cur_rdma_id < hwdev->rdma_nums) {
 			if (spacemit_plane_check_rdma(rdmas, cur_rdma_id, state))
 				return -EINVAL;
