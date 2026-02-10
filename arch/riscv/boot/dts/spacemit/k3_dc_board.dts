@@ -90,6 +90,50 @@
 		cooling-levels = <0 30 60 90 120 140 179 204 242>;
 		#cooling-cells = <2>;
 	};
+
+	vcc_wifi_pwr: vcc-wifi-pwr {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_wifi_3v3";
+		gpio = <&gpio 1 9 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&rfkill_gpio_cfg>;
+	};
+
+	rfkill_wlan: rfkill-wlan {
+		compatible = "rfkill-gpio";
+		label = "spacemit-wlan";
+		radio-type = "wlan";
+		shutdown-gpio = <&gpio 1 3 GPIO_ACTIVE_HIGH>;
+		dev-pwr-supply = <&vcc_wifi_pwr>;
+		status = "okay";
+	};
+
+	rfkill_bt: rfkill-bt {
+		compatible = "rfkill-gpio";
+		label = "spacemit-bt";
+		radio-type = "bluetooth";
+		shutdown-gpio = <&gpio 0 30 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	vcc_cam_dmic: vcc-cam-dmic {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_cam_dmic";
+		gpio = <&gpio 3 4 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		regulator-always-on;
+		regulator-boot-on;
+
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_dmic_cfg>;
+	};
 };
 
 &resmem {
@@ -145,11 +189,71 @@
 		};
 	};
 
+	pcie0-1-cfg {
+		pcie0-0-pins {
+			pinmux = <K3_PADCONF(79, 5)>,
+				 <K3_PADCONF(81, 5)>;
+
+			bias-pull-up;
+			drive-strength = <33>;
+			power-source = <1800>;
+		};
+	};
+
+	pcie4-1-cfg {
+		pcie4-0-pins {
+			bias-pull-up;
+			drive-strength = <38>;
+			power-source = <3300>;
+		};
+	};
+
 	sspa1_1_cfg: sspa1-1-cfg {
 		sspa1-0-pins {
 			power-source = <3300>;
 		};
 	};
+
+	rfkill_gpio_cfg: rfkill-gpio-cfg {
+		rfkill-pins {
+			pinmux = <K3_PADCONF(30, 0)>,	/* BT_EN: gpio30 */
+				 <K3_PADCONF(35, 0)>,	/* WLAN_W_DISABLE1: gpio35 */
+				 <K3_PADCONF(41, 0)>;	/* WLAN_PWREN: gpio41 */
+			bias-pull-up;
+			drive-strength = <33>;
+			power-source = <3300>;
+		};
+	};
+
+	cam_dmic_cfg: cam-dmic-cfg {
+		cam-dmic-pins {
+			pinmux = <K3_PADCONF(100, 0)>;	/* gpio[5]_100 */
+			bias-pull-up;
+			drive-strength = <33>;
+			power-source = <3300>;
+		};
+	};
+
+	dp0_1_cfg: dp0-1-cfg {
+		dp0-0-pins {
+			pinmux = <K3_PADCONF(23, 6)>;	/* dp0 hpd */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
+	dp1_1_cfg: dp1-1-cfg {
+		dp1-0-pins {
+			pinmux = <K3_PADCONF(24, 6)>;	/* dp1 hpd */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
 };
 
 &uart0 {
@@ -266,11 +370,11 @@
 };
 
 &phy0 {
-	status = "disabled";
+	status = "okay";
 };
 
 &phy1 {
-	status = "disabled";
+	status = "okay";
 };
 
 &phy2 {
@@ -282,7 +386,24 @@
 };
 
 &phy5 {
-	status = "disabled";
+	status = "okay";
+};
+
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_1_cfg>;
+	phys = <&phy0>, <&phy1>;
+	phy-names = "phy0", "phy1";
+	num-lanes = <4>;
+	status = "okay";
+};
+
+&pcie4_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie4_1_cfg>;
+	phys = <&phy5>;
+	phy-names = "phy0";
+	status = "okay";
 };
 
 &ec {
@@ -942,7 +1063,7 @@
 		#sound-dai-cells = <0>;
 		interrupt-parent = <&gpio>;
 		interrupts = <3 31 IRQ_TYPE_EDGE_RISING>;
-		/* spk-ctl-gpio = <&gpio 127 0>; */
+		spk-ctl-gpio = <&gpio 3 23 0>;
 		everest,mic1-src = [44];
 		everest,mic2-src = [66];
 		everest,jack-detect-inverted;
@@ -1128,6 +1249,31 @@
 	};
 };
 */
+
+&dpu0_crtc0 {
+	memory-region = <&dpu_resv0>;
+	status = "okay";
+};
+
+&edp0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp0_1_cfg>;
+	gpios-power = <101>;
+	gpios-enable = <118>;
+	gpios-bl = <106>;
+	status = "okay";
+};
+
+&dpu1_crtc0 {
+	memory-region = <&dpu_resv1>;
+	status = "okay";
+};
+
+&dp1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp1_1_cfg>;
+	status = "okay";
+};
 
 &i2s1 {
 	status = "okay";
