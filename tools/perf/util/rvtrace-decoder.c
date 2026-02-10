@@ -33,8 +33,10 @@
 #include "dso.h"
 #include "addr_location.h"
 #include <inttypes.h>
+#include "util/synthetic-events.h"
 #include "rvtrace.h"
 #include "nexus-rv-decoder/nexus-rv-decoder.h"
+#include "../../arch/riscv/include/asm/insn.h"
 
 #define MAX_TIMESTAMP (~0ULL)
 
@@ -50,7 +52,6 @@ struct rvtrace_auxtrace {
 	u8 timeless_decoding;
 	u8 snapshot_mode;
 	u8 data_queued;
-	u8 sample_branches;
 
 	int num_cpu;
 	u32 auxtrace_type;
@@ -94,14 +95,250 @@ static void rvtrace_set_pid_tid_cpu(struct rvtrace_auxtrace *rvtrace,
 	}
 }
 
+static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
+{
+	int fd;
+	void *map_base, *virt_addr;
+	u64 page_size = 4096, mapped_size = 4096;
+	u64 page_base = address & ~(page_size - 1);
+	u64 offset_in_page = address - page_base;
+	unsigned int width = 8 * size;
+
+	if (offset_in_page + width > page_size)
+		mapped_size *= 2;
+
+	fd = open("/dev/mem", O_RDONLY | O_SYNC);
+	if (fd < 0)
+		return 0;
+
+	map_base = mmap(NULL, mapped_size, PROT_READ, MAP_SHARED, fd, (off_t)(page_base));
+	if (map_base == MAP_FAILED) {
+		pr_debug("failed to mmap device address 0x%lx\n", address);
+		close(fd);
+		return 0;
+	}
+
+	virt_addr = (char*)map_base + offset_in_page;
+
+	memcpy(buffer, virt_addr, size);
+
+	munmap(map_base, mapped_size);
+	close(fd);
+	return size;
+}
+
+static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode prv,
+			      size_t size, u8 *buffer)
+{
+	u8 cpumode;
+	u64 offset;
+	int len;
+	struct machine *machine;
+	struct addr_location al;
+	struct dso *dso;
+	int ret = 0;
+
+	struct rvtrace_queue *rvtraceq = data;
+	if (!rvtraceq)
+		goto out;
+
+	addr_location__init(&al);
+
+	/* If the riscv_privilege_mode is machine mode, access physical address by /dev/mem */
+	if (prv == RISCV_PRIV_MACHINE_MODE)
+		return rvtrace_devmem_access(address, size, buffer);
+
+	machine = rvtraceq->rvtrace->machine;
+	if (address >= machine__kernel_start(machine))
+		cpumode = PERF_RECORD_MISC_KERNEL;
+	else
+		cpumode = PERF_RECORD_MISC_USER;
+
+	if (!thread__find_map(rvtraceq->thread, cpumode, address, &al))
+		goto out;
+
+	dso = map__dso(al.map);
+	if (!dso)
+		goto out;
+
+	if (dso__data(dso)->status == DSO_DATA_STATUS_ERROR &&
+	    dso__data_status_seen(dso, DSO_DATA_STATUS_SEEN_ITRACE))
+		goto out;
+
+	offset = map__map_ip(al.map, address);
+
+	map__load(al.map);
+
+	len = dso__data_read_offset(dso, machine, offset, buffer, size);
+	if (len <= 0) {
+		ui__warning_once("RISC-V Nexus Trace: Missing DSO. Use 'perf archive' or debuginfod to export data from the traced system.\n"
+				 "                  Enable CONFIG_PROC_KCORE or use option '-k /path/to/vmlinux' for kernel symbols.\n");
+		if (!dso__auxtrace_warned(dso)) {
+			pr_err("RISC-V Nexus Trace: Debug data not found for address %#"PRIx64" in %s\n",
+				address,
+				dso__long_name(dso) ? dso__long_name(dso) : "Unknown");
+			dso__set_auxtrace_warned(dso);
+		}
+		goto out;
+	}
+	ret = len;
+out:
+	addr_location__exit(&al);
+	return ret;
+}
+
+
+static u8 rvtrace_cpu_mode(enum riscv_privilege_mode prv)
+{
+	u8 cpumode;
+	switch (prv) {
+	case RISCV_PRIV_USER_MODE:
+		cpumode = PERF_RECORD_MISC_USER;
+		break;
+	case RISCV_PRIV_SUPERVISOR_MODE:
+	case RISCV_PRIV_MACHINE_MODE:
+	default:
+		cpumode = PERF_RECORD_MISC_KERNEL;
+		break;
+	}
+	return cpumode;
+}
+
+static void rvtrace_synth_copy_insn(struct rvtrace_queue *rvtraceq,
+				    struct nexus_rv_packet *packet,
+				    struct perf_sample *sample)
+{
+	int ret;
+	u32 insn;
+
+	ret = rvtrace_mem_access(rvtraceq, sample->ip, packet->prv, sizeof(insn), (u8 *)&insn);
+	if (!ret)
+		return;
+
+	sample->insn_len = riscv_insn_is_c(insn) ? 2 : 4;
+	memcpy(sample->insn, &insn, sample->insn_len);
+}
+
+static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
+				       struct nexus_rv_packet *packet)
+{
+	int ret = 0;
+	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
+	struct perf_sample sample;
+	union perf_event *event = rvtraceq->event_buf;
+
+	perf_sample__init(&sample, /*all=*/true);
+	event->sample.header.type = PERF_RECORD_SAMPLE;
+	event->sample.header.misc = rvtrace_cpu_mode(packet->prv);
+	event->sample.header.size = sizeof(struct perf_event_header);
+
+	sample.ip = packet->start_addr;
+	sample.pid = rvtraceq->pid;
+	sample.tid = rvtraceq->tid;
+	sample.addr = packet->end_addr;
+	sample.insn_cnt = packet->insn_cnt;
+	sample.id = rvtraceq->rvtrace->branches_id;
+	sample.stream_id = rvtraceq->rvtrace->branches_id;
+	sample.period = 1;
+	sample.cpu = packet->cpu;
+	sample.flags = 0;
+	sample.cpumode = event->sample.header.misc;
+
+	rvtrace_synth_copy_insn(rvtraceq, packet, &sample);
+
+	ret = perf_session__deliver_synth_event(rvtrace->session, event, &sample);
+	if (ret)
+		pr_err(
+		"RISC-V Trace: failed to deliver instruction event, error %d\n",
+		ret);
+	perf_sample__exit(&sample);
+
+	return ret;
+}
+
+static int rvtrace_synth_events(struct rvtrace_auxtrace *rvtrace,
+				struct perf_session *session)
+{
+	struct evlist *evlist = session->evlist;
+	struct evsel *evsel;
+	struct perf_event_attr attr;
+	bool found = false;
+	u64 id;
+	int err;
+
+	evlist__for_each_entry(evlist, evsel) {
+		if (evsel->core.attr.type == rvtrace->pmu_type) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		pr_debug("No selected events with RISC-V Trace data\n");
+		return 0;
+	}
+
+	memset(&attr, 0, sizeof(struct perf_event_attr));
+	attr.size = sizeof(struct perf_event_attr);
+	attr.type = PERF_TYPE_HARDWARE;
+	attr.sample_type = evsel->core.attr.sample_type & PERF_SAMPLE_MASK;
+	attr.sample_type |= PERF_SAMPLE_IP | PERF_SAMPLE_TID |
+			    PERF_SAMPLE_PERIOD;
+	if (rvtrace->timeless_decoding)
+		attr.sample_type &= ~(u64)PERF_SAMPLE_TIME;
+	else
+		attr.sample_type |= PERF_SAMPLE_TIME;
+
+	attr.exclude_user = evsel->core.attr.exclude_user;
+	attr.exclude_kernel = evsel->core.attr.exclude_kernel;
+	attr.exclude_hv = evsel->core.attr.exclude_hv;
+	attr.exclude_host = evsel->core.attr.exclude_host;
+	attr.exclude_guest = evsel->core.attr.exclude_guest;
+	attr.sample_id_all = evsel->core.attr.sample_id_all;
+	attr.read_format = evsel->core.attr.read_format;
+
+	/* create new id val to be a fixed offset from evsel id */
+	id = evsel->core.id[0] + 1000000000;
+	if (!id)
+		id = 1;
+
+	if (rvtrace->synth_opts.branches) {
+		attr.config = PERF_COUNT_HW_BRANCH_INSTRUCTIONS;
+		attr.sample_period = 1;
+		attr.sample_type |= PERF_SAMPLE_ADDR;
+
+		err = perf_session__deliver_synth_attr_event(session, &attr, id);
+		if (err)
+			return err;
+		rvtrace->branches_sample_type = attr.sample_type;
+		rvtrace->branches_id = id;
+		id += 1;
+		attr.sample_type &= ~(u64)PERF_SAMPLE_ADDR;
+	}
+
+	return 0;
+}
+
 static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 {
+	int ret;
 	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
+	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
 
 	if (!rvtrace->kernel_start)
 		rvtrace->kernel_start = machine__kernel_start(rvtrace->machine);
 
-	return nexus_rv_insn_decode(rvtraceq->decoder);
+	ret = nexus_rv_insn_decode(rvtraceq->decoder);
+	if (ret)
+		return ret;
+
+	for (int i = 0; i < packet_buffer->size; i++) {
+		struct nexus_rv_packet packet = packet_buffer->packets[i];
+		if (packet.sample_type == RVTRACE_RANGE)
+			rvtrace_synth_branch_sample(rvtraceq, &packet);
+	}
+
+	return 0;
 }
 
 static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
@@ -222,98 +459,6 @@ static int rvtrace_get_trace(struct nexus_rv_buffer *buffer, void *data)
 	buffer->buf = aux_buffer->data;
 
 	return 0;
-}
-
-static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
-{
-	int fd;
-	void *map_base, *virt_addr;
-	u64 page_size = 4096, mapped_size = 4096;
-	u64 page_base = address & ~(page_size - 1);
-	u64 offset_in_page = address - page_base;
-	unsigned int width = 8 * size;
-
-	if (offset_in_page + width > page_size)
-		mapped_size *= 2;
-
-	fd = open("/dev/mem", O_RDONLY | O_SYNC);
-	if (fd < 0)
-		return 0;
-
-	map_base = mmap(NULL, mapped_size, PROT_READ, MAP_SHARED, fd, (off_t)(page_base));
-	if (map_base == MAP_FAILED) {
-		pr_debug("failed to mmap device address 0x%lx\n", address);
-		close(fd);
-		return 0;
-	}
-
-	virt_addr = (char*)map_base + offset_in_page;
-
-	memcpy(buffer, virt_addr, size);
-
-	munmap(map_base, mapped_size);
-	close(fd);
-	return size;
-}
-
-static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode prv,
-			      size_t size, u8 *buffer)
-{
-	u8 cpumode;
-	u64 offset;
-	int len;
-	struct machine *machine;
-	struct addr_location al;
-	struct dso *dso;
-	int ret = 0;
-
-	struct rvtrace_queue *rvtraceq = data;
-	if (!rvtraceq)
-		goto out;
-
-	addr_location__init(&al);
-
-	/* If the riscv_privilege_mode is machine mode, access physical address by /dev/mem */
-	if (prv == RISCV_PRIV_MACHINE_MODE)
-		return rvtrace_devmem_access(address, size, buffer);
-
-	machine = rvtraceq->rvtrace->machine;
-	if (address >= machine__kernel_start(machine))
-		cpumode = PERF_RECORD_MISC_KERNEL;
-	else
-		cpumode = PERF_RECORD_MISC_USER;
-
-	if (!thread__find_map(rvtraceq->thread, cpumode, address, &al))
-		goto out;
-
-	dso = map__dso(al.map);
-	if (!dso)
-		goto out;
-
-	if (dso__data(dso)->status == DSO_DATA_STATUS_ERROR &&
-	    dso__data_status_seen(dso, DSO_DATA_STATUS_SEEN_ITRACE))
-		goto out;
-
-	offset = map__map_ip(al.map, address);
-
-	map__load(al.map);
-
-	len = dso__data_read_offset(dso, machine, offset, buffer, size);
-	if (len <= 0) {
-		ui__warning_once("RISC-V Nexus Trace: Missing DSO. Use 'perf archive' or debuginfod to export data from the traced system.\n"
-				 "                  Enable CONFIG_PROC_KCORE or use option '-k /path/to/vmlinux' for kernel symbols.\n");
-		if (!dso__auxtrace_warned(dso)) {
-			pr_err("RISC-V Nexus Trace: Debug data not found for address %#"PRIx64" in %s\n",
-				address,
-				dso__long_name(dso) ? dso__long_name(dso) : "Unknown");
-			dso__set_auxtrace_warned(dso);
-		}
-		goto out;
-	}
-	ret = len;
-out:
-	addr_location__exit(&al);
-	return ret;
 }
 
 static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrace,
@@ -612,9 +757,18 @@ int rvtrace_process_auxtrace_info(union perf_event *event,
 	if (err)
 		goto err_free_rvtrace;
 
+	if (session->itrace_synth_opts->set) {
+		rvtrace->synth_opts = *session->itrace_synth_opts;
+	} else {
+		itrace_synth_opts__set_default(&rvtrace->synth_opts,
+			session->itrace_synth_opts->default_no_sample);
+		rvtrace->synth_opts.callchain = false;
+	}
+
 	rvtrace->session = session;
 	rvtrace->machine = &session->machines.host;
 	rvtrace->num_cpu = num_cpu;
+	rvtrace->pmu_type = (unsigned int) ((ptr[RVTRACE_PMU_TYPE_CPUS] >> 32) & 0xffffffff);
 	rvtrace->metadata = metadata;
 
 	rvtrace->auxtrace_type = auxtrace_info->type;
@@ -632,6 +786,10 @@ int rvtrace_process_auxtrace_info(union perf_event *event,
 		rvtrace_print_auxtrace_info(ptr, num_cpu);
 		return 0;
 	}
+
+	err = rvtrace_synth_events(rvtrace, session);
+	if (err)
+		goto err_free_queues;
 
 	err = auxtrace_queues__process_index(&rvtrace->queues, session);
 	if (err)
