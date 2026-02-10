@@ -10,6 +10,7 @@
 #include <linux/i2c.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
@@ -151,6 +152,9 @@ struct spacemit_i2c_dev {
 	bool read;
 	struct completion complete;
 	u32 status;
+
+	/* Controls whether to bypass the controller's SDA glitch fix logic. */
+	bool sda_glitch_nofix;
 };
 
 static void spacemit_i2c_scl_clk_disable_unprepare(void *data)
@@ -389,11 +393,13 @@ static void spacemit_i2c_init(struct spacemit_i2c_dev *i2c)
 	writel(val, i2c->base + SPACEMIT_ICR);
 
 	/*
-	 * The glitch fix in the K1 I2C controller introduces a delay
-	 * on restart signals, so we disable the fix here.
+	 * The K1 I2C controller has an SDA glitch fix which can suppress short
+	 * pulses on SDA, but it may also introduce a small delay on restart
+	 * (repeated-start) signals on some systems.
 	 */
 	val = readl(i2c->base + SPACEMIT_IRCR);
-	val |= SPACEMIT_RCR_SDA_GLITCH_NOFIX;
+	if (i2c->sda_glitch_nofix)
+		val |= SPACEMIT_RCR_SDA_GLITCH_NOFIX;
 	writel(val, i2c->base + SPACEMIT_IRCR);
 
 	spacemit_i2c_clear_int_status(i2c, SPACEMIT_I2C_INT_STATUS_MASK);
@@ -708,6 +714,8 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(of_node, "clock-frequency", &i2c->clock_freq);
 	if (ret && ret != -EINVAL)
 		dev_warn(dev, "failed to read clock-frequency property: %d\n", ret);
+
+	i2c->sda_glitch_nofix = of_property_read_bool(of_node, "spacemit,sda-glitch-nofix");
 
 	i2c->dev = &pdev->dev;
 	/* For now, this driver doesn't support high-speed. */
