@@ -16,5 +16,6 @@ bool hmp_cpu_can_offline(unsigned int cpu);
 int hmp_cpu_affinity_restrict(struct task_struct *p, const struct cpumask *new_mask);
 int hmp_set_ai_thread(pid_t pid);
 int hmp_get_cpumask(struct cpumask *mask, hmp_type_e type);
+int hmp_map_ai_to_regular(struct cpumask *mask);
 
 #endif /* _SPACEMIT_HMP_H_ */
