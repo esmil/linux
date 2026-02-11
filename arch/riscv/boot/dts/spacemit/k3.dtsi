@@ -1540,7 +1540,7 @@
 			snps,dis_enblslpm_quirk;
 			snps,dis_u2_susphy_quirk;
 			snps,dis_u3_susphy_quirk;
-			snps,del_phy_power_chg_quirk;
+			snps,dis-del-phy-power-chg-quirk;
 			snps,dis-tx-ipgap-linecheck-quirk;
 			snps,parkmode-disable-ss-quirk;
 			status = "disabled";
