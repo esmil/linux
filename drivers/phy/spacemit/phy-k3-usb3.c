@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * phy-k3-usb3.c - SpacemiT K3 Type-C Orientation Switch Driver
+ * phy-k3-usb3.c - SpacemiT K3 USB3.0 PHY & Type-C Orientation Switch Driver
  *
  * Copyright (c) 2025 SpacemiT Technology Co. Ltd
  */
@@ -71,31 +71,27 @@
 
 #define APB_SPARE_RCAL_HSIO 0x17c
 #define PU_CAL_DONE BIT(8)
+#define R_CAL_OVRD_STABLE_EN BIT(31)
+#define R_CAL_OVRD_STABLE_VAL BIT(30)
 #define R_CAL_OVRD_NTRIM_EN BIT(29)
+#define R_CAL_OVRD_PTRIM_EN BIT(28)
+#define R_CAL_OVRD_TRIM_EN (R_CAL_OVRD_NTRIM_EN | R_CAL_OVRD_PTRIM_EN)
 #define R_CAL_OVRD_NTRIM_MASK GENMASK(27, 24)
 #define R_CAL_OVRD_NTRIM_VAL(val) FIELD_PREP(R_CAL_OVRD_NTRIM_MASK, val)
 #define NTRIM_DEFAULT 0x6
-#define R_CAL_OVRD_PTRIM_EN BIT(28)
 #define R_CAL_OVRD_PTRIM_MASK GENMASK(23, 20)
 #define R_CAL_OVRD_PTRIM_VAL(val) FIELD_PREP(R_CAL_OVRD_PTRIM_MASK, val)
 #define PTRIM_DEFAULT 0xa
+#define R_CAL_OVRD_TRIM_MASK (R_CAL_OVRD_NTRIM_MASK | R_CAL_OVRD_PTRIM_MASK)
 
 /* PHY Registers */
 #define PHY_VERSION 0x0
 
-#define PHY_PU_SEL 0x40
-#define OVRD_STATUS BIT(10)
-#define CFG_STATUS BIT(9)
-
 #define PHY_RESET_CFG 0x04
 #define EN_SAMPLE_DATA_AFTER_LOCK BIT(6)
-#define SOFT_RST_AHB BIT(2)
-#define SOFT_RST_PCS BIT(1)
-#define CFG_RXBUF_RST BIT(0)
 
 #define PHY_CLK_CFG 0x08
 #define PLL_READY BIT(0)
-#define CFG_TXCLK_INV BIT(2)
 #define CFG_RXCLK_EN BIT(3)
 #define CFG_TXCLK_EN BIT(4)
 #define CFG_PCLK_EN BIT(5)
@@ -103,22 +99,20 @@
 #define CFG_REFCLK_FREQ GENMASK(10, 7)
 #define REFCLK_24M 0x2
 #define CFG_SW_INIT_DONE BIT(11)
+#define CFG_PU_SSC_OUT BIT(23)
 
 #define PHY_MODE_CFG 0x0C
-#define CDET_CFG_LOCK_NUM GENMASK(27, 24)
-#define CDET_DOUBLE_LOCK BIT(13)
 #define CFG_LFPS_TPERIOD GENMASK(9, 8)
 #define LFPS_TPERIOD_USB 0x3
-#define CDET_STRONG_LOCK BIT(3)
-#define PCIE_INT_EN BIT(0)
+
+#define PHY_PU_SEL 0x40
+#define OVRD_STATUS BIT(10)
+#define CFG_STATUS BIT(9)
 
 #define PHY_PU_CK_REG 0x54
 #define PU_REFCLK_100 BIT(25)
-#define REFCLK_RX_GAIN GENMASK(3, 1)
-#define REFCLK_EN_RTERM BIT(0)
 
 #define PHY_PLL_REG1 0x58
-#define REF_100_WSSC BIT(12)
 #define FREF_SEL GENMASK(15, 13)
 #define FREF_24M 0x1
 #define SSC_DEP_SEL GENMASK(27, 24)
@@ -127,17 +121,66 @@
 #define SSC_CENTER_SPREAD 0x0
 #define SSC_UP_SPREAD 0x1
 #define SSC_DOWN_SPREAD 0x2
-#define SSC_DOWN_SPREAD1 0x3 // TODO: Weird description: 0x2/0x3 are both down
+#define SSC_DOWN_SPREAD1 0x3
 
 #define PHY_PLL_REG2 0x5c
-#define EN_FASTLK BIT(31)
 #define SEL_REF100 BIT(21)
-#define EN_CK100 BIT(20)
 
-#define PHY_RX_REG2 0x64
-#define RX_EN_REG_OVRD BIT(31)
-#define RX_BYPASS_ADPT BIT(22)
-#define RX_RTERM_SEL BIT(5)
+/* PHY RX Register Definitions */
+#define PHY_RX_REG_A 0x60
+#define RX_REG3_MASK GENMASK(31, 24)
+#define RX_REG3_RDEG1(n) FIELD_PREP(GENMASK(31, 30), (n))
+#define RX_REG3_RDEG1_DEFAULT 0x3
+#define RX_REG3_ADJ_BIAS(n) FIELD_PREP(GENMASK(29, 28), (n))
+#define RX_REG3_ADJ_BIAS_DEFAULT 0x1
+#define RX_REG3_SEL_CBOOST_CODE BIT(27)
+#define RX_REG3_I_LOAD_REG(n) FIELD_PREP(GENMASK(26, 24), (n))
+#define RX_REG3_I_LOAD_REG_DEFAULT 0x7
+#define RX_REG2_MASK GENMASK(23, 16)
+#define RX_REG2_PSEL(n) FIELD_PREP(GENMASK(23, 21), (n))
+#define RX_REG2_PSEL_DEFAULT 0x4
+#define RX_REG2_FORCE_CSEL BIT(20)
+#define RX_REG2_CSEL(n) FIELD_PREP(GENMASK(19, 16), (n))
+#define RX_REG2_CSEL_DEFAULT 0x8
+#define RX_REG1_MASK GENMASK(15, 8)
+#define RX_REG1_RC_CALI_REG(n) FIELD_PREP(GENMASK(15, 12), (n))
+#define RX_REG1_RC_CALI_REG_DEFAULT 0x7
+#define RX_REG1_RTERM_REG(n) FIELD_PREP(GENMASK(11, 8), (n))
+#define RX_REG1_RTERM_REG_DEFAULT 0x8
+#define RX_REG0_MASK GENMASK(7, 0)
+#define RX_REG0_RLOAD BIT(4)
+
+#define PHY_RX_REG_B 0x64
+#define RX_REG6_MASK GENMASK(23, 16)
+#define RX_REG6_BYPASS_ADPT BIT(22)
+#define RX_REG6_ADAPT_GAIN(n) FIELD_PREP(GENMASK(21, 20), (n))
+#define RX_REG6_ADAPT_GAIN_DEFAULT 0x2
+#define RX_REG6_H1_REG(n) FIELD_PREP(GENMASK(19, 16), (n))
+#define RX_REG6_H1_REG_DEFAULT 0x8
+#define RX_REG5_MASK GENMASK(15, 8)
+#define RX_REG5_RCELL_BIAS(n) FIELD_PREP(GENMASK(15, 12), (n))
+#define RX_REG5_RCELL_BIAS_DEFAULT 0x8
+#define RX_REG5_RCELL_VCM(n) FIELD_PREP(GENMASK(11, 8), (n))
+#define RX_REG5_RCELL_VCM_DEFAULT 0x8
+#define RX_REG4_MASK GENMASK(7, 0)
+#define RX_REG4_MANUAL_CFG BIT(7)
+#define RX_REG4_RTERM_SEL BIT(5)
+#define RX_REG4_ENVOS BIT(4)
+#define RX_REG4_RDEG2(n) FIELD_PREP(GENMASK(2, 1), (n))
+#define RX_REG4_RDEG2_DEFAULT 0x2
+
+#define PHY_RXEQ_TIME 0xb4
+#define RXEQ_TIME_OVRD_AMP_SOC BIT(24)
+#define RXEQ_TIME_CFG_AMP_SOC(n) FIELD_PREP(GENMASK(23, 22), (n))
+#define AMP_SOC_650M 0x0
+#define AMP_SOC_800M 0x1
+#define AMP_SOC_870M 0x2
+#define AMP_SOC_900M 0x3
+#define OVRD_POST_C_SOC BIT(21)
+#define CFG_POST_C_SOC(n) FIELD_PREP(GENMASK(20, 19), (n))
+#define OVRD_PRE_C_SOC BIT(18)
+#define CFG_PRE_C_SOC(n) FIELD_PREP(GENMASK(17, 16), (n))
+#define CFG_RXEQ_TIMEOUT(n) FIELD_PREP(GENMASK(15, 0), (n))
 
 #define PHY_ADPT_CFG0 0x140
 #define AFE_ADPT_RST_OVRD_EN BIT(1)
@@ -216,13 +259,12 @@ static int k3_usb3phy_init_single(struct k3_usb3phy *k3_phy,
 		dev_warn(k3_phy->dev, "PU PHY RCAL timeout, trim override\n");
 
 		regmap_update_bits(apb_spare, APB_SPARE_RCAL_HSIO,
-				   R_CAL_OVRD_NTRIM_EN | R_CAL_OVRD_PTRIM_EN,
-				   R_CAL_OVRD_NTRIM_EN | R_CAL_OVRD_PTRIM_EN);
-
-		regmap_update_bits(apb_spare, APB_SPARE_RCAL_HSIO,
-				   R_CAL_OVRD_NTRIM_MASK | R_CAL_OVRD_PTRIM_MASK,
+				   R_CAL_OVRD_TRIM_EN | R_CAL_OVRD_STABLE_VAL |
+				   R_CAL_OVRD_TRIM_MASK,
+				   R_CAL_OVRD_TRIM_EN | R_CAL_OVRD_STABLE_VAL |
 				   R_CAL_OVRD_NTRIM_VAL(NTRIM_DEFAULT) |
-				   R_CAL_OVRD_PTRIM_VAL(PTRIM_DEFAULT));
+				   R_CAL_OVRD_PTRIM_VAL(PTRIM_DEFAULT) );
+		regmap_set_bits(apb_spare, APB_SPARE_RCAL_HSIO, R_CAL_OVRD_STABLE_EN);
 	}
 
 	/* Do not wait CDR lock before sampling data */
@@ -251,12 +293,38 @@ static int k3_usb3phy_init_single(struct k3_usb3phy *k3_phy,
 		regm, PHY_ADPT_CFG0,
 		AFE_ADPT_RST_OVRD_EN | AFE_ADPT_RST_OVRD_VAL,
 		AFE_ADPT_RST_OVRD_EN | AFE_ADPT_RST_OVRD_VAL);
-	/*
-	 * Optional but commonly required for USB bring-up:
-	 * bypass RX adaptation loop
-	 */
-	regmap_update_bits(regm, PHY_RX_REG2, RX_BYPASS_ADPT,
-			   RX_BYPASS_ADPT);
+
+	/* Bypass RX adaptation loop */
+	regmap_update_bits(regm, PHY_RX_REG_B, RX_REG6_BYPASS_ADPT,
+			   RX_REG6_BYPASS_ADPT);
+
+	/* Override driver amplitude value to 900m */
+	regmap_set_bits(regm, PHY_RXEQ_TIME,
+			RXEQ_TIME_OVRD_AMP_SOC | RXEQ_TIME_CFG_AMP_SOC(AMP_SOC_900M));
+
+	/* Configure RX parameters */
+	regmap_update_bits(regm, PHY_RX_REG_A, RX_REG0_MASK, RX_REG0_RLOAD);
+	regmap_update_bits(regm, PHY_RX_REG_A, RX_REG1_MASK,
+			   RX_REG1_RC_CALI_REG(RX_REG1_RC_CALI_REG_DEFAULT) |
+			   RX_REG1_RTERM_REG(RX_REG1_RTERM_REG_DEFAULT));
+	regmap_update_bits(regm, PHY_RX_REG_A, RX_REG2_MASK,
+			   RX_REG2_PSEL(RX_REG2_PSEL_DEFAULT) | RX_REG2_FORCE_CSEL |
+			   RX_REG2_CSEL(RX_REG2_CSEL_DEFAULT));
+	regmap_update_bits(regm, PHY_RX_REG_A, RX_REG3_MASK,
+			   RX_REG3_RDEG1(RX_REG3_RDEG1_DEFAULT) |
+			   RX_REG3_ADJ_BIAS(RX_REG3_ADJ_BIAS_DEFAULT) |
+			   RX_REG3_SEL_CBOOST_CODE |
+			   RX_REG3_I_LOAD_REG(RX_REG3_I_LOAD_REG_DEFAULT));
+	regmap_update_bits(regm, PHY_RX_REG_B, RX_REG4_MASK,
+			   RX_REG4_MANUAL_CFG | RX_REG4_RTERM_SEL | RX_REG4_ENVOS |
+			   RX_REG4_RDEG2(RX_REG4_RDEG2_DEFAULT));
+	regmap_update_bits(regm, PHY_RX_REG_B, RX_REG5_MASK,
+			   RX_REG5_RCELL_BIAS(RX_REG5_RCELL_BIAS_DEFAULT) |
+			   RX_REG5_RCELL_VCM(RX_REG5_RCELL_VCM_DEFAULT));
+	regmap_update_bits(regm, PHY_RX_REG_B, RX_REG6_MASK,
+			   RX_REG6_ADAPT_GAIN(RX_REG6_ADAPT_GAIN_DEFAULT) |
+			   RX_REG6_H1_REG(RX_REG6_H1_REG_DEFAULT));
+	dev_info(&phy->dev, "PUPHY Rx Reg Configured\n");
 
 	/*
 	 * Inform PHY that all PLL-related configuration is done.
@@ -264,10 +332,10 @@ static int k3_usb3phy_init_single(struct k3_usb3phy *k3_phy,
 	 */
 	regmap_write(regm, PHY_CLK_CFG,
 		     CFG_SW_INIT_DONE |
+			     CFG_PU_SSC_OUT |
 			     FIELD_PREP(CFG_REFCLK_FREQ, REFCLK_24M) |
 			     CFG_RXCLK_EN | CFG_PCLK_EN |
-			     CFG_PIPE_PCLK_EN | CFG_TXCLK_EN |
-			     CFG_TXCLK_INV);
+			     CFG_PIPE_PCLK_EN | CFG_TXCLK_EN);
 
 	ret = regmap_read_poll_timeout(regm, PHY_CLK_CFG, reg,
 				       (reg & PLL_READY), POLL_DELAY,
