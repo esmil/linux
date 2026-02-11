@@ -361,11 +361,19 @@ int irq_set_affinity_locked(struct irq_data *data, const struct cpumask *cpu_mas
 	struct cpumask affinity_cpu_mask;
 	struct cpumask *mask = &affinity_cpu_mask;
 
-	if (hmp_get_cpumask(mask, HMP_REGULAR) ||
-	    !cpumask_and(mask, cpu_mask, mask)) {
-		WARN(1, "irq(%u) set affinity(%*pb) failed!\n",
-		     irq_desc_get_irq(desc), cpumask_pr_args(cpu_mask));
-		return -EINVAL;
+	if (!hmp_get_cpumask(mask, HMP_REGULAR) && !cpumask_and(mask, cpu_mask, mask)) {
+		/* try bind irq to regular cpus */
+		cpumask_copy(mask, cpu_mask);
+		if (hmp_map_ai_to_regular(mask) <= 0) {
+			pr_warn("irq(%u) set affinity(%*pb) failed!\n",
+				irq_desc_get_irq(desc), cpumask_pr_args(cpu_mask));
+
+			return -EINVAL;
+		}
+
+		pr_warn("irq(%u) set affinity(%*pb) remap to affinity(%*pb)!\n",
+			irq_desc_get_irq(desc), cpumask_pr_args(cpu_mask),
+			cpumask_pr_args(mask));
 	}
 #else
 int irq_set_affinity_locked(struct irq_data *data, const struct cpumask *mask,
