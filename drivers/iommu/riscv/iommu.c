@@ -12,6 +12,10 @@
 
 #define pr_fmt(fmt) "riscv-iommu: " fmt
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+#define IOMMU_IS_NON_COHERENT
+#endif
+
 #include <linux/acpi.h>
 #include <linux/acpi_rimt.h>
 #include <linux/compiler.h>
@@ -23,6 +27,10 @@
 #include <linux/irqdomain.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
+
+#ifdef IOMMU_IS_NON_COHERENT
+#include <linux/dma-map-ops.h>
+#endif
 
 #include "../iommu-pages.h"
 #include "iommu-bits.h"
@@ -430,6 +438,10 @@ static unsigned int riscv_iommu_queue_send(struct riscv_iommu_queue *queue,
 	 *    completed and visible before signaling the tail doorbell to fetch
 	 *    the next command. 'fence ow, ow'
 	 */
+#ifdef IOMMU_IS_NON_COHERENT
+	arch_sync_dma_for_device(queue->phys + Q_ITEM(queue, prod) * entry_size,
+				 entry_size, DMA_TO_DEVICE);
+#endif
 	dma_wmb();
 	riscv_iommu_writel(queue->iommu, Q_TAIL(queue), Q_ITEM(queue, prod + 1));
 
@@ -559,6 +571,11 @@ static irqreturn_t riscv_iommu_fltq_process(int irq, void *data)
 
 	do {
 		cnt = riscv_iommu_queue_consume(queue, &idx);
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_cpu(__pa(&events[Q_ITEM(queue, idx)]),
+				      sizeof(struct riscv_iommu_fq_record) * cnt,
+				      DMA_FROM_DEVICE);
+#endif
 		for (len = 0; len < cnt; idx++, len++)
 			riscv_iommu_fault(iommu, &events[Q_ITEM(queue, idx)]);
 		riscv_iommu_queue_release(queue, cnt);
@@ -648,6 +665,9 @@ static struct riscv_iommu_dc *riscv_iommu_get_dc(struct riscv_iommu_device *iomm
 			old = cmpxchg_relaxed((unsigned long *)ddtp, ddt, new);
 
 			if (old == ddt) {
+#ifdef IOMMU_IS_NON_COHERENT
+				arch_sync_dma_for_device(__pa(ddtp), sizeof(new), DMA_TO_DEVICE);
+#endif
 				ddtp = (u64 *)ptr;
 				break;
 			}
@@ -1045,6 +1065,9 @@ static void riscv_iommu_iodir_update(struct riscv_iommu_device *iommu,
 			continue;
 
 		WRITE_ONCE(dc->tc, tc & ~RISCV_IOMMU_DC_TC_V);
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_device(__pa(dc), sizeof(*dc), DMA_TO_DEVICE);
+#endif
 
 		/* Invalidate device context cached values */
 		riscv_iommu_cmd_iodir_inval_ddt(&cmd);
@@ -1070,6 +1093,9 @@ static void riscv_iommu_iodir_update(struct riscv_iommu_device *iommu,
 		/* Update device context, write TC.V as the last step. */
 		dma_wmb();
 		WRITE_ONCE(dc->tc, tc);
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_device(__pa(dc), sizeof(*dc), DMA_TO_DEVICE);
+#endif
 
 		/* Invalidate device context after update */
 		riscv_iommu_cmd_iodir_inval_ddt(&cmd);
@@ -1185,6 +1211,9 @@ pte_retry:
 				iommu_free_pages(addr);
 				goto pte_retry;
 			}
+#ifdef IOMMU_IS_NON_COHERENT
+			arch_sync_dma_for_device(__pa(ptr), sizeof(pte), DMA_TO_DEVICE);
+#endif
 		}
 		ptr = (unsigned long *)pfn_to_virt(__page_val_to_pfn(pte));
 	} while (level-- > 0);
@@ -1246,6 +1275,9 @@ static int riscv_iommu_map_pages(struct iommu_domain *iommu_domain,
 		pte = _io_pte_entry(phys_to_pfn(phys), pte_prot);
 		if (cmpxchg_relaxed(ptr, old, pte) != old)
 			continue;
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_device(__pa(ptr), sizeof(pte), DMA_TO_DEVICE);
+#endif
 
 		riscv_iommu_pte_free(domain, old, &freelist);
 
