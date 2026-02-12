@@ -12,6 +12,7 @@
 #include <linux/reboot.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+#include <asm/sbi.h>
 
 #define FLAG_FASTBOOT	BIT(0)
 #define FLAG_FINISH	BIT(1)
@@ -39,6 +40,8 @@ static int k3_reset_handler(struct notifier_block *this, unsigned long mode, voi
 	/* Then wait until RCPU's writing is done */
 	/* This will time out after 5s */
 	writel(FLAG_FASTBOOT, info->base);
+	sbi_ecall(SBI_EXT_SRST, SBI_EXT_SRST_RESET, SBI_SRST_RESET_TYPE_COLD_REBOOT,
+		  SBI_SRST_RESET_REASON_NONE, 0, 0, 0, 0);
 	while (loops > 0) {
 		val = readl(info->base);
 		if (val & FLAG_FINISH) {
@@ -79,7 +82,7 @@ static int spacemit_reboot_probe(struct platform_device *pdev)
 	}
 
 	info->reset_handler.notifier_call = k3_reset_handler;
-	info->reset_handler.priority = 128;
+	info->reset_handler.priority = 255;
 	ret = register_restart_handler(&info->reset_handler);
 	if (ret) {
 		return dev_err_probe(&pdev->dev, ret,
