@@ -18,3 +18,10 @@ config RISCV_IOMMU_PCI
 	def_bool y if RISCV_IOMMU && PCI_MSI
 	help
 	  Support for the PCIe implementation of RISC-V IOMMU architecture.
+
+config RISCV_IOMMU_SPACEMIT_K3
+	bool "SpacemiT K3 IOMMU Support"
+	depends on RISCV_IOMMU
+	default n
+	help
+	  Support for the RISC-V IOMMU on SpacemiT K3 SoCs.
