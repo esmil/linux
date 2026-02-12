@@ -513,17 +513,34 @@ static void riscv_iommu_cmd_sync(struct riscv_iommu_device *iommu,
  * IOMMU Fault/Event queue chapter 3.2
  */
 
+static struct riscv_iommu_dc *riscv_iommu_get_dc(struct riscv_iommu_device *iommu,
+						 unsigned int devid);
 static void riscv_iommu_fault(struct riscv_iommu_device *iommu,
 			      struct riscv_iommu_fq_record *event)
 {
 	unsigned int err = FIELD_GET(RISCV_IOMMU_FQ_HDR_CAUSE, event->hdr);
 	unsigned int devid = FIELD_GET(RISCV_IOMMU_FQ_HDR_DID, event->hdr);
+	unsigned int pid = FIELD_GET(RISCV_IOMMU_FQ_HDR_PID, event->hdr);
+	unsigned int pv = FIELD_GET(RISCV_IOMMU_FQ_HDR_PV, event->hdr);
+	unsigned int priv = FIELD_GET(RISCV_IOMMU_FQ_HDR_PRIV, event->hdr);
+	unsigned int ttyp = FIELD_GET(RISCV_IOMMU_FQ_HDR_TTYP, event->hdr);
+	struct riscv_iommu_dc *dc = riscv_iommu_get_dc(iommu, devid);
 
 	/* Placeholder for future fault handling implementation, report only. */
-	if (err)
+	if (err) {
 		dev_warn_ratelimited(iommu->dev,
-				     "Fault %d devid: 0x%x iotval: %llx iotval2: %llx\n",
-				     err, devid, event->iotval, event->iotval2);
+				     "Fault %d, pid: 0x%x, pv: 0x%x, priv: 0x%x, ttyp: 0x%x, "
+				     "devid: 0x%x, iotval: %llx, iotval2: %llx\n",
+				     err, pid, pv, priv, ttyp, devid, event->iotval, event->iotval2);
+		dev_warn_ratelimited(iommu->dev, "(%s:%d) devid:0x%x, dc: \n", __func__, __LINE__, devid);
+		dev_warn_ratelimited(iommu->dev, "        tc:            0x%llx\n", dc->tc);
+		dev_warn_ratelimited(iommu->dev, "        iohgatp:       0x%llx\n", dc->iohgatp);
+		dev_warn_ratelimited(iommu->dev, "        ta:            0x%llx\n", dc->ta);
+		dev_warn_ratelimited(iommu->dev, "        fsc:           0x%llx\n", dc->fsc);
+		dev_warn_ratelimited(iommu->dev, "        msiptp:        0x%llx\n", dc->msiptp);
+		dev_warn_ratelimited(iommu->dev, "        msi_addr_mask: 0x%llx\n", dc->msi_addr_mask);
+		dev_warn_ratelimited(iommu->dev, "        msi_addr_patt: 0x%llx\n", dc->msi_addr_pattern);
+	}
 }
 
 /* Fault queue interrupt handler thread function */
@@ -1058,6 +1075,16 @@ static void riscv_iommu_iodir_update(struct riscv_iommu_device *iommu,
 		riscv_iommu_cmd_iodir_inval_ddt(&cmd);
 		riscv_iommu_cmd_iodir_set_did(&cmd, fwspec->ids[i]);
 		riscv_iommu_cmd_send(iommu, &cmd);
+
+		dev_dbg(iommu->dev, "(%s:%d) devid[%d]:0x%x, dc:\n",
+				__func__, __LINE__, i, fwspec->ids[i]);
+		dev_dbg(iommu->dev, "	     tc:	    0x%llx\n", dc->tc);
+		dev_dbg(iommu->dev, "	     iohgatp:	    0x%llx\n", dc->iohgatp);
+		dev_dbg(iommu->dev, "	     ta:	    0x%llx\n", dc->ta);
+		dev_dbg(iommu->dev, "	     fsc:	    0x%llx\n", dc->fsc);
+		dev_dbg(iommu->dev, "	     msiptp:	    0x%llx\n", dc->msiptp);
+		dev_dbg(iommu->dev, "	     msi_addr_mask: 0x%llx\n", dc->msi_addr_mask);
+		dev_dbg(iommu->dev, "	     msi_addr_patt: 0x%llx\n", dc->msi_addr_pattern);
 	}
 
 	riscv_iommu_cmd_sync(iommu, RISCV_IOMMU_IOTINVAL_TIMEOUT);
