@@ -598,7 +598,7 @@
 			};
 
 			gpu_crit: gpu-crit {
-				temperature = <95000>;
+				temperature = <115000>;
 				hysteresis = <2000>;
 				type = "critical";
 			};
