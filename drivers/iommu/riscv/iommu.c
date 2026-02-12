@@ -20,6 +20,7 @@
 #include <linux/iommu.h>
 #include <linux/iopoll.h>
 #include <linux/irqchip/riscv-imsic.h>
+#include <linux/irqdomain.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
 
@@ -1564,6 +1565,7 @@ static struct iommu_device *riscv_iommu_probe_device(struct device *dev)
 	struct riscv_iommu_device *iommu;
 	struct riscv_iommu_info *info;
 	struct riscv_iommu_dc *dc;
+	struct irq_domain *irqdomain;
 	u64 tc;
 	int i;
 
@@ -1602,6 +1604,11 @@ static struct iommu_device *riscv_iommu_probe_device(struct device *dev)
 			dev_warn(dev, "already attached to IOMMU device directory\n");
 		WRITE_ONCE(dc->tc, tc);
 	}
+
+	/* FIXME: A hack to set the IRQ_DOMAIN_FLAG_ISOLATED_MSI flag. */
+	irqdomain = dev_get_msi_domain(dev);
+	if (irqdomain)
+		irqdomain->flags |= IRQ_DOMAIN_FLAG_ISOLATED_MSI;
 
 	dev_iommu_priv_set(dev, info);
 
