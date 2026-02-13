@@ -95,6 +95,14 @@
 #define PORTD_MODE_PCIE			(0)
 #define PORTD_MODE_USB			BIT(0)
 
+/*
+ * PCIe Port A, B and C IOMMU bypass
+ *   [5] Port A
+ *   [6] Port B
+ *   [7] Port C
+ */
+#define PCIE_IOMMU_BYPASS(port_id)	BIT(5 + (port_id))
+
 #define MAX_PHYS 6
 #endif
 
@@ -628,6 +636,67 @@ static int k1_pcie_parse_port(struct k1_pcie *k1)
 	return 0;
 }
 
+/*
+ * Determine whether the IOMMU device node specified by "iommu-map" is available
+ * ("status" property is "okay" or "ok").
+ */
+static bool pcie_iommu_is_available(const struct device_node *np)
+{
+	const char *map_name = "iommu-map";
+	const __be32 *map = NULL;
+	int map_len;
+	u32 phandle;
+	struct device_node *phandle_node;
+
+	/*
+	 * "iommu-map" property is an arbitrary number of tuples of
+	 * <requester_id_base, iommu_phandle, iommu_device_id_base, length>.
+	 *
+	 * Each tuple has 4 cells.
+	 */
+
+	map = of_get_property(np, map_name, &map_len);
+	if (!map)
+		return false;
+
+	if (!map_len || map_len % (4 * sizeof(*map))) {
+		pr_err("%pOF: Error: Bad %s length: %d\n", np, map_name, map_len);
+		return false;
+	}
+
+	/* Here we only check the first tuple */
+	phandle = be32_to_cpup(map + 1);
+	phandle_node = of_find_node_by_phandle(phandle);
+	if (!phandle_node)
+		return false;
+
+	return of_device_is_available(phandle_node);
+}
+
+/*
+ * Setup IOMMU bypass.
+ * It must be run after that pmu and port_id in struct k1_pcie are initialized.
+ */
+static void pcie_iommu_bypass_setup(struct k1_pcie *k1)
+{
+	struct device *dev = k1->pci.dev;
+	struct device_node *np = dev->of_node;
+
+	/* Only PCIe A, B and C are behind IOMMU */
+	if (k1->port_id > 2)
+		return;
+
+	if (pcie_iommu_is_available(np)) {
+		dev_info(dev, "iommu not bypassed\n");
+		regmap_clear_bits(k1->pmu, PMUA_PCIE_SUBSYS_MGMT,
+				  PCIE_IOMMU_BYPASS(k1->port_id));
+	} else {
+		dev_info(dev, "iommu bypassed\n");
+		regmap_set_bits(k1->pmu, PMUA_PCIE_SUBSYS_MGMT,
+				PCIE_IOMMU_BYPASS(k1->port_id));
+	}
+}
+
 static int k1_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -682,6 +751,8 @@ static int k1_pcie_probe(struct platform_device *pdev)
 		dev_err_probe(dev, ret, "failed to parse port\n");
 		goto err_pm_runtime_put;
 	}
+
+	pcie_iommu_bypass_setup(k1);
 
 	irq = platform_get_irq_byname_optional(pdev, "pcie_irq");
 	if (irq > 0)
