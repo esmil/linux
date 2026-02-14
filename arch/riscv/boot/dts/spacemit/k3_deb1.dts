@@ -363,6 +363,31 @@
 		m25p,fast-read;
 		broken-flash-reset;
 		status = "okay";
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			bootinfo@0 {
+				reg = <0x00000000 0x00020000>;
+			};
+			fsbl@20000 {
+				reg = <0x00020000 0x00080000>;
+			};
+			env@a0000 {
+				reg = <0x000a0000 0x00010000>;
+			};
+			esos@b0000 {
+				reg = <0x000b0000 0x00100000>;
+			};
+			opensbi@1b0000 {
+				reg = <0x001b0000 0x00060000>;
+			};
+			uboot@210000 {
+				reg = <0x00210000 0x005f0000>;
+			};
+		};
 	};
 };
 
