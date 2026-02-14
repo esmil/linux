@@ -2128,6 +2128,16 @@
 			status = "disabled";
 		};
 
+		iommu: iommu@c0f00000 {
+			compatible = "spacemit,k3-iommu";
+			reg = <0x0 0xc0f00000 0x0 0x1000>;
+			interrupts = <234 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			#iommu-cells = <0x01>;
+			clocks = <&syscon_apmu CLK_APMU_IOMMU>;
+			status = "disabled";
+		};
+
 		pcie0_rc: pcie@80000000 {
 			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x80000000 0x0 0x00001000>, /* dbi */
@@ -2160,6 +2170,9 @@
 			linux,pci-domain = <0>;
 			msi-parent = <&simsic>;
 			spacemit,apmu = <&syscon_apmu 0x1f0>;
+
+			iommu-map = <0x0 &iommu 0x00000 0x10000>;
+
 			status = "disabled";
 		};
 
@@ -2199,6 +2212,9 @@
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <1>;
 			spacemit,apmu = <&syscon_apmu 0x1d0>;
+
+			iommu-map = <0x0 &iommu 0x10000 0x10000>;
+
 			status = "disabled";
 		};
 
@@ -2238,6 +2254,9 @@
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <2>;
 			spacemit,apmu = <&syscon_apmu 0x1c8>;
+
+			iommu-map = <0x0 &iommu 0x20000 0x10000>;
+
 			status = "disabled";
 		};
 
