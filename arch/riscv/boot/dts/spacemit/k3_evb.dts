@@ -360,7 +360,7 @@
 	no-sdio;
 	clock-frequency = <204800000>;
 	spacemit,tx_delaycode = <0x1f>;
-	status = "disabled";
+	status = "okay";
 };
 
 &sdio {
