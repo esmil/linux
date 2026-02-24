@@ -26,9 +26,6 @@ struct spacemit_reboot_ctrl {
 
 static int k3_reset_handler(struct notifier_block *this, unsigned long mode, void *cmd)
 {
-	bool bootmode_is_fastboot = false;
-	int loops = 5000;
-	uint32_t val;
 	struct spacemit_reboot_ctrl *info = container_of(this, struct spacemit_reboot_ctrl,
 							 reset_handler);
 	if (cmd == NULL || strcmp(cmd, rebootcmd)) {
@@ -37,23 +34,11 @@ static int k3_reset_handler(struct notifier_block *this, unsigned long mode, voi
 	}
 
 	/* Inform RCPU to write related register in P1 */
-	/* Then wait until RCPU's writing is done */
-	/* This will time out after 5s */
 	writel(FLAG_FASTBOOT, info->base);
 	sbi_ecall(SBI_EXT_SRST, SBI_EXT_SRST_RESET, SBI_SRST_RESET_TYPE_COLD_REBOOT,
 		  SBI_SRST_RESET_REASON_NONE, 0, 0, 0, 0);
-	while (loops > 0) {
-		val = readl(info->base);
-		if (val & FLAG_FINISH) {
-			bootmode_is_fastboot = true;
-			break;
-		}
-		mdelay(1);
-		loops--;
-	}
-	if (bootmode_is_fastboot)
-		pr_emerg("spacemit reboot: going to uboot fastboot\n");
 
+	while (1);
 	return NOTIFY_DONE;
 }
 
