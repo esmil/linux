@@ -25,9 +25,17 @@
 #include <linux/sysrq.h>
 #include <linux/input/matrix_keypad.h>
 #include <linux/platform_data/cros_ec_commands.h>
+#include <linux/platform_data/cros_ec_oem_commands.h>
 #include <linux/platform_data/cros_ec_proto.h>
+#include <linux/workqueue.h>
 
 #include <linux/unaligned.h>
+
+static_assert(EC_CMD_OEM_KB_LOCK_LED <
+	      EC_CMD_PASSTHRU_OFFSET(CROS_EC_DEV_PD_INDEX));
+
+#define CROS_EC_KB_LED_RETRY_DELAY_MS	100
+#define CROS_EC_KB_LED_MAX_RETRIES	5
 
 /**
  * struct cros_ec_keyb - Structure representing EC keyboard device
@@ -59,6 +67,13 @@ struct cros_ec_keyb {
 	struct input_dev *idev;
 	struct input_dev *bs_idev;
 	struct notifier_block notifier;
+
+	struct delayed_work led_sync_work;
+	spinlock_t led_sync_lock;
+	u8 desired_lock_led_state;
+	u8 synced_lock_led_state;
+	u8 led_sync_retry_count;
+	bool led_sync_valid;
 
 	struct vivaldi_data vdata;
 };
@@ -210,6 +225,136 @@ static void cros_ec_keyb_process(struct cros_ec_keyb *ckdev,
 		ckdev->old_kb_state[col] = kb_state[col];
 	}
 	input_sync(ckdev->idev);
+}
+
+static u8 cros_ec_keyb_get_lock_led_state(struct input_dev *idev)
+{
+	u8 state = 0;
+
+	if (test_bit(LED_SCROLLL, idev->led))
+		state |= EC_OEM_KB_LOCK_LED_SCROLL;
+	if (test_bit(LED_NUML, idev->led))
+		state |= EC_OEM_KB_LOCK_LED_NUM;
+	if (test_bit(LED_CAPSL, idev->led))
+		state |= EC_OEM_KB_LOCK_LED_CAPS;
+
+	return state;
+}
+
+static int cros_ec_keyb_send_lock_led_cmd(struct cros_ec_keyb *ckdev, u8 lock_leds)
+{
+	DEFINE_RAW_FLEX(struct cros_ec_command, msg, data,
+			sizeof(struct ec_params_oem_kb_lock_led));
+	struct ec_params_oem_kb_lock_led *params =
+		(struct ec_params_oem_kb_lock_led *)msg->data;
+
+	msg->command = EC_CMD_OEM_KB_LOCK_LED;
+	msg->version = 0;
+	msg->outsize = sizeof(*params);
+	params->lock_leds = lock_leds;
+
+	return cros_ec_cmd_xfer_status(ckdev->ec, msg);
+}
+
+static bool cros_ec_keyb_led_sync_should_retry(int ret)
+{
+	switch (ret) {
+	case -EMSGSIZE:
+	case -EINVAL:
+	case -EOPNOTSUPP:
+	case -ENOPROTOOPT:
+		return false;
+	default:
+		return true;
+	}
+}
+
+static void cros_ec_keyb_queue_led_sync(struct cros_ec_keyb *ckdev, bool force)
+{
+	unsigned long flags;
+
+	if (!ckdev->idev)
+		return;
+
+	spin_lock_irqsave(&ckdev->led_sync_lock, flags);
+	ckdev->desired_lock_led_state = cros_ec_keyb_get_lock_led_state(ckdev->idev);
+	if (force)
+		ckdev->led_sync_valid = false;
+	spin_unlock_irqrestore(&ckdev->led_sync_lock, flags);
+
+	mod_delayed_work(system_wq, &ckdev->led_sync_work, 0);
+}
+
+static void cros_ec_keyb_led_sync_work(struct work_struct *work)
+{
+	struct cros_ec_keyb *ckdev = container_of(to_delayed_work(work),
+						   struct cros_ec_keyb,
+						   led_sync_work);
+	unsigned long flags;
+	u8 desired_state;
+	u8 synced_state;
+	bool is_synced_valid;
+	bool retry = false;
+	int ret;
+
+	if (!ckdev->idev)
+		return;
+
+	spin_lock_irqsave(&ckdev->led_sync_lock, flags);
+	desired_state = ckdev->desired_lock_led_state;
+	synced_state = ckdev->synced_lock_led_state;
+	is_synced_valid = ckdev->led_sync_valid;
+	spin_unlock_irqrestore(&ckdev->led_sync_lock, flags);
+
+	if (is_synced_valid && desired_state == synced_state)
+		return;
+
+	ret = cros_ec_keyb_send_lock_led_cmd(ckdev, desired_state);
+
+	spin_lock_irqsave(&ckdev->led_sync_lock, flags);
+	if (!ret) {
+		ckdev->synced_lock_led_state = desired_state;
+		ckdev->led_sync_valid = true;
+		ckdev->led_sync_retry_count = 0;
+	} else if (cros_ec_keyb_led_sync_should_retry(ret) &&
+		   ckdev->led_sync_retry_count < CROS_EC_KB_LED_MAX_RETRIES) {
+		ckdev->led_sync_retry_count++;
+		retry = true;
+	} else {
+		ckdev->led_sync_retry_count = 0;
+	}
+	spin_unlock_irqrestore(&ckdev->led_sync_lock, flags);
+
+	if (ret) {
+		dev_warn_ratelimited(ckdev->dev,
+				     "failed to sync lock LEDs to EC: %d\n",
+				     ret);
+		if (retry) {
+			mod_delayed_work(system_wq, &ckdev->led_sync_work,
+					 msecs_to_jiffies(CROS_EC_KB_LED_RETRY_DELAY_MS));
+		}
+	}
+}
+
+static int cros_ec_keyb_event(struct input_dev *idev, unsigned int type,
+			      unsigned int code, int value)
+{
+	struct cros_ec_keyb *ckdev = input_get_drvdata(idev);
+
+	if (type != EV_LED)
+		return 0;
+
+	switch (code) {
+	case LED_CAPSL:
+	case LED_NUML:
+	case LED_SCROLLL:
+		cros_ec_keyb_queue_led_sync(ckdev, false);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
 }
 
 /**
@@ -437,9 +582,15 @@ static int cros_ec_keyb_query_switches(struct cros_ec_keyb *ckdev)
 static int cros_ec_keyb_resume(struct device *dev)
 {
 	struct cros_ec_keyb *ckdev = dev_get_drvdata(dev);
+	int ret;
 
-	if (ckdev->bs_idev)
-		return cros_ec_keyb_query_switches(ckdev);
+	if (ckdev->bs_idev) {
+		ret = cros_ec_keyb_query_switches(ckdev);
+		if (ret)
+			return ret;
+	}
+
+	cros_ec_keyb_queue_led_sync(ckdev, true);
 
 	return 0;
 }
@@ -645,6 +796,10 @@ static int cros_ec_keyb_register_matrix(struct cros_ec_keyb *ckdev)
 	ckdev->row_shift = get_count_order(ckdev->cols);
 
 	input_set_capability(idev, EV_MSC, MSC_SCAN);
+	input_set_capability(idev, EV_LED, LED_NUML);
+	input_set_capability(idev, EV_LED, LED_CAPSL);
+	input_set_capability(idev, EV_LED, LED_SCROLLL);
+	idev->event = cros_ec_keyb_event;
 	input_set_drvdata(idev, ckdev);
 	ckdev->idev = idev;
 	cros_ec_keyb_compute_valid_keys(ckdev);
@@ -725,6 +880,8 @@ static int cros_ec_keyb_probe(struct platform_device *pdev)
 	ckdev->ec = ec;
 	ckdev->dev = dev;
 	dev_set_drvdata(dev, ckdev);
+	spin_lock_init(&ckdev->led_sync_lock);
+	INIT_DELAYED_WORK(&ckdev->led_sync_work, cros_ec_keyb_led_sync_work);
 
 	if (!buttons_switches_only) {
 		err = cros_ec_keyb_register_matrix(ckdev);
@@ -750,6 +907,7 @@ static int cros_ec_keyb_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(ckdev->dev, true);
+	cros_ec_keyb_queue_led_sync(ckdev, true);
 	return 0;
 }
 
@@ -757,6 +915,7 @@ static void cros_ec_keyb_remove(struct platform_device *pdev)
 {
 	struct cros_ec_keyb *ckdev = dev_get_drvdata(&pdev->dev);
 
+	cancel_delayed_work_sync(&ckdev->led_sync_work);
 	blocking_notifier_chain_unregister(&ckdev->ec->event_notifier,
 					   &ckdev->notifier);
 }
