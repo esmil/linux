@@ -16,6 +16,10 @@
 #define MSGFIELDS_MAX 10
 #define INSN_SZ       16
 
+/* check an ID is in the valid range */
+#define IS_VALID_ID(id)	    \
+	((id > 0) && (id < MAX_ID))
+
 struct rvtrace_queue;
 
 struct nexus_rv_defmt_buf {

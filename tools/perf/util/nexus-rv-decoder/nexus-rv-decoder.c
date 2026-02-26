@@ -35,69 +35,111 @@ static struct nexus_rv_defmt_buf* nexus_rv_get_buf(struct nexus_rv_defmt_buf def
 	return &defmt_bufs[id];
 }
 
+static int nexus_rv_defmt_buf_append(struct nexus_rv_defmt_buf *defmt_buf, FILE *nexus,
+				     unsigned char data)
+{
+	if (defmt_buf->size == defmt_buf->capacity) {
+		defmt_buf->capacity *= 2;
+		defmt_buf->buf = realloc(defmt_buf->buf, defmt_buf->capacity);
+		if (!defmt_buf->buf)
+			return -ENOMEM;
+	}
+	defmt_buf->buf[defmt_buf->size++] = data;
+
+	if ((data & 0x3) == 0x3) {
+		size_t n = fwrite(defmt_buf->buf, defmt_buf->size, 1, nexus);
+		if (n != 1) {
+		    pr_err("Encoder: failed to write nexus data\n");
+		    return -EINVAL;
+		}
+		defmt_buf->size = 0;
+	}
+
+	return 0;
+}
+
+static size_t skip_frame_syncs(const unsigned char *buf, size_t len, size_t *fsync_count) {
+	const uint32_t FSYNC_PATTERN = 0x7FFFFFFF;    // LE host pattern for Frame SYNC
+	size_t skipped_bytes = 0;
+
+	while (skipped_bytes + 4 <= len) {
+		if (*((uint32_t *)(buf + skipped_bytes)) == FSYNC_PATTERN) {
+			skipped_bytes += 4;
+			(*fsync_count)++;
+		} else {
+			break;
+		}
+	}
+
+	return skipped_bytes;
+}
+
 // remove coresight formatter frame
 static int nexus_rv_pkt_defmt(struct nexus_rv_defmt_buf defmt_bufs[], FILE *nexus, const unsigned char *buf, size_t len)
 {
-	unsigned char data_byte, flag_byte;
-	int is_id;
-	unsigned char cur_id = 0, old_id, new_id, data;
+	int err;
+	uint8_t flag_bit;
+	unsigned char data = 0;
+	int cur_id = -1, old_id = -1, new_id = -1;
 
-	// 16 bytes is output by coresight trace formatter
+	/* 16 bytes is output by coresight trace formatter */
 	while (len >= 16) {
-		flag_byte = buf[15];
-		for (int i = 0; i < 15; i++) {
-			data_byte = buf[i];
-			if ((i & 1) == 0) {
-				is_id = data_byte & 1;
-				if (is_id) {
-					old_id = new_id;
-					new_id = data_byte >> 1; // get new_id
-					if ((flag_byte >> (i / 2)) & 1) {
-						// 1 = next byte corresponds to the old_id
-						cur_id = old_id;
-						if (i == 14) {
-							pr_err("Encoder: last id byte must with flag=0");
-							return -EINVAL;
-						}
-					} else {
-						// 0 = next byte corresponds to the old_id
-						cur_id = new_id;
-					}
-				} else {
-					// get data when data_byte[0] is clear
-					data = data_byte | ((flag_byte >> (i / 2)) & 1);
-				}
+		/* some linux drivers (e.g. for perf) will insert FSYNCS to pad or differentiate
+		 * between blocks of aligned data, always in frame aligned complete 16 byte frames.
+		 * we need to skip past these frames, resetting as we go.
+		 */
+		size_t fsync_count = 0;
+		size_t fsync_bytes = skip_frame_syncs(buf, len, &fsync_count);
+		if (fsync_bytes > 0) {
+			if (fsync_count % 4 == 0) {
+				cur_id = -1;
+				old_id = -1;
+				new_id = -1;
 			} else {
-				is_id = 0;
-				data = data_byte;
+				pr_err("Incorrect FSYNC reset pattern\n");
+				return -EINVAL;
+			}
+			buf += fsync_bytes;
+			len -= fsync_bytes;
+			continue;
+		}
+
+		flag_bit = 0x1;
+		for (int i = 0; i < 15; i += 2) {
+			if (buf[i] & 0x1) {
+				/* it's id */
+				old_id = new_id;
+				new_id = buf[i] >> 1; /* get new_id */
+				cur_id = (flag_bit & buf[15]) ? old_id : new_id;
+			} else {
+				/* it's data */
+				data = buf[i] | ((flag_bit & buf[15]) ? 0x1 : 0x0);
 			}
 
-			// handle data
-			if (!is_id) {
+			if (IS_VALID_ID(cur_id)) {
 				struct nexus_rv_defmt_buf *defmt_buf = nexus_rv_get_buf(defmt_bufs, cur_id);
 				if (!defmt_buf)
 					return -ENOMEM;
 
-				if (defmt_buf->size >= defmt_buf->capacity) {
-					defmt_buf->capacity *= 2;
-					defmt_buf->buf = realloc(defmt_buf->buf, defmt_buf->capacity);
-					if (!defmt_buf->buf)
-						return -ENOMEM;
+				/* it's data */
+				if ((buf[i] & 0x1) == 0) {
+					err = nexus_rv_defmt_buf_append(defmt_buf, nexus, data);
+					if (err)
+						return err;
 				}
 
-				defmt_buf->buf[defmt_buf->size++] = data; // write to buffer
-				// If this is end byte for NEXUS MSG
-				if ((data & 3) == 0x3) {
-					size_t n = fwrite(defmt_buf->buf, defmt_buf->size, 1, nexus);
-					if (n != 1) {
-						pr_err("Encoder: failed to write nexus data\n");
-						return -EINVAL;
-					}
-					defmt_buf->size = 0;
+				/* buf[i+1] is alway data when i != 14 */
+				if (i != 14) {
+					err = nexus_rv_defmt_buf_append(defmt_buf, nexus, buf[i + 1]);
+					if (err)
+						return err;
 				}
-				if (cur_id != new_id)
-					cur_id = new_id;
 			}
+
+			if (cur_id != new_id)
+				cur_id = new_id;
+
+			flag_bit <<= 1;
 		}
 		buf += 16;
 		len -= 16;
