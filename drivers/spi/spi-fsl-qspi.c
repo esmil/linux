@@ -327,6 +327,11 @@ static bool needs_clk_disable(struct fsl_qspi *q)
 	return !(q->devtype_data->quirks & QUADSPI_QUIRK_SKIP_CLK_DISABLE);
 }
 
+static inline u32 fsl_qspi_get_sfa_size(struct fsl_qspi *q)
+{
+	return q->devtype_data->sfa_size ? : q->devtype_data->ahb_buf_size;
+}
+
 /*
  * An IC bug makes it necessary to rearrange the 32-bit data.
  * Later chips, such as IMX6SLX, have fixed this bug.
@@ -578,7 +583,7 @@ static void fsl_qspi_select_mem(struct fsl_qspi *q, struct spi_device *spi,
 static void fsl_qspi_read_ahb(struct fsl_qspi *q, const struct spi_mem_op *op)
 {
 	memcpy_fromio(op->data.buf.in,
-		      q->ahb_addr + q->selected * q->devtype_data->ahb_buf_size,
+		      q->ahb_addr + q->selected * fsl_qspi_get_sfa_size(q),
 		      op->data.nbytes);
 }
 
@@ -685,7 +690,7 @@ static int fsl_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 		addr_offset = q->memmap_phy;
 
 	qspi_writel(q,
-		    q->selected * q->devtype_data->ahb_buf_size + addr_offset,
+		    q->selected * fsl_qspi_get_sfa_size(q) + addr_offset,
 		    base + QUADSPI_SFAR);
 
 	qspi_writel(q, qspi_readl(q, base + QUADSPI_MCR) |
@@ -925,9 +930,12 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 	if (!res)
 		return -EINVAL;
 	q->memmap_phy = res->start;
-	/* Since there are 4 cs, map size required is 4 times ahb_buf_size */
+	/*
+	 * Since there are 4 cs, map size required is 4 times
+	 * sfa_size or ahb_buf_size
+	 */
 	q->ahb_addr = devm_ioremap(dev, q->memmap_phy,
-				   (q->devtype_data->ahb_buf_size * 4));
+				   fsl_qspi_get_sfa_size(q) * 4);
 	if (!q->ahb_addr)
 		return -ENOMEM;
 
