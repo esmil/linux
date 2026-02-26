@@ -21,6 +21,7 @@
 #define SPACEMIT_ISR		 0x4		/* Status register */
 #define SPACEMIT_IDBR		 0xc		/* Data buffer register */
 #define SPACEMIT_ILCR		 0x10		/* Load Count Register */
+#define SPACEMIT_IWCR		 0x14		/* Wait Count Register */
 #define SPACEMIT_IRCR		 0x18		/* Reset cycle counter */
 #define SPACEMIT_IBMR		 0x1c		/* Bus monitor register */
 
@@ -169,20 +170,38 @@ static int spacemit_i2c_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct spacemit_i2c_dev *i2c = container_of(hw, struct spacemit_i2c_dev, scl_clk_hw);
 	u32 lv, lcr, mask, shift, max_lv;
+	u32 denom;
 
-	lv = DIV_ROUND_UP(parent_rate, rate * 2);
+	/*
+	 * Controller timing (from vendor formula):
+	 * - standard mode: SCL = FCLK / (2 * SLV + 0x8)
+	 * - fast mode:     SCL = FCLK / (2 * (FLV + 1) + 8)
+	 */
+	denom = DIV_ROUND_UP(parent_rate, rate);
 
 	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
 		mask = SPACEMIT_LCR_LV_STANDARD_MASK;
 		shift = SPACEMIT_LCR_LV_STANDARD_SHIFT;
 		max_lv = SPACEMIT_LCR_LV_STANDARD_MAX_VALUE;
+		/*
+		 * SLV >= (denom - 8) / 2
+		 * Allow SLV=0 (max SCL = FCLK/8).
+		 */
+		lv = (denom <= 8) ? 0 : DIV_ROUND_UP(denom - 8, 2);
 	} else if (i2c->mode == SPACEMIT_MODE_FAST) {
 		mask = SPACEMIT_LCR_LV_FAST_MASK;
 		shift = SPACEMIT_LCR_LV_FAST_SHIFT;
 		max_lv = SPACEMIT_LCR_LV_FAST_MAX_VALUE;
+		/*
+		 * FLV >= (denom - 10) / 2
+		 * Allow FLV=0 (max SCL = FCLK/10).
+		 */
+		lv = (denom <= 10) ? 0 : DIV_ROUND_UP(denom - 10, 2);
+	} else {
+		return -EINVAL;
 	}
 
-	if (!lv || lv > max_lv) {
+	if (lv > max_lv) {
 		dev_err(i2c->dev, "set scl clock failed: lv 0x%x", lv);
 		return -EINVAL;
 	}
@@ -198,10 +217,19 @@ static int spacemit_i2c_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 static long spacemit_i2c_clk_round_rate(struct clk_hw *hw, unsigned long rate,
 					unsigned long *parent_rate)
 {
-	u32 lv, freq;
+	struct spacemit_i2c_dev *i2c = container_of(hw, struct spacemit_i2c_dev, scl_clk_hw);
+	u32 lv, freq, denom;
 
-	lv = DIV_ROUND_UP(*parent_rate, rate * 2);
-	freq = DIV_ROUND_UP(*parent_rate, lv * 2);
+	denom = DIV_ROUND_UP(*parent_rate, rate);
+	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
+		lv = (denom <= 8) ? 0 : DIV_ROUND_UP(denom - 8, 2);
+		freq = DIV_ROUND_UP(*parent_rate, lv * 2 + 8);
+	} else if (i2c->mode == SPACEMIT_MODE_FAST) {
+		lv = (denom <= 10) ? 0 : DIV_ROUND_UP(denom - 10, 2);
+		freq = DIV_ROUND_UP(*parent_rate, lv * 2 + 10);
+	} else {
+		return 0;
+	}
 
 	return freq;
 }
@@ -214,14 +242,16 @@ static unsigned long spacemit_i2c_clk_recalc_rate(struct clk_hw *hw,
 
 	lcr = readl(i2c->base + SPACEMIT_ILCR);
 
-	if (i2c->mode == SPACEMIT_MODE_STANDARD)
+	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
 		lv = FIELD_GET(SPACEMIT_LCR_LV_STANDARD_MASK, lcr);
-	else if (i2c->mode == SPACEMIT_MODE_FAST)
+		return DIV_ROUND_UP(parent_rate, lv * 2 + 8);
+	} else if (i2c->mode == SPACEMIT_MODE_FAST) {
 		lv = FIELD_GET(SPACEMIT_LCR_LV_FAST_MASK, lcr);
-	else
+		return DIV_ROUND_UP(parent_rate, lv * 2 + 10);
+	} else {
 		return 0;
+	}
 
-	return DIV_ROUND_UP(parent_rate, lv * 2);
 }
 
 static const struct clk_ops spacemit_i2c_clk_ops = {
@@ -273,6 +303,8 @@ static void spacemit_i2c_reset(struct spacemit_i2c_dev *i2c)
 	writel(SPACEMIT_CR_UR, i2c->base + SPACEMIT_ICR);
 	udelay(5);
 	writel(0, i2c->base + SPACEMIT_ICR);
+
+	writel(0x0000142A, i2c->base + SPACEMIT_IWCR);
 }
 
 static int spacemit_i2c_handle_err(struct spacemit_i2c_dev *i2c)
