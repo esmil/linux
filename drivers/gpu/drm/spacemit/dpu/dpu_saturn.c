@@ -286,7 +286,7 @@ void saturn_enable_irq_mask(struct spacemit_crtc *a_crtc, bool enable, u32 offse
 	//spin_lock_irqsave(&a_crtc->irq_msk_lock, flags);
 	if (enable) {
 		//uboot -> kernel, clear online vsync status first
-		if ((a_crtc->is_offline_mode == 0) && (unlikely(spacemit_dpu_logo_booton))) {
+		if ((a_crtc->is_offline_mode == 0) && (unlikely(a_crtc->logo_booton))) {
 			//write 1 to clr irq status
 			hwdev->clr_int_sts(a_crtc, irq_bit, a_crtc->dev_id);
 		}

@@ -13,6 +13,5 @@ void spacemit_dpu_free_bootloader_mem(void);
 #ifdef MODULE
 int spacemit_dpu_bootloader_mem_setup(struct reserved_mem *rmem);
 #endif
-extern bool spacemit_dpu_logo_booton;
 
 #endif

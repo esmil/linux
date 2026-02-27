@@ -79,8 +79,7 @@ static void _spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 	if (dsi->panel) {
 		drm_panel_prepare(dsi->panel);
 		drm_panel_enable(dsi->panel);
-		if ((spacemit_dpu_logo_booton == false) &&
-			(panel->info.bl_enable_delay))
+		if (panel->info.bl_enable_delay)
 			backlight_disable(dsi->panel->backlight);
 	}
 
@@ -307,9 +306,6 @@ static void spacemit_prepare_regulator(struct spacemit_panel *panel)
 {
 	int ret = 0;
 
-	if (unlikely(spacemit_dpu_logo_booton))
-		return;
-
 	if (panel->vdd_2v8 != NULL) {
 		ret = regulator_enable(panel->vdd_2v8);
 		if (ret)
@@ -354,9 +350,6 @@ static int spacemit_panel_prepare(struct drm_panel *p)
 	if (panel->gpio_bl != INVALID_GPIO)
 		gpio_direction_output(panel->gpio_bl, 1);
 
-	if (unlikely(spacemit_dpu_logo_booton))
-		goto out;
-
 	noti_blank.blank = blank_;
 
 	spacemit_drm_notifier_call_chain(DRM_PANEL_EVENT_BLANK, &noti_blank);
@@ -372,7 +365,6 @@ static int spacemit_panel_prepare(struct drm_panel *p)
 
 	DRM_INFO("mipi: UNBLANK!!\n");
 
-out:
 	/* update refcnt */
 	atomic_set(&panel->prepare_refcnt, 1);
 	return 0;
@@ -418,9 +410,6 @@ static int spacemit_panel_enable(struct drm_panel *p)
 		mod_timer(&panel->te_esd_timer,
 			jiffies + msecs_to_jiffies(2000));
 
-	if (unlikely(spacemit_dpu_logo_booton))
-		goto out;
-
 	spacemit_panel_send_cmds(panel->slave,
 			panel->info.cmds[CMD_CODE_INIT],
 			panel->info.cmds_len[CMD_CODE_INIT]);
@@ -447,7 +436,6 @@ static int spacemit_panel_enable(struct drm_panel *p)
 		schedule_delayed_work(&panel->bl_work,
 			msecs_to_jiffies(panel->info.bl_enable_delay));
 	}
-out:
 	atomic_set(&panel->enable_refcnt, 1);
 	return 0;
 }

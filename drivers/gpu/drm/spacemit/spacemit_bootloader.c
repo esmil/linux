@@ -11,8 +11,6 @@
 #include <linux/memblock.h>
 #include "spacemit_bootloader.h"
 
-bool spacemit_dpu_logo_booton;
-EXPORT_SYMBOL_GPL(spacemit_dpu_logo_booton);
 struct reserved_mem *bootloader_mem;
 struct work_struct work_free_bootloader_mem;
 
@@ -46,7 +44,6 @@ static int __init spacemit_dpu_bootloader_mem_setup(struct reserved_mem *rmem)
 	pr_info("Reserved memory: detected reboot memory at %pa, size %ld MB\n",
 		&rmem->base, (unsigned long)rmem->size / SZ_1M);
 
-	spacemit_dpu_logo_booton = false;
 	bootloader_mem = rmem;
 	INIT_WORK(&work_free_bootloader_mem, __free_bootloader_mem);
 
@@ -61,7 +58,6 @@ int spacemit_dpu_bootloader_mem_setup(struct reserved_mem *rmem)
 	pr_info("Reserved memory: detected bootloader_logo memory at %pa, size %ld MB\n",
 		&rmem->base, (unsigned long)rmem->size / SZ_1M);
 
-	spacemit_dpu_logo_booton = false;
 	r_mem = *rmem;
 	bootloader_mem = &r_mem;
 	INIT_WORK(&work_free_bootloader_mem, __free_bootloader_mem);

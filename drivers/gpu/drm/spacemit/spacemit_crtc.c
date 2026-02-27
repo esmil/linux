@@ -426,19 +426,25 @@ static void spacemit_crtc_atomic_enable(struct drm_crtc *crtc,
 	trace_spacemit_crtc_atomic_enable(a_crtc->dev_id);
 
 	/* If bootloader logo is boot on, release its resources first */
-	if (unlikely(spacemit_dpu_logo_booton)) {
-		spacemit_dpu_free_bootloader_mem();
-	} else {
-		if (!a_crtc->power_on) {
-			spacemit_dpu_power_enable(a_crtc, true);
-			dpu_pm_resume(a_crtc->dev);
-		} else if (a_crtc->is_edp) {
-			dpu_pm_suspend(a_crtc->dev);
-			spacemit_dpu_power_enable(a_crtc, false);
-			msleep(10);
-			spacemit_dpu_power_enable(a_crtc, true);
-			dpu_pm_resume(a_crtc->dev);
-		}
+	if (unlikely(a_crtc->logo_booton)) {
+		pm_runtime_enable(a_crtc->dev);
+		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(a_crtc->dev);
+		dpu_pm_suspend(a_crtc->dev);
+		spacemit_dpu_power_enable(a_crtc, false);
+		a_crtc->logo_booton = false;
+		msleep(10);
+	}
+
+	if (!a_crtc->power_on) {
+		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(a_crtc->dev);
+	} else if (a_crtc->is_edp) {
+		dpu_pm_suspend(a_crtc->dev);
+		spacemit_dpu_power_enable(a_crtc, false);
+		msleep(10);
+		spacemit_dpu_power_enable(a_crtc, true);
+		dpu_pm_resume(a_crtc->dev);
 	}
 
 #ifdef CONFIG_SPACEMIT_DEBUG
@@ -1166,9 +1172,6 @@ int spacemit_crtc_run(struct drm_crtc *crtc,
 	if (a_crtc->core && a_crtc->core->run)
 		a_crtc->core->run(crtc, old_state);
 
-	if (unlikely(spacemit_dpu_logo_booton))
-		spacemit_dpu_logo_booton = false;
-
 	return 0;
 }
 
@@ -1527,6 +1530,7 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	a_crtc->dev = dev;
 	a_crtc->power_on = false;
+	a_crtc->logo_booton = true;
 	a_crtc->rpm_status = false;
 	dev_set_drvdata(dev, a_crtc);
 
@@ -1587,17 +1591,6 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	}
 #endif
 
-	/*
-	 * To keep bootloader logo on, below operations must be
-	 * done in probe func as power domain framework will turn
-	 * on/off lcd power domain before/after probe func.
-	 */
-	pm_runtime_enable(&pdev->dev);
-	if (spacemit_dpu_logo_booton) {
-		spacemit_dpu_power_enable(a_crtc, true);
-		dpu_pm_resume(&pdev->dev);
-	}
-
 	return component_add(dev, &dpu_component_ops);
 }
 
@@ -1610,6 +1603,8 @@ static int __maybe_unused dpu_pm_suspend(struct device *dev)
 {
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 	int result;
+
+	DRM_DEBUG("%s()\n", __func__);
 
 	if (a_crtc->core && a_crtc->core->disable_clk)
 		a_crtc->core->disable_clk(a_crtc);
@@ -1648,7 +1643,7 @@ static int __maybe_unused dpu_pm_resume(struct device *dev)
 	struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 	int result;
 
-	DRM_INFO("%s()\n", __func__);
+	DRM_DEBUG("%s()\n", __func__);
 
 	if (!IS_ERR_OR_NULL(a_crtc->mclk_reset)) {
 		result = reset_control_deassert(a_crtc->mclk_reset);
@@ -1686,7 +1681,7 @@ static int __maybe_unused dpu_rt_pm_suspend(struct device *dev)
 {
 	// struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 
-	DRM_INFO("%s() \n", __func__);
+	DRM_DEBUG("%s() \n", __func__);
 
 	return 0;
 }
@@ -1695,7 +1690,7 @@ static int __maybe_unused dpu_rt_pm_resume(struct device *dev)
 {
 	// struct spacemit_crtc *a_crtc = dev_get_drvdata(dev);
 
-	DRM_INFO("%s() \n", __func__);
+	DRM_DEBUG("%s() \n", __func__);
 
 	return 0;
 }
