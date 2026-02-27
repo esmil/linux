@@ -354,6 +354,10 @@ struct nexus_rv_pkt_decoder *nexus_rv_pkt_decoder_new(struct nexus_rv_pkt_decode
 	decoder->formatted = params->formatted;
 	decoder->src_bits = params->src_bits;
 
+	/* TODO: The filename here is always trace.bin, which results in
+	 * only the last Nexus trace data being retained. A corresponding
+	 * Nexus filename should be generated for each AUX data.
+	 */
 	dir = getenv("PERF_BUILDID_DIR");
 	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
 	f = fopen(filename, "w+");
@@ -462,7 +466,7 @@ static void nexus_rv_free_stack(struct nexus_rv_stack *stack)
 }
 
 static int handle_error_msg(struct nexus_rv_insn_decoder *decoder, const char *err) {
-	printf("\nERROR: %s\n", err);
+	pr_err("\nERROR: %s\n", err);
 	decoder->nexdeco_pc = 1; // 1 means, that last address is unknown
 	nexus_rv_init_stack(&decoder->stack);
 	return -EINVAL;
@@ -524,6 +528,7 @@ static int nexus_rv_insn_info_get(struct nexus_rv_insn_decoder *decoder, u8 *inf
 		*info |= INFO_4;
 	}
 
+	pr_debug2(".nexdeco_pc=0x%lx .insn=0x%x\n", addr, ((*info & INFO_4) ? insn : (u16)insn));
 	return 0;
 }
 
@@ -559,7 +564,6 @@ static int nexus_rv_emit_icnt(struct nexus_rv_insn_decoder *decoder, int n, u32 
 	}
 
 	while (n != 0) {
-		pr_debug2(".nexdeco_pc=0x%lx\n", decoder->nexdeco_pc);
 		decoder->current_pc = decoder->nexdeco_pc;
 		if (nexus_rv_insn_info_get(decoder, &info, &a))
 			return handle_error_msg(decoder, "failed to get insn info");
@@ -848,7 +852,7 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 	return ret;
 }
 
-static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
+static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder, FILE *nexus)
 {
 	int fld_def = -1;
 	int fld_bits = 0;
@@ -870,7 +874,7 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 
 	for (;;) {
 		prev_byte = msg_byte;
-		if (fread(&msg_byte, 1, 1, decoder->nexus) != 1)
+		if (fread(&msg_byte, 1, 1, nexus) != 1)
 			break;	// EOF
 
 		if (find_next_package) {
@@ -1032,9 +1036,6 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 {
 	int err;
 	struct nexus_rv_insn_decoder *decoder;
-	char *dir;
-	char filename[PATH_MAX];
-	FILE *f;
 
 	if (!params)
 		return NULL;
@@ -1048,12 +1049,6 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 	decoder->data = params->data;
 	decoder->formatted = params->formatted;
 	decoder->src_bits = params->src_bits;
-
-	dir = getenv("PERF_BUILDID_DIR");
-	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
-	f = fopen(filename, "w+");
-	decoder->nexus = f;
-
 	decoder->nexdeco_pc = 1;
 	decoder->nexdeco_lastaddr = 1;
 
@@ -1069,7 +1064,6 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 
 err_out:
 	nexus_rv_free_stack(&decoder->stack);
-	fclose(decoder->nexus);
 	free(decoder);
 	return NULL;
 }
@@ -1081,27 +1075,60 @@ void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder)
 
 	nexus_rv_free_packet_buffer(&decoder->packet_buffer);
 	nexus_rv_free_stack(&decoder->stack);
-	fclose(decoder->nexus);
 	free(decoder);
+}
+
+static int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder)
+{
+	decoder->nexdeco_pc = 1;
+	decoder->nexdeco_lastaddr = 1;
+
+	return nexus_rv_init_stack(&decoder->stack);
 }
 
 int nexus_rv_insn_decode(struct nexus_rv_insn_decoder *decoder)
 {
 	int err;
-	struct nexus_rv_buffer buffer = { .buf = 0, };
+	struct nexus_rv_buffer buffer;
+	char filename[PATH_MAX];
+	FILE *nexus;
+	char *dir = getenv("PERF_BUILDID_DIR");
+	int i = 0;
 
-	err = decoder->get_trace(&buffer, decoder->data);
-	if (err)
-		return err;
+	while (1) {
+		buffer = (struct nexus_rv_buffer){ .buf = 0, };
+		err = decoder->get_trace(&buffer, decoder->data);
+		if (err)
+			return err;
 
-	if (decoder->formatted) {
-		err = nexus_rv_pkt_defmt(decoder->defmt_bufs, decoder->nexus, buffer.buf, buffer.len);
+		if (buffer.len == 0)
+			break;
+
+		snprintf(filename, sizeof(filename), "%s/trace%d.bin", dir, i++);
+		nexus = fopen(filename, "w+");
+
+		if (decoder->formatted) {
+			err = nexus_rv_pkt_defmt(decoder->defmt_bufs, nexus, buffer.buf, buffer.len);
+			if (err) {
+				pr_err("Encoder: failed to remove coresight trace formatter\n");
+				fclose(nexus);
+				return err;
+			}
+		}
+
+		fseek(nexus, 0, SEEK_SET);
+		err = nexus_rv_insn_dump(decoder, nexus);
 		if (err) {
-			pr_err("Encoder: failed to remove coresight trace formatter\n");
+			fclose(nexus);
 			return err;
 		}
+
+		fclose(nexus);
+
+		err = nexus_rv_insn_decoder_reset(decoder);
+		if (err)
+			return err;
 	}
 
-	fseek(decoder->nexus, 0, SEEK_SET);
-	return nexus_rv_insn_dump(decoder);
+	return 0;
 }

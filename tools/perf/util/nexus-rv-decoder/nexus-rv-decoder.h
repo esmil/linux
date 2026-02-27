@@ -88,7 +88,6 @@ struct nexus_rv_insn_decoder {
 	struct nexus_rv_defmt_buf defmt_bufs[MAX_ID];
 	u32 src_bits;
 	struct nexus_rv_stack stack;
-	FILE *nexus;
 	int msg_field_pos;
 	u64 msg_fields[MSGFIELDS_MAX];
 	u64 saved_fields[MSGFIELDS_MAX];
