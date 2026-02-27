@@ -153,6 +153,11 @@ static int imsic_starting_cpu(unsigned int cpu)
 
 static int imsic_dying_cpu(unsigned int cpu)
 {
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	/* sync irqs on this cpu */
+	imsic_local_sync_all(true);
+#endif
+
 	/* Cleanup IPIs */
 	imsic_ipi_dying_cpu();
 
