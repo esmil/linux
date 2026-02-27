@@ -12,6 +12,10 @@
 
 #define pr_fmt(fmt) "riscv-iommu: " fmt
 
+#ifdef CONFIG_SOC_SPACEMIT_K3
+#define IOMMU_IS_NON_COHERENT
+#endif
+
 #include <linux/acpi.h>
 #include <linux/acpi_rimt.h>
 #include <linux/compiler.h>
@@ -19,8 +23,14 @@
 #include <linux/init.h>
 #include <linux/iommu.h>
 #include <linux/iopoll.h>
+#include <linux/irqchip/riscv-imsic.h>
+#include <linux/irqdomain.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
+
+#ifdef IOMMU_IS_NON_COHERENT
+#include <linux/dma-map-ops.h>
+#endif
 
 #include "../iommu-pages.h"
 #include "iommu-bits.h"
@@ -428,6 +438,10 @@ static unsigned int riscv_iommu_queue_send(struct riscv_iommu_queue *queue,
 	 *    completed and visible before signaling the tail doorbell to fetch
 	 *    the next command. 'fence ow, ow'
 	 */
+#ifdef IOMMU_IS_NON_COHERENT
+	arch_sync_dma_for_device(queue->phys + Q_ITEM(queue, prod) * entry_size,
+				 entry_size, DMA_TO_DEVICE);
+#endif
 	dma_wmb();
 	riscv_iommu_writel(queue->iommu, Q_TAIL(queue), Q_ITEM(queue, prod + 1));
 
@@ -511,17 +525,34 @@ static void riscv_iommu_cmd_sync(struct riscv_iommu_device *iommu,
  * IOMMU Fault/Event queue chapter 3.2
  */
 
+static struct riscv_iommu_dc *riscv_iommu_get_dc(struct riscv_iommu_device *iommu,
+						 unsigned int devid);
 static void riscv_iommu_fault(struct riscv_iommu_device *iommu,
 			      struct riscv_iommu_fq_record *event)
 {
 	unsigned int err = FIELD_GET(RISCV_IOMMU_FQ_HDR_CAUSE, event->hdr);
 	unsigned int devid = FIELD_GET(RISCV_IOMMU_FQ_HDR_DID, event->hdr);
+	unsigned int pid = FIELD_GET(RISCV_IOMMU_FQ_HDR_PID, event->hdr);
+	unsigned int pv = FIELD_GET(RISCV_IOMMU_FQ_HDR_PV, event->hdr);
+	unsigned int priv = FIELD_GET(RISCV_IOMMU_FQ_HDR_PRIV, event->hdr);
+	unsigned int ttyp = FIELD_GET(RISCV_IOMMU_FQ_HDR_TTYP, event->hdr);
+	struct riscv_iommu_dc *dc = riscv_iommu_get_dc(iommu, devid);
 
 	/* Placeholder for future fault handling implementation, report only. */
-	if (err)
+	if (err) {
 		dev_warn_ratelimited(iommu->dev,
-				     "Fault %d devid: 0x%x iotval: %llx iotval2: %llx\n",
-				     err, devid, event->iotval, event->iotval2);
+				     "Fault %d, pid: 0x%x, pv: 0x%x, priv: 0x%x, ttyp: 0x%x, "
+				     "devid: 0x%x, iotval: %llx, iotval2: %llx\n",
+				     err, pid, pv, priv, ttyp, devid, event->iotval, event->iotval2);
+		dev_warn_ratelimited(iommu->dev, "(%s:%d) devid:0x%x, dc: \n", __func__, __LINE__, devid);
+		dev_warn_ratelimited(iommu->dev, "        tc:            0x%llx\n", dc->tc);
+		dev_warn_ratelimited(iommu->dev, "        iohgatp:       0x%llx\n", dc->iohgatp);
+		dev_warn_ratelimited(iommu->dev, "        ta:            0x%llx\n", dc->ta);
+		dev_warn_ratelimited(iommu->dev, "        fsc:           0x%llx\n", dc->fsc);
+		dev_warn_ratelimited(iommu->dev, "        msiptp:        0x%llx\n", dc->msiptp);
+		dev_warn_ratelimited(iommu->dev, "        msi_addr_mask: 0x%llx\n", dc->msi_addr_mask);
+		dev_warn_ratelimited(iommu->dev, "        msi_addr_patt: 0x%llx\n", dc->msi_addr_pattern);
+	}
 }
 
 /* Fault queue interrupt handler thread function */
@@ -540,6 +571,11 @@ static irqreturn_t riscv_iommu_fltq_process(int irq, void *data)
 
 	do {
 		cnt = riscv_iommu_queue_consume(queue, &idx);
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_cpu(__pa(&events[Q_ITEM(queue, idx)]),
+				      sizeof(struct riscv_iommu_fq_record) * cnt,
+				      DMA_FROM_DEVICE);
+#endif
 		for (len = 0; len < cnt; idx++, len++)
 			riscv_iommu_fault(iommu, &events[Q_ITEM(queue, idx)]);
 		riscv_iommu_queue_release(queue, cnt);
@@ -629,6 +665,9 @@ static struct riscv_iommu_dc *riscv_iommu_get_dc(struct riscv_iommu_device *iomm
 			old = cmpxchg_relaxed((unsigned long *)ddtp, ddt, new);
 
 			if (old == ddt) {
+#ifdef IOMMU_IS_NON_COHERENT
+				arch_sync_dma_for_device(__pa(ddtp), sizeof(new), DMA_TO_DEVICE);
+#endif
 				ddtp = (u64 *)ptr;
 				break;
 			}
@@ -1026,6 +1065,9 @@ static void riscv_iommu_iodir_update(struct riscv_iommu_device *iommu,
 			continue;
 
 		WRITE_ONCE(dc->tc, tc & ~RISCV_IOMMU_DC_TC_V);
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_device(__pa(dc), sizeof(*dc), DMA_TO_DEVICE);
+#endif
 
 		/* Invalidate device context cached values */
 		riscv_iommu_cmd_iodir_inval_ddt(&cmd);
@@ -1051,11 +1093,24 @@ static void riscv_iommu_iodir_update(struct riscv_iommu_device *iommu,
 		/* Update device context, write TC.V as the last step. */
 		dma_wmb();
 		WRITE_ONCE(dc->tc, tc);
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_device(__pa(dc), sizeof(*dc), DMA_TO_DEVICE);
+#endif
 
 		/* Invalidate device context after update */
 		riscv_iommu_cmd_iodir_inval_ddt(&cmd);
 		riscv_iommu_cmd_iodir_set_did(&cmd, fwspec->ids[i]);
 		riscv_iommu_cmd_send(iommu, &cmd);
+
+		dev_dbg(iommu->dev, "(%s:%d) devid[%d]:0x%x, dc:\n",
+				__func__, __LINE__, i, fwspec->ids[i]);
+		dev_dbg(iommu->dev, "	     tc:	    0x%llx\n", dc->tc);
+		dev_dbg(iommu->dev, "	     iohgatp:	    0x%llx\n", dc->iohgatp);
+		dev_dbg(iommu->dev, "	     ta:	    0x%llx\n", dc->ta);
+		dev_dbg(iommu->dev, "	     fsc:	    0x%llx\n", dc->fsc);
+		dev_dbg(iommu->dev, "	     msiptp:	    0x%llx\n", dc->msiptp);
+		dev_dbg(iommu->dev, "	     msi_addr_mask: 0x%llx\n", dc->msi_addr_mask);
+		dev_dbg(iommu->dev, "	     msi_addr_patt: 0x%llx\n", dc->msi_addr_pattern);
 	}
 
 	riscv_iommu_cmd_sync(iommu, RISCV_IOMMU_IOTINVAL_TIMEOUT);
@@ -1156,6 +1211,9 @@ pte_retry:
 				iommu_free_pages(addr);
 				goto pte_retry;
 			}
+#ifdef IOMMU_IS_NON_COHERENT
+			arch_sync_dma_for_device(__pa(ptr), sizeof(pte), DMA_TO_DEVICE);
+#endif
 		}
 		ptr = (unsigned long *)pfn_to_virt(__page_val_to_pfn(pte));
 	} while (level-- > 0);
@@ -1217,6 +1275,9 @@ static int riscv_iommu_map_pages(struct iommu_domain *iommu_domain,
 		pte = _io_pte_entry(phys_to_pfn(phys), pte_prot);
 		if (cmpxchg_relaxed(ptr, old, pte) != old)
 			continue;
+#ifdef IOMMU_IS_NON_COHERENT
+		arch_sync_dma_for_device(__pa(ptr), sizeof(pte), DMA_TO_DEVICE);
+#endif
 
 		riscv_iommu_pte_free(domain, old, &freelist);
 
@@ -1320,6 +1381,51 @@ static bool riscv_iommu_pt_supported(struct riscv_iommu_device *iommu, int pgd_m
 	return false;
 }
 
+static int riscv_iommu_map_msi_bypass(struct riscv_iommu_device *iommu,
+				      struct riscv_iommu_domain *domain)
+{
+	const struct imsic_global_config *imsic_global;
+	const int prot = IOMMU_WRITE | IOMMU_NOEXEC | IOMMU_MMIO;
+	size_t mapped, stride;
+	phys_addr_t base;
+	int i;
+
+	/*
+	 * MSI bypass is required only if:
+	 * 1) IMSIC interrupt controller is enabled and configured
+	 * 2) IOMMU hardware supported interrupt remapping is not enabled
+	 *
+	 * Primary first stage protection domain should provide identity
+	 * mapping for all available supervisor IMSIC doorbell pages.
+	 *
+	 * Note: IOMMU MSI remapping is not supported by the driver yet.
+	 */
+	imsic_global = imsic_get_global_config();
+	if (!imsic_global || !imsic_global->nr_ids)
+		return 0;
+
+	base = imsic_global->base_addr;
+	stride = IMSIC_MMIO_PAGE_SZ << imsic_global->guest_index_bits;
+	for (i = 0; i < BIT(imsic_global->hart_index_bits); i++) {
+		if (riscv_iommu_map_pages(&domain->domain, base, base,
+					  IMSIC_MMIO_PAGE_SZ, 1, prot,
+					  GFP_KERNEL_ACCOUNT, &mapped)) {
+			/* unroll mapping */
+			do {
+				riscv_iommu_unmap_pages(&domain->domain, base,
+							IMSIC_MMIO_PAGE_SZ, 1,
+							NULL);
+				base -= stride;
+			} while (i-- > 0);
+
+			return -ENOMEM;
+		}
+		base += stride;
+	}
+
+	return 0;
+}
+
 static int riscv_iommu_attach_paging_domain(struct iommu_domain *iommu_domain,
 					    struct device *dev)
 {
@@ -1330,6 +1436,10 @@ static int riscv_iommu_attach_paging_domain(struct iommu_domain *iommu_domain,
 
 	if (!riscv_iommu_pt_supported(iommu, domain->pgd_mode))
 		return -ENODEV;
+
+	/* FIXME: Run riscv_iommu_map_msi_bypass() only once. */
+	if (riscv_iommu_map_msi_bypass(iommu, domain))
+		return -ENOMEM;
 
 	fsc = FIELD_PREP(RISCV_IOMMU_PC_FSC_MODE, domain->pgd_mode) |
 	      FIELD_PREP(RISCV_IOMMU_PC_FSC_PPN, virt_to_pfn(domain->pgd_root));
@@ -1466,11 +1576,41 @@ static struct iommu_domain riscv_iommu_identity_domain = {
 	}
 };
 
+static void riscv_iommu_get_resv_regions(struct device *dev,
+					 struct list_head *head)
+{
+	const struct imsic_global_config *imsic_global;
+	struct iommu_resv_region *reg;
+	size_t size;
+
+	/* We assume target MSI controller to be RISC-V AIA IMSIC controller. */
+	imsic_global = imsic_get_global_config();
+	if (imsic_global && imsic_global->nr_ids) {
+		size = IMSIC_MMIO_PAGE_SZ << (imsic_global->guest_index_bits +
+					      imsic_global->hart_index_bits);
+		reg = iommu_alloc_resv_region(imsic_global->base_addr, size,
+					      0, IOMMU_RESV_MSI, GFP_KERNEL);
+		if (reg)
+			list_add_tail(&reg->list, head);
+	}
+}
+
 static struct iommu_group *riscv_iommu_device_group(struct device *dev)
 {
 	if (dev_is_pci(dev))
 		return pci_device_group(dev);
 	return generic_device_group(dev);
+}
+
+static bool riscv_iommu_capable(struct device *dev, enum iommu_cap cap)
+{
+	switch (cap) {
+	case IOMMU_CAP_CACHE_COHERENCY:
+		/* The RISC-V IOMMU is always DMA cache coherent. */
+		return true;
+	default:
+		return false;
+	}
 }
 
 static int riscv_iommu_of_xlate(struct device *dev, const struct of_phandle_args *args)
@@ -1484,6 +1624,7 @@ static struct iommu_device *riscv_iommu_probe_device(struct device *dev)
 	struct riscv_iommu_device *iommu;
 	struct riscv_iommu_info *info;
 	struct riscv_iommu_dc *dc;
+	struct irq_domain *irqdomain;
 	u64 tc;
 	int i;
 
@@ -1511,6 +1652,7 @@ static struct iommu_device *riscv_iommu_probe_device(struct device *dev)
 	tc = 0;
 	if (iommu->caps & RISCV_IOMMU_CAPABILITIES_AMO_HWAD)
 		tc |= RISCV_IOMMU_DC_TC_SADE;
+
 	for (i = 0; i < fwspec->num_ids; i++) {
 		dc = riscv_iommu_get_dc(iommu, fwspec->ids[i]);
 		if (!dc) {
@@ -1521,6 +1663,11 @@ static struct iommu_device *riscv_iommu_probe_device(struct device *dev)
 			dev_warn(dev, "already attached to IOMMU device directory\n");
 		WRITE_ONCE(dc->tc, tc);
 	}
+
+	/* FIXME: A hack to set the IRQ_DOMAIN_FLAG_ISOLATED_MSI flag. */
+	irqdomain = dev_get_msi_domain(dev);
+	if (irqdomain)
+		irqdomain->flags |= IRQ_DOMAIN_FLAG_ISOLATED_MSI;
 
 	dev_iommu_priv_set(dev, info);
 
@@ -1536,10 +1683,12 @@ static void riscv_iommu_release_device(struct device *dev)
 
 static const struct iommu_ops riscv_iommu_ops = {
 	.of_xlate = riscv_iommu_of_xlate,
+	.capable = riscv_iommu_capable,
 	.identity_domain = &riscv_iommu_identity_domain,
 	.blocked_domain = &riscv_iommu_blocking_domain,
 	.release_domain = &riscv_iommu_blocking_domain,
 	.domain_alloc_paging = riscv_iommu_alloc_paging_domain,
+	.get_resv_regions = riscv_iommu_get_resv_regions,
 	.device_group = riscv_iommu_device_group,
 	.probe_device = riscv_iommu_probe_device,
 	.release_device	= riscv_iommu_release_device,
@@ -1677,3 +1826,12 @@ err_queue_disable:
 	riscv_iommu_queue_disable(&iommu->cmdq);
 	return rc;
 }
+
+static __init int riscv_iommu_request_acs(void)
+{
+#ifdef CONFIG_PCI
+       pci_request_acs();
+#endif
+       return 0;
+}
+arch_initcall(riscv_iommu_request_acs);

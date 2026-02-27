@@ -41,6 +41,15 @@ properties:
     default: 400000
     maximum: 3300000
 
+  spacemit,sda-glitch-nofix:
+    $ref: /schemas/types.yaml#/definitions/flag
+    description: |
+      Bypass the controller's SDA glitch fix logic.
+
+      The glitch fix may suppress short SDA pulses, but can introduce a
+      small delay on repeated-start signals. If this property is present,
+      the controller will bypass the glitch fix.
+
 required:
   - compatible
   - reg

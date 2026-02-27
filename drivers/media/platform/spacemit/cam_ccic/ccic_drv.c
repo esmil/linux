@@ -172,22 +172,24 @@ static int ccic_clk_enable(struct ccic_ctrl *ctrl, int en)
 	struct device *dev = &ccic_dev->pdev->dev;
 
 	if (en) {
+		mutex_lock(&ctrl->lock);
 		if (atomic_inc_return(&ctrl->usr_cnt) == 1) {
-			dev_info(dev, "xhdtest: ccic_clk_set_rate\n");
+			reset_control_deassert(ccic_dev->sc2_hclk_reset);
+			reset_control_deassert(ccic_dev->ccic_4x_reset);
+			reset_control_deassert(ccic_dev->csi_reset);
+			reset_control_deassert(ccic_dev->isp_cibus_reset);
+
+			clk_prepare_enable(ccic_dev->ahb_clk);
+			clk_prepare_enable(ccic_dev->clk4x);
+			clk_prepare_enable(ccic_dev->csi_clk);
+			clk_prepare_enable(ccic_dev->axi_clk);
+
 			ret = ccic_clk_set_rate(ctrl, SC2_MODE_ISP);
 			if (ret < 0) {
 				atomic_dec(&ctrl->usr_cnt);
 				return ret;
 			}
 
-			clk_prepare_enable(ccic_dev->ahb_clk);
-			reset_control_deassert(ccic_dev->sc2_hclk_reset);
-			clk_prepare_enable(ccic_dev->clk4x);
-			reset_control_deassert(ccic_dev->ccic_4x_reset);
-			clk_prepare_enable(ccic_dev->csi_clk);
-			reset_control_deassert(ccic_dev->csi_reset);
-			clk_prepare_enable(ccic_dev->axi_clk);
-			reset_control_deassert(ccic_dev->isp_cibus_reset);
 			ccic_csi2idi_reset(ccic_dev, 0);
 #ifdef CONFIG_SPACEMIT_K3_CCIC_IOMMU
 			//set mmu timeout default addr
@@ -195,7 +197,9 @@ static int ccic_clk_enable(struct ccic_ctrl *ctrl, int en)
 #endif
 			dev_info(dev, "power on\n");
 		}
+		mutex_unlock(&ctrl->lock);
 	} else {
+		mutex_lock(&ctrl->lock);
 		v = atomic_dec_return(&ctrl->usr_cnt);
 		if (v == 0) {
 			ccic_csi2idi_reset(ccic_dev, 1);
@@ -212,6 +216,7 @@ static int ccic_clk_enable(struct ccic_ctrl *ctrl, int en)
 			atomic_inc(&ctrl->usr_cnt);
 			dev_err(dev, "invalid power off\n");
 		}
+		mutex_unlock(&ctrl->lock);
 	}
 
 	return ret;
@@ -859,6 +864,7 @@ static int ccic_probe(struct platform_device *pdev)
 	ccic_ctrl->index = pdev->id;
 	ccic_ctrl->ops = &ccic_ctrl_ops;
 	atomic_set(&ccic_ctrl->usr_cnt, 0);
+	mutex_init(&ccic_ctrl->lock);
 
 	ccic_dev->csiphy =
 		csiphy_lookup_by_phandle(&pdev->dev, "spacemit,csiphy");

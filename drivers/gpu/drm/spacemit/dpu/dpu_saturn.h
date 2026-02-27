@@ -126,6 +126,8 @@ struct pll_freq_range_t{
 #define PLL_UP          BIT(31)
 #define PLL_DIV_EN      (0xf << 4)
 
+#define SPACEMIT_MAX_SCALE_FACTOR 4
+
 extern const u32 saturn_fbcmem_sizes[2];
 extern const u32 saturn_le_fbcmem_sizes[2];
 

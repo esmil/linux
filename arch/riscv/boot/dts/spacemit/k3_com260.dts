@@ -405,7 +405,7 @@
 };
 
 &ec_master {
-	states = "okay";
+	status = "okay";
 
         master0 {
 		main-device = <&eth1>;
@@ -674,7 +674,7 @@
 			};
 
 			gpu_crit: gpu-crit {
-				temperature = <95000>;
+				temperature = <115000>;
 				hysteresis = <2000>;
 				type = "critical";
 			};
@@ -1255,6 +1255,7 @@
 
 &sound_card_dp1 {
 	status = "okay";
+	simple-audio-card,name = "snd-dp1";
 	simple-audio-card,mclk-fs = <512>;
 	simple-audio-card,dai-link@0 {
 		format = "left_j";

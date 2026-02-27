@@ -14,6 +14,7 @@
 
 #define MAX_ID 112  // Values of 0x00 and 0x70-0x7F are reserved by the ATB specification
 #define MSGFIELDS_MAX 10
+#define INSN_SZ       16
 
 struct rvtrace_queue;
 
@@ -46,10 +47,33 @@ struct nexus_rv_buffer {
 	size_t len;
 };
 
+enum rvtrace_sample_type {
+	RVTRACE_EMPTY,
+	RVTRACE_RANGE,
+	RVTRACE_ERROR,
+};
+
 enum riscv_privilege_mode {
        RISCV_PRIV_USER_MODE,
        RISCV_PRIV_SUPERVISOR_MODE,
        RISCV_PRIV_MACHINE_MODE = 3,
+};
+
+struct nexus_rv_packet {
+	enum rvtrace_sample_type sample_type;
+	u64 start_addr;
+	u64 end_addr;
+	u32 insn_cnt;
+	int cpu;
+	enum riscv_privilege_mode prv;
+	bool v;
+	int context;
+};
+
+struct nexus_rv_packet_buffer {
+	struct nexus_rv_packet *packets;
+	int size;
+	int capacity;
 };
 
 struct nexus_rv_insn_decoder {
@@ -67,11 +91,13 @@ struct nexus_rv_insn_decoder {
 	int msg_field_cnt;
 	u64 nexdeco_pc;
 	u64 nexdeco_lastaddr;
+	u64 current_pc;
 	int disp_hist_repeat;
 	enum riscv_privilege_mode prv;
 	bool v;
 	int context;
 	int resourcefull_icnt;
+	struct nexus_rv_packet_buffer packet_buffer;
 };
 
 struct nexus_rv_insn_decoder_params {

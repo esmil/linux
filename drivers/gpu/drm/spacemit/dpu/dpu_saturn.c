@@ -649,19 +649,19 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 
 #ifdef CONFIG_PM
 	if (of_property_read_u32(np, "lpm-commit-qos", &a_crtc->lpm_commit_qos)) {
-		DRM_INFO("get lcd lpm commit qos value failed\n");
+		DRM_INFO("can not get lcd lpm commit qos value\n");
 		a_crtc->lpm_commit_qos = 0;
 	}
 
 	if (!a_crtc->is_offline_mode) {
 		if (of_property_read_u32(np, "lpm-bl-qos", &a_crtc->lpm_bl_qos)) {
-			DRM_INFO("get lcd bl lpm qos value failed\n");
+			DRM_INFO("can not get lcd bl lpm qos value\n");
 			a_crtc->lpm_bl_qos = 0;
 		}
 	}
 
 	if (of_property_read_u32(np, "lpm-period", &a_crtc->lpm_period)) {
-		DRM_INFO("get lcd lpm period value failed\n");
+		DRM_INFO("can not get lcd lpm period value\n");
 		a_crtc->lpm_period = SPACEMIT_DPU_LPM_PERIOD_MIN_MS;
 	}
 

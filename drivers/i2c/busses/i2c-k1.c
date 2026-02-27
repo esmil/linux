@@ -10,6 +10,7 @@
 #include <linux/i2c.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
@@ -20,6 +21,7 @@
 #define SPACEMIT_ISR		 0x4		/* Status register */
 #define SPACEMIT_IDBR		 0xc		/* Data buffer register */
 #define SPACEMIT_ILCR		 0x10		/* Load Count Register */
+#define SPACEMIT_IWCR		 0x14		/* Wait Count Register */
 #define SPACEMIT_IRCR		 0x18		/* Reset cycle counter */
 #define SPACEMIT_IBMR		 0x1c		/* Bus monitor register */
 
@@ -151,6 +153,9 @@ struct spacemit_i2c_dev {
 	bool read;
 	struct completion complete;
 	u32 status;
+
+	/* Controls whether to bypass the controller's SDA glitch fix logic. */
+	bool sda_glitch_nofix;
 };
 
 static void spacemit_i2c_scl_clk_disable_unprepare(void *data)
@@ -165,20 +170,38 @@ static int spacemit_i2c_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct spacemit_i2c_dev *i2c = container_of(hw, struct spacemit_i2c_dev, scl_clk_hw);
 	u32 lv, lcr, mask, shift, max_lv;
+	u32 denom;
 
-	lv = DIV_ROUND_UP(parent_rate, rate * 2);
+	/*
+	 * Controller timing (from vendor formula):
+	 * - standard mode: SCL = FCLK / (2 * SLV + 0x8)
+	 * - fast mode:     SCL = FCLK / (2 * (FLV + 1) + 8)
+	 */
+	denom = DIV_ROUND_UP(parent_rate, rate);
 
 	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
 		mask = SPACEMIT_LCR_LV_STANDARD_MASK;
 		shift = SPACEMIT_LCR_LV_STANDARD_SHIFT;
 		max_lv = SPACEMIT_LCR_LV_STANDARD_MAX_VALUE;
+		/*
+		 * SLV >= (denom - 8) / 2
+		 * Allow SLV=0 (max SCL = FCLK/8).
+		 */
+		lv = (denom <= 8) ? 0 : DIV_ROUND_UP(denom - 8, 2);
 	} else if (i2c->mode == SPACEMIT_MODE_FAST) {
 		mask = SPACEMIT_LCR_LV_FAST_MASK;
 		shift = SPACEMIT_LCR_LV_FAST_SHIFT;
 		max_lv = SPACEMIT_LCR_LV_FAST_MAX_VALUE;
+		/*
+		 * FLV >= (denom - 10) / 2
+		 * Allow FLV=0 (max SCL = FCLK/10).
+		 */
+		lv = (denom <= 10) ? 0 : DIV_ROUND_UP(denom - 10, 2);
+	} else {
+		return -EINVAL;
 	}
 
-	if (!lv || lv > max_lv) {
+	if (lv > max_lv) {
 		dev_err(i2c->dev, "set scl clock failed: lv 0x%x", lv);
 		return -EINVAL;
 	}
@@ -194,10 +217,19 @@ static int spacemit_i2c_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 static long spacemit_i2c_clk_round_rate(struct clk_hw *hw, unsigned long rate,
 					unsigned long *parent_rate)
 {
-	u32 lv, freq;
+	struct spacemit_i2c_dev *i2c = container_of(hw, struct spacemit_i2c_dev, scl_clk_hw);
+	u32 lv, freq, denom;
 
-	lv = DIV_ROUND_UP(*parent_rate, rate * 2);
-	freq = DIV_ROUND_UP(*parent_rate, lv * 2);
+	denom = DIV_ROUND_UP(*parent_rate, rate);
+	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
+		lv = (denom <= 8) ? 0 : DIV_ROUND_UP(denom - 8, 2);
+		freq = DIV_ROUND_UP(*parent_rate, lv * 2 + 8);
+	} else if (i2c->mode == SPACEMIT_MODE_FAST) {
+		lv = (denom <= 10) ? 0 : DIV_ROUND_UP(denom - 10, 2);
+		freq = DIV_ROUND_UP(*parent_rate, lv * 2 + 10);
+	} else {
+		return 0;
+	}
 
 	return freq;
 }
@@ -210,14 +242,16 @@ static unsigned long spacemit_i2c_clk_recalc_rate(struct clk_hw *hw,
 
 	lcr = readl(i2c->base + SPACEMIT_ILCR);
 
-	if (i2c->mode == SPACEMIT_MODE_STANDARD)
+	if (i2c->mode == SPACEMIT_MODE_STANDARD) {
 		lv = FIELD_GET(SPACEMIT_LCR_LV_STANDARD_MASK, lcr);
-	else if (i2c->mode == SPACEMIT_MODE_FAST)
+		return DIV_ROUND_UP(parent_rate, lv * 2 + 8);
+	} else if (i2c->mode == SPACEMIT_MODE_FAST) {
 		lv = FIELD_GET(SPACEMIT_LCR_LV_FAST_MASK, lcr);
-	else
+		return DIV_ROUND_UP(parent_rate, lv * 2 + 10);
+	} else {
 		return 0;
+	}
 
-	return DIV_ROUND_UP(parent_rate, lv * 2);
 }
 
 static const struct clk_ops spacemit_i2c_clk_ops = {
@@ -269,6 +303,8 @@ static void spacemit_i2c_reset(struct spacemit_i2c_dev *i2c)
 	writel(SPACEMIT_CR_UR, i2c->base + SPACEMIT_ICR);
 	udelay(5);
 	writel(0, i2c->base + SPACEMIT_ICR);
+
+	writel(0x0000142A, i2c->base + SPACEMIT_IWCR);
 }
 
 static int spacemit_i2c_handle_err(struct spacemit_i2c_dev *i2c)
@@ -389,11 +425,13 @@ static void spacemit_i2c_init(struct spacemit_i2c_dev *i2c)
 	writel(val, i2c->base + SPACEMIT_ICR);
 
 	/*
-	 * The glitch fix in the K1 I2C controller introduces a delay
-	 * on restart signals, so we disable the fix here.
+	 * The K1 I2C controller has an SDA glitch fix which can suppress short
+	 * pulses on SDA, but it may also introduce a small delay on restart
+	 * (repeated-start) signals on some systems.
 	 */
 	val = readl(i2c->base + SPACEMIT_IRCR);
-	val |= SPACEMIT_RCR_SDA_GLITCH_NOFIX;
+	if (i2c->sda_glitch_nofix)
+		val |= SPACEMIT_RCR_SDA_GLITCH_NOFIX;
 	writel(val, i2c->base + SPACEMIT_IRCR);
 
 	spacemit_i2c_clear_int_status(i2c, SPACEMIT_I2C_INT_STATUS_MASK);
@@ -708,6 +746,8 @@ static int spacemit_i2c_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(of_node, "clock-frequency", &i2c->clock_freq);
 	if (ret && ret != -EINVAL)
 		dev_warn(dev, "failed to read clock-frequency property: %d\n", ret);
+
+	i2c->sda_glitch_nofix = of_property_read_bool(of_node, "spacemit,sda-glitch-nofix");
 
 	i2c->dev = &pdev->dev;
 	/* For now, this driver doesn't support high-speed. */

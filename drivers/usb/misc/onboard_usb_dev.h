@@ -122,6 +122,13 @@ static const struct onboard_dev_pdata xmos_xvf3500_data = {
 	.is_hub = false,
 };
 
+static const struct onboard_dev_pdata terminus_fe11s_data = {
+	.reset_us = 10,
+	.num_supplies = 1,
+	.supply_names = { "vdd" },
+	.is_hub = true,
+};
+
 static const struct of_device_id onboard_dev_match[] = {
 	{ .compatible = "usb424,2412", .data = &microchip_usb424_data, },
 	{ .compatible = "usb424,2514", .data = &microchip_usb2514_data, },
@@ -152,6 +159,7 @@ static const struct of_device_id onboard_dev_match[] = {
 	{ .compatible = "usb2109,2817", .data = &vialab_vl817_data, },
 	{ .compatible = "usb20b1,0013", .data = &xmos_xvf3500_data, },
 	{ .compatible = "usb5986,1198", .data = &bison_intcamera_data, },
+	{ .compatible = "usb1a40,101", .data = &terminus_fe11s_data, },
 	{}
 };
 

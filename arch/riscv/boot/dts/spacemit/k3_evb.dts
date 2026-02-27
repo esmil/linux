@@ -360,7 +360,7 @@
 	no-sdio;
 	clock-frequency = <204800000>;
 	spacemit,tx_delaycode = <0x1f>;
-	status = "disabled";
+	status = "okay";
 };
 
 &sdio {
@@ -478,7 +478,7 @@
 };
 
 &ec_master {
-	states = "okay";
+	status = "okay";
 };
 
 &eth0 {
@@ -1088,6 +1088,7 @@
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
 		csi-id = <0>;
+		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 18 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1103,6 +1104,7 @@
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
 		csi-id = <1>;
+		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 10 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1117,6 +1119,7 @@
 		compatible = "sony,imx219";
 		reg = <0x10>;
 		csi-id = <2>;
+		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1366,6 +1369,7 @@
 
 &sound_card_dp0 {
 	status = "okay";
+	simple-audio-card,name = "snd-dp0";
 	simple-audio-card,mclk-fs = <512>;
 	simple-audio-card,dai-link@0 {
 		format = "left_j";

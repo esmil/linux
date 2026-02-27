@@ -44,6 +44,24 @@ int hmp_get_cpumask(struct cpumask *mask, hmp_type_e type)
 	return ret;
 }
 
+int hmp_map_ai_to_regular(struct cpumask *mask)
+{
+	unsigned int ai_first, reg_first;
+
+	ai_first = cpumask_first(&ai_cpu_mask);
+	reg_first = cpumask_first(&regular_cpu_mask);
+
+	if (ai_first > reg_first) {
+		cpumask_shift_right(mask, mask, ai_first - reg_first);
+	} else {
+		cpumask_shift_left(mask, mask, reg_first - ai_first);
+	}
+
+	cpumask_and(mask, mask, &regular_cpu_mask);
+
+	return cpumask_weight(mask);
+}
+
 int hmp_cpu_affinity_restrict(struct task_struct *p, const struct cpumask *new_mask)
 {
 	const struct cpumask *allowed_mask;

@@ -294,10 +294,6 @@ static int k3_usb3phy_init_single(struct k3_usb3phy *k3_phy,
 		AFE_ADPT_RST_OVRD_EN | AFE_ADPT_RST_OVRD_VAL,
 		AFE_ADPT_RST_OVRD_EN | AFE_ADPT_RST_OVRD_VAL);
 
-	/* Bypass RX adaptation loop */
-	regmap_update_bits(regm, PHY_RX_REG_B, RX_REG6_BYPASS_ADPT,
-			   RX_REG6_BYPASS_ADPT);
-
 	/* Override driver amplitude value to 900m */
 	regmap_set_bits(regm, PHY_RXEQ_TIME,
 			RXEQ_TIME_OVRD_AMP_SOC | RXEQ_TIME_CFG_AMP_SOC(AMP_SOC_900M));

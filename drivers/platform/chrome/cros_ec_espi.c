@@ -28,14 +28,6 @@
 
 #define DRV_NAME "cros_ec_espi"
 
-/*
- * Module parameter to disable the driver.
- * Can be set via bootargs: cros_ec_espi.disable=1
- */
-static bool disable;
-module_param(disable, bool, 0444);
-MODULE_PARM_DESC(disable, "Disable CrOS EC eSPI driver (set by Bootloader if eSPI not initialized)");
-
 /* eSPI shared memory access timeout */
 #define ESPI_CMD_TIMEOUT_MS 5000
 
@@ -530,12 +522,6 @@ static int cros_ec_espi_probe(struct platform_device *pdev)
 	struct resource *res;
 	u8 buf[2] = {};
 	int irq, ret;
-
-	/* Check if driver is disabled via bootargs */
-	if (disable) {
-		dev_info(dev, "CrOS EC eSPI driver disabled via bootargs\n");
-		return -ENODEV;
-	}
 
 	dev_dbg(dev, "ChromeOS EC eSPI driver probe - START\n");
 

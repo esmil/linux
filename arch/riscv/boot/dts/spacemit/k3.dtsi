@@ -260,22 +260,7 @@
 				&cpu12_intc 9 &cpu13_intc 9
 				&cpu14_intc 9 &cpu15_intc 9>;
 
-			reg = <0x0 0xe0400000 0x0 0x40000
-				0x0 0xe0440000 0x0 0x40000
-				0x0 0xe0480000 0x0 0x40000
-				0x0 0xe04c0000 0x0 0x40000
-				0x0 0xe0500000 0x0 0x40000
-				0x0 0xe0540000 0x0 0x40000
-				0x0 0xe0580000 0x0 0x40000
-				0x0 0xe05c0000 0x0 0x40000
-				0x0 0xe0600000 0x0 0x40000
-				0x0 0xe0640000 0x0 0x40000
-				0x0 0xe0680000 0x0 0x40000
-				0x0 0xe06c0000 0x0 0x40000
-				0x0 0xe0700000 0x0 0x40000
-				0x0 0xe0740000 0x0 0x40000
-				0x0 0xe0780000 0x0 0x40000
-				0x0 0xe07c0000 0x0 0x40000>;
+			reg = <0x0 0xe0400000 0x0 0x400000>;
 			interrupt-controller;
 			#interrupt-cells = <0>;
 			#msi-cells = <0>;
@@ -1379,9 +1364,9 @@
 			compatible = "spacemit,soc-timer";
 			reg = <0x0 0xd4016000 0x0 0xc8>;
 			spacemit,timer-id = <0>;
-			spacemit,timer-fastclk-frequency = <3250000>;
-			spacemit,timer-apb-frequency = <52000000>;
-			spacemit,timer-frequency = <32768>;
+			spacemit,timer-fastclk-frequency = <1000000>;
+			spacemit,timer-apb-frequency = <102400000>;
+			spacemit,timer-frequency = <1000000>;
 			clocks = <&syscon_apbc CLK_APBC_TIMERS1>,
 				<&syscon_apbc CLK_APBC_TIMERS1_BUS>;
 			clock-names = "func", "bus";
@@ -1540,7 +1525,7 @@
 			snps,dis_enblslpm_quirk;
 			snps,dis_u2_susphy_quirk;
 			snps,dis_u3_susphy_quirk;
-			snps,del_phy_power_chg_quirk;
+			snps,dis-del-phy-power-chg-quirk;
 			snps,dis-tx-ipgap-linecheck-quirk;
 			snps,parkmode-disable-ss-quirk;
 			status = "disabled";
@@ -2128,6 +2113,16 @@
 			status = "disabled";
 		};
 
+		iommu: iommu@c0f00000 {
+			compatible = "spacemit,k3-iommu";
+			reg = <0x0 0xc0f00000 0x0 0x1000>;
+			interrupts = <234 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&saplic>;
+			#iommu-cells = <0x01>;
+			clocks = <&syscon_apmu CLK_APMU_IOMMU>;
+			status = "disabled";
+		};
+
 		pcie0_rc: pcie@80000000 {
 			compatible = "spacemit,k1-pcie";
 			reg = <0x0 0x80000000 0x0 0x00001000>, /* dbi */
@@ -2160,6 +2155,9 @@
 			linux,pci-domain = <0>;
 			msi-parent = <&simsic>;
 			spacemit,apmu = <&syscon_apmu 0x1f0>;
+
+			iommu-map = <0x0 &iommu 0x00000 0x10000>;
+
 			status = "disabled";
 		};
 
@@ -2199,6 +2197,9 @@
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <1>;
 			spacemit,apmu = <&syscon_apmu 0x1d0>;
+
+			iommu-map = <0x0 &iommu 0x10000 0x10000>;
+
 			status = "disabled";
 		};
 
@@ -2238,6 +2239,9 @@
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <2>;
 			spacemit,apmu = <&syscon_apmu 0x1c8>;
+
+			iommu-map = <0x0 &iommu 0x20000 0x10000>;
+
 			status = "disabled";
 		};
 

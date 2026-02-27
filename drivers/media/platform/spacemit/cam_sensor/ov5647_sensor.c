@@ -18,6 +18,7 @@
 #include <linux/fs.h>
 #include <linux/ioctl.h>
 #include <linux/gpio.h>
+#include <linux/regulator/consumer.h>
 
 /*
  * Sensor Configuration: 1920x1080 @ 30fps, 2-lane MIPI
@@ -46,6 +47,15 @@
 #define OV5647_IOCTL_INIT_RAW8		_IO(OV5647_IOC_MAGIC, 8)
 
 static struct ov5647 *global_ov5647;
+
+struct ov5647 {
+	struct i2c_client *client;
+	struct gpio_desc *pwdn;
+	struct mutex lock;
+	bool power_on;
+	struct regulator *vdd;
+	struct miscdevice miscdev;
+};
 
 struct regval_list {
 	u16 addr;
@@ -362,13 +372,6 @@ static struct regval_list ov5647_800x640_50fps_2lane_8bpp_regs[] = {
 	{0x0100, 0x00},
 };
 
-struct ov5647 {
-	struct i2c_client *client;
-	struct gpio_desc *pwdn;
-	struct mutex lock;
-	bool power_on;
-	struct miscdevice miscdev;
-};
 
 static int ov5647_write(struct ov5647 *sensor, u16 reg, u8 val)
 {
@@ -645,6 +648,8 @@ static int ov5647_detect(struct ov5647 *sensor)
 
 static int ov5647_power_on(struct ov5647 *sensor)
 {
+	int ret = 0;
+
 	dev_info(&sensor->client->dev,
 		 "ov5647-test: power_on enter, power_on=%d\n",
 		 sensor->power_on);
@@ -653,6 +658,34 @@ static int ov5647_power_on(struct ov5647 *sensor)
 			 "ov5647-test: already powered on\n");
 		return 0;
 	}
+
+	dev_info(&sensor->client->dev, "ov5647-test: get vdd regulator\n");
+	sensor->vdd = devm_regulator_get(&sensor->client->dev, "vdd");
+	if (IS_ERR(sensor->vdd)) {
+		dev_err(&sensor->client->dev, "ov5647-test: Failed to get vdd regulator: %ld\n",
+			PTR_ERR(sensor->vdd));
+		return PTR_ERR(sensor->vdd);
+	}
+
+	if (sensor->vdd) {
+		ret = regulator_enable(sensor->vdd);
+		if (ret < 0) {
+			dev_err(&sensor->client->dev,
+				"ov5647-test: failed to enable vdd: %d\n", ret);
+			return ret;
+		}
+		dev_info(&sensor->client->dev, "ov5647-test: enable vdd\n");
+
+		ret = regulator_set_voltage(sensor->vdd, 3300000, 3300000);
+		if (ret < 0) {
+			dev_err(&sensor->client->dev, "ov5647-test: failed to set vdd voltage: %d\n",
+				ret);
+			return ret;
+		}
+		dev_info(&sensor->client->dev, "ov5647-test: vdd set to 3.3V\n");
+	}
+
+
 
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "ov5647-test: drive PWDN low\n");
@@ -687,6 +720,11 @@ static void ov5647_power_off(struct ov5647 *sensor)
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "ov5647-test: drive PWDN low\n");
 		gpiod_set_value_cansleep(sensor->pwdn, 0);
+	}
+
+	if (sensor->vdd) {
+		dev_info(&sensor->client->dev, "ov5647-test: disable vdd\n");
+		regulator_disable(sensor->vdd);
 	}
 
 	sensor->power_on = false;

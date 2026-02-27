@@ -83,6 +83,7 @@ struct ccic_ctrl {
 	struct mipi_csi2 csi;
 	struct ccic_dev *ccic_dev;
 	struct ccic_ctrl_ops *ops;
+	struct mutex lock;
 	//irqreturn_t (*handler)(struct ccic_ctrl *, u32);
 };
 

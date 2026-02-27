@@ -35,6 +35,22 @@
 #include "dpu_debug.h"
 #include "../spacemit_bootloader.h"
 
+const u32 PREPIPE_SCAL_BASE_ADDR[] = {
+	PREPIPE_SCAL0_BASE_ADDR,
+	PREPIPE_SCAL1_BASE_ADDR,
+	PREPIPE_SCAL2_BASE_ADDR,
+	PREPIPE_SCAL3_BASE_ADDR,
+};
+
+enum RDMA_ID {
+	DPU_RDMA0,
+	DPU_RDMA1,
+	DPU_RDMA2,
+	DPU_RDMA3,
+	DPU_RDMA_MAX,
+	DPU_RDMA_INVALID,
+};
+
 /* hee:
  * dpu_write:  uniform api for both cpu and cmdlist config dpu registers
  */
@@ -137,8 +153,10 @@ static dpu_hee_reg_dump_t __maybe_unused dpu_reg_dump_array[] = {
 	{E_MMU_TOP_REG, "MMU_TOP", MMU_TOP_BASE_ADDR, 23},
 	{E_COMPOSER1_REG, "COMPOSER2", CMP1_BASE_ADDR, 146},
 	{E_COMPOSER2_REG, "COMPOSER3", CMP2_BASE_ADDR, 146},
-	{E_SCALER0_REG, "SCALER0", SCALER0_ONLINE_BASE_ADDR, 129},
-	{E_SCALER1_REG, "SCALER0", SCALER0_ONLINE_BASE_ADDR, 129},
+	{E_SCALER0_REG, "SCALER0", PREPIPE_SCAL0_BASE_ADDR, 129},
+	{E_SCALER1_REG, "SCALER1", PREPIPE_SCAL1_BASE_ADDR, 129},
+	{E_SCALER2_REG, "SCALER2", PREPIPE_SCAL2_BASE_ADDR, 129},
+	{E_SCALER3_REG, "SCALER3", PREPIPE_SCAL3_BASE_ADDR, 129},
 	{E_OUTCTRL0_REG, "OUTCTRL2", TMG0_BASE_ADDR, 28},
 	{E_PP0_REG, "PP0_REG", WB0_TOP_BASE_ADDR, 50},
 	{E_WB_TOP_0_REG, "WB0_TOP", WB0_TOP_BASE_ADDR, 55},
@@ -283,25 +301,12 @@ void saturn_hee_conf_scaler_x(struct drm_plane_state *state, struct cmdlist_regs
 	uint32_t hor_delta_phase, ver_delta_phase;
 	int64_t hor_init_phase, ver_init_phase;
 	uint32_t hor_init_phase_h1b, ver_init_phase_h1b;
+	bool hor_enable = false, ver_enable = false;
 	u32 module_base;
 	struct cmdlist_regs *cl_scl = NULL;
 	cl_scl = alloc_cmdlist_regs(SCALER_X_REG);
-	struct spacemit_crtc *a_crtc = to_spacemit_crtc(state->crtc);
-	struct drm_crtc_state *crtc_state = a_crtc->crtc.state;
-	struct spacemit_crtc_state *spacemit_crtc_state = to_spacemit_crtc_state(crtc_state);
 
 	trace_saturn_conf_scaler_x(spacemit_plane_state);
-
-	if (!spacemit_crtc_state->post_scl_on) {
-		/* should never happen */
-		if (unlikely(spacemit_plane_state->scaler_id >= MAX_SCALER_NUMS))
-			DRM_ERROR("Invalid scaler id:%d\n", spacemit_plane_state->scaler_id);
-		/* Config SCALER scaling regs */
-		module_base = SCALER0_ONLINE_BASE_ADDR + spacemit_plane_state->rdma_id * SCALER_SIZE;
-	} else {
-		//LARK only SCALER1 can be used for POST SCALER
-		module_base = SCALER1_ONLINE_BASE_ADDR;
-	}
 
 	if (is_rot_90_270(state->rotation)) {
 		in_width  = state->src_h >> 16;
@@ -314,8 +319,15 @@ void saturn_hee_conf_scaler_x(struct drm_plane_state *state, struct cmdlist_regs
 	out_width = state->crtc_w;
 	out_height = state->crtc_h;
 
+	hor_enable = out_width == in_width ? false : true;
+	ver_enable = out_height == in_height ? false : true;
+	module_base = PREPIPE_SCAL_BASE_ADDR[spacemit_plane_state->rdma_id];
+
 	hor_delta_phase = in_width * 65536 / out_width;
 	ver_delta_phase = in_height * 65536 / out_height;
+
+	dpu_write(hwdev, SCALER_X_REG, module_base, b.m_nscl_hor_enable, hor_enable, cl_scl, 1);
+	dpu_write(hwdev, SCALER_X_REG, module_base, b.m_nscl_ver_enable, ver_enable, cl_scl, 1);
 
 	dpu_write(hwdev, SCALER_X_REG, module_base, b.m_nscl_hor_delta_phase, hor_delta_phase, cl_scl, 7);
 	dpu_write(hwdev, SCALER_X_REG, module_base, b.m_nscl_ver_delta_phase, ver_delta_phase, cl_scl, 8);
@@ -369,24 +381,11 @@ void saturn_hee_conf_scaler_coefs(struct drm_plane *plane, struct spacemit_plane
 	struct spacemit_hw_device *hwdev = priv->hwdev;
 	int hor_scale_num = hwdev->hor_scale_coef_size;
 	int ver_scale_num = hwdev->ver_scale_coef_size;
-	struct drm_plane_state *state = plane->state;
-	struct spacemit_crtc *a_crtc = to_spacemit_crtc(state->crtc);
-	struct drm_crtc_state *crtc_state = a_crtc->crtc.state;
-	struct spacemit_crtc_state *spacemit_crtc_state = to_spacemit_crtc_state(crtc_state);
 
 	struct cmdlist_regs *scl_cl = NULL;
 	scl_cl = alloc_cmdlist_regs(SCALER_X_REG);
 
-	if (!spacemit_crtc_state->post_scl_on) {
-		/* should never happen */
-		if (unlikely(spacemit_pstate->scaler_id >= MAX_SCALER_NUMS))
-			DRM_ERROR("Invalid scaler id:%d\n", spacemit_pstate->scaler_id);
-		/* Config SCALER scaling regs */
-		module_base = SCALER0_ONLINE_BASE_ADDR + spacemit_pstate->rdma_id * SCALER_SIZE;
-	} else {
-		//LARK only SCALER1 can be used for POST SCALER
-		module_base = SCALER1_ONLINE_BASE_ADDR;
-	}
+	module_base = PREPIPE_SCAL_BASE_ADDR[spacemit_pstate->rdma_id];
 
 	if (blob) {
 		int i, index = 9;
@@ -744,15 +743,27 @@ static void dpu_saturn_scaler_reuse_en(struct drm_plane *plane, bool enable)
 	struct spacemit_hw_device *hwdev = priv->hwdev;
 	struct cmdlist_regs *cl_dpuctl = NULL;
 	struct drm_plane_state *state = plane->state;
-	struct spacemit_crtc *a_crtc = to_spacemit_crtc(state->crtc);
-	struct drm_crtc_state *crtc_state = a_crtc->crtc.state;
-	struct spacemit_crtc_state *spacemit_crtc_state = to_spacemit_crtc_state(crtc_state);
+	struct spacemit_plane_state *spacemit_plane_state = to_spacemit_plane_state(state);
+	u32 rdma_id = spacemit_plane_state->rdma_id;
 
 	cl_dpuctl = alloc_cmdlist_regs(DPU_CTL_TOP_REG);
-	if (spacemit_crtc_state->post_scl_on) {
-		dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl1_reuse_en, enable, cl_dpuctl, 50);
-	} else {
-		dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl0_reuse_en, enable, cl_dpuctl, 49);
+	DRM_DEBUG("silvie dpu_saturn_scaler_reuse_en rch id %d\n",rdma_id);
+
+	switch (rdma_id){
+		case DPU_RDMA0:
+			dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl0_reuse_en, enable, cl_dpuctl, 49);
+			break;
+		case DPU_RDMA1:
+			dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl1_reuse_en, enable, cl_dpuctl, 50);
+			break;
+		case DPU_RDMA2:
+			dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl2_reuse_en, enable, cl_dpuctl, 51);
+			break;
+		case DPU_RDMA3:
+			dpu_write(hwdev, DPU_CTL_TOP_REG, DPU_CTRL_BASE_ADDR, nml_scl3_reuse_en, enable, cl_dpuctl, 52);
+			break;
+		default:
+			DRM_ERROR("Unsupported RDMA id for scaler!\n");
 	}
 
 	cmdlist_regs_packing(plane_to_cl(plane), CMDLIST_MOD_RDMA, cl_dpuctl);
