@@ -19,6 +19,9 @@
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/smp.h>
+#ifdef CONFIG_SPACEMIT_HMP
+#include <linux/soc/spacemit/spacemit-hmp.h>
+#endif
 
 #include <linux/irqchip/irq-msi-lib.h>
 #include "irq-riscv-imsic-state.h"
@@ -226,19 +229,30 @@ static int imsic_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
 				  unsigned int nr_irqs, void *args)
 {
 	struct imsic_vector *vec;
+        struct cpumask cpu_mask;
+
+#ifdef CONFIG_SPACEMIT_HMP
+	/* try allocate irq domain from online regular cpus as default */
+	if (!hmp_get_cpumask(&cpu_mask, HMP_REGULAR))
+		cpumask_and(&cpu_mask, cpu_online_mask, &cpu_mask);
+	else
+		cpumask_copy(&cpu_mask, cpu_online_mask);
+#else
+	cpumask_copy(&cpu_mask, cpu_online_mask);
+#endif
 
 	/* Multi-MSI is not supported yet. */
 	if (nr_irqs > 1)
 		return -EOPNOTSUPP;
 
-	vec = imsic_vector_alloc(virq, cpu_online_mask);
+	vec = imsic_vector_alloc(virq, &cpu_mask);
 	if (!vec)
 		return -ENOSPC;
 
 	irq_domain_set_info(domain, virq, virq, &imsic_irq_base_chip, vec,
 			    handle_edge_irq, NULL, NULL);
 	irq_set_noprobe(virq);
-	irq_set_affinity(virq, cpu_online_mask);
+	irq_set_affinity(virq, &cpu_mask);
 	irq_data_update_effective_affinity(irq_get_irq_data(virq), cpumask_of(vec->cpu));
 
 	return 0;
