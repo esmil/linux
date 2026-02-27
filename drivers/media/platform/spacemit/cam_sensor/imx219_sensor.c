@@ -17,6 +17,7 @@
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
+#include <linux/regulator/consumer.h>
 
 /*
  * Sensor Configuration: 1920x1080 @ 30fps, 2-lane MIPI
@@ -43,6 +44,15 @@
 #define IMX219_IOCTL_DETECT		_IO(IMX219_IOC_MAGIC, 6)
 
 static struct imx219 *global_imx219;
+
+struct imx219 {
+	struct i2c_client *client;
+	struct gpio_desc *pwdn;
+	struct mutex lock;
+	bool power_on;
+	struct regulator *vdd;
+	struct miscdevice miscdev;
+};
 
 struct regval_list {
 	u16 addr;
@@ -99,15 +109,6 @@ static struct regval_list imx219_1080p_regs[] = {
 	{0x4540, 0x00},
 	{0x47B4, 0x14},
 	{0x0100, 0x00},
-};
-
-struct imx219 {
-	struct i2c_client *client;
-	struct gpio_desc *pwdn;
-	struct gpio_desc *i2c;
-	struct mutex lock;
-	bool power_on;
-	struct miscdevice miscdev;
 };
 
 static int imx219_write(struct imx219 *sensor, u16 reg, u8 val)
@@ -303,6 +304,8 @@ static int imx219_detect(struct imx219 *sensor)
 
 static int imx219_power_on(struct imx219 *sensor)
 {
+	int ret;
+
 	dev_info(&sensor->client->dev,
 		 "imx219-test: power_on enter, power_on=%d\n",
 		 sensor->power_on);
@@ -311,8 +314,33 @@ static int imx219_power_on(struct imx219 *sensor)
 			 "imx219-test: already powered on\n");
 		return 0;
 	}
-	gpiod_set_value_cansleep(sensor->i2c, 1);
-	dev_info(&sensor->client->dev, "imx219-test: drive i2c high\n");
+
+	dev_info(&sensor->client->dev, "imx219-test: get vdd regulator\n");
+	sensor->vdd = devm_regulator_get(&sensor->client->dev, "vdd");
+	if (IS_ERR(sensor->vdd)) {
+		dev_err(&sensor->client->dev, "imx219-test: Failed to get vdd regulator: %ld\n",
+			PTR_ERR(sensor->vdd));
+		return PTR_ERR(sensor->vdd);
+	}
+
+	if (sensor->vdd) {
+		ret = regulator_enable(sensor->vdd);
+		if (ret < 0) {
+			dev_err(&sensor->client->dev,
+				"imx219-test: failed to enable vdd: %d\n", ret);
+			return ret;
+		}
+		dev_info(&sensor->client->dev, "imx219-test: enable vdd\n");
+
+		ret = regulator_set_voltage(sensor->vdd, 3300000, 3300000);
+		if (ret < 0) {
+			dev_err(&sensor->client->dev, "imx219-test: failed to set vdd voltage: %d\n",
+				ret);
+			return ret;
+		}
+		dev_info(&sensor->client->dev, "imx219-test: vdd set to 3.3V\n");
+	}
+
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "imx219-test: drive PWDN low\n");
 		gpiod_set_value_cansleep(sensor->pwdn, 0);
@@ -330,6 +358,7 @@ static int imx219_power_on(struct imx219 *sensor)
 
 	sensor->power_on = true;
 	dev_info(&sensor->client->dev, "imx219-test: power_on done\n");
+
 	return 0;
 }
 
@@ -345,6 +374,11 @@ static void imx219_power_off(struct imx219 *sensor)
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "imx219-test: drive PWDN low\n");
 		gpiod_set_value_cansleep(sensor->pwdn, 0);
+	}
+
+	if (sensor->vdd) {
+		dev_info(&sensor->client->dev, "imx219-test: disable vdd\n");
+		regulator_disable(sensor->vdd);
 	}
 
 	sensor->power_on = false;
@@ -374,7 +408,6 @@ static int imx219_probe(struct i2c_client *client)
 		dev_err(dev, "imx219-test: Failed to get PWDN GPIO\n");
 		return PTR_ERR(sensor->pwdn);
 	}
-	dev_info(dev, "imx219-test: get i2c gpio\n");
 
 	sensor->miscdev.minor = MISC_DYNAMIC_MINOR;
 	sensor->miscdev.fops = &imx219_fops;
