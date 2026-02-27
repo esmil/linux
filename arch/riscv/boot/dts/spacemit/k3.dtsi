@@ -1364,9 +1364,9 @@
 			compatible = "spacemit,soc-timer";
 			reg = <0x0 0xd4016000 0x0 0xc8>;
 			spacemit,timer-id = <0>;
-			spacemit,timer-fastclk-frequency = <3250000>;
-			spacemit,timer-apb-frequency = <52000000>;
-			spacemit,timer-frequency = <32768>;
+			spacemit,timer-fastclk-frequency = <1000000>;
+			spacemit,timer-apb-frequency = <102400000>;
+			spacemit,timer-frequency = <1000000>;
 			clocks = <&syscon_apbc CLK_APBC_TIMERS1>,
 				<&syscon_apbc CLK_APBC_TIMERS1_BUS>;
 			clock-names = "func", "bus";
