@@ -11,7 +11,7 @@
 #include <dt-bindings/input/cros-ec-keyboard.h>
 
 / {
-	model = "spacemit k3 deb1 board";
+	model = "SpacemiT K3 Deb1";
 	compatible = "spacemit,k3-deb1";
 	cpus: cpus {
 		#address-cells = <1>;

@@ -11,6 +11,7 @@
 #include <dt-bindings/input/cros-ec-keyboard.h>
 
 / {
+	model = "SpacemiT K3 Digital Computer";
 	compatible = "spacemit,k3-dc-board";
 	cpus: cpus {
 		#address-cells = <1>;

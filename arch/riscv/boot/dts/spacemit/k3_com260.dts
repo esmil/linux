@@ -10,7 +10,7 @@
 #include "k3-dp1.dtsi"
 
 / {
-	model = "spacemit k3 com260 board";
+	model = "SpacemiT K3 Com260";
 	compatible = "spacemit,k3-com260";
 	cpus: cpus {
 		#address-cells = <1>;
