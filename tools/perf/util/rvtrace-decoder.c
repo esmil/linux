@@ -432,7 +432,7 @@ static int rvtrace_get_trace(struct nexus_rv_buffer *buffer, void *data)
 	aux_buffer = auxtrace_buffer__next(queue, aux_buffer);
 
 	/* If no more data, drop the previous auxtrace_buffer and return */
-	if (!aux_buffer->data) {
+	if (!aux_buffer) {
 		if (old_buffer)
 			auxtrace_buffer__drop_data(old_buffer);
 		buffer->len = 0;
