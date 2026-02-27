@@ -1088,6 +1088,7 @@
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
 		csi-id = <0>;
+		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 18 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1103,6 +1104,7 @@
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
 		csi-id = <1>;
+		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 10 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1117,6 +1119,7 @@
 		compatible = "sony,imx219";
 		reg = <0x10>;
 		csi-id = <2>;
+		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
