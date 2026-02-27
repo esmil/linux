@@ -160,30 +160,38 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 	int msg_errors = 0;
 	int idle_cnt   = 0;
 
+	bool find_next_package = false;
+	int error_msgs = 0;
+
 	unsigned int tcode = 0;
 	unsigned int correlation_hist = 0;
 	unsigned int resourcefull_hrepeat = 0;
 
 	unsigned char msg_byte = 0;
+	unsigned char prev_byte = 0;
 	unsigned int mdo = 0;
 	unsigned int mseo = 0;
 	for (;;) {
+		prev_byte = msg_byte;
 		if (fread(&msg_byte, 1, 1, decoder->nexus) != 1) break;  // EOF
 
-#if 0
-		if (msg_cnt > 0 && fld_def < 0)
-			printf("\n");
-		color_fprintf(stdout, color, "0x%02X ", msg_byte);
-		for (int b = 0x80; b != 0; b >>= 1) {
-			if (b == 0x2)
-				color_fprintf(stdout, color, "0x%02X ", msg_byte);
-			if (msg_byte & b)
-				color_fprintf(stdout, color, "1");
-			else
-				color_fprintf(stdout, color, "0");
+		if (find_next_package) {
+			if ((prev_byte & 0x3) == 0x3) { //last byte
+				error_msgs++;
+				find_next_package = false;
+
+				//reinit some val
+				fld_def = -1;
+				fld_bits = 0;
+				fld_val = 0;
+			} else {
+				continue;
+			}
 		}
-		color_fprintf(stdout, color, ":");
-#endif
+
+		// This will skip long sequnece of idles (visible in true captures ...)
+		if (msg_byte == 0xFF && prev_byte == 0xFF)
+			continue;
 
 		mdo  = msg_byte >> 2;
 		mseo = msg_byte & 0x3;
@@ -191,7 +199,8 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 		if (mseo == 0x2) {
 			pr_err(" ERROR: At offset %d: MSEO='10' is not allowed\n",
 				msg_bytes + idle_cnt);
-			return -EINVAL;  // Error return
+			find_next_package = true;
+			continue;
 		}
 
 		if (fld_def < 0) {
@@ -206,7 +215,8 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 			if (mseo != 0x0) {
 				pr_err(" ERROR: At offset %d: Message must start from MSEO='00'\n",
 					      msg_bytes + idle_cnt);
-				return -EINVAL;  // Error return
+				find_next_package = true;
+				continue;
 			}
 
 			for (int d = 0; NEXUS_MSG_DEF[d].def != 0; d++)
@@ -223,7 +233,8 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 			if (fld_def < 0) {
 				pr_err(" ERROR: At offset %d: Message with TCODE=%d is not defined for N-Trace\n",
 					msg_bytes + idle_cnt, mdo);
-				return -EINVAL;
+				find_next_package = true;
+				continue;
 			}
 
 			color_fprintf(stdout, color, "MSG #%d +%d - %s TCODE[6]=%d",
@@ -310,13 +321,14 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 		if (fld_bits > 0) {
 			pr_err(" ERROR: At offset %d: Not enough bits for non-variable field\n",
 				      msg_bytes + idle_cnt);
-			return -EINVAL;
+			find_next_package = true;
+			continue;
 		}
 	}
 
 	color_fprintf(stdout, color,
-		      "\nStat: %d bytes, %d idles, %d messages, %d error messages",
-		      msg_bytes, idle_cnt, msg_cnt, msg_errors);
+		      "\nStat: %d bytes, %d idles, %d messages, %d error messages, %d invalid messages",
+		      msg_bytes, idle_cnt, msg_cnt, msg_errors, error_msgs);
 	if (msg_cnt > 0)
 		color_fprintf(stdout, color, "%.2lf bytes/message", ((double)msg_bytes) / msg_cnt);
 
@@ -408,9 +420,11 @@ static void nexus_rv_free_packet_buffer(struct nexus_rv_packet_buffer *packet_bu
 
 static int nexus_rv_init_stack(struct nexus_rv_stack *stack)
 {
-	stack->data = (u64 *)malloc(sizeof(u64) * BUFFER_SIZE);
-	if (!stack->data)
-		return -ENOMEM;
+	if (!stack->data) {
+		stack->data = (u64 *)malloc(sizeof(u64) * BUFFER_SIZE);
+		if (!stack->data)
+			return -ENOMEM;
+	}
 
 	stack->top = -1;
 	stack->capacity = BUFFER_SIZE;
@@ -844,6 +858,8 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 	int msg_bytes = 0;
 	int msg_errors = 0;
 
+	bool find_next_package = false;
+
 	unsigned char msg_byte = 0;
 	unsigned char prev_byte = 0;
 
@@ -857,6 +873,19 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 		if (fread(&msg_byte, 1, 1, decoder->nexus) != 1)
 			break;	// EOF
 
+		if (find_next_package) {
+			if ((prev_byte & 0x3) == 0x3) { //last byte
+				find_next_package = false;
+
+				//reinit some val
+				fld_def = -1;
+				fld_bits = 0;
+				fld_val = 0;
+			} else {
+				continue;
+			}
+		}
+
 		// This will skip long sequnece of idles (visible in true captures ...)
 		if (msg_byte == 0xFF && prev_byte == 0xFF)
 			continue;
@@ -866,7 +895,8 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 
 		if (mseo == 0x2) {
 			pr_err("ERROR: MSEO='10' is not allowed\n");
-			return -EINVAL;
+			find_next_package = true;
+			continue;
 		}
 
 		if (fld_def < 0) {
@@ -875,7 +905,8 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 
 			if (mseo != 0x0) {
 				pr_err("ERROR: Message must start from MSEO='00'\n");
-				return -EINVAL;
+				find_next_package = true;
+				continue;
 			}
 
 			for (int d = 0; NEXUS_MSG_DEF[d].def != 0; d++) {
@@ -888,9 +919,10 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 			}
 
 			if (fld_def < 0) {
-				pr_debug2("ERROR: Message with TCODE=%d is not defined for RISC-V\n",
+				pr_err("ERROR: Message with TCODE=%d is not defined for RISC-V\n",
 					      mdo);
-				return -EINVAL;
+				find_next_package = true;
+				continue;
 			}
 
 			// Special handling for RepeatBranch message.
@@ -988,7 +1020,8 @@ static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder)
 
 		if (fld_bits > 0) {
 			pr_err("Decode: Not enough bits for non-variable field\n");
-			return -EINVAL;
+			find_next_package = true;
+			continue;
 		}
 	}
 
