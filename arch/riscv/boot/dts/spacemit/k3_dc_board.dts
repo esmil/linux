@@ -529,8 +529,25 @@
 			MATRIX_KEY(0x07, 0x0a, KEY_K)           /* ID: 38 */
 			MATRIX_KEY(0x07, 0x0d, KEY_SEMICOLON)   /* ID: 40 */
 			MATRIX_KEY(0x07, 0x0e, KEY_D)           /* ID: 33 */
-		>;
-	};
+
+			/*
+			 * Fn layer (row + 8):
+			 *  F1..F12 -> media/system keys when Fn is held.
+			 */
+			MATRIX_KEY(0x09, 0x0f, KEY_KBDILLUMUP)    /* Fn+F8  */
+			MATRIX_KEY(0x0a, 0x05, KEY_VOLUMEDOWN)    /* Fn+F2  */
+			MATRIX_KEY(0x0a, 0x0a, KEY_KBDILLUMDOWN)  /* Fn+F7  */
+			MATRIX_KEY(0x0b, 0x04, KEY_PREVIOUSSONG)  /* Fn+F4  */
+			MATRIX_KEY(0x0b, 0x05, KEY_MUTE)          /* Fn+F1  */
+			MATRIX_KEY(0x0b, 0x0a, KEY_PLAYPAUSE)     /* Fn+F6  */
+			MATRIX_KEY(0x0b, 0x0b, KEY_DISPLAYTOGGLE) /* Fn+F9  */
+			MATRIX_KEY(0x0b, 0x0d, KEY_MICMUTE)       /* Fn+F12 */
+			MATRIX_KEY(0x0c, 0x08, KEY_RFKILL)        /* Fn+F10 */
+			MATRIX_KEY(0x0c, 0x0a, KEY_NEXTSONG)      /* Fn+F5  */
+			MATRIX_KEY(0x0e, 0x04, KEY_VOLUMEUP)      /* Fn+F3  */
+			MATRIX_KEY(0x0e, 0x08, KEY_SYSRQ)         /* Fn+F11 */
+			>;
+		};
 };
 
 &ec_master {
