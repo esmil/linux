@@ -71,8 +71,6 @@ struct rvtrace_queue {
 	unsigned int queue_nr;
 	pid_t pid, tid;
 	int cpu;
-	u64 time;
-	u64 timestamp;
 	u64 offset;
 };
 
@@ -342,7 +340,7 @@ static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 }
 
 static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
-						  pid_t tid, u64 time_)
+					   pid_t tid)
 {
 	unsigned int i;
 	struct auxtrace_queues *queues = &rvtrace->queues;
@@ -351,7 +349,6 @@ static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
 		struct rvtrace_queue *rvtraceq = queue->priv;
 
 		if (rvtraceq && ((tid == -1) || (rvtraceq->tid == tid))) {
-			rvtraceq->time = time_;
 			rvtrace_set_pid_tid_cpu(rvtrace, queue);
 			rvtrace_run_decoder(rvtraceq);
 		}
@@ -585,7 +582,7 @@ static int rvtrace_process_event(struct perf_session *session,
 	}
 
 	if (event->header.type == PERF_RECORD_EXIT)
-		return rvtrace_process_timeless_queues(rvtrace, event->fork.tid, sample->time);
+		return rvtrace_process_timeless_queues(rvtrace, event->fork.tid);
 
 	return 0;
 }
