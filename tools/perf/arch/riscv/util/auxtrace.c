@@ -38,7 +38,31 @@ struct rvtrace_recording {
 	struct auxtrace_record	itr;
 	struct perf_pmu *rvtrace_pmu;
 	struct evlist *evlist;
+	bool snapshot_mode;
+	size_t snapshot_size;
 };
+
+static int rvtrace_parse_snapshot_options(struct auxtrace_record *itr,
+					  struct record_opts *opts,
+					  const char *str)
+{
+	struct rvtrace_recording *ptr =
+				container_of(itr, struct rvtrace_recording, itr);
+	unsigned long long snapshot_size = 0;
+	char *endptr;
+
+	if (str) {
+		snapshot_size = strtoull(str, &endptr, 0);
+		if (*endptr || snapshot_size > SIZE_MAX)
+			return -1;
+	}
+
+	opts->auxtrace_snapshot_mode = true;
+	opts->auxtrace_snapshot_size = snapshot_size;
+	ptr->snapshot_size = snapshot_size;
+
+	return 0;
+}
 
 static size_t rvtrace_info_priv_size(struct auxtrace_record *itr __maybe_unused,
 				     struct evlist *evlist __maybe_unused)
@@ -159,38 +183,6 @@ static int rvtrace_info_fill(struct auxtrace_record *itr, struct perf_session *s
 	return 0;
 }
 
-static int rvtrace_set_auxtrace_mmap_page(struct record_opts *opts)
-{
-	bool privileged = perf_event_paranoid_check(-1);
-
-	if (!opts->full_auxtrace)
-		return 0;
-
-	if (opts->full_auxtrace && !opts->auxtrace_mmap_pages) {
-		if (privileged) {
-			opts->auxtrace_mmap_pages = MiB(16) / page_size;
-		} else {
-			opts->auxtrace_mmap_pages = KiB(128) / page_size;
-			if (opts->mmap_pages == UINT_MAX)
-				opts->mmap_pages = KiB(256) / page_size;
-		}
-	}
-
-	/* Validate auxtrace_mmap_pages */
-	if (opts->auxtrace_mmap_pages) {
-		size_t sz = opts->auxtrace_mmap_pages * (size_t)page_size;
-		size_t min_sz = KiB(8);
-
-		if (sz < min_sz || !is_power_of_2(sz)) {
-			pr_err("Invalid mmap size : must be at least %zuKiB and a power of 2\n",
-			       min_sz / 1024);
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
-
 static int rvtrace_set_sink_attr(struct perf_pmu *pmu,
 				 struct evsel *evsel)
 {
@@ -241,10 +233,12 @@ static int rvtrace_recording_options(struct auxtrace_record *itr, struct evlist 
 	struct perf_pmu *rvtrace_pmu = ptr->rvtrace_pmu;
 	struct evsel *evsel, *rvtrace_evsel = NULL;
 	struct perf_cpu_map *cpus = evlist->core.user_requested_cpus;
+	bool privileged = perf_event_paranoid_check(-1);
 	struct evsel *tracking_evsel;
 	int err;
 
 	ptr->evlist = evlist;
+	ptr->snapshot_mode = opts->auxtrace_snapshot_mode;
 	evlist__for_each_entry(evlist, evsel) {
 		if (evsel->core.attr.type == rvtrace_pmu->type) {
 			if (rvtrace_evsel) {
@@ -259,13 +253,100 @@ static int rvtrace_recording_options(struct auxtrace_record *itr, struct evlist 
 		}
 	}
 
+	if (!opts->full_auxtrace)
+		return 0;
+
 	err = rvtrace_set_sink_attr(rvtrace_pmu, rvtrace_evsel);
 	if (err)
 		return err;
 
-	err = rvtrace_set_auxtrace_mmap_page(opts);
-	if (err)
-		return err;
+	/* we are in snapshot mode */
+	if (opts->auxtrace_snapshot_mode) {
+		/*
+		 * No size were given to '-S' or '-m,', so go with
+		 * the default
+		 */
+		if (!opts->auxtrace_snapshot_size && !opts->auxtrace_mmap_pages) {
+			if (privileged) {
+				opts->auxtrace_mmap_pages = MiB(4) / page_size;
+			} else {
+				opts->auxtrace_mmap_pages = KiB(128) / page_size;
+				if (opts->mmap_pages == UINT_MAX)
+					opts->mmap_pages = KiB(256) / page_size;
+			}
+		} else if (!opts->auxtrace_mmap_pages && !privileged &&
+						opts->mmap_pages == UINT_MAX) {
+			opts->mmap_pages = KiB(256) / page_size;
+		}
+
+		/*
+		 * '-m,xyz' was specified but no snapshot size, so make the
+		 * snapshot size as big as the auxtrace mmap area.
+		 */
+		if (!opts->auxtrace_snapshot_size) {
+			opts->auxtrace_snapshot_size =
+				opts->auxtrace_mmap_pages * (size_t)page_size;
+		}
+
+		/*
+		 * -Sxyz was specified but no auxtrace mmap area, so make the
+		 * auxtrace mmap area big enough to fit the requested snapshot
+		 * size.
+		 */
+		if (!opts->auxtrace_mmap_pages) {
+			size_t sz = opts->auxtrace_snapshot_size;
+
+			sz = round_up(sz, page_size) / page_size;
+			opts->auxtrace_mmap_pages = roundup_pow_of_two(sz);
+		}
+
+		/* Snapshot size can't be bigger than the auxtrace area */
+		if (opts->auxtrace_snapshot_size >
+				opts->auxtrace_mmap_pages * (size_t)page_size) {
+			pr_err("Snapshot size %zu must not be greater than AUX area tracing mmap size %zu\n",
+			       opts->auxtrace_snapshot_size,
+			       opts->auxtrace_mmap_pages * (size_t)page_size);
+			return -EINVAL;
+		}
+
+		/* Something went wrong somewhere - this shouldn't happen */
+		if (!opts->auxtrace_snapshot_size || !opts->auxtrace_mmap_pages) {
+			pr_err("Failed to calculate default snapshot size and/or AUX area tracing mmap pages\n");
+			return -EINVAL;
+		}
+
+		pr_debug2("%s snapshot size: %zu\n", RVTRACE_PMU_NAME,
+			  opts->auxtrace_snapshot_size);
+	}
+
+	/* Buffer sizes weren't specified with '-m,xyz' so give some defaults */
+	if (!opts->auxtrace_mmap_pages) {
+		if (privileged) {
+			opts->auxtrace_mmap_pages = MiB(4) / page_size;
+		} else {
+			opts->auxtrace_mmap_pages = KiB(128) / page_size;
+			if (opts->mmap_pages == UINT_MAX)
+				opts->mmap_pages = KiB(256) / page_size;
+		}
+	}
+
+	/* Validate auxtrace_mmap_pages */
+	if (opts->auxtrace_mmap_pages) {
+		size_t sz = opts->auxtrace_mmap_pages * (size_t)page_size;
+		size_t min_sz;
+
+		if (opts->auxtrace_snapshot_mode)
+			min_sz = KiB(4);
+		else
+			min_sz = KiB(8);
+
+		if (sz < min_sz || !is_power_of_2(sz)) {
+			pr_err("Invalid mmap size for Intel Processor Trace: must be at least %zuKiB and a power of 2\n",
+			       min_sz / 1024);
+			return -EINVAL;
+		}
+	}
+
 	/*
 	 * To obtain the auxtrace buffer file descriptor, the auxtrace event
 	 * must come first.
@@ -294,6 +375,32 @@ static int rvtrace_recording_options(struct auxtrace_record *itr, struct evlist 
 		evsel__set_sample_bit(tracking_evsel, TIME);
 
 	return 0;
+}
+
+static int rvtrace_snapshot_start(struct auxtrace_record *itr)
+{
+	struct rvtrace_recording *ptr =
+			container_of(itr, struct rvtrace_recording, itr);
+	struct evsel *evsel;
+
+	evlist__for_each_entry(ptr->evlist, evsel) {
+		if (evsel->core.attr.type == ptr->rvtrace_pmu->type)
+			return evsel__disable(evsel);
+	}
+	return -EINVAL;
+}
+
+static int rvtrace_snapshot_finish(struct auxtrace_record *itr)
+{
+	struct rvtrace_recording *ptr =
+			container_of(itr, struct rvtrace_recording, itr);
+	struct evsel *evsel;
+
+	evlist__for_each_entry(ptr->evlist, evsel) {
+		if (evsel->core.attr.type == ptr->rvtrace_pmu->type)
+			return evsel__enable(evsel);
+	}
+	return -EINVAL;
 }
 
 static u64 rvtrace_reference(struct auxtrace_record *itr __maybe_unused)
@@ -325,9 +432,12 @@ static struct auxtrace_record *rvtrace_recording_init(int *err, struct perf_pmu 
 	}
 
 	ptr->rvtrace_pmu = rvtrace_pmu;
+	ptr->itr.parse_snapshot_options = rvtrace_parse_snapshot_options;
 	ptr->itr.recording_options = rvtrace_recording_options;
 	ptr->itr.info_priv_size = rvtrace_info_priv_size;
 	ptr->itr.info_fill = rvtrace_info_fill;
+	ptr->itr.snapshot_start = rvtrace_snapshot_start;
+	ptr->itr.snapshot_finish = rvtrace_snapshot_finish;
 	ptr->itr.free = rvtrace_recording_free;
 	ptr->itr.reference = rvtrace_reference;
 	ptr->itr.read_finish = auxtrace_record__read_finish;

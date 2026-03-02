@@ -6,7 +6,7 @@
 /* Inline SoC GPIO helper: expand a linear GPIO to <bank,offset> */
 #define K3_GPIO(x) ((x) / 32) ((x) % 32)
 #include "k3-cpus.dtsi"
-//#include "k3-trace.dtsi"
+#include "k3-trace.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/spacemit,k3-syscon.h>
 #include <dt-bindings/interrupt-controller/irq.h>

@@ -11,6 +11,7 @@
 #include <dt-bindings/input/cros-ec-keyboard.h>
 
 / {
+	model = "SpacemiT K3 Digital Computer";
 	compatible = "spacemit,k3-dc-board";
 	cpus: cpus {
 		#address-cells = <1>;
@@ -134,6 +135,47 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&cam_dmic_cfg>;
 	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm18 0 20000 0>;
+		brightness-levels = <
+			0   1   2   3   4   5   6   7
+			8   9  10  11  12  13  14  15
+			16  17  18  19  20  21  22  23
+			24  25  26  27  28  29  30  31
+			32  33  34  35  36  37  38  39
+			40  41  42  43  44  45  46  47
+			48  49  50  51  52  53  54  55
+			56  57  58  59  60  61  62  63
+			64  65  66  67  68  69  70  71
+			72  73  74  75  76  77  78  79
+			80  81  82  83  84  85  86  87
+			88  89  90  91  92  93  94  95
+			96  97  98  99 100 101 102 103
+			104 105 106 107 108 109 110 111
+			112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127
+			128 129 130 131 132 133 134 135
+			136 137 138 139 140 141 142 143
+			144 145 146 147 148 149 150 151
+			152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167
+			168 169 170 171 172 173 174 175
+			176 177 178 179 180 181 182 183
+			184 185 186 187 188 189 190 191
+			192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207
+			208 209 210 211 212 213 214 215
+			216 217 218 219 220 221 222 223
+			224 225 226 227 228 229 230 231
+			232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247
+			248 249 250 251 252 253 254 255>;
+		default-brightness-level = <128>;
+		status = "okay";
+	};
+
 };
 
 &resmem {
@@ -203,8 +245,8 @@
 	pcie4-1-cfg {
 		pcie4-0-pins {
 			bias-pull-up;
-			drive-strength = <38>;
-			power-source = <3300>;
+			drive-strength = <33>;
+			power-source = <1800>;
 		};
 	};
 
@@ -254,6 +296,16 @@
 		};
 	};
 
+	pwm18_2_cfg: pwm18-2-cfg {
+		pwm18-0-pins {
+			pinmux = <K3_PADCONF(106, 6)>;	/* pwm18 */
+
+			bias-pull-up;			/* normal pull-up */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
 };
 
 &uart0 {
@@ -267,7 +319,7 @@
 	pinctrl-0 = <&qspi_cfg>;
 	spacemit,qspi-tx-dma = <0>;
 	spacemit,qspi-rx-dma = <0>;
-	status = "disabled";
+	status = "okay";
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -275,7 +327,7 @@
 		spi-max-frequency = <26500000>;
 		m25p,fast-read;
 		broken-flash-reset;
-		status = "disabled";
+		status = "okay";
 	};
 };
 
@@ -529,8 +581,25 @@
 			MATRIX_KEY(0x07, 0x0a, KEY_K)           /* ID: 38 */
 			MATRIX_KEY(0x07, 0x0d, KEY_SEMICOLON)   /* ID: 40 */
 			MATRIX_KEY(0x07, 0x0e, KEY_D)           /* ID: 33 */
-		>;
-	};
+
+			/*
+			 * Fn layer (row + 8):
+			 *  F1..F12 -> media/system keys when Fn is held.
+			 */
+			MATRIX_KEY(0x09, 0x0f, KEY_KBDILLUMUP)    /* Fn+F8  */
+			MATRIX_KEY(0x0a, 0x05, KEY_VOLUMEDOWN)    /* Fn+F2  */
+			MATRIX_KEY(0x0a, 0x0a, KEY_KBDILLUMDOWN)  /* Fn+F7  */
+			MATRIX_KEY(0x0b, 0x04, KEY_PREVIOUSSONG)  /* Fn+F4  */
+			MATRIX_KEY(0x0b, 0x05, KEY_MUTE)          /* Fn+F1  */
+			MATRIX_KEY(0x0b, 0x0a, KEY_PLAYPAUSE)     /* Fn+F6  */
+			MATRIX_KEY(0x0b, 0x0b, KEY_DISPLAYTOGGLE) /* Fn+F9  */
+			MATRIX_KEY(0x0b, 0x0d, KEY_MICMUTE)       /* Fn+F12 */
+			MATRIX_KEY(0x0c, 0x08, KEY_RFKILL)        /* Fn+F10 */
+			MATRIX_KEY(0x0c, 0x0a, KEY_NEXTSONG)      /* Fn+F5  */
+			MATRIX_KEY(0x0e, 0x04, KEY_VOLUMEUP)      /* Fn+F3  */
+			MATRIX_KEY(0x0e, 0x08, KEY_SYSRQ)         /* Fn+F11 */
+			>;
+		};
 };
 
 &ec_master {
@@ -1250,6 +1319,12 @@
 };
 */
 
+&pwm18 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm18_2_cfg>;
+	status = "okay";
+};
+
 &dpu0_crtc0 {
 	memory-region = <&dpu_resv0>;
 	status = "okay";
@@ -1258,9 +1333,9 @@
 &edp0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp0_1_cfg>;
+	backlight = <&backlight>;
 	gpios-power = <101>;
 	gpios-enable = <118>;
-	gpios-bl = <106>;
 	status = "okay";
 };
 

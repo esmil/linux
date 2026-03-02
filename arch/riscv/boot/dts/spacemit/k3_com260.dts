@@ -10,7 +10,7 @@
 #include "k3-dp1.dtsi"
 
 / {
-	model = "spacemit k3 com260 board";
+	model = "SpacemiT K3 Com260";
 	compatible = "spacemit,k3-com260";
 	cpus: cpus {
 		#address-cells = <1>;
@@ -98,9 +98,33 @@
 };
 
 &pinctrl {
-	can2-1-cfg {
-		can2-0-pins {
+	uart4-0-cfg {
+		uart4-0-pins {
 			power-source = <3300>;
+		};
+	};
+
+	uart5-2-cfg {
+		uart5-0-pins {
+			power-source = <3300>;
+		};
+	};
+
+	can3-1-cfg {
+		can3-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	can4-1-cfg {
+		can4-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	rcan2-0-cfg {
+		rcan2-0-pins {
+			power-source = <1800>;
 		};
 	};
 
@@ -246,6 +270,18 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_0_cfg>;
 	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_0_cfg>;
+	status = "disabled";
+};
+
+&uart5 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart5_2_cfg>;
+	status = "disabled";
 };
 
 &qspi {
@@ -1066,11 +1102,46 @@
 	};
 };
 
+&flexcan0 {
+	clock-frequency = <80000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&can0_1_cfg>;
+	status = "disabled";
+};
+
+&flexcan1 {
+	clock-frequency = <80000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&can1_0_cfg>;
+	status = "disabled";
+};
+
 &flexcan2 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&can2_1_cfg>;
-	status = "okay";
+	pinctrl-0 = <&can2_0_cfg>;
+	status = "disabled";
+};
+
+&flexcan3 {
+	clock-frequency = <80000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&can3_1_cfg>;
+	status = "disabled";
+};
+
+&flexcan4 {
+	clock-frequency = <80000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&can4_1_cfg>;
+	status = "disabled";
+};
+
+&r_flexcan2 {
+	clock-frequency = <80000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&rcan2_0_cfg>;
+	status = "disabled";
 };
 
 /*

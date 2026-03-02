@@ -13,6 +13,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
+#include <linux/backlight.h>
 #include <drm/drm_of.h>
 #include <drm/drm_device.h>
 #include <drm/drm_encoder.h>
@@ -282,6 +283,7 @@ struct soc_dp_dev {
 
 	enum drm_connector_status connector_status;
 	struct drm_display_mode mode;
+	struct backlight_device *backlight;
 
 	void __iomem *regs;
 	struct drm_dp_aux aux;
@@ -1702,6 +1704,8 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 	soc_dp_hw_set_msa_and_enable_video(dp, adjusted_mode, cfg->rate, cfg->lanes);
 
 	mutex_unlock(&dp->mode_lock);
+	if (dp->backlight)
+		backlight_enable(dp->backlight);
 	dev_info(dp->dev, "DP: Stream Active\n");
 }
 
@@ -1710,6 +1714,9 @@ static void soc_dp_encoder_disable(struct drm_encoder *encoder)
 	struct soc_dp_dev *dp = container_of(encoder, struct soc_dp_dev, encoder);
 
 	DRM_INFO("%s()\n", __func__);
+
+	if (dp->backlight)
+		backlight_disable(dp->backlight);
 
 	/* Disable Video Stream */
 	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_STREAM_ENABLE, 0);
@@ -1916,16 +1923,6 @@ static int soc_dp_resource_init(struct soc_dp_dev *dp, struct platform_device *p
 		return -ENOMEM;
 	}
 #endif
-
-	if (of_property_read_u32(pdev->dev.of_node, "dp-id", &dp_id)) {
-		dp->edp_mode = true;
-		dp_id = -1;
-	} else {
-		dp->edp_mode = false;
-	}
-
-	if (of_property_read_u32(pdev->dev.of_node, "edp-id", &edp_id))
-		edp_id = -1;
 
 	if (dp_id == 0 || edp_id == 0) {
 		// mux dp0
@@ -2190,6 +2187,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	struct soc_dp_dev *dp;
 	struct drm_device *drm = (struct drm_device *)data;
 	struct platform_device *pdev = to_platform_device(dev);
+	uint32_t dp_id;
 
 	DRM_INFO("%s()\n", __func__);
 
@@ -2251,6 +2249,11 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		}
 	}
 
+	if (of_property_read_u32(pdev->dev.of_node, "dp-id", &dp_id))
+		dp->edp_mode = true;
+	else
+		dp->edp_mode = false;
+
 	if (!IS_ERR_OR_NULL(dp->reset)) {
 		ret = reset_control_deassert(dp->reset);
 		if (ret < 0) {
@@ -2276,6 +2279,14 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 	drm_connector_helper_add(&dp->connector, &soc_dp_conn_helper_funcs);
+
+	if (dp->edp_mode) {
+		dp->backlight = devm_of_find_backlight(dp->dev);
+		if (IS_ERR(dp->backlight))
+			dev_err(dev, "Failed to find backlight\n");
+	} else {
+		dp->backlight = NULL;
+	}
 
 	/* Init Encoder */
 	ret = drm_encoder_init(drm, &dp->encoder,

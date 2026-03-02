@@ -12,6 +12,7 @@
 #include "k3-camera.dtsi"
 
 / {
+	model = "SpacemiT K3 EVB";
 	compatible = "spacemit,k3-evb";
 	cpus: cpus {
 		#address-cells = <1>;
@@ -1350,13 +1351,13 @@
 
 &dpu1_crtc0 {
 	memory-region = <&dpu_resv1>;
-	status = "disabled";
+	status = "okay";
 };
 
 &dp1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp1_4_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &adma2 {

@@ -406,6 +406,13 @@ static irqreturn_t ai_dma_start_transfer(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
+static char *ai_dma_devnode(const struct device *dev, umode_t *mode)
+{
+	if (mode)
+		*mode = 0666;
+	return NULL;
+}
+
 static int ai_dmadev_probe(struct platform_device *pdev) {
 	struct device *dev;
 	static unsigned char dma_major, dma_req, msi_major;
@@ -440,6 +447,8 @@ static int ai_dmadev_probe(struct platform_device *pdev) {
 		goto err_unregister_msi_chrdev;
 	}
 
+	msi_class->devnode = ai_dma_devnode;
+
 	dev = device_create(msi_class, NULL, MKDEV(msi_major, 0), NULL, DMAMSI_NAME);
 	if (IS_ERR(dev)) {
 		ret = PTR_ERR(dev);
@@ -458,6 +467,8 @@ static int ai_dmadev_probe(struct platform_device *pdev) {
 		goto err_unregister_dma_chrdev;
 	}
 
+	dma_class->devnode = ai_dma_devnode;
+
 	dev = device_create(dma_class, NULL, MKDEV(dma_major, 0), NULL, DEVICE_NAME);
 	if (IS_ERR(dev)) {
 		ret = PTR_ERR(dev);
@@ -475,6 +486,8 @@ static int ai_dmadev_probe(struct platform_device *pdev) {
 		ret = PTR_ERR(req_class);
 		goto err_unregister_req_chrdev;
 	}
+
+	req_class->devnode = ai_dma_devnode;
 
 	dev = device_create(req_class, NULL, MKDEV(dma_req, 0), NULL, REQLIST_NAME);
 	if (IS_ERR(dev)) {
