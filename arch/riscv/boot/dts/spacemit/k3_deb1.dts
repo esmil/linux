@@ -1275,7 +1275,7 @@
 
 &dpu0_crtc0 {
 	memory-region = <&dpu_resv0>;
-	status = "disabled";
+	status = "okay";
 };
 
 &edp0 {
@@ -1284,7 +1284,7 @@
 	gpios-power = <101>;
 	gpios-enable = <118>;
 	gpios-bl = <106>;
-	status = "disabled";
+	status = "okay";
 };
 
 &dpu1_crtc0 {

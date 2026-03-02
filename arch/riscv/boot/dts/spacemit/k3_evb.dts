@@ -1351,13 +1351,13 @@
 
 &dpu1_crtc0 {
 	memory-region = <&dpu_resv1>;
-	status = "disabled";
+	status = "okay";
 };
 
 &dp1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp1_4_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &adma2 {
