@@ -25,6 +25,7 @@
 #define TCM_RELEASE_MEM		_IOR(IOC_MAGIC, 6, int)
 #define TCM_INFO_GET		_IOR(IOC_MAGIC, 7, int)
 #define TCM_AICORE_BIND		_IOR(IOC_MAGIC, 8, int)
+#define TCM_ALLOC_BY_CPUMASK	_IOR(IOC_MAGIC, 10, int)
 
 #define MM_MIN_SHIFT		(PAGE_SHIFT)  /* 16 bytes */
 #define MM_MIN_CHUNK		(1 << MM_MIN_SHIFT)
@@ -386,6 +387,53 @@ static struct list_head *tcm_discontinuous_malloc(size_t size)
 	return head;
 }
 
+static size_t total_cpumask_free_size(struct cpumask *cpu_mask)
+{
+	size_t size = 0;
+	int i = 0;
+
+	for (i = 0; i < g_block_num; i++) {
+		if (cpumask_subset(cpu_mask, &g_mmheap[i].cpu_mask)) {
+			size += g_mmheap[i].free_size;
+		}
+	}
+
+	return size;
+}
+
+static struct list_head *tcm_cpumask_malloc(struct cpumask *cpu_mask, size_t size)
+{
+	struct list_head *head;
+	int i, remain;
+	size_t total;
+
+	total = total_cpumask_free_size(cpu_mask);
+	if (total < size) return NULL;
+
+	head = kmalloc(sizeof(struct list_head), GFP_KERNEL);
+	if (!head) return NULL;
+
+	INIT_LIST_HEAD(head);
+	remain = size;
+
+	for (i = 0; i < g_block_num; i++) {
+		while (g_mmheap[i].free_size && cpumask_subset(cpu_mask, &g_mmheap[i].cpu_mask)) {
+			mm_alloc_node_t *alloc = kmalloc(sizeof(mm_alloc_node_t), GFP_KERNEL);
+			alloc->paddr = (phys_addr_t)mm_max_mallc(&g_mmheap[i], remain, &alloc->size);
+			list_add(&alloc->list, head);
+			remain -= alloc->size;
+			if (remain <= 0) {
+				break;
+			}
+		}
+		if (remain <= 0) {
+			break;
+		}
+	}
+
+	return head;
+}
+
 static int mm_init(mm_heap_t *heap, size_t start, size_t end)
 {
 	memset(heap, 0, sizeof(mm_heap_t));
@@ -506,17 +554,24 @@ static int mmap_compare(void* priv, const struct list_head* a, const struct list
 static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	size_t size = vma->vm_end - vma->vm_start;
-	phys_addr_t offset = (phys_addr_t)vma->vm_pgoff << PAGE_SHIFT;
+	phys_addr_t offset = (phys_addr_t)(vma->vm_pgoff << PAGE_SHIFT);
 	struct page* page = NULL;
 	unsigned long pfn;
 	unsigned long addr;
 	tcm_private *tcm_pri;
 	struct list_head *head;
 	mm_alloc_node_t *node;
+	struct cpumask cpu_mask;
 
 	/* Does it even fit in phys_addr_t? */
 	if (offset >> PAGE_SHIFT != vma->vm_pgoff)
 		return -EINVAL;
+
+	if (vma->vm_pgoff) {
+		if (copy_from_user(&cpu_mask, (void *)offset, sizeof(cpu_mask))) {
+			return -EFAULT;
+		}
+	}
 
 	vma->vm_ops = &tcm_vm_ops;
 
@@ -524,7 +579,11 @@ static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
 	tcm_pri = kmalloc(sizeof(tcm_private), GFP_KERNEL);
 	if (!tcm_pri)
 		return -EINVAL;
-	head = tcm_discontinuous_malloc(size);
+	if (offset) {
+		head = tcm_cpumask_malloc(&cpu_mask, size);
+	} else {
+		head = tcm_discontinuous_malloc(size);
+	}
 	tcm_pri->head = head;
 	mutex_unlock(&tcm.mutex);
 
