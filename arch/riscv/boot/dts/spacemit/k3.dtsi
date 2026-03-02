@@ -2403,5 +2403,11 @@
 			compatible = "spacemit,k3-reboot";
 			reg = <0x0 0xc087c000 0x0 0x1000>;
 		};
+
+		irq_affinity: irq-aff@0 {
+			compatible = "spacemit,irq-affinity-restore";
+			msi-parent = <&simsic>;
+			status = "okay";
+		};
 	};
 };
