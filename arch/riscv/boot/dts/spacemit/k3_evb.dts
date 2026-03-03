@@ -76,7 +76,7 @@
 	};
 */
 	chosen {
-		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused loglevel=8 random.trust_bootloader=1";
+		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused loglevel=8 random.trust_bootloader=1 unaligned_scalar_speed=fast unaligned_vector_speed=fast";
 		rng-seed = <0x25d69b2 0xff555073 0xd23238ea 0x57aa5455 0x792478ed 0xa744f28e 0x6ba4fc54 0xa2bf20fc>;
 		stdout-path = "serial0:115200";
 	};
