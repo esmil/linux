@@ -1296,7 +1296,7 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <64 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rpmi pwrkey";
-			status = "disabled";
+			status = "okay";
 		};
 
 		pmu: power-management@0 {
