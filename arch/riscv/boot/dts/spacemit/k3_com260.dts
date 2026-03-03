@@ -1033,7 +1033,7 @@
 
 &dpu_crtc1 {
 	memory-region = <&dpu_resv1>;
-	status = "okay";
+	status = "disabled";
 };
 
 &dsi0 {
