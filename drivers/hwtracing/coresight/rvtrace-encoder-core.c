@@ -243,7 +243,7 @@ static int encoder_enable_sysfs(struct coresight_device *csdev)
 	spin_unlock(&encoder_data->spinlock);
 
 	if (!ret)
-		dev_info(&csdev->dev, "Trace Encoder tracing enabled\n");
+		dev_dbg(&csdev->dev, "Trace Encoder tracing enabled\n");
 	return ret;
 }
 
@@ -320,7 +320,7 @@ static void encoder_disable_sysfs(struct coresight_device *csdev)
 	spin_unlock(&encoder_data->spinlock);
 	cpus_read_unlock();
 
-	dev_info(&csdev->dev, "Trace Encoder tracing disabled\n");
+	dev_dbg(&csdev->dev, "Trace Encoder tracing disabled\n");
 }
 
 static void encoder_disable_perf(struct coresight_device *csdev)
@@ -454,7 +454,7 @@ static int encoder_probe(struct platform_device *pdev)
 	encoder_set_default(comp);
 
 	pm_runtime_put(dev);
-	dev_info(dev, "CPU%d: Trace Encoder initialized\n", comp->cpu);
+	dev_dbg(dev, "CPU%d: Trace Encoder initialized\n", comp->cpu);
 
 	if (boot_enable) {
 		coresight_enable_sysfs(encoder_data->csdev);
