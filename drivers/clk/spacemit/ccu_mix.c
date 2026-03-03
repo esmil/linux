@@ -114,7 +114,7 @@ ccu_mix_calc_best_rate(struct clk_hw *hw, unsigned long rate,
 	unsigned int parent_num = clk_hw_get_num_parents(hw);
 	struct ccu_div_config *div = &mix->div;
 	u32 div_max = 1 << div->width;
-	unsigned long best_rate = 0;
+	unsigned long best_rate = clk_hw_get_rate(hw);
 
 	for (int i = 0; i < parent_num; i++) {
 		struct clk_hw *parent = clk_hw_get_parent_by_index(hw, i);
