@@ -10,9 +10,11 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/property.h>
 #include <linux/rvtrace.h>
 
 #include "rvtrace-encoder.h"
+#include "rvtrace-timestamp.h"
 #include "coresight-etm-perf.h"
 
 static int boot_enable;
@@ -168,6 +170,10 @@ static void encoder_set_config(struct rvtrace_component *comp)
 			 config->inst_syncmax);
 		config->inst_syncmax = BMVAL(val, 20, 23);
 	}
+
+	/* Configure timestamp only if encoder has timestamp component */
+	if (encoder_data->has_timestamp && encoder_data->ts_ctrl)
+		timestamp_set_config(comp, dev, &encoder_data->ts_config);
 }
 
 static int encoder_enable_hw(struct rvtrace_component *comp)
@@ -187,6 +193,16 @@ static int encoder_enable_hw(struct rvtrace_component *comp)
 	ret = rvtrace_enable_component(comp);
 	if (ret)
 		goto done;
+
+	/* Enable timestamp only if encoder has timestamp component */
+	if (encoder_data->has_timestamp && encoder_data->ts_ctrl) {
+		ret = timestamp_enable(comp);
+		if (ret) {
+			dev_warn(&encoder_data->csdev->dev,
+				 "Failed to enable timestamp\n");
+			ret = 0;  /* Don't fail encoder enable if timestamp fails */
+		}
+	}
 
 	val = readl_relaxed(comp->base + RVTRACE_COMPONENT_CTRL_OFFSET);
 	val |= RVTRACE_ENCODER_ITRACE;
@@ -278,6 +294,10 @@ static int encoder_enable(struct coresight_device *csdev, struct perf_event *eve
 static void encoder_disable_hw(struct rvtrace_component *comp)
 {
 	struct encoder_data *encoder_data = rvtrace_component_data(comp);
+
+	/* Disable timestamp only if encoder has timestamp component */
+	if (encoder_data->has_timestamp && encoder_data->ts_ctrl)
+		timestamp_disable(comp);
 
 	if (rvtrace_disable_component(comp))
 		dev_err(&encoder_data->csdev->dev,
@@ -426,6 +446,25 @@ static int encoder_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, comp);
 
+	/* Check if encoder has timestamp component from device tree early */
+	encoder_data->has_timestamp = fwnode_property_present(dev->fwnode, "riscv,timestamp-present");
+	if (encoder_data->has_timestamp) {
+		if (rvtrace_init_timestamp(comp, &encoder_data->ts_config)) {
+			dev_err(dev, "Timestamp initialization failed\n");
+			return -EINVAL;
+		}
+
+		/* TODO: Default to enabling timestamp control if present, as
+		 * encoder_data->ts_ctrl can be configured via sysfs attribute,
+		 * but not through perf_event at this time. Future versions may
+		 * add support for configuring timestamps via perf_event.
+		 */
+		encoder_data->ts_ctrl = true;
+	}
+
+	/* Set component data before registration so is_visible callbacks can access it */
+	comp->id.data = encoder_data;
+
 	desc.name = devm_kasprintf(dev, GFP_KERNEL, "encoder%d", comp->cpu);
 	if (!desc.name)
 		return -ENOMEM;
@@ -446,8 +485,6 @@ static int encoder_probe(struct platform_device *pdev)
 		coresight_unregister(encoder_data->csdev);
 		return ret;
 	}
-
-	comp->id.data = encoder_data;
 
 	rvtrace_cpu_encoder[comp->cpu] = comp;
 
