@@ -15,6 +15,15 @@ config SPACEMIT_K3_CAM_IMX219
 	  To compile this driver as a module, choose M here: the
 	  module will be called imx219.
 
+config SPACEMIT_K3_CAM_IMX415
+	tristate "Sony IMX415 sensor support for K3"
+	depends on SPACEMIT_K3_CCIC && I2C
+	help
+	  This is a i2c sensor driver for the Sony
+	  IMX415 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called imx219.
 
 config SPACEMIT_K3_CAM_OV5647
 	tristate "OmniVision OV5647 sensor support"
