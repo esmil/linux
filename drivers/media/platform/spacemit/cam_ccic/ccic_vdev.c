@@ -502,6 +502,7 @@ dma_addr_t vb2_buf_paddr(struct vb2_buffer *vb, unsigned int plane_no)
 	struct ccic_vnode *sc_vnode = NULL;
 	/* struct scatterlist *sg = NULL; */
 	struct sg_table *sgt = NULL;
+	unsigned int dma_ch = 0;
 
 	sc_vb = vb2_buffer_to_ccic_vbuffer(vb);
 	sc_vnode = sc_vb->sc_vnode;
@@ -509,11 +510,12 @@ dma_addr_t vb2_buf_paddr(struct vb2_buffer *vb, unsigned int plane_no)
 	sgt = (struct sg_table*)vb2_plane_cookie(vb, plane_no);
 	offset = sc_vnode->planes_offset[vb->index][plane_no];
 	length = vb->planes[plane_no].length;
-	index = (mmu_ctx[sc_vnode->idx].tbu_update_cnt[plane_no])++ & 0x1;
-	tt_base = mmu_ctx[sc_vnode->idx].tt_base[index][plane_no];
-	tt_addr = mmu_ctx[sc_vnode->idx].tt_addr[index][plane_no];
 	BUG_ON(sc_vnode->dma_ctx.dma_ch >= MAX_CCIC_DMA_CNT);
-	tid = MMU_TID(sc_vnode->dma_ctx.dma_ch);
+	dma_ch = sc_vnode->dma_ctx.dma_ch;
+        index = (mmu_ctx[dma_ch].tbu_update_cnt[plane_no])++ & 0x1;
+        tt_base = mmu_ctx[dma_ch].tt_base[index][plane_no];
+        tt_addr = mmu_ctx[dma_ch].tt_addr[index][plane_no];
+        tid = MMU_TID(dma_ch);
 	tt_size = cvdev_fill_trans_tab_by_sg(tt_base, sgt, offset, length);
 	ccic_mmu_call(mmu_dev, config_channel, tid, tt_addr, tt_size);
 	ccic_mmu_call(mmu_dev, enable_channel, tid);
