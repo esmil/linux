@@ -1296,7 +1296,7 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <64 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rpmi pwrkey";
-			status = "disabled";
+			status = "okay";
 		};
 
 		pmu: power-management@0 {
@@ -2402,6 +2402,12 @@
 		reboot_mode_helper: reboot-mode-helper@c087c000 {
 			compatible = "spacemit,k3-reboot";
 			reg = <0x0 0xc087c000 0x0 0x1000>;
+		};
+
+		irq_affinity: irq-aff@0 {
+			compatible = "spacemit,irq-affinity-restore";
+			msi-parent = <&simsic>;
+			status = "okay";
 		};
 	};
 };

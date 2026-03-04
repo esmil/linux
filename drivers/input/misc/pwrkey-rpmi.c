@@ -27,14 +27,14 @@ struct rpmi_pwrkey_query_pending_req {
 };
 
 struct rpmi_pwrkey_query_pending_resp {
-#define RPMI_PWRKEY_PRESS_OFFSET	(1 << 0)
-#define RPMI_PWRKEY_RELEASE_OFFSET	(1 << 1)
+#define RPMI_PWRKEY_RELEASE_OFFSET	(1 << 0)
+#define RPMI_PWRKEY_PRESS_OFFSET	(1 << 1)
 	s32 status;
 };
 
 struct rpmi_pwrkey_clear_pending_req {
-#define RPMI_PWRKEY_PRESS_OFFSET	(1 << 0)
-#define RPMI_PWRKEY_RELEASE_OFFSET	(1 << 1)
+#define RPMI_PWRKEY_RELEASE_OFFSET	(1 << 0)
+#define RPMI_PWRKEY_PRESS_OFFSET	(1 << 1)
 	u32 clear;
 };
 
@@ -77,8 +77,11 @@ static irqreturn_t mpxy_pwrkey_irq_thread(int irq, void *dev_id)
 		/* update the power key event */
 		if (alarmrx.status & RPMI_PWRKEY_PRESS_OFFSET) {
 			input_report_key(context->input, KEY_POWER, 1);
-		} else {
+			input_sync(context->input);
+		}
+		if (alarmrx.status & RPMI_PWRKEY_RELEASE_OFFSET) {
 			input_report_key(context->input, KEY_POWER, 0);
+			input_sync(context->input);
 		}
 
 		pm_wakeup_event(context->dev, 0);
@@ -169,7 +172,7 @@ static int rpmi_pwrkey_probe(struct platform_device *pdev)
 	ret = request_threaded_irq(context->virt_irq,
 				  mpxy_pwrkey_irq_event,
 				  mpxy_pwrkey_irq_thread,
-				  IRQF_SHARED, dev_name(dev), context);
+				  IRQF_SHARED | IRQF_ONESHOT, dev_name(dev), context);
 	if (ret) {
 		dev_err(dev, "failed to request MPXY channel IRQ\n");
 		goto fail_free_channel;

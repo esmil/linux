@@ -259,6 +259,8 @@ static int pwm_probe(struct platform_device *pdev)
 	if (ret < 0)
 		return dev_err_probe(dev, ret, "pwmchip_add() failed\n");
 
+	platform_set_drvdata(pdev, pc);
+
 	return 0;
 }
 
@@ -270,8 +272,7 @@ static int pxa_pwm_suspend_noirq(struct device *dev)
 
 static int pxa_pwm_resume_noirq(struct device *dev)
 {
-	struct pwm_chip *chip = dev_get_drvdata(dev);
-	struct pxa_pwm_chip *pc = to_pxa_pwm_chip(chip);
+	struct pxa_pwm_chip *pc = dev_get_drvdata(dev);
 
 	/* if pwm in rcpu domain, deassert reset first before apply the old state */
 	if (pc->rcpu_pwm && pc->reset)
