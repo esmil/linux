@@ -148,7 +148,7 @@ static int nexus_rv_pkt_defmt(struct nexus_rv_defmt_buf defmt_bufs[], FILE *nexu
 }
 
 // dump all nexus messages (from nexus file)
-static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
+static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder, FILE *nexus)
 {
 	const char *color = PERF_COLOR_BLUE;
 	int fld_def  = -1;
@@ -173,7 +173,7 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 	unsigned int mseo = 0;
 	for (;;) {
 		prev_byte = msg_byte;
-		if (fread(&msg_byte, 1, 1, decoder->nexus) != 1) break;  // EOF
+		if (fread(&msg_byte, 1, 1, nexus) != 1) break;  // EOF
 
 		if (find_next_package) {
 			if ((prev_byte & 0x3) == 0x3) { //last byte
@@ -340,9 +340,6 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 struct nexus_rv_pkt_decoder *nexus_rv_pkt_decoder_new(struct nexus_rv_pkt_decoder_params *params)
 {
 	struct nexus_rv_pkt_decoder *decoder;
-	char *dir;
-	char filename[PATH_MAX];
-	FILE *f;
 
 	if (!params)
 		return NULL;
@@ -354,15 +351,6 @@ struct nexus_rv_pkt_decoder *nexus_rv_pkt_decoder_new(struct nexus_rv_pkt_decode
 	decoder->formatted = params->formatted;
 	decoder->src_bits = params->src_bits;
 
-	/* TODO: The filename here is always trace.bin, which results in
-	 * only the last Nexus trace data being retained. A corresponding
-	 * Nexus filename should be generated for each AUX data.
-	 */
-	dir = getenv("PERF_BUILDID_DIR");
-	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
-	f = fopen(filename, "w+");
-	decoder->nexus = f;
-
 	return decoder;
 }
 
@@ -371,24 +359,42 @@ void nexus_rv_pkt_decoder_free(struct nexus_rv_pkt_decoder *decoder)
 	for (int i = 0; i < MAX_ID; ++i)
 		free(decoder->defmt_bufs[i].buf);
 
-	fclose(decoder->nexus);
 	free(decoder);
 }
 
 int nexus_rv_pkt_desc(struct nexus_rv_pkt_decoder *decoder, const unsigned char *buf, size_t len)
 {
 	int err;
+	char filename[PATH_MAX];
+	FILE *nexus;
+	char *dir = getenv("PERF_BUILDID_DIR");
+
+	/* TODO: The filename here is always trace.bin, which results in
+	 * only the last Nexus trace data being retained. A corresponding
+	 * Nexus filename should be generated for each AUX data.
+	 */
+	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
+	nexus = fopen(filename, "w+");
 
 	if (decoder->formatted) {
-		err = nexus_rv_pkt_defmt(decoder->defmt_bufs, decoder->nexus, buf, len);
+		err = nexus_rv_pkt_defmt(decoder->defmt_bufs, nexus, buf, len);
 		if (err) {
 			pr_err("Encoder: failed to remove coresight trace formatter\n");
 			return err;
 		}
+	} else {
+		size_t n = fwrite(buf, len, 1, nexus);
+		if (n != 1) {
+			pr_err("Encoder: failed to write nexus data\n");
+			fclose(nexus);
+			return -EINVAL;
+		}
 	}
 
-	fseek(decoder->nexus, 0, SEEK_SET);
-	err = nexus_rv_pkt_dump(decoder);
+	fseek(nexus, 0, SEEK_SET);
+	err = nexus_rv_pkt_dump(decoder, nexus);
+
+	fclose(nexus);
 
 	return err;
 }

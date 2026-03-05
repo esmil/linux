@@ -32,7 +32,6 @@ struct nexus_rv_pkt_decoder {
 	bool formatted;
 	struct nexus_rv_defmt_buf defmt_bufs[MAX_ID];
 	u32 src_bits;
-	FILE *nexus;
 };
 
 struct nexus_rv_pkt_decoder_params {
