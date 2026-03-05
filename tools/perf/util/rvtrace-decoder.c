@@ -584,6 +584,29 @@ static int rvtrace_update_queues(struct rvtrace_auxtrace *rvtrace)
 	return 0;
 }
 
+static int rvtrace_process_itrace_start(struct rvtrace_auxtrace *rvtrace,
+					union perf_event *event)
+{
+	struct thread *th;
+
+	if (rvtrace->timeless_decoding)
+		return 0;
+
+	/*
+	 * Add the tid/pid to the log so that we can get a match when
+	 * we get a contextID from the decoder.
+	 */
+	th = machine__findnew_thread(rvtrace->machine,
+				     event->itrace_start.pid,
+				     event->itrace_start.tid);
+	if (!th)
+		return -ENOMEM;
+
+	thread__put(th);
+
+	return 0;
+}
+
 static int rvtrace_process_event(struct perf_session *session,
 				 union perf_event *event,
 				 struct perf_sample *sample,
@@ -619,6 +642,8 @@ static int rvtrace_process_event(struct perf_session *session,
 
 	if (event->header.type == PERF_RECORD_EXIT)
 		return rvtrace_process_timeless_queues(rvtrace, event->fork.tid);
+	else if (event->header.type == PERF_RECORD_ITRACE_START)
+		return rvtrace_process_itrace_start(rvtrace, event);
 
 	return 0;
 }
