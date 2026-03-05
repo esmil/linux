@@ -316,15 +316,87 @@ static int rvtrace_synth_events(struct rvtrace_auxtrace *rvtrace,
 	return 0;
 }
 
+static int rvtrace_get_trace(struct rvtrace_queue *rvtraceq)
+{
+	struct auxtrace_buffer *aux_buffer = rvtraceq->buffer;
+	struct auxtrace_buffer *old_buffer = aux_buffer;
+	struct auxtrace_queue *queue;
+
+	queue = &rvtraceq->rvtrace->queues.queue_array[rvtraceq->queue_nr];
+
+	aux_buffer = auxtrace_buffer__next(queue, aux_buffer);
+
+	/* If no more data, drop the previous auxtrace_buffer and return */
+	if (!aux_buffer) {
+		if (old_buffer)
+			auxtrace_buffer__drop_data(old_buffer);
+		return 0;
+	}
+
+	rvtraceq->buffer = aux_buffer;
+
+	/* If the aux_buffer doesn't have data associated, try to load it */
+	if (!aux_buffer->data) {
+		/* get the file desc associated with the perf data file */
+		int fd = perf_data__fd(rvtraceq->rvtrace->session->data);
+
+		aux_buffer->data = auxtrace_buffer__get_data(aux_buffer, fd);
+		if (!aux_buffer->data)
+			return -ENOMEM;
+	}
+
+	/* If valid, drop the previous buffer */
+	if (old_buffer)
+		auxtrace_buffer__drop_data(old_buffer);
+
+	return aux_buffer->size;
+}
+
+/*
+ * rvtrace_get_data_block: Fetch a block from the auxtrace_buffer queue
+ *                         if need be.
+ * Returns:     < 0     if error
+ *              = 0     if no more auxtrace_buffer to read
+ *              > 0     if the current buffer isn't empty yet
+ */
+static int rvtrace_get_data_block(struct rvtrace_queue *rvtraceq)
+{
+	int ret;
+
+	ret = rvtrace_get_trace(rvtraceq);
+	if (ret <= 0)
+		return ret;
+
+	/*
+	 * We cannot assume consecutive blocks in the data file
+	 * are contiguous, reset the decoder to force re-sync.
+	 */
+	ret = nexus_rv_insn_decoder_reset(rvtraceq->decoder);
+	if (ret)
+		return ret;
+
+	return rvtraceq->buffer->size;
+}
+
 static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 {
 	int ret;
-	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
 	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
 
-	ret = nexus_rv_insn_decode(rvtraceq->decoder);
-	if (ret)
-		return ret;
+	while (1) {
+		ret = rvtrace_get_data_block(rvtraceq);
+		if (ret < 0)
+			return ret;
+
+		if (ret == 0)
+			break;
+
+		ret = nexus_rv_insn_decode_data_block(rvtraceq->decoder,
+						      rvtraceq->buffer->data,
+						      rvtraceq->buffer->size);
+		if (ret)
+			return ret;
+	}
 
 	for (int i = 0; i < packet_buffer->size; i++) {
 		struct nexus_rv_packet packet = packet_buffer->packets[i];
@@ -413,47 +485,6 @@ static bool rvtrace_evsel_is_auxtrace(struct perf_session *session,
 	return evsel->core.attr.type == aux->pmu_type;
 }
 
-static int rvtrace_get_trace(struct nexus_rv_buffer *buffer, void *data)
-{
-	struct rvtrace_queue *rvtraceq = data;
-	struct auxtrace_buffer *aux_buffer = rvtraceq->buffer;
-	struct auxtrace_buffer *old_buffer = aux_buffer;
-	struct auxtrace_queue *queue;
-
-	queue = &rvtraceq->rvtrace->queues.queue_array[rvtraceq->queue_nr];
-
-	aux_buffer = auxtrace_buffer__next(queue, aux_buffer);
-
-	/* If no more data, drop the previous auxtrace_buffer and return */
-	if (!aux_buffer) {
-		if (old_buffer)
-			auxtrace_buffer__drop_data(old_buffer);
-		buffer->len = 0;
-		return 0;
-	}
-
-	rvtraceq->buffer = aux_buffer;
-
-	/* If the aux_buffer doesn't have data associated, try to load it */
-	if (!aux_buffer->data) {
-		/* get the file desc associated with the perf data file */
-		int fd = perf_data__fd(rvtraceq->rvtrace->session->data);
-
-		aux_buffer->data = auxtrace_buffer__get_data(aux_buffer, fd);
-		if (!aux_buffer->data)
-			return -ENOMEM;
-	}
-
-	/* If valid, drop the previous buffer */
-	if (old_buffer)
-		auxtrace_buffer__drop_data(old_buffer);
-
-	buffer->len = aux_buffer->size;
-	buffer->buf = aux_buffer->data;
-
-	return 0;
-}
-
 static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrace,
                                                unsigned int queue_nr)
 {
@@ -474,7 +505,6 @@ static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrac
 	rvtraceq->tid = -1;
 	rvtraceq->cpu = -1;
 
-	params.get_trace = rvtrace_get_trace;
 	params.mem_access = rvtrace_mem_access;
 	params.data = rvtraceq;
 	params.formatted = true;

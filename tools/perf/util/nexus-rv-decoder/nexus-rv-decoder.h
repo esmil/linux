@@ -45,11 +45,6 @@ struct nexus_rv_stack {
 	int capacity;
 };
 
-struct nexus_rv_buffer {
-	const unsigned char *buf;
-	size_t len;
-};
-
 enum rvtrace_sample_type {
 	RVTRACE_EMPTY,
 	RVTRACE_RANGE,
@@ -80,7 +75,6 @@ struct nexus_rv_packet_buffer {
 };
 
 struct nexus_rv_insn_decoder {
-	int (*get_trace)(struct nexus_rv_buffer *buffer, void *data);
 	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, size_t, u8 *);
 	void *data;
 	bool formatted;
@@ -103,7 +97,6 @@ struct nexus_rv_insn_decoder {
 };
 
 struct nexus_rv_insn_decoder_params {
-	int (*get_trace)(struct nexus_rv_buffer *buffer, void *data);
 	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, size_t, u8 *);
 	void *data;
 	bool formatted;
@@ -120,6 +113,9 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 
 void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder);
 
-int nexus_rv_insn_decode(struct nexus_rv_insn_decoder *decoder);
+int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder);
+
+int nexus_rv_insn_decode_data_block(struct nexus_rv_insn_decoder *decoder,
+				    const unsigned char *buf, size_t size);
 
 #endif
