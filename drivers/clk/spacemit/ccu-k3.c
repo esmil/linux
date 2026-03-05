@@ -844,7 +844,8 @@ static const struct clk_parent_data lcdmclk_parents[] = {
 	CCU_PARENT_HW(pll1_d8_307p2),
 };
 CCU_MUX_DIV_GATE_SPLIT_FC_DEFINE(lcd_mclk, lcdmclk_parents, APMU_LCD_CLK_RES_CTRL2,
-				 APMU_LCD_CLK_RES_CTRL1, 1, 4, BIT(29), 5, 3, BIT(0), 0);
+				 APMU_LCD_CLK_RES_CTRL1, 1, 4, BIT(29), 5, 3, BIT(0),
+				 CCU_DIV_4BIT_NO_0F_FLAG);
 
 static const struct clk_parent_data ccic_4x_parents[] = {
 	CCU_PARENT_HW(pll1_d5_491p52),
@@ -1034,7 +1035,8 @@ static const struct clk_parent_data dsi4ln2_lcd_mclk_parents[] = {
 	CCU_PARENT_HW(pll1_d8_307p2),
 };
 CCU_MUX_DIV_GATE_SPLIT_FC_DEFINE(dsi4ln2_lcd_mclk, dsi4ln2_lcd_mclk_parents, APMU_LCD_CLK_RES_CTRL4,
-				 APMU_LCD_CLK_RES_CTRL3, 1, 4, BIT(29), 5, 3, BIT(0), 0);
+				 APMU_LCD_CLK_RES_CTRL3, 1, 4, BIT(29), 5, 3, BIT(0),
+				 CCU_DIV_4BIT_NO_0F_FLAG);
 
 static const struct clk_parent_data dpu_aclk_parents[] = {
 	CCU_PARENT_HW(pll1_d6_409p6),
@@ -1141,13 +1143,13 @@ static const struct clk_parent_data isim_vclk_parents[] = {
 	CCU_PARENT_HW(cam_src4_clk),
 };
 CCU_MUX_DIV_GATE_DEFINE(isim_vclk_out0, isim_vclk_parents, APMU_SNR_ISIM_VCLK_CTRL, 3, 4,
-			1, 2, BIT(0), 0);
+			1, 2, BIT(0), CCU_DIV_4BIT_NO_0F_FLAG);
 CCU_MUX_DIV_GATE_DEFINE(isim_vclk_out1, isim_vclk_parents, APMU_SNR_ISIM_VCLK_CTRL, 11, 4,
-			9, 2, BIT(8), 0);
+			9, 2, BIT(8), CCU_DIV_4BIT_NO_0F_FLAG);
 CCU_MUX_DIV_GATE_DEFINE(isim_vclk_out2, isim_vclk_parents, APMU_SNR_ISIM_VCLK_CTRL, 19, 4,
-			17, 2, BIT(16), 0);
+			17, 2, BIT(16), CCU_DIV_4BIT_NO_0F_FLAG);
 CCU_MUX_DIV_GATE_DEFINE(isim_vclk_out3, isim_vclk_parents, APMU_SNR_ISIM_VCLK_CTRL, 27, 4,
-			25, 2, BIT(24), 0);
+			25, 2, BIT(24), CCU_DIV_4BIT_NO_0F_FLAG);
 /* APMU clocks end */
 
 /* DCIU clocks start */
