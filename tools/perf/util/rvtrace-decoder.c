@@ -58,7 +58,6 @@ struct rvtrace_auxtrace {
 	u64 branches_sample_type;
 	u64 branches_id;
 	u64 **metadata;
-	u64 kernel_start;
 	unsigned int pmu_type;
 };
 
@@ -322,9 +321,6 @@ static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 	int ret;
 	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
 	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
-
-	if (!rvtrace->kernel_start)
-		rvtrace->kernel_start = machine__kernel_start(rvtrace->machine);
 
 	ret = nexus_rv_insn_decode(rvtraceq->decoder);
 	if (ret)
