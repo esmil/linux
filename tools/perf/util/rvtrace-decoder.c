@@ -45,7 +45,6 @@ struct rvtrace_auxtrace {
 	struct itrace_synth_opts synth_opts;
 	struct perf_session *session;
 	struct machine *machine;
-	struct thread *unknown_thread;
 
 	u8 timeless_decoding;
 	u8 snapshot_mode;
@@ -67,28 +66,22 @@ struct rvtrace_queue {
 	struct auxtrace_buffer *buffer;
 	union perf_event *event_buf;
 	unsigned int queue_nr;
-	pid_t pid, tid;
-	int cpu;
 	u64 offset;
 };
 
-static void rvtrace_set_pid_tid_cpu(struct rvtrace_auxtrace *rvtrace,
-				    struct auxtrace_queue *queue)
+static void rvtrace_set_thread(struct rvtrace_queue *rvtraceq,
+			       pid_t tid)
 {
-	struct rvtrace_queue *rvtraceq = queue->priv;
+	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
 
-	/* CPU-wide tracing isn't supported yet */
-	if (queue->tid == -1)
-		return;
-
-	if ((!rvtraceq->thread) && (rvtraceq->tid != -1))
-		rvtraceq->thread = machine__find_thread(rvtrace->machine, -1, rvtraceq->tid);
-
-	if (rvtraceq->thread) {
-		rvtraceq->pid = rvtraceq->thread->pid_;
-		if (queue->cpu == -1)
-			rvtraceq->cpu = rvtraceq->thread->cpu;
+	if (tid != -1) {
+		thread__zput(rvtraceq->thread);
+		rvtraceq->thread = machine__find_thread(rvtrace->machine, -1, tid);
 	}
+
+	/* Couldn't find a known thread */
+	if (!rvtraceq->thread)
+		rvtraceq->thread = machine__idle_thread(rvtrace->machine);
 }
 
 static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
@@ -124,7 +117,7 @@ static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
 }
 
 static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode prv,
-			      size_t size, u8 *buffer)
+			      int context, size_t size, u8 *buffer)
 {
 	u8 cpumode;
 	u64 offset;
@@ -149,6 +142,8 @@ static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode
 		cpumode = PERF_RECORD_MISC_KERNEL;
 	else
 		cpumode = PERF_RECORD_MISC_USER;
+
+	rvtrace_set_thread(rvtraceq, context);
 
 	if (!thread__find_map(rvtraceq->thread, cpumode, address, &al))
 		goto out;
@@ -207,7 +202,8 @@ static void rvtrace_synth_copy_insn(struct rvtrace_queue *rvtraceq,
 	int ret;
 	u32 insn;
 
-	ret = rvtrace_mem_access(rvtraceq, sample->ip, packet->prv, sizeof(insn), (u8 *)&insn);
+	ret = rvtrace_mem_access(rvtraceq, sample->ip, packet->prv, packet->context,
+				 sizeof(insn), (u8 *)&insn);
 	if (!ret)
 		return;
 
@@ -243,8 +239,8 @@ static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
 	sample.time = rvtrace_resolve_sample_time(rvtraceq, packet);
 
 	sample.ip = packet->start_addr;
-	sample.pid = rvtraceq->pid;
-	sample.tid = rvtraceq->tid;
+	sample.pid = thread__pid(rvtraceq->thread);
+	sample.tid = thread__tid(rvtraceq->thread);
 	sample.addr = packet->end_addr;
 	sample.insn_cnt = packet->insn_cnt;
 	sample.id = rvtraceq->rvtrace->branches_id;
@@ -439,8 +435,8 @@ static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
 		struct auxtrace_queue *queue = &rvtrace->queues.queue_array[i];
 		struct rvtrace_queue *rvtraceq = queue->priv;
 
-		if (rvtraceq && ((tid == -1) || (rvtraceq->tid == tid))) {
-			rvtrace_set_pid_tid_cpu(rvtrace, queue);
+		if (rvtraceq && ((tid == -1) || (queue->tid == tid))) {
+			rvtrace_set_thread(rvtraceq, queue->tid);
 			rvtrace_run_timeless_decoder(rvtraceq);
 		}
 	}
@@ -514,7 +510,7 @@ static int rvtrace_process_timestamped_queues(struct rvtrace_auxtrace *rvtrace)
 		if (!rvtraceq)
 			continue;
 
-		rvtrace_set_pid_tid_cpu(rvtrace, queue);
+		rvtrace_set_thread(rvtraceq, queue->tid);
 
 		ret = rvtrace_queue_first_timestamp(rvtrace, rvtraceq, i);
 		if (ret)
@@ -574,9 +570,6 @@ static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrac
 
 	rvtraceq->rvtrace = rvtrace;
 	rvtraceq->queue_nr = queue_nr;
-	rvtraceq->pid = -1;
-	rvtraceq->tid = -1;
-	rvtraceq->cpu = -1;
 
 	params.mem_access = rvtrace_mem_access;
 	params.data = rvtraceq;
@@ -614,11 +607,6 @@ static int rvtrace_setup_queue(struct rvtrace_auxtrace *rvtrace,
 		return -ENOMEM;
 
 	queue->priv = rvtraceq;
-
-	if (queue->cpu != -1)
-		rvtraceq->cpu = queue->cpu;
-
-	rvtraceq->tid = queue->tid;
 
 	return 0;
 }

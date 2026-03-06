@@ -76,7 +76,7 @@ struct nexus_rv_packet_buffer {
 };
 
 struct nexus_rv_insn_decoder {
-	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, size_t, u8 *);
+	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, int, size_t, u8 *);
 	void *data;
 	bool formatted;
 	struct nexus_rv_defmt_buf defmt_bufs[MAX_ID];
@@ -99,7 +99,7 @@ struct nexus_rv_insn_decoder {
 };
 
 struct nexus_rv_insn_decoder_params {
-	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, size_t, u8 *);
+	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, int, size_t, u8 *);
 	void *data;
 	bool formatted;
 	u32 src_bits;

@@ -487,7 +487,7 @@ static int nexus_rv_insn_info_get(struct nexus_rv_insn_decoder *decoder, u8 *inf
 {
 	u32 insn;
 	u64 addr = decoder->nexdeco_pc;
-	if (!decoder->mem_access(decoder->data, addr, decoder->prv, sizeof(insn), (u8 *)&insn))
+	if (!decoder->mem_access(decoder->data, addr, decoder->prv, decoder->context, sizeof(insn), (u8 *)&insn))
 		return -EINVAL;
 
 	*info = INFO_LINEAR;
@@ -1072,6 +1072,7 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 	decoder->src_bits = params->src_bits;
 	decoder->nexdeco_pc = 1;
 	decoder->nexdeco_lastaddr = 1;
+	decoder->context = -1;
 
 	err = nexus_rv_init_stack(&decoder->stack);
 	if (err)
@@ -1105,6 +1106,7 @@ int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder)
 	int err;
 	decoder->nexdeco_pc = 1;
 	decoder->nexdeco_lastaddr = 1;
+	decoder->context = -1;
 
 	err = nexus_rv_init_stack(&decoder->stack);
 	if (err)
