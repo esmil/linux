@@ -68,10 +68,11 @@ static void atbbridge_disable(struct coresight_device *csdev,
 	if (rvtrace_disable_component(comp))
 		dev_err(&csdev->dev,
 			"timeout while waiting for Trace ATB Bridge to be disabled\n");
-
-	if (rvtrace_comp_is_empty(comp))
-		dev_err(&csdev->dev,
-			"timeout while waiting for Trace ATB Bridge internal buffers become empty\n");
+	/*
+	 * if (rvtrace_comp_is_empty(comp))
+	 * 	dev_err(&csdev->dev,
+	 * 		"timeout while waiting for Trace ATB Bridge internal buffers become empty\n");
+	 */
 
 	spin_unlock_irqrestore(&atbbridge_data->spinlock, flags);
 
