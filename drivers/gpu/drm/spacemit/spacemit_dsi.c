@@ -29,21 +29,11 @@ static void spacemit_dsi_encoder_enable(struct drm_encoder *encoder)
 {
 	struct spacemit_dsi *dsi = encoder_to_dsi(encoder);
 	struct spacemit_crtc *a_crtc = to_spacemit_crtc(encoder->crtc);
-	struct spacemit_dsi_device *ctx = &dsi->ctx;
-	struct spacemit_dphy *spacemit_dphy = ctx->phy;
-	struct spacemit_dphy_ctx *dphy_ctx = &spacemit_dphy->ctx;
 
 	DRM_INFO("%s()\n", __func__);
 
 	if (dsi->panel == NULL)
 		return;
-
-	if (spacemit_dpu_logo_booton) {
-		dsi->panel->enabled = true;
-		dsi->panel->prepared = true;
-		dphy_ctx->status = DPHY_STATUS_INIT;
-		return;
-	}
 
 	if (!dsi->core || !dsi->core->dsi_open) {
 		DRM_ERROR("%s(), dsi->core is null!\n", __func__);

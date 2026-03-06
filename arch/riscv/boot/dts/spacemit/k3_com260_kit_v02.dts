@@ -10,8 +10,8 @@
 #include "k3-dp1.dtsi"
 
 / {
-	model = "SpacemiT K3 Com260";
-	compatible = "spacemit,k3-com260";
+	model = "SpacemiT K3 Com260 Kit V02";
+	compatible = "spacemit,k3-com260-kit-v02";
 	cpus: cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -275,13 +275,13 @@
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart4_0_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &uart5 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart5_2_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &qspi {
@@ -1106,42 +1106,42 @@
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can0_1_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &flexcan1 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can1_0_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &flexcan2 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can2_0_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &flexcan3 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can3_1_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &flexcan4 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&can4_1_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 &r_flexcan2 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&rcan2_0_cfg>;
-	status = "disabled";
+	status = "okay";
 };
 
 /*

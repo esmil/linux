@@ -185,6 +185,7 @@ struct spacemit_crtc {
 	struct timespec64 last_tm;
 
 	bool is_1st_f;
+	bool logo_booton;
 	uint32_t vrr_vfp;
 	struct dpu_clk_context clk_ctx;
 	uint64_t new_mclk;		/* new frame mclk */

@@ -10,7 +10,9 @@
 #include <linux/regmap.h>
 
 /* invert en-bit value of gate clock, 1: disable, 0: enable */
-#define CCU_GATE_INVERT_FLAG  BIT(31)
+#define CCU_GATE_INVERT_FLAG		BIT(31)
+/* The maximum divisor (0xF) is invalid to the 4-bit divider in PMUAP base */
+#define CCU_DIV_4BIT_NO_0F_FLAG		BIT(30)
 
 struct ccu_common {
 	struct regmap *regmap;

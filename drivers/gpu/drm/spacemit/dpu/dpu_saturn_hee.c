@@ -450,11 +450,8 @@ void saturn_hee_cfg_ready(struct spacemit_crtc *a_crtc, struct spacemit_hw_devic
 void saturn_hee_sw_start(struct spacemit_crtc *a_crtc, struct spacemit_hw_device *hwdev)
 {
 	u32 base;
-
-	if (!spacemit_dpu_logo_booton) {
-		base = DPU_SCENE_CTL_ADDR(a_crtc->dev_id);
-		dpu_write_reg(hwdev, DPU_CTL_REG, base, sw_start, 1);
-	}
+	base = DPU_SCENE_CTL_ADDR(a_crtc->dev_id);
+	dpu_write_reg(hwdev, DPU_CTL_REG, base, sw_start, 1);
 }
 
 static void saturn_hee_wb_fmt_cvt_matrix(struct spacemit_wb *wb, struct spacemit_hw_device *hwdev, int drm_color_encoding, int drm_color_range, struct cmdlist_regs *cl_wb)

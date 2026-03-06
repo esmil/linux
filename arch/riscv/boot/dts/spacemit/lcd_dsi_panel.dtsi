@@ -7,7 +7,7 @@
 		compatible = "spacemit,saturn-hee";
 		reg = <0 0xc0340000 0 0x54000>;
 		hw_ver = <2>;
-		ports = <&dpu_crtc0>, <&dpu_crtc1>;
+		ports = <&dpu_crtc0>;
 	};
 
 	dpu_crtc0: dpu_crtc0 {
@@ -116,7 +116,7 @@
 	wb0 {
 		compatible = "spacemit,wb0";
 		dev-id = <0>;
-		status = "ok";
+		status = "disabled";
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
