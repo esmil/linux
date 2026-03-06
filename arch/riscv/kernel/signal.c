@@ -96,7 +96,11 @@ static long save_v_state(struct pt_regs *regs, void __user **sc_vec)
 	/* Copy the pointer datap itself. */
 	err |= __put_user((__force void *)datap, &state->v_state.datap);
 	/* Copy the whole vector content to user space datap. */
+#ifdef CONFIG_SPACEMIT_HMP
 	err |= __copy_to_user(datap, current->thread.vstate.datap, current->thread.vstate.vlenb * 32);
+#else
+	err |= __copy_to_user(datap, current->thread.vstate.datap, riscv_v_vsize);
+#endif
 	/* Copy magic to the user space after saving  all vector conetext */
 	err |= __put_user(RISCV_V_MAGIC, &hdr->magic);
 	err |= __put_user(riscv_v_sc_size, &hdr->size);
@@ -140,7 +144,11 @@ static long __restore_v_state(struct pt_regs *regs, void __user *sc_vec)
 	 * Copy the whole vector content from user space datap. Use
 	 * copy_from_user to prevent information leak.
 	 */
+#ifdef CONFIG_SPACEMIT_HMP
 	return copy_from_user(current->thread.vstate.datap, datap, current->thread.vstate.vlenb * 32);
+#else
+	return copy_from_user(current->thread.vstate.datap, datap, riscv_v_vsize);
+#endif
 }
 #else
 #define save_v_state(task, regs) (0)
