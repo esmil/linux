@@ -38,8 +38,6 @@
 #include "nexus-rv-decoder/nexus-rv-decoder.h"
 #include "../../arch/riscv/include/asm/insn.h"
 
-#define MAX_TIMESTAMP (~0ULL)
-
 struct rvtrace_auxtrace {
 	struct auxtrace auxtrace;
 	struct auxtrace_queues queues;
@@ -54,6 +52,7 @@ struct rvtrace_auxtrace {
 	u8 data_queued;
 
 	int num_cpu;
+	u64 latest_kernel_timestamp;
 	u32 auxtrace_type;
 	u64 branches_sample_type;
 	u64 branches_id;
@@ -216,6 +215,17 @@ static void rvtrace_synth_copy_insn(struct rvtrace_queue *rvtraceq,
 	memcpy(sample->insn, &insn, sample->insn_len);
 }
 
+static inline u64 rvtrace_resolve_sample_time(struct rvtrace_queue *rvtraceq,
+					      struct nexus_rv_packet *packet)
+{
+	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
+
+	if (!rvtrace->timeless_decoding)
+		return packet->timestamp;
+	else
+		return rvtrace->latest_kernel_timestamp;
+}
+
 static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
 				       struct nexus_rv_packet *packet)
 {
@@ -228,6 +238,9 @@ static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
 	event->sample.header.type = PERF_RECORD_SAMPLE;
 	event->sample.header.misc = rvtrace_cpu_mode(packet->prv);
 	event->sample.header.size = sizeof(struct perf_event_header);
+
+	/* Set time field based on rvtrace auxtrace config. */
+	sample.time = rvtrace_resolve_sample_time(rvtraceq, packet);
 
 	sample.ip = packet->start_addr;
 	sample.pid = rvtraceq->pid;
@@ -391,7 +404,7 @@ static int rvtrace_get_data_block(struct rvtrace_queue *rvtraceq)
 	return rvtraceq->buffer->size;
 }
 
-static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
+static int rvtrace_run_timeless_decoder(struct rvtrace_queue *rvtraceq)
 {
 	int ret;
 
@@ -428,71 +441,121 @@ static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
 
 		if (rvtraceq && ((tid == -1) || (rvtraceq->tid == tid))) {
 			rvtrace_set_pid_tid_cpu(rvtrace, queue);
-			rvtrace_run_decoder(rvtraceq);
+			rvtrace_run_timeless_decoder(rvtraceq);
 		}
 	}
 
 	return 0;
 }
 
-
-static int rvtrace_flush_events(struct perf_session *session __maybe_unused,
-				const struct perf_tool *tool __maybe_unused)
+static u64 rvtrace_queue_get_timestamp(struct rvtrace_queue *rvtraceq)
 {
+	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
+
+	for (int i = 0; i < packet_buffer->size; i++) {
+		struct nexus_rv_packet packet = packet_buffer->packets[i];
+		if (packet.sample_type == RVTRACE_RANGE)
+			return packet.timestamp;
+	}
+
 	return 0;
 }
 
-static void rvtrace_free_queue(void *priv)
+static int rvtrace_queue_first_timestamp(struct rvtrace_auxtrace *rvtrace,
+					 struct rvtrace_queue *rvtraceq,
+					 unsigned int queue_nr)
 {
-	struct rvtrace_queue *rvtraceq = priv;
+	int ret;
+	u64 timestamp = 0;
 
-	if (!rvtraceq)
-		return;
+	/* Decode the first segment of data until a timestamp is found,
+	 * then add it to the heap for sorting by time across multiple
+	 * queues.
+	 */
+	while (1) {
+		/*
+		 * Fetch an aux_buffer from this rvtraceq. Bail if no more
+		 * blocks or an error has been encountered.
+		 */
+		ret = rvtrace_get_data_block(rvtraceq);
+		if (ret <= 0)
+			goto out;
 
-	thread__zput(rvtraceq->thread);
-	nexus_rv_insn_decoder_free(rvtraceq->decoder);
-	zfree(&rvtraceq->event_buf);
-	free(rvtraceq);
-}
+		ret = nexus_rv_insn_decode_data_block(rvtraceq->decoder,
+						      rvtraceq->buffer->data,
+						      rvtraceq->buffer->size);
+		if (ret)
+			goto out;
 
-static void rvtrace_free_events(struct perf_session *session)
-{
-	unsigned int i;
-	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
-						    struct rvtrace_auxtrace,
-						    auxtrace);
-	struct auxtrace_queues *queues = &rvtrace->queues;
+		timestamp = rvtrace_queue_get_timestamp(rvtraceq);
 
-	for (i = 0; i < queues->nr_queues; i++) {
-		rvtrace_free_queue(queues->queue_array[i].priv);
-		queues->queue_array[i].priv = NULL;
+		/* We found a timestamp, no need to continue. */
+		if (timestamp)
+			break;
 	}
 
-	auxtrace_queues__free(queues);
+	/* We have a timestamp and add it to the min heap */
+	ret = auxtrace_heap__add(&rvtrace->heap, queue_nr, timestamp);
+out:
+	return ret;
 }
 
-static void rvtrace_free(struct perf_session *session)
+static int rvtrace_process_timestamped_queues(struct rvtrace_auxtrace *rvtrace)
 {
-	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
-							struct rvtrace_auxtrace,
-							auxtrace);
-	rvtrace_free_events(session);
-	session->auxtrace = NULL;
-	for (int i = 0; i < rvtrace->num_cpu; i++)
-		zfree(&rvtrace->metadata[i]);
+	int ret = 0;
+	unsigned int queue_nr, i;
+	struct auxtrace_queue *queue;
+	struct rvtrace_queue *rvtraceq;
 
-	zfree(&rvtrace->metadata);
-	zfree(&rvtrace);
-}
+	/* First, find the first timestamp for each queue and add it to the heap. */
+	for (i = 0; i < rvtrace->queues.nr_queues; i++) {
+		queue = &rvtrace->queues.queue_array[i];
+		rvtraceq = queue->priv;
+		if (!rvtraceq)
+			continue;
 
-static bool rvtrace_evsel_is_auxtrace(struct perf_session *session,
-					     struct evsel *evsel)
-{
-	struct rvtrace_auxtrace *aux = container_of(session->auxtrace,
-						    struct rvtrace_auxtrace,
-						    auxtrace);
+		rvtrace_set_pid_tid_cpu(rvtrace, queue);
 
-	return evsel->core.attr.type == aux->pmu_type;
+		ret = rvtrace_queue_first_timestamp(rvtrace, rvtraceq, i);
+		if (ret)
+			return ret;
+	}
+
+	/* Process queues in the heap in timestamp order */
+	while (1) {
+		if (!rvtrace->heap.heap_cnt)
+			break;
+
+		/* Take the entry at the top of the min heap */
+		queue_nr = rvtrace->heap.heap_array[0].queue_nr;
+		queue = &rvtrace->queues.queue_array[queue_nr];
+		rvtraceq = queue->priv;
+
+		/*
+		 * Remove the top entry from the heap since we are about
+		 * to process it.
+		 */
+		auxtrace_heap__pop(&rvtrace->heap);
+
+		/*
+		 * Packets associated with this timestamp are already in
+		 * the rvtraceq->packet_buffer, so process them.
+		 */
+		ret = rvtrace_process_queue(rvtraceq);
+		if (ret)
+			return ret;
+
+		/*
+		 * Packets for this timestamp have been processed, time to
+		 * move on to the next timestamp, find the next timestamp
+		 * for this rvtraceq.
+		 */
+		ret = rvtrace_queue_first_timestamp(rvtrace, rvtraceq, queue_nr);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrace,
@@ -584,6 +647,88 @@ static int rvtrace_update_queues(struct rvtrace_auxtrace *rvtrace)
 	return 0;
 }
 
+static int rvtrace_flush_events(struct perf_session *session,
+				const struct perf_tool *tool)
+{
+	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
+					struct rvtrace_auxtrace,
+					auxtrace);
+	int ret;
+
+	if (dump_trace)
+		return 0;
+
+	if (!tool->ordered_events)
+		return -EINVAL;
+
+	ret = rvtrace_update_queues(rvtrace);
+	if (ret < 0)
+		return ret;
+
+	if (rvtrace->timeless_decoding) {
+		/*
+		 * Pass tid = -1 to process all queues. But likely they will have
+		 * already been processed on PERF_RECORD_EXIT anyway.
+		 */
+		return rvtrace_process_timeless_queues(rvtrace, -1);
+	}
+
+	return rvtrace_process_timestamped_queues(rvtrace);
+}
+
+static void rvtrace_free_queue(void *priv)
+{
+	struct rvtrace_queue *rvtraceq = priv;
+
+	if (!rvtraceq)
+		return;
+
+	thread__zput(rvtraceq->thread);
+	nexus_rv_insn_decoder_free(rvtraceq->decoder);
+	zfree(&rvtraceq->event_buf);
+	free(rvtraceq);
+}
+
+static void rvtrace_free_events(struct perf_session *session)
+{
+	unsigned int i;
+	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
+						    struct rvtrace_auxtrace,
+						    auxtrace);
+	struct auxtrace_queues *queues = &rvtrace->queues;
+
+	for (i = 0; i < queues->nr_queues; i++) {
+		rvtrace_free_queue(queues->queue_array[i].priv);
+		queues->queue_array[i].priv = NULL;
+	}
+
+	auxtrace_queues__free(queues);
+}
+
+static void rvtrace_free(struct perf_session *session)
+{
+	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
+							struct rvtrace_auxtrace,
+							auxtrace);
+	rvtrace_free_events(session);
+	session->auxtrace = NULL;
+	for (int i = 0; i < rvtrace->num_cpu; i++)
+		zfree(&rvtrace->metadata[i]);
+
+	zfree(&rvtrace->metadata);
+	zfree(&rvtrace);
+}
+
+static bool rvtrace_evsel_is_auxtrace(struct perf_session *session,
+					     struct evsel *evsel)
+{
+	struct rvtrace_auxtrace *aux = container_of(session->auxtrace,
+						    struct rvtrace_auxtrace,
+						    auxtrace);
+
+	return evsel->core.attr.type == aux->pmu_type;
+}
+
 static int rvtrace_process_itrace_start(struct rvtrace_auxtrace *rvtrace,
 					union perf_event *event)
 {
@@ -626,9 +771,6 @@ static int rvtrace_process_event(struct perf_session *session,
 		return -EINVAL;
 	}
 
-	if (!rvtrace->timeless_decoding)
-		return -EINVAL;
-
 	if (sample->time && (sample->time != (u64) -1))
 		timestamp = sample->time;
 	else
@@ -640,10 +782,35 @@ static int rvtrace_process_event(struct perf_session *session,
 			return err;
 	}
 
-	if (event->header.type == PERF_RECORD_EXIT)
-		return rvtrace_process_timeless_queues(rvtrace, event->fork.tid);
-	else if (event->header.type == PERF_RECORD_ITRACE_START)
+	switch (event->header.type) {
+	case PERF_RECORD_EXIT:
+		/*
+		 * Don't need to wait for rvtrace_flush_events() in per-thread/timeless
+		 * mode to start the decode because we know there will be no more trace
+		 * from this thread. All this does is emit samples earlier than waiting
+		 * for the flush in other modes, but with timestamps it makes sense to
+		 * wait for flush so that events from different threads are interleaved
+		 * properly.
+		 */
+		if (rvtrace->timeless_decoding)
+			return rvtrace_process_timeless_queues(rvtrace, event->fork.tid);
+		break;
+
+	case PERF_RECORD_ITRACE_START:
 		return rvtrace_process_itrace_start(rvtrace, event);
+
+	case PERF_RECORD_AUX:
+		/*
+		 * Record the latest kernel timestamp available for rollback when
+		 * no trace timestamp is available.
+		 */
+		if (timestamp)
+			rvtrace->latest_kernel_timestamp = timestamp;
+		break;
+
+	default:
+		break;
+	}
 
 	return 0;
 }
