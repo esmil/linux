@@ -316,6 +316,19 @@ static int rvtrace_synth_events(struct rvtrace_auxtrace *rvtrace,
 	return 0;
 }
 
+static int rvtrace_process_queue(struct rvtrace_queue *rvtraceq)
+{
+	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
+
+	for (int i = 0; i < packet_buffer->size; i++) {
+		struct nexus_rv_packet packet = packet_buffer->packets[i];
+		if (packet.sample_type == RVTRACE_RANGE)
+			rvtrace_synth_branch_sample(rvtraceq, &packet);
+	}
+
+	return 0;
+}
+
 static int rvtrace_get_trace(struct rvtrace_queue *rvtraceq)
 {
 	struct auxtrace_buffer *aux_buffer = rvtraceq->buffer;
@@ -381,7 +394,6 @@ static int rvtrace_get_data_block(struct rvtrace_queue *rvtraceq)
 static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 {
 	int ret;
-	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
 
 	while (1) {
 		ret = rvtrace_get_data_block(rvtraceq);
@@ -396,15 +408,13 @@ static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 						      rvtraceq->buffer->size);
 		if (ret)
 			return ret;
+
+		ret = rvtrace_process_queue(rvtraceq);
+		if (ret)
+			return ret;
 	}
 
-	for (int i = 0; i < packet_buffer->size; i++) {
-		struct nexus_rv_packet packet = packet_buffer->packets[i];
-		if (packet.sample_type == RVTRACE_RANGE)
-			rvtrace_synth_branch_sample(rvtraceq, &packet);
-	}
-
-	return 0;
+	return ret;
 }
 
 static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,

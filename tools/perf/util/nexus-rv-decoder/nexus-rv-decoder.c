@@ -401,10 +401,15 @@ int nexus_rv_pkt_desc(struct nexus_rv_pkt_decoder *decoder, const unsigned char 
 
 static int nexus_rv_init_packet_buffer(struct nexus_rv_packet_buffer *packet_buffer)
 {
-	packet_buffer->packets = calloc(BUFFER_SIZE, sizeof(struct nexus_rv_packet));
-	if (!packet_buffer->packets)
-		return -ENOMEM;
+	if (!packet_buffer->packets) {
+		packet_buffer->packets = calloc(BUFFER_SIZE, sizeof(struct nexus_rv_packet));
+		if (!packet_buffer->packets)
+			return -ENOMEM;
+	}
+
+	packet_buffer->size = 0;
 	packet_buffer->capacity = BUFFER_SIZE;
+
 	return 0;
 }
 
@@ -1069,6 +1074,7 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 
 err_out:
 	nexus_rv_free_stack(&decoder->stack);
+	nexus_rv_free_packet_buffer(&decoder->packet_buffer);
 	free(decoder);
 	return NULL;
 }
@@ -1085,10 +1091,19 @@ void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder)
 
 int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder)
 {
+	int err;
 	decoder->nexdeco_pc = 1;
 	decoder->nexdeco_lastaddr = 1;
 
-	return nexus_rv_init_stack(&decoder->stack);
+	err = nexus_rv_init_stack(&decoder->stack);
+	if (err)
+		return err;
+
+	err = nexus_rv_init_packet_buffer(&decoder->packet_buffer);
+	if (err)
+		return err;
+
+	return 0;
 }
 
 int nexus_rv_insn_decode_data_block(struct nexus_rv_insn_decoder *decoder,
