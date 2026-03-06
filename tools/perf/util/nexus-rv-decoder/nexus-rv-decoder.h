@@ -66,6 +66,7 @@ struct nexus_rv_packet {
 	enum riscv_privilege_mode prv;
 	bool v;
 	int context;
+	u64 timestamp;
 };
 
 struct nexus_rv_packet_buffer {
@@ -88,6 +89,7 @@ struct nexus_rv_insn_decoder {
 	u64 nexdeco_pc;
 	u64 nexdeco_lastaddr;
 	u64 current_pc;
+	u64 timestamp;
 	int disp_hist_repeat;
 	enum riscv_privilege_mode prv;
 	bool v;

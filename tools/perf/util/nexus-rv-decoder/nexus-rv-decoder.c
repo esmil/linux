@@ -677,30 +677,33 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 
 	switch (TCODE) {
 	case NEXUS_TCODE_Ownership:
-		pr_debug2("********MSG - Ownership TCODE=%d SRC=%ld FORMAT=%ld PRV=%ld V=%ld CONTEXT=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(FORMAT), NEX_FLDGET(PRV), NEX_FLDGET(V), NEX_FLDGET(CONTEXT));
+		pr_debug2("********MSG - Ownership TCODE=%d SRC=%ld FORMAT=%ld PRV=%ld V=%ld CONTEXT=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(FORMAT), NEX_FLDGET(PRV), NEX_FLDGET(V), NEX_FLDGET(CONTEXT), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
 		decoder->prv = NEX_FLDGET(PRV);
 		decoder->v = NEX_FLDGET(V);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		if (NEX_FLDGET(FORMAT))
 			decoder->context = NEX_FLDGET(CONTEXT);
 		break;
 
 	case NEXUS_TCODE_DirectBranch:
-		pr_debug2("********MSG - DirectBranch TCODE=%d SRC=%ld ICNT=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ICNT));
+		pr_debug2("********MSG - DirectBranch TCODE=%d SRC=%ld ICNT=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ICNT), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 		break;
 
 	case NEXUS_TCODE_IndirectBranch:
-		pr_debug2("********MSG - IndirectBranch TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR));
+		pr_debug2("********MSG - IndirectBranch TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -711,10 +714,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_ProgTraceSync:
-		pr_debug2("********MSG - ProgTraceSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR));
+		pr_debug2("********MSG - ProgTraceSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -725,10 +729,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_DirectBranchSync:
-		pr_debug2("********MSG - DirectBranchSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR));
+		pr_debug2("********MSG - DirectBranchSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -740,10 +745,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_IndirectBranchSync:
-		pr_debug2("********MSG - IndirectBranchSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld ICNT=%ld FADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR));
+		pr_debug2("********MSG - IndirectBranchSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -755,10 +761,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_IndirectBranchHist:
-		pr_debug2("********MSG - IndirectBranchHist TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx HIST=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(HIST));
+		pr_debug2("********MSG - IndirectBranchHist TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx HIST=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(HIST), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, NEX_FLDGET(HIST));
 
@@ -770,10 +777,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_IndirectBranchHistSync:
-		pr_debug2("********MSG - IndirectBranchHistSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld CANCEL=%ld ICNT=%ld FADDR=0x%lx HIST=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(CANCEL), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(HIST));
+		pr_debug2("********MSG - IndirectBranchHistSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld CANCEL=%ld ICNT=%ld FADDR=0x%lx HIST=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(CANCEL), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(HIST), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, NEX_FLDGET(HIST));
 
@@ -791,10 +799,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		if (rcode == 2)
 			hrepeat = NEX_FLDGET(HREPEAT);
 
-		pr_debug2("********MSG - ResourceFull TCODE=%d SRC=%ld RCODE=%ld RDATA=%ld HREPEAT=%d\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(RCODE), NEX_FLDGET(RDATA), hrepeat);
+		pr_debug2("********MSG - ResourceFull TCODE=%d SRC=%ld RCODE=%ld RDATA=%ld HREPEAT=%d TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(RCODE), NEX_FLDGET(RDATA), hrepeat, NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		if (rcode == 1 || rcode == 2) {
 			int rdata = NEX_FLDGET(RDATA);
 			if (rdata > 1) {
@@ -825,18 +834,19 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		if (cdf == 1)
 			hist = NEX_FLDGET(HIST);
 
-		pr_debug2("********MSG - ProgTraceCorrelation TCODE=%d SRC=%ld EVCODE=%ld CDF=%ld ICNT=%ld HIST=%d\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(EVCODE), NEX_FLDGET(CDF), NEX_FLDGET(ICNT), hist);
+		pr_debug2("********MSG - ProgTraceCorrelation TCODE=%d SRC=%ld EVCODE=%ld CDF=%ld ICNT=%ld HIST=%d TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(EVCODE), NEX_FLDGET(CDF), NEX_FLDGET(ICNT), hist, NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, hist);
 
 		break;
 
 	case NEXUS_TCODE_Error:
-		pr_debug2("********MSG - Error TCODE=%d SRC=%ld ETYPE=%ld PAD=%ld\n",
-			      TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ETYPE), NEX_FLDGET(PAD));
+		pr_debug2("********MSG - Error TCODE=%d SRC=%ld ETYPE=%ld PAD=%ld TSTAMP=%ld\n",
+			      TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ETYPE), NEX_FLDGET(PAD), NEX_FLDGET(TSTAMP));
 		cpu = NEX_FLDGET(SRC);
 		break;
 
@@ -854,6 +864,7 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		packet.prv = decoder->prv;
 		packet.v = decoder->v;
 		packet.context = decoder->context;
+		packet.timestamp = decoder->timestamp;
 	} else {
 		packet.sample_type = RVTRACE_ERROR;
 	}
