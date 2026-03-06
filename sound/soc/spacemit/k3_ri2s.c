@@ -109,6 +109,7 @@ struct spacemit_i2s_dev {
 	bool has_playback;
 
 	int dai_fmt;
+	unsigned long sysclk_freq;
 	int started_count;
 };
 
@@ -343,6 +344,8 @@ static int spacemit_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 
 	if (freq == 0)
 		return 0;
+
+	i2s->sysclk_freq = freq;
 
 	return clk_set_rate(i2s->sysclk, freq);
 }
@@ -626,6 +629,39 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	return devm_snd_dmaengine_pcm_register(&pdev->dev, &spacemit_dmaengine_pcm_config, 0);
 }
 
+static int spacemit_i2s_suspend(struct device *dev)
+{
+	struct spacemit_i2s_dev *i2s = dev_get_drvdata(dev);
+
+	clk_set_rate(i2s->clk, 0);
+	clk_set_rate(i2s->sysclk, 0);
+	clk_disable_unprepare(i2s->clk);
+	clk_disable_unprepare(i2s->bus);
+	clk_disable_unprepare(i2s->sysclk);
+	reset_control_assert(i2s->reset);
+	reset_control_assert(i2s->reset_sys);
+
+	return 0;
+}
+
+static int spacemit_i2s_resume(struct device *dev)
+{
+	struct spacemit_i2s_dev *i2s = dev_get_drvdata(dev);
+
+	reset_control_deassert(i2s->reset_sys);
+	reset_control_deassert(i2s->reset);
+	clk_prepare_enable(i2s->sysclk);
+	clk_prepare_enable(i2s->bus);
+	clk_prepare_enable(i2s->clk);
+	clk_set_rate(i2s->sysclk, i2s->sysclk_freq);
+
+	return 0;
+}
+
+static const struct dev_pm_ops spacemit_i2s_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(spacemit_i2s_suspend, spacemit_i2s_resume)
+};
+
 static const struct of_device_id spacemit_i2s_of_match[] = {
 	{ .compatible = "spacemit,k3-ri2s", },
 	{ /* sentinel */ }
@@ -637,6 +673,7 @@ static struct platform_driver spacemit_i2s_driver = {
 	.driver = {
 		.name = "k3-ri2s",
 		.of_match_table = spacemit_i2s_of_match,
+		.pm = &spacemit_i2s_pm_ops,
 	},
 };
 module_platform_driver(spacemit_i2s_driver);
