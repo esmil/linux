@@ -7,6 +7,8 @@ ccflags-y += -I$(src)
 ccflags-y += $(call cc-option,-Wno-unused-const-variable)
 ccflags-y += $(call cc-option,-Wno-unused-but-set-variable)
 ccflags-y += $(call cc-option,-Wno-missing-format-attribute)
+ccflags-y += $(call cc-option,-Wno-error=designated-init)
+ccflags-y += $(call cc-option,-Wno-incompatible-pointer-types)
 
 ccflags-$(CONFIG_POWERVR_DVFS) += -I$(srctree)/drivers/devfreq
 
