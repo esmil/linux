@@ -94,6 +94,7 @@ struct spacemit_timer {
 	unsigned int fc_freq;
 	unsigned int freq;
 	struct clk *clk;
+	struct clk *clk_bus;
 	/* lock to protect hw operation. */
 	spinlock_t tm_lock;
 };
@@ -324,17 +325,26 @@ static int timer_set_shutdown(struct clock_event_device *dev)
 static int timer_resume(struct clock_event_device *dev)
 {
 	struct spacemit_timer_evt *evt;
+	struct spacemit_timer *tm;
 	unsigned long flags;
 
 	evt = container_of(dev, struct spacemit_timer_evt, ced);
+	tm = evt->timer;
 
-	spin_lock_irqsave(&(evt->timer->tm_lock), flags);
+	/* Enable clocks first before accessing registers.
+	 * clk_prepare_enable is refcounted, safe to call multiple times.
+	 */
+	if (tm->clk_bus)
+		clk_prepare_enable(tm->clk_bus);
+	if (tm->clk)
+		clk_prepare_enable(tm->clk);
+
+	spin_lock_irqsave(&(tm->tm_lock), flags);
 
 	/* check whether need to enable timer */
 	if (evt->timer_enabled)
 		timer_counter_enable(evt);
-
-	spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
+	spin_unlock_irqrestore(&(tm->tm_lock), flags);
 
 	return 0;
 }
@@ -423,6 +433,9 @@ static int __init spacemit_timer_init(struct device_node *np, int tid, void __io
 		pr_err("Timer %d: fail to set clock rate to %uHz!\n", tid, fc_freq);
 		goto out;
 	}
+
+	tm->clk = clk;
+	tm->clk_bus = clk_bus;
 
 	resets = of_reset_control_get(np, 0);
 	if(IS_ERR(resets)) {
@@ -730,6 +743,41 @@ static int spacemit_timer_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int spacemit_timer_suspend_noirq(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct device_node *np = pdev->dev.of_node;
+	unsigned int tid;
+	struct spacemit_timer *tm;
+
+	if (of_property_read_u32(np, "spacemit,timer-id", &tid))
+		return 0;
+
+	if (tid >= SPACEMIT_MAX_TIMER)
+		return 0;
+
+	tm = spacemit_timers[tid];
+	if (tm) {
+		if (tm->clk)
+			clk_disable_unprepare(tm->clk);
+		if (tm->clk_bus)
+			clk_disable_unprepare(tm->clk_bus);
+	}
+
+	return 0;
+}
+
+static int spacemit_timer_resume_noirq(struct device *dev)
+{
+	/* Clock enable is handled in timer_resume() callback */
+	return 0;
+}
+
+static const struct dev_pm_ops spacemit_timer_pm_ops = {
+	.suspend_noirq = spacemit_timer_suspend_noirq,
+	.resume_noirq = spacemit_timer_resume_noirq,
+};
+
 static const struct of_device_id spacemit_timer_of_match[] = {
 	{ .compatible = "spacemit,soc-timer" },
 	{ /* sentinel */ }
@@ -741,6 +789,7 @@ static struct platform_driver spacemit_timer_driver = {
 	.driver = {
 		.name           = "spacemit-timer",
 		.of_match_table = spacemit_timer_of_match,
+		.pm             = &spacemit_timer_pm_ops,
 	},
 };
 
