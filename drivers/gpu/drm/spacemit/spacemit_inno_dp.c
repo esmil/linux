@@ -2272,11 +2272,20 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		gpio_direction_output(dp->gpio_bl, 1);
 
 	/* Init Connector */
-	ret = drm_connector_init(drm, &dp->connector,
-			&soc_dp_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
-	if (ret) {
-		dev_err(dev, "Failed to init connector\n");
-		return ret;
+	if (dp->edp_mode) {
+		ret = drm_connector_init(drm, &dp->connector,
+				&soc_dp_connector_funcs, DRM_MODE_CONNECTOR_eDP);
+		if (ret) {
+			dev_err(dev, "Failed to init connector\n");
+			return ret;
+		}
+	} else {
+		ret = drm_connector_init(drm, &dp->connector,
+				&soc_dp_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
+		if (ret) {
+			dev_err(dev, "Failed to init connector\n");
+			return ret;
+		}
 	}
 	drm_connector_helper_add(&dp->connector, &soc_dp_conn_helper_funcs);
 
