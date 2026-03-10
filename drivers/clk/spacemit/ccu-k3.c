@@ -697,7 +697,7 @@ static const struct clk_parent_data cpu_c0_clk_parents[] = {
 	CCU_PARENT_HW(pll3_d1),
 };
 CCU_MUX_DIV_FC_DEFINE(cpu_c0_core_clk, cpu_c0_clk_parents, APMU_CPU_C0_CLK_CTRL,
-		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
+		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL | CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data cpu_c1_pll_src_parents[] = {
 	CCU_PARENT_HW(pll4_d1),
@@ -716,7 +716,7 @@ static const struct clk_parent_data cpu_c1_clk_parents[] = {
 	CCU_PARENT_HW(cpu_c1_pll_src),
 };
 CCU_MUX_DIV_FC_DEFINE(cpu_c1_core_clk, cpu_c1_clk_parents, APMU_CPU_C1_CLK_CTRL,
-		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
+		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL | CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data cpu_c2_clk_parents[] = {
 	CCU_PARENT_HW(pll1_d3_819p2),
@@ -729,7 +729,7 @@ static const struct clk_parent_data cpu_c2_clk_parents[] = {
 	CCU_PARENT_HW(pll5_d1),
 };
 CCU_MUX_DIV_FC_DEFINE(cpu_c2_core_clk, cpu_c2_clk_parents, APMU_CPU_C2_CLK_CTRL,
-		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
+		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL | CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data cpu_c3_pll_src_parents[] = {
 	CCU_PARENT_HW(pll8_d1),
@@ -748,7 +748,7 @@ static const struct clk_parent_data cpu_c3_clk_parents[] = {
 	CCU_PARENT_HW(cpu_c3_pll_src),
 };
 CCU_MUX_DIV_FC_DEFINE(cpu_c3_core_clk, cpu_c3_clk_parents, APMU_CPU_C3_CLK_CTRL,
-		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL);
+		      3, 3, BIT(12), 0, 3, CLK_IS_CRITICAL | CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data ccic2phy_parents[] = {
 	CCU_PARENT_HW(pll1_d24_102p4),
@@ -773,7 +773,7 @@ static const struct clk_parent_data csi_parents[] = {
 	CCU_PARENT_HW(pll1_d2_1228p8),
 };
 CCU_MUX_DIV_GATE_FC_DEFINE(csi_clk, csi_parents, APMU_CSI_CCIC2_CLK_RES_CTRL, 20, 3, BIT(15),
-			   16, 3, BIT(4), 0);
+			   16, 3, BIT(4), CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data isp_bus_parents[] = {
 	CCU_PARENT_HW(pll1_d6_409p6),
@@ -858,7 +858,7 @@ static const struct clk_parent_data ccic_4x_parents[] = {
 	CCU_PARENT_HW(pll1_d2_1228p8),
 };
 CCU_MUX_DIV_GATE_FC_DEFINE(ccic_4x_clk, ccic_4x_parents, APMU_CCIC_CLK_RES_CTRL, 18, 3,
-			   BIT(15), 23, 2, BIT(4), 0);
+			   BIT(15), 23, 2, BIT(4), CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data ccic1phy_parents[] = {
 	CCU_PARENT_HW(pll1_d24_102p4),
@@ -941,7 +941,7 @@ static const struct clk_parent_data vpu_parents[] = {
 	CCU_PARENT_HW(pll2_d5),
 };
 CCU_MUX_DIV_GATE_FC_DEFINE(vpu_clk, vpu_parents, APMU_VPU_CLK_RES_CTRL, 13, 3,
-			   BIT(21), 10, 3, BIT(3), 0);
+			   BIT(21), 10, 3, BIT(3), CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 CCU_GATE_DEFINE(dtc_clk, CCU_PARENT_HW(axi_clk), APMU_DTC_CLK_RES_CTRL, BIT(3), 0);
 
@@ -956,7 +956,7 @@ static const struct clk_parent_data gpu_parents[] = {
 	CCU_PARENT_HW(pll2_d5),
 };
 CCU_MUX_DIV_GATE_FC_DEFINE(gpu_clk, gpu_parents, APMU_GPU_CLK_RES_CTRL, 12, 3,
-			   BIT(15), 18, 3, BIT(4), 0);
+			   BIT(15), 18, 3, BIT(4), CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 CCU_GATE_DEFINE(mc_ahb_clk, CCU_PARENT_HW(axi_clk), APMU_PMUA_MC_CTRL, BIT(1), 0);
 
@@ -971,7 +971,7 @@ static const struct clk_parent_data top_parents[] = {
 	CCU_PARENT_HW(pll6_d3),
 };
 CCU_MUX_DIV_GATE_FC_DEFINE(top_dclk, top_parents, APMU_TOP_DCLK_CTRL, 5, 3,
-			   BIT(8), 2, 3, BIT(1), CLK_IS_CRITICAL);
+			   BIT(8), 2, 3, BIT(1), CLK_IS_CRITICAL | CCU_DIV_VALID_FIRST4_SRC_FLAG);
 
 static const struct clk_parent_data ucie_parents[] = {
 	CCU_PARENT_HW(pll1_d8_307p2),

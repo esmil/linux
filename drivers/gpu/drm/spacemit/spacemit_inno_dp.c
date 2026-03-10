@@ -310,6 +310,7 @@ struct soc_dp_dev {
 	bool use_ext_pixel_clock;
 	int pixel_clock;
 	struct mutex mode_lock;
+	bool suspended;
 
 	uint32_t ref;
 	uint32_t color_format;
@@ -1536,7 +1537,19 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 	struct soc_dp_dev *dp = container_of(connector, struct soc_dp_dev, connector);
 	struct drm_display_mode *preferred_mode = NULL;
 
+	if (soc_dp_hw_read_sink_caps(dp)) {
+		dev_err(dp->dev, "Failed to read sink capabilities\n");
+		dp->link.revision = 0x14; // DP 1.4
+		dp->link.max_rate = SOC_DP_LINK_RATE_5_40;
+		dp->link.max_num_lanes = SOC_DP_LANE_4;
+		dp->link.enhanced_framing = 1;
+	}
+
 	edid = drm_edid_read_custom(connector, soc_dp_conn_get_edid_block, dp);
+	if (!edid) {
+		dev_err(dp->dev, "Failed to read EDID\n");
+		return drm_add_modes_noedid(connector, 1920, 1080);
+	}
 	drm_edid_connector_update(connector, edid);
 	count = drm_edid_connector_add_modes(connector);
 
@@ -1807,14 +1820,16 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 	mutex_lock(&dp->mode_lock);
 
 	old_status = dp->connector_status;
-	new_status = soc_dp_hw_detect_hpd(dp);
 
-	soc_dp_hw_clean_hpd(dp);
+	if (!dp->suspended) {
+		new_status = soc_dp_hw_detect_hpd(dp);
+		soc_dp_hw_clean_hpd(dp);
+	} else {
+		new_status = connector_status_disconnected;
+	}
 
 	if (new_status != old_status) {
 		dp->connector_status = new_status;
-		if (dp->connector_status == connector_status_connected)
-			soc_dp_hw_read_sink_caps(dp);
 
 		mutex_unlock(&dp->mode_lock);
 		DRM_INFO("%s() dp hpd event\n", __func__);
@@ -1855,9 +1870,13 @@ static irqreturn_t soc_dp_irq_handler(int irq, void *data)
 	uint32_t hpd_status;
 
 	old_status = dp->connector_status;
-	new_status = soc_dp_hw_detect_hpd(dp);
 
-	soc_dp_hw_clean_hpd(dp);
+	if (!dp->suspended) {
+		new_status = soc_dp_hw_detect_hpd(dp);
+		soc_dp_hw_clean_hpd(dp);
+	} else {
+		new_status = connector_status_disconnected;
+	}
 
 	if (new_status != old_status) {
 
@@ -1874,13 +1893,6 @@ static irqreturn_t soc_dp_irq_handler(int irq, void *data)
 static irqreturn_t soc_dp_hotplug_event_handler(int irq, void *data)
 {
 	struct soc_dp_dev *dp = data;
-
-	mutex_lock(&dp->mode_lock);
-
-	if (dp->connector_status == connector_status_connected)
-		soc_dp_hw_read_sink_caps(dp);
-
-	mutex_unlock(&dp->mode_lock);
 
 	drm_kms_helper_hotplug_event(dp->drm);
 
@@ -2160,9 +2172,6 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 	dp->connector_status = soc_dp_hw_detect_hpd(dp);
 	soc_dp_hw_clean_hpd(dp);
 
-	if (dp->connector_status == connector_status_connected)
-		soc_dp_hw_read_sink_caps(dp);
-
 	// Notify DRM core about the initial hotplug event
 	drm_kms_helper_hotplug_event(dp->drm);
 
@@ -2200,6 +2209,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	dp->drm = drm;
 	dp->connector_status = connector_status_disconnected;
 	mutex_init(&dp->mode_lock);
+	dp->suspended = false;
 
 #ifdef CONFIG_SOC_DP_DRIVER_QEMU
 	dp->proc_irq = NULL;
@@ -2272,11 +2282,20 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		gpio_direction_output(dp->gpio_bl, 1);
 
 	/* Init Connector */
-	ret = drm_connector_init(drm, &dp->connector,
-			&soc_dp_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
-	if (ret) {
-		dev_err(dev, "Failed to init connector\n");
-		return ret;
+	if (dp->edp_mode) {
+		ret = drm_connector_init(drm, &dp->connector,
+				&soc_dp_connector_funcs, DRM_MODE_CONNECTOR_eDP);
+		if (ret) {
+			dev_err(dev, "Failed to init connector\n");
+			return ret;
+		}
+	} else {
+		ret = drm_connector_init(drm, &dp->connector,
+				&soc_dp_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
+		if (ret) {
+			dev_err(dev, "Failed to init connector\n");
+			return ret;
+		}
 	}
 	drm_connector_helper_add(&dp->connector, &soc_dp_conn_helper_funcs);
 
@@ -2400,6 +2419,68 @@ static void inno_dp_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &soc_dp_ops);
 }
 
+#ifdef CONFIG_PM_SLEEP
+
+static int inno_dp_drv_pm_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
+	int ret;
+
+	DRM_INFO("%s()\n", __func__);
+
+	mutex_lock(&dp->mode_lock);
+
+	dp->suspended = true;
+
+	if (dp->pxclk)
+		clk_disable_unprepare(dp->pxclk);
+
+	if (!IS_ERR_OR_NULL(dp->reset)) {
+		ret = reset_control_assert(dp->reset);
+		if (ret < 0) {
+			DRM_INFO("Failed to assert reset\n");
+		}
+	}
+
+	mutex_unlock(&dp->mode_lock);
+
+	return 0;
+}
+
+static int inno_dp_drv_pm_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
+	int ret;
+
+	DRM_INFO("%s()\n", __func__);
+
+	mutex_lock(&dp->mode_lock);
+
+	if (!IS_ERR_OR_NULL(dp->reset)) {
+		ret = reset_control_deassert(dp->reset);
+		if (ret < 0) {
+			DRM_INFO("Failed to deassert reset\n");
+		}
+	}
+	if (dp->pxclk)
+		clk_prepare_enable(dp->pxclk);
+
+	dp->suspended = false;
+
+	mutex_unlock(&dp->mode_lock);
+
+	return 0;
+}
+
+#endif
+
+static const struct dev_pm_ops inno_dp_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(inno_dp_drv_pm_suspend,
+				inno_dp_drv_pm_resume)
+};
+
 static const struct of_device_id soc_dp_match[] = {
 	{ .compatible = "spacemit,inno-dp0" },
 	{ .compatible = "spacemit,inno-dp1" },
@@ -2415,6 +2496,7 @@ struct platform_driver inno_dp_driver = {
 	.driver = {
 		.name = "spacemit-inno-dp-drv",
 		.of_match_table = soc_dp_match,
+		.pm = &inno_dp_pm_ops,
 	},
 };
 

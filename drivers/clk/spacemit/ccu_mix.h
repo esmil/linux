@@ -195,7 +195,7 @@ CCU_MUX_DIV_GATE_SPLIT_FC_DEFINE(_name, _parents, _reg_ctrl, _reg_ctrl, _mshift,
 #define CCU_MUX_DIV_FC_DEFINE(_name, _parents, _reg_ctrl, _mshift, _mwidth,	\
 			      _mask_fc, _muxshift, _muxwidth, _flags)		\
 static struct ccu_mix _name = {							\
-	.div	= CCU_DIV_INIT(_mshift, _mwidth),				\
+	.div	= CCU_DIV_FLAGS_INIT(_mshift, _mwidth, _flags),			\
 	.mux	= CCU_MUX_INIT(_muxshift, _muxwidth),				\
 	.common = {								\
 		.reg_ctrl	= _reg_ctrl,					\

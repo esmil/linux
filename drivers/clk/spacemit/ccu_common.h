@@ -13,6 +13,9 @@
 #define CCU_GATE_INVERT_FLAG		BIT(31)
 /* The maximum divisor (0xF) is invalid to the 4-bit divider in PMUAP base */
 #define CCU_DIV_4BIT_NO_0F_FLAG		BIT(30)
+/* Some dividers in PMUAP are only valid for the first four clock sources */
+#define CCU_DIV_VALID_FIRST4_SRC_FLAG	BIT(29)
+#define CCU_DIV_VALID_SRC_MAX		4
 
 struct ccu_common {
 	struct regmap *regmap;

@@ -54,6 +54,7 @@ struct spacemit_i2s_dev {
 	struct clk *sysclk_div;
 	struct clk *sysclk;
 	struct clk *bclk;
+	struct clk *sspa_bus;
 	struct clk *sspa_clk;
 
 	struct snd_dmaengine_dai_dma_data capture_dma_data;
@@ -63,6 +64,7 @@ struct spacemit_i2s_dev {
 	bool has_playback;
 
 	int dai_fmt;
+	unsigned long sysclk_freq;
 
 	int started_count;
 };
@@ -226,6 +228,8 @@ static int spacemit_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 	if (freq == 0)
 		return 0;
 
+	i2s->sysclk_freq = freq;
+
 	ret = clk_set_rate(i2s->sysclk_div, freq);
 	if (ret)
 		return ret;
@@ -233,17 +237,14 @@ static int spacemit_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 	return clk_set_rate(i2s->sysclk, freq);
 }
 
-static int spacemit_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
+static int spacemit_i2s_fmt_setting(struct spacemit_i2s_dev *i2s,
 				unsigned int fmt)
 {
-	struct spacemit_i2s_dev *i2s = dev_get_drvdata(cpu_dai->dev);
 	u32 sspsp_val;
 
 	sspsp_val = readl(i2s->base + SSPSP);
 	sspsp_val &= ~SSPSP_FIELD_SFRMWDTH;
 	sspsp_val |= SSPSP_FSRT;
-
-	i2s->dai_fmt = fmt;
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
@@ -257,13 +258,23 @@ static int spacemit_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
 		sspsp_val |= FIELD_PREP(SSPSP_FIELD_SFRMWDTH, 0x1);
 		break;
 	default:
-		dev_dbg(i2s->dev, "unexpected format type");
+		dev_err(i2s->dev, "unexpected format type");
 		return -EINVAL;
 	}
 
 	writel(sspsp_val, i2s->base + SSPSP);
 
 	return 0;
+}
+
+static int spacemit_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
+				unsigned int fmt)
+{
+	struct spacemit_i2s_dev *i2s = dev_get_drvdata(cpu_dai->dev);
+
+	i2s->dai_fmt = fmt;
+
+	return spacemit_i2s_fmt_setting(i2s, fmt);
 }
 
 static int spacemit_i2s_trigger(struct snd_pcm_substream *substream,
@@ -433,7 +444,6 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	struct snd_soc_dai_driver *dai;
 	struct spacemit_i2s_dev *i2s;
 	struct resource *res;
-	struct clk *clk;
 	int ret;
 
 	i2s = devm_kzalloc(&pdev->dev, sizeof(*i2s), GFP_KERNEL);
@@ -456,13 +466,13 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	if (IS_ERR(i2s->bclk))
 		return dev_err_probe(i2s->dev, PTR_ERR(i2s->bclk), "failed to enable bit clock\n");
 
-	clk = devm_clk_get_enabled(i2s->dev, "sspa_bus");
-	if (IS_ERR(clk))
-		return dev_err_probe(i2s->dev, PTR_ERR(clk), "failed to enable sspa_bus clock\n");
+	i2s->sspa_bus = devm_clk_get_enabled(i2s->dev, "sspa_bus");
+	if (IS_ERR(i2s->sspa_bus))
+		return dev_err_probe(i2s->dev, PTR_ERR(i2s->sspa_bus), "failed to enable sspa_bus clock\n");
 
 	i2s->sspa_clk = devm_clk_get_enabled(i2s->dev, "sspa");
-	if (IS_ERR(clk))
-		return dev_err_probe(i2s->dev, PTR_ERR(clk), "failed to enable sspa clock\n");
+	if (IS_ERR(i2s->sspa_clk))
+		return dev_err_probe(i2s->dev, PTR_ERR(i2s->sspa_clk), "failed to enable sspa clock\n");
 
 	i2s->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
 	if (IS_ERR(i2s->base))
@@ -488,6 +498,46 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	return devm_snd_dmaengine_pcm_register(&pdev->dev, &spacemit_dmaengine_pcm_config, 0);
 }
 
+static int spacemit_i2s_suspend(struct device *dev)
+{
+	struct spacemit_i2s_dev *i2s = dev_get_drvdata(dev);
+
+	clk_set_rate(i2s->sspa_clk, 0);
+	clk_set_rate(i2s->bclk, 0);
+	clk_set_rate(i2s->sysclk, 0);
+	clk_set_rate(i2s->sysclk_div, 0);
+	clk_disable_unprepare(i2s->sspa_clk);
+	clk_disable_unprepare(i2s->sspa_bus);
+	clk_disable_unprepare(i2s->bclk);
+	clk_disable_unprepare(i2s->sysclk);
+	clk_disable_unprepare(i2s->sysclk_div);
+	reset_control_assert(i2s->reset);
+
+	return 0;
+}
+
+static int spacemit_i2s_resume(struct device *dev)
+{
+	struct spacemit_i2s_dev *i2s = dev_get_drvdata(dev);
+
+	reset_control_deassert(i2s->reset);
+	clk_prepare_enable(i2s->sysclk_div);
+	clk_prepare_enable(i2s->sysclk);
+	clk_prepare_enable(i2s->bclk);
+	clk_prepare_enable(i2s->sspa_bus);
+	clk_prepare_enable(i2s->sspa_clk);
+	clk_set_rate(i2s->sysclk_div, i2s->sysclk_freq);
+	clk_set_rate(i2s->sysclk, i2s->sysclk_freq);
+	spacemit_i2s_init(i2s);
+	spacemit_i2s_fmt_setting(i2s, i2s->dai_fmt);
+
+	return 0;
+}
+
+static const struct dev_pm_ops spacemit_i2s_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(spacemit_i2s_suspend, spacemit_i2s_resume)
+};
+
 static const struct of_device_id spacemit_i2s_of_match[] = {
 	{ .compatible = "spacemit,k1-i2s", },
 	{ /* sentinel */ }
@@ -499,6 +549,7 @@ static struct platform_driver spacemit_i2s_driver = {
 	.driver = {
 		.name = "i2s-k1",
 		.of_match_table = spacemit_i2s_of_match,
+		.pm = &spacemit_i2s_pm_ops,
 	},
 };
 module_platform_driver(spacemit_i2s_driver);

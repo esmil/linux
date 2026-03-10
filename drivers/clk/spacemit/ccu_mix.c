@@ -62,9 +62,20 @@ static unsigned long ccu_div_recalc_rate(struct clk_hw *hw,
 	struct ccu_mix *mix = hw_to_ccu_mix(hw);
 	struct ccu_div_config *div = &mix->div;
 	unsigned long val;
+	struct ccu_mux_config *mux = &mix->mux;
+	u8 parent_id = 0;
 
 	val = ccu_read(&mix->common, ctrl) >> div->shift;
 	val &= (1 << div->width) - 1;
+
+	if (div->flags & CCU_DIV_VALID_FIRST4_SRC_FLAG) {
+		if (!mux) {
+			parent_id = ccu_read(&mix->common, ctrl) >> mux->shift;
+			parent_id &= (1 << mux->width) - 1;
+			if (parent_id >= CCU_DIV_VALID_SRC_MAX)
+				return parent_rate;
+		}
+	}
 
 	return divider_recalc_rate(hw, parent_rate, val, NULL, 0, div->width);
 }
@@ -125,6 +136,10 @@ ccu_mix_calc_best_rate(struct clk_hw *hw, unsigned long rate,
 
 		if (!parent)
 			continue;
+
+		if ((div->flags & CCU_DIV_VALID_FIRST4_SRC_FLAG)
+		     && i >= CCU_DIV_VALID_SRC_MAX)
+			div_max = 1;
 
 		parent_rate = clk_hw_get_rate(parent);
 
