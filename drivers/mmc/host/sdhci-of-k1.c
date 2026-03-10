@@ -19,6 +19,8 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/pm_runtime.h>
+#include <linux/pm.h>
 
 #include "sdhci.h"
 #include "sdhci-pltfm.h"
@@ -90,6 +92,8 @@
 #define RX_TUNING_DLINE_REG		0x00
 #define TX_TUNING_DLINE_REG		0x00
 #define TX_TUNING_DELAYCODE		0x7F
+
+#define SPACEMIT_RPM_DELAY_MS		50
 
 enum window_type {
 	LEFT_WINDOW = 0,
@@ -733,6 +737,13 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	pm_runtime_get_noresume(&pdev->dev);
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, SPACEMIT_RPM_DELAY_MS);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_suspend_ignore_children(&pdev->dev, 1);
+
 	ret = sdhci_add_host(host);
 	if (ret)
 		goto err_add_host;
@@ -747,11 +758,17 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 			device_create_file(dev, &spacemit_sysfs_files[i]);
 	}
 
+	if (host->mmc->pm_caps & MMC_PM_WAKE_SDIO_IRQ)
+		device_init_wakeup(&pdev->dev, 1);
+
+	pm_runtime_put_autosuspend(&pdev->dev);
+
 	return 0;
 
 err_add_host:
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
 	reset_control_assert(sdhst->reset);
-
 	return ret;
 }
 
@@ -760,6 +777,10 @@ static void spacemit_sdhci_remove(struct platform_device *pdev)
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 	int i;
+
+	pm_runtime_get_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		for (i = 0; i < ARRAY_SIZE(spacemit_sysfs_files); i++)
@@ -770,10 +791,55 @@ static void spacemit_sdhci_remove(struct platform_device *pdev)
 	reset_control_assert(sdhst->reset);
 }
 
+static int spacemit_sdhci_runtime_suspend(struct device *dev)
+{
+	struct sdhci_host *host = dev_get_drvdata(dev);
+	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
+	unsigned long flags;
+
+	sdhci_runtime_suspend_host(host);
+
+	spin_lock_irqsave(&host->lock, flags);
+	if (!(host->mmc->caps2 & MMC_CAP2_NO_MMC))
+		spacemit_sdhci_clrbits(host, SDHC_PHY_FUNC_EN, SPACEMIT_SDHC_PHY_CTRL_REG);
+	spin_unlock_irqrestore(&host->lock, flags);
+
+	clk_disable_unprepare(sdhst->clk_io);
+	clk_disable_unprepare(sdhst->clk_core);
+
+	return 0;
+}
+
+static int spacemit_sdhci_runtime_resume(struct device *dev)
+{
+	struct sdhci_host *host = dev_get_drvdata(dev);
+	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
+	unsigned long flags;
+
+	clk_prepare_enable(sdhst->clk_io);
+	clk_prepare_enable(sdhst->clk_core);
+
+	spin_lock_irqsave(&host->lock, flags);
+	if (!(host->mmc->caps2 & MMC_CAP2_NO_MMC))
+		spacemit_sdhci_setbits(host, SDHC_PHY_FUNC_EN, SPACEMIT_SDHC_PHY_CTRL_REG);
+	spin_unlock_irqrestore(&host->lock, flags);
+
+	sdhci_runtime_resume_host(host, 1);
+
+	return 0;
+}
+
+static const struct dev_pm_ops sdhci_spacemit_dev_pm_ops = {
+	SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend, pm_runtime_force_resume)
+	RUNTIME_PM_OPS(spacemit_sdhci_runtime_suspend, spacemit_sdhci_runtime_resume, NULL)
+};
+
 static struct platform_driver spacemit_sdhci_driver = {
 	.driver		= {
 		.name	= "sdhci-spacemit",
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.of_match_table = spacemit_sdhci_of_match,
+		.pm	= pm_ptr(&sdhci_spacemit_dev_pm_ops),
 	},
 	.probe		= spacemit_sdhci_probe,
 	.remove		= spacemit_sdhci_remove,
