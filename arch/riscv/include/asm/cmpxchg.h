@@ -389,7 +389,11 @@ static __always_inline void __cmpwait(volatile void *ptr,
 		"	and	%0, %0, %3\n"
 		"	xor	%0, %0, %2\n"
 		"	bnez	%0, 1f\n"
-			ZAWRS_WRS_NTO "\n"
+#ifdef CONFIG_SOC_SPACEMIT_K3
+		ZAWRS_WRS_STO "\n"
+#else
+		ZAWRS_WRS_NTO "\n"
+#endif
 		"1:"
 		: "=&r" (tmp), "+A" (*(__ptr32b))
 		: "r" (__val), "r" (__mask)
@@ -406,7 +410,11 @@ static __always_inline void __cmpwait(volatile void *ptr,
 		"	and	%0, %0, %3\n"
 		"	xor	%0, %0, %2\n"
 		"	bnez	%0, 1f\n"
-			ZAWRS_WRS_NTO "\n"
+#ifdef CONFIG_SOC_SPACEMIT_K3
+		ZAWRS_WRS_STO "\n"
+#else
+		ZAWRS_WRS_NTO "\n"
+#endif
 		"1:"
 		: "=&r" (tmp), "+A" (*(__ptr32b))
 		: "r" (__val), "r" (__mask)
@@ -418,9 +426,9 @@ static __always_inline void __cmpwait(volatile void *ptr,
 		"	xor	%0, %0, %2\n"
 		"	bnez	%0, 1f\n"
 #ifdef CONFIG_SOC_SPACEMIT_K3
-			ZAWRS_WRS_STO "\n"
+		ZAWRS_WRS_STO "\n"
 #else
-			ZAWRS_WRS_NTO "\n"
+		ZAWRS_WRS_NTO "\n"
 #endif
 		"1:"
 		: "=&r" (tmp), "+A" (*(u32 *)ptr)
@@ -433,9 +441,9 @@ static __always_inline void __cmpwait(volatile void *ptr,
 		"	xor	%0, %0, %2\n"
 		"	bnez	%0, 1f\n"
 #ifdef CONFIG_SOC_SPACEMIT_K3
-			ZAWRS_WRS_STO "\n"
+		ZAWRS_WRS_STO "\n"
 #else
-			ZAWRS_WRS_NTO "\n"
+		ZAWRS_WRS_NTO "\n"
 #endif
 		"1:"
 		: "=&r" (tmp), "+A" (*(u64 *)ptr)
