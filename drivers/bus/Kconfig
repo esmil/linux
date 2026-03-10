@@ -169,6 +169,16 @@ config QCOM_SSC_BLOCK_BUS
 	  i2c/spi/uart controllers, a hexagon core, and a clock controller
 	  which provides clocks for the above.
 
+config SPACEMIT_ESPI_BUS
+	bool "SpacemiT eSPI controller bus driver"
+	depends on OF && SOC_SPACEMIT_K3
+	default y
+	help
+	  Enable the minimal SpacemiT eSPI controller glue driver used to
+	  populate child devices and keep the controller clocks enabled while
+	  the system is active. The current implementation only handles the
+	  clock state needed for system suspend and resume.
+
 config STM32_FIREWALL
 	bool "STM32 Firewall framework"
 	depends on (ARCH_STM32 || COMPILE_TEST) && OF
