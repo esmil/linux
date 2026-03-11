@@ -56,6 +56,7 @@ static_assert(EC_CMD_OEM_KB_LOCK_LED <
  * @idev: The input device for the matrix keys.
  * @bs_idev: The input device for non-matrix buttons and switches (or NULL).
  * @notifier: interrupt event notifier for transport devices
+ * @led_sync_disabled: EC does not support the board-specific lock LED command
  * @vdata: vivaldi function row data
  * @has_fn_map: whether the driver uses an fn function-map layer
  * @normal_key_status: active normal keys map
@@ -84,6 +85,7 @@ struct cros_ec_keyb {
 	u8 synced_lock_led_state;
 	u8 led_sync_retry_count;
 	bool led_sync_valid;
+	bool led_sync_disabled;
 
 	struct vivaldi_data vdata;
 
@@ -375,6 +377,17 @@ static bool cros_ec_keyb_led_sync_should_retry(int ret)
 	}
 }
 
+static bool cros_ec_keyb_led_sync_is_unsupported(int ret)
+{
+	switch (ret) {
+	case -EOPNOTSUPP:
+	case -ENOPROTOOPT:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static void cros_ec_keyb_queue_led_sync(struct cros_ec_keyb *ckdev, bool force)
 {
 	unsigned long flags;
@@ -383,6 +396,10 @@ static void cros_ec_keyb_queue_led_sync(struct cros_ec_keyb *ckdev, bool force)
 		return;
 
 	spin_lock_irqsave(&ckdev->led_sync_lock, flags);
+	if (ckdev->led_sync_disabled) {
+		spin_unlock_irqrestore(&ckdev->led_sync_lock, flags);
+		return;
+	}
 	ckdev->desired_lock_led_state = cros_ec_keyb_get_lock_led_state(ckdev->idev);
 	if (force)
 		ckdev->led_sync_valid = false;
@@ -400,6 +417,7 @@ static void cros_ec_keyb_led_sync_work(struct work_struct *work)
 	u8 desired_state;
 	u8 synced_state;
 	bool is_synced_valid;
+	bool is_disabled;
 	bool retry = false;
 	int ret;
 
@@ -410,7 +428,11 @@ static void cros_ec_keyb_led_sync_work(struct work_struct *work)
 	desired_state = ckdev->desired_lock_led_state;
 	synced_state = ckdev->synced_lock_led_state;
 	is_synced_valid = ckdev->led_sync_valid;
+	is_disabled = ckdev->led_sync_disabled;
 	spin_unlock_irqrestore(&ckdev->led_sync_lock, flags);
+
+	if (is_disabled)
+		return;
 
 	if (is_synced_valid && desired_state == synced_state)
 		return;
@@ -422,6 +444,9 @@ static void cros_ec_keyb_led_sync_work(struct work_struct *work)
 		ckdev->synced_lock_led_state = desired_state;
 		ckdev->led_sync_valid = true;
 		ckdev->led_sync_retry_count = 0;
+	} else if (cros_ec_keyb_led_sync_is_unsupported(ret)) {
+		ckdev->led_sync_disabled = true;
+		ckdev->led_sync_retry_count = 0;
 	} else if (cros_ec_keyb_led_sync_should_retry(ret) &&
 		   ckdev->led_sync_retry_count < CROS_EC_KB_LED_MAX_RETRIES) {
 		ckdev->led_sync_retry_count++;
@@ -432,6 +457,12 @@ static void cros_ec_keyb_led_sync_work(struct work_struct *work)
 	spin_unlock_irqrestore(&ckdev->led_sync_lock, flags);
 
 	if (ret) {
+		if (cros_ec_keyb_led_sync_is_unsupported(ret)) {
+			dev_dbg(ckdev->dev,
+				"lock LED sync unsupported by EC, disabling\n");
+			return;
+		}
+
 		dev_warn_ratelimited(ckdev->dev,
 				     "failed to sync lock LEDs to EC: %d\n",
 				     ret);

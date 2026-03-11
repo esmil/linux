@@ -544,39 +544,42 @@
 	status = "okay";
 };
 
-&ec {
+&espi0 {
 	status = "okay";
-	interrupt-parent = <&gpio>;
-	interrupts = <1 11 IRQ_TYPE_EDGE_RISING>;
+	ec@0 {
+		status = "okay";
+		interrupt-parent = <&gpio>;
+		interrupts = <1 11 IRQ_TYPE_EDGE_RISING>;
 
-	i2c_tunnel1: i2c-tunnel@1 {
-		compatible = "google,cros-ec-i2c-tunnel";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		google,remote-bus = <1>;
-	};
+		i2c_tunnel1: i2c-tunnel@1 {
+			compatible = "google,cros-ec-i2c-tunnel";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			google,remote-bus = <1>;
+		};
 
-	i2c_tunnel4: i2c-tunnel@4 {
-		compatible = "google,cros-ec-i2c-tunnel";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		google,remote-bus = <4>;
-	};
+		i2c_tunnel4: i2c-tunnel@4 {
+			compatible = "google,cros-ec-i2c-tunnel";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			google,remote-bus = <4>;
+		};
 
-	/* EC PWM provider for fan control */
-	cros_ec_pwm: pwm {
-		compatible = "google,cros-ec-pwm";
-		#pwm-cells = <1>;
-	};
+		/* EC PWM provider for fan control */
+		cros_ec_pwm: pwm {
+			compatible = "google,cros-ec-pwm";
+			#pwm-cells = <1>;
+		};
 
-	keyboard {
-		compatible = "google,cros-ec-keyb";
-		keypad,num-rows = <8>;
-		keypad,num-columns = <16>;
-		linux,keymap = <
-				CROS_STD_TOP_ROW_KEYMAP
-				CROS_STD_MAIN_KEYMAP
-		>;
+		keyboard {
+			compatible = "google,cros-ec-keyb";
+			keypad,num-rows = <8>;
+			keypad,num-columns = <16>;
+			linux,keymap = <
+					CROS_STD_TOP_ROW_KEYMAP
+					CROS_STD_MAIN_KEYMAP
+			>;
+		};
 	};
 };
 

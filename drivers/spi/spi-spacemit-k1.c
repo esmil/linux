@@ -20,6 +20,7 @@
 #include <linux/sizes.h>
 #include <linux/spi/spi.h>
 #include <linux/units.h>
+#include <linux/pm.h>
 
 #include "internals.h"
 
@@ -99,6 +100,8 @@ struct k1_spi_driver_data {
 	void __iomem *base;
 	unsigned long bus_rate;
 	struct clk *clk;
+	struct clk *clk_bus;
+	u32 top_ctrl;
 	unsigned long rate;
 	u32 rx_timeout;
 	int irq;
@@ -884,7 +887,6 @@ static int k1_spi_probe(struct platform_device *pdev)
 	struct reset_control *reset;
 	struct spi_controller *host;
 	struct resource *iores;
-	struct clk *clk_bus;
 	int ret;
 
 	host = devm_spi_alloc_host(dev, sizeof(*drv_data));
@@ -909,11 +911,11 @@ static int k1_spi_probe(struct platform_device *pdev)
 
 	k1_spi_host_init(drv_data);
 
-	clk_bus = devm_clk_get_enabled(dev, "bus");
-	if (IS_ERR(clk_bus))
-		return dev_err_probe(dev, PTR_ERR(clk_bus),
+	drv_data->clk_bus = devm_clk_get_enabled(dev, "bus");
+	if (IS_ERR(drv_data->clk_bus))
+		return dev_err_probe(dev, PTR_ERR(drv_data->clk_bus),
 				     "error getting/enabling bus clock\n");
-	drv_data->bus_rate = clk_get_rate(clk_bus);
+	drv_data->bus_rate = clk_get_rate(drv_data->clk_bus);
 
 	drv_data->clk = devm_clk_get_enabled(dev, "func");
 	if (IS_ERR(drv_data->clk))
@@ -951,10 +953,62 @@ static void k1_spi_remove(struct platform_device *pdev)
 	k1_spi_register_reset(drv_data, false);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int k1_spi_suspend(struct device *dev)
+{
+	struct k1_spi_driver_data *drv_data = dev_get_drvdata(dev);
+	int ret;
+
+	ret = spi_controller_suspend(drv_data->controller);
+	if (ret) {
+		dev_err(dev, "spi_controller_suspend failed\n");
+		return ret;
+	}
+
+	drv_data->top_ctrl = readl(drv_data->base + SSP_TOP_CTRL);
+
+	k1_spi_register_reset(drv_data, false);
+	clk_disable_unprepare(drv_data->clk);
+	clk_disable_unprepare(drv_data->clk_bus);
+
+	dev_info(dev, "successfully suspended\n");
+
+	return 0;
+}
+
+static int k1_spi_resume(struct device *dev)
+{
+	struct k1_spi_driver_data *drv_data = dev_get_drvdata(dev);
+	int ret;
+
+	clk_prepare_enable(drv_data->clk_bus);
+	clk_prepare_enable(drv_data->clk);
+
+	k1_spi_register_reset(drv_data, true);
+
+	writel(drv_data->top_ctrl, drv_data->base + SSP_TOP_CTRL);
+
+	ret = spi_controller_resume(drv_data->controller);
+	if (ret)
+		dev_err(dev, "failed to resume SPI controller\n");
+
+	dev_info(dev, "successfully resumed\n");
+
+	return ret;
+}
+
+static const struct dev_pm_ops k1_spi_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(k1_spi_suspend, k1_spi_resume)
+};
+#endif
+
 static struct platform_driver k1_spi_driver = {
 	.driver = {
 		.name		= "k1-spi",
 		.of_match_table	= k1_spi_dt_ids,
+#ifdef CONFIG_PM_SLEEP
+		.pm		= &k1_spi_pm_ops,
+#endif
 	},
 	.probe			= k1_spi_probe,
 	.remove			= k1_spi_remove,

@@ -160,6 +160,54 @@ static bool is_fsm_state_valid(u32 state)
 	return (state == FSM_STATE_ACTIVE || state == FSM_STATE_LS_BURST);
 }
 
+static int ufs_spacemit_k3_check_hibern8(struct ufs_hba *hba)
+{
+	u32 tx_fsm_val_0 = 0;
+	u32 tx_fsm_val_1 = 0;
+	int retries = DIV_ROUND_UP(HBRN8_POLL_TOUT_MS * 1000, 100);
+	int err = 0;
+
+	do {
+		err = ufshcd_dme_get(hba,
+				     UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
+						     UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
+				     &tx_fsm_val_0);
+		err |= ufshcd_dme_get(hba,
+				      UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
+						      UIC_ARG_MPHY_TX_GEN_SEL_INDEX(1)),
+				      &tx_fsm_val_1);
+		if (err || (tx_fsm_val_0 == TX_FSM_HIBERN8 &&
+			    tx_fsm_val_1 == TX_FSM_HIBERN8))
+			break;
+
+		usleep_range(100, 200);
+	} while (--retries > 0);
+
+	if (!err && retries <= 0) {
+		err = ufshcd_dme_get(hba,
+				     UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
+						     UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
+				     &tx_fsm_val_0);
+		err |= ufshcd_dme_get(hba,
+				      UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE,
+						      UIC_ARG_MPHY_TX_GEN_SEL_INDEX(1)),
+				      &tx_fsm_val_1);
+	}
+
+	if (err) {
+		dev_err(hba->dev, "%s: unable to get TX_FSM_STATE, err %d\n",
+			__func__, err);
+	} else if (tx_fsm_val_0 != TX_FSM_HIBERN8 ||
+		   tx_fsm_val_1 != TX_FSM_HIBERN8) {
+		err = -ETIMEDOUT;
+		dev_err(hba->dev,
+			"%s: invalid TX_FSM_STATE, lane0 = %u, lane1 = %u\n",
+			__func__, tx_fsm_val_0, tx_fsm_val_1);
+	}
+
+	return err;
+}
+
 static void ufs_spacemit_k3_dump_fsm_state(struct ufs_hba *hba)
 {
 	u32 tx0_fsm_val, tx1_fsm_val, rx0_fsm_val, rx1_fsm_val;
@@ -486,12 +534,6 @@ static int ufs_spacemit_k3_uniprov1p6_init(struct ufs_hba *hba)
 	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F2, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x9F);
 	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F2, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x9F);
 
-	/*bypass B0 reduce phy power ECO*/
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0xfc), 0xfc);
-	if (err) {
-		dev_err(hba->dev, "Writing 0xfc error \n");
-	}
-
 	dev_info(hba->dev, "UniPro v1.6 init completed\n");
 
 	return 0;
@@ -704,6 +746,9 @@ static int ufs_spacemit_k3_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 		dev_dbg(hba->dev, "Link not active during suspend\n");
 	}
 
+	if (pm_op == UFS_RUNTIME_PM)
+		return 0;
+
 	pm_runtime_put_sync(hba->dev);
 
 	if (shost) {
@@ -730,6 +775,9 @@ static int ufs_spacemit_k3_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	if (ufs_spacemit_k3_is_link_off(hba) || !ufs_spacemit_k3_is_link_active(hba)) {
 		dev_dbg(hba->dev, "Link not active during resume\n");
 	}
+
+	if (pm_op == UFS_RUNTIME_PM)
+		return 0;
 
 	pm_runtime_get_sync(hba->dev);
 
@@ -955,8 +1003,8 @@ static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
 	/* support write booster */
 	/* hba->caps |= UFSHCD_CAP_WB_EN; */
 
-	/* support runtime autosuspend - disabled for silicon bringup */
-	/* hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND; */
+	/* support runtime autosuspend */
+	hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
 }
 
 static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
@@ -1424,12 +1472,59 @@ static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme
 				timeout--;
 			}
 
-			if (timeout <= 0)
+			if (timeout <= 0) {
 				dev_err(hba->dev, "PLL lock timeout on hibern8 exit\n");
+				return;
+			}
+
+			mdelay(1);
+			ufshcd_dme_set(hba, UIC_ARG_MIB(0xdd), 0x57);
+			mdelay(1);
+			ufshcd_dme_set(hba, UIC_ARG_MIB(0xe8), 0x57);
 		}
 	}
+
+	if (status == PRE_CHANGE) {
+		if (cmd == UIC_CMD_DME_HIBER_ENTER) {
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
+				       0x84);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
+				       0x84);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
+				       0x85);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
+				       0x85);
+		}
+	}
+
 	if (status == POST_CHANGE) {
 		if (cmd == UIC_CMD_DME_HIBER_ENTER) {
+			ufs_spacemit_k3_check_hibern8(hba);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
+				       0x84);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
+				       0x84);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
+				       0x80);
+			ufshcd_dme_set(hba,
+				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
+				       0x80);
+
+			mdelay(1);
+			ufshcd_dme_set(hba, UIC_ARG_MIB(0xdd), 0x57);
+			mdelay(1);
+			ufshcd_dme_set(hba, UIC_ARG_MIB(0xdd), 0xd7);
+			mdelay(1);
+			ufshcd_dme_set(hba, UIC_ARG_MIB(0xe8), 0x57);
+			mdelay(1);
+			ufshcd_dme_set(hba, UIC_ARG_MIB(0xe8), 0xd7);
 			mdelay(1);
 
 			/* Power down M-PHY */

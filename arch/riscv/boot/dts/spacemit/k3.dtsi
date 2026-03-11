@@ -2340,10 +2340,27 @@
 			status = "disabled";
 		};
 
-		ec: cros_ec@0 {
-			compatible = "google,cros-ec-espi";
-			reg = <0x0 0x84000000 0x0 0x1000>;
+		espi0: espi@cac8c000 {
+			compatible = "spacemit,k3-espi";
+			reg = <0x0 0xcac8c000 0x0 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x0 0x84000000 0x1000>;
+			clocks = <&syscon_apmu CLK_APMU_ESPI_SCLK_SRC>,
+				 <&syscon_apmu CLK_APMU_ESPI_SCLK>,
+				 <&syscon_apmu CLK_APMU_ESPI_MCLK>;
+			clock-names = "sclk_src", "sclk", "mclk";
+			resets = <&syscon_apmu RESET_APMU_ESPI_MCLK>,
+				 <&syscon_apmu RESET_APMU_ESPI_SCLK>;
+			assigned-clocks = <&syscon_apmu CLK_APMU_ESPI_SCLK>;
+			assigned-clock-parents = <&syscon_apmu CLK_APMU_ESPI_SCLK_SRC>;
 			status = "disabled";
+
+			ec: ec@0 {
+				compatible = "google,cros-ec-espi";
+				reg = <0x0 0x1000>;
+				status = "disabled";
+			};
 		};
 
 		linlon-v5@c0500000 {
