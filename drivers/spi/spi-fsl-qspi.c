@@ -1002,14 +1002,30 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 
 static int fsl_qspi_suspend(struct device *dev)
 {
+	struct fsl_qspi *q = dev_get_drvdata(dev);
+
+	fsl_qspi_disable(q);
+	fsl_qspi_clk_disable_unprep(q);
+
+	dev_info(dev, "successfully suspended\n");
+
 	return 0;
 }
 
 static int fsl_qspi_resume(struct device *dev)
 {
 	struct fsl_qspi *q = dev_get_drvdata(dev);
+	int ret;
+
+	ret = fsl_qspi_clk_prep_enable(q);
+	if (ret) {
+		dev_err(dev, "failed to enable clock in resume\n");
+		return ret;
+	}
 
 	fsl_qspi_default_setup(q);
+
+	dev_info(dev, "successfully resumed\n");
 
 	return 0;
 }
