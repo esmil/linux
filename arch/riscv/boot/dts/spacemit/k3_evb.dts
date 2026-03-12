@@ -374,6 +374,7 @@
 	mmc-pwrseq = <&sdio_pwrseq>;
 	no-mmc;
 	no-sd;
+	keep-power-in-suspend;
 	clock-frequency = <375000000>;
 	status = "disabled";
 };
