@@ -1155,9 +1155,17 @@ static int es8326_calibrate(struct snd_soc_component *component)
 			msleep(50);
 
 		regmap_write(es8326->regmap, ES8326_HP_CAL, 0xd4);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+		msleep(50);
+#else
 		msleep(200);
+#endif
 		regmap_write(es8326->regmap, ES8326_HP_CAL, 0x4d);
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+		msleep(50);
+#else
 		msleep(200);
+#endif
 		regmap_write(es8326->regmap, ES8326_HP_CAL, ES8326_HP_OFF);
 		regmap_read(es8326->regmap, ES8326_HPL_OFFSET_INI, &offset_l);
 		regmap_read(es8326->regmap, ES8326_HPR_OFFSET_INI, &offset_r);
@@ -1263,7 +1271,11 @@ static void es8326_init(struct snd_soc_component *component)
 		regmap_update_bits(es8326->regmap, ES8326_VMIDSEL, 0x40, 0x40);
 	}
 
+#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	msleep(50);
+#else
 	msleep(200);
+#endif
 	regmap_write(es8326->regmap, ES8326_INT_SOURCE, ES8326_INT_SRC_PIN9);
 #ifdef SPACEMIT_CONFIG_CODEC_ES8326
 	regmap_write(es8326->regmap, ES8326_FMT, 0x0c);
