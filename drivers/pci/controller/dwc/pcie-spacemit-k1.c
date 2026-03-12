@@ -30,10 +30,14 @@
 /* Offsets and field definitions for link management registers */
 #define K1_PHY_AHB_IRQ_EN			0x0000
 #define PCIE_INTERRUPT_EN		BIT(0)
+#define PME_TURN_OFF			BIT(5)
 
 #define K1_PHY_AHB_LINK_STS			0x0004
 #define SMLH_LINK_UP			BIT(1)
 #define RDLH_LINK_UP			BIT(12)
+#define PCIE_CLIENT_DEBUG_LTSSM_MASK	GENMASK(11, 6)
+#define PCIE_CLIENT_DEBUG_LTSSM_L1	(BIT(10) | BIT(8))
+#define PCIE_CLIENT_DEBUG_LTSSM_L2	(BIT(10) | BIT(8) | BIT(6))
 
 #define INTR_STATUS				0x0010
 
@@ -106,6 +110,8 @@
 #define MAX_PHYS 6
 #endif
 
+#define PCIE_LINK_IS_L2(x) \
+	(((x) & PCIE_CLIENT_DEBUG_LTSSM_MASK) == PCIE_CLIENT_DEBUG_LTSSM_L2)
 struct k1_pcie {
 	struct dw_pcie pci;
 #ifdef CONFIG_SOC_SPACEMIT_K3
@@ -114,6 +120,7 @@ struct k1_pcie {
 	int			num_lanes;
 	struct gpio_desc *detect_gpiod;
 	int			port_id;
+	bool			link_up;
 #else
 	struct phy *phy;
 #endif
@@ -409,12 +416,16 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	regmap_update_bits(k1->pmu, reset_ctrl, APP_HOLD_PHY_RST, 0);
 
 	ret = spacemit_pcie_config_lane_mux(k1);
-	if (ret)
+	if (ret) {
+		k1_pcie_disable_resources(k1);
 		return ret;
+	}
 
 	ret = spacemit_pcie_enable_phy(k1);
-	if (ret)
+	if (ret) {
+		k1_pcie_disable_resources(k1);
 		return ret;
+	}
 #else
 	regmap_set_bits(k1->pmu, reset_ctrl, DEVICE_TYPE_RC | PCIE_AUX_PWR_DET);
 
@@ -495,6 +506,24 @@ static void k1_pcie_deinit(struct dw_pcie_rp *pp)
 #endif
 
 	k1_pcie_disable_resources(k1);
+}
+
+static void spacemit_pcie_pme_turn_off(struct dw_pcie_rp *pp)
+{
+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+	struct k1_pcie *k1 = to_k1_pcie(pci);
+	u32 val;
+
+	if (!dw_pcie_link_up(pci))
+		return;
+
+	val = readl_relaxed(k1->link + K1_PHY_AHB_IRQ_EN);
+	val |= PME_TURN_OFF;
+	writel_relaxed(val, k1->link + K1_PHY_AHB_IRQ_EN);
+	udelay(1);
+	val = readl_relaxed(k1->link + K1_PHY_AHB_IRQ_EN);
+	val &= ~PME_TURN_OFF;
+	writel_relaxed(val, k1->link + K1_PHY_AHB_IRQ_EN);
 }
 
 static const struct dw_pcie_host_ops k1_pcie_host_ops = {
@@ -697,6 +726,160 @@ static void pcie_iommu_bypass_setup(struct k1_pcie *k1)
 	}
 }
 
+static int k1_pcie_suspend_noirq(struct device *dev)
+{
+	struct k1_pcie *k1 = dev_get_drvdata(dev);
+	struct dw_pcie *pci = &k1->pci;
+	u8 offset = dw_pcie_find_capability(pci, PCI_CAP_ID_EXP);
+	u32 val;
+	int ret;
+
+	/*
+	 * If L1SS is supported, then do not put the link into L2 as some
+	 * devices such as NVMe expect low resume latency.
+	 */
+	if (dw_pcie_readw_dbi(pci, offset + PCI_EXP_LNKCTL) & PCI_EXP_LNKCTL_ASPM_L1) {
+		dev_info(pci->dev, "L1 ASPM supported, skip L2 entry on suspend\n");
+		return 0;
+	}
+
+	k1->link_up = k1_pcie_link_up(pci);
+	/* Put the link into L2 to save power */
+	if (k1->link_up) {
+		spacemit_pcie_pme_turn_off(&k1->pci.pp);
+		ret = readl_poll_timeout(k1->link + K1_PHY_AHB_LINK_STS,
+				 val, PCIE_LINK_IS_L2(val), PCIE_PME_TO_L2_TIMEOUT_US/10,
+				 PCIE_PME_TO_L2_TIMEOUT_US);
+		if (ret) {
+			/* Only log message when LTSSM isn't in DETECT or POLL */
+			dev_err(pci->dev, "Timeout waiting for L2 entry! LTSSM: 0x%x\n", val);
+			return ret;
+		}
+	}
+
+	udelay(1);
+
+	dw_pcie_stop_link(pci);
+
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	spacemit_pcie_disable_phy(k1);
+#else
+	phy_exit(k1->phy);
+#endif
+
+	clk_bulk_disable_unprepare(ARRAY_SIZE(pci->app_clks), pci->app_clks);
+
+	pci->suspended = true;
+
+	return ret;
+}
+
+static int k1_pcie_resume_noirq(struct device *dev)
+{
+	struct k1_pcie *k1 = dev_get_drvdata(dev);
+	struct dw_pcie *pci = &k1->pci;
+	u32 reset_ctrl = k1->pmu_off + PCIE_CLK_RESET_CONTROL;
+	int ret;
+
+	if (!pci->suspended)
+		return 0;
+
+	pci->suspended = false;
+
+	k1_pcie_toggle_soft_reset(k1);
+	ret = clk_bulk_prepare_enable(ARRAY_SIZE(pci->app_clks), pci->app_clks);
+	if (ret)
+		return ret;
+
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	regmap_set_bits(k1->pmu, reset_ctrl, PCIE_AUX_PWR_DET);
+	regmap_update_bits(k1->pmu, reset_ctrl, APP_HOLD_PHY_RST, 0);
+
+	ret = spacemit_pcie_config_lane_mux(k1);
+	if (ret)
+		goto err_disable_clks;
+
+	ret = spacemit_pcie_enable_phy(k1);
+	if (ret)
+		goto err_disable_clks;
+#else
+	regmap_set_bits(k1->pmu, reset_ctrl, DEVICE_TYPE_RC | PCIE_AUX_PWR_DET);
+
+	ret = phy_init(k1->phy);
+	if (ret)
+		goto err_disable_clks;
+#endif
+
+	regmap_update_bits(k1->pmu, reset_ctrl, LTSSM_EN, 0);
+	/*
+	 * Start by asserting fundamental reset (drive PERST# low).  The
+	 * PCI CEM spec says that PERST# should be deasserted at least
+	 * 100ms after the power becomes stable, so we'll insert that
+	 * delay first.  Write, then read it back to guarantee the write
+	 * reaches the device before we start the delay.
+	 */
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	/* K3: Set IGNORE_PERSTN and drive PERSTN_OE high (assert reset) */
+	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC,
+			   PCIE_IGNORE_PERSTN | PCIE_PERSTN_OE | PCIE_PERSTN_OUT,
+			   PCIE_IGNORE_PERSTN | PCIE_PERSTN_OE | PCIE_PERSTN_OUT);
+	usleep_range(1000, 2000);
+	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC, PCIE_PERSTN_OUT, 0);
+#else
+	regmap_set_bits(k1->pmu, reset_ctrl, PCIE_RC_PERST);
+	regmap_read(k1->pmu, reset_ctrl, &val);
+#endif
+	mdelay(PCIE_T_PVPERL_MS);
+
+	/*
+	 * Put the controller in root complex mode, and indicate that
+	 * Vaux (3.3v) is present.
+	 */
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	regmap_update_bits(k1->pmu, k1->pmu_off + PCIE_CONTROL_LOGIC,
+			   PCIE_PERSTN_OUT | PCIE_PERSTN_OE,
+			   PCIE_PERSTN_OUT | PCIE_PERSTN_OE);
+	spacemit_pcie_eq_preset(k1);
+#endif
+
+	/* Deassert fundamental reset (drive PERST# high) */
+#ifndef CONFIG_SOC_SPACEMIT_K3
+	regmap_clear_bits(k1->pmu, reset_ctrl, PCIE_RC_PERST);
+#endif
+
+	/* Finally, as a workaround, disable ASPM L1 */
+	k1_pcie_disable_aspm_l1(k1);
+
+	spacemit_pcie_msi_host_init(&k1->pci.pp);
+	dw_pcie_setup_rc(&pci->pp);
+
+	ret = dw_pcie_start_link(pci);
+	if (ret)
+		goto err_phy_exit;
+
+	if (k1->link_up)
+		dw_pcie_wait_for_link(pci);
+
+	return 0;
+
+err_phy_exit:
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	spacemit_pcie_disable_phy(k1);
+#else
+	phy_exit(k1->phy);
+#endif
+
+err_disable_clks:
+	clk_bulk_disable_unprepare(ARRAY_SIZE(pci->app_clks), pci->app_clks);
+
+	return ret;
+}
+
+static const struct dev_pm_ops k1_pcie_pm_ops = {
+	NOIRQ_SYSTEM_SLEEP_PM_OPS(k1_pcie_suspend_noirq,
+				  k1_pcie_resume_noirq)
+};
+
 static int k1_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -819,6 +1002,7 @@ static struct platform_driver k1_pcie_driver = {
 	.driver = {
 		.name			= "spacemit-k1-pcie",
 		.of_match_table		= k1_pcie_of_match_table,
+		.pm 			= &k1_pcie_pm_ops,
 	#ifdef CONFIG_SOC_SPACEMIT_K3
 			/*
 			 * Force synchronous probing so that PCIe controllers are
