@@ -261,6 +261,9 @@ static int k3_pcie_phy_init(struct phy *phy)
 
 static int k3_pcie_phy_exit(struct phy *phy)
 {
+	struct k3_pcie_phy *k3_phy = phy_get_drvdata(phy);
+
+	k3_phy->inited = false;
 	return 0;
 }
 
