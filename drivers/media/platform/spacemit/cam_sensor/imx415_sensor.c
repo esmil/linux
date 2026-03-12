@@ -936,7 +936,8 @@ static int imx415_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, sensor);
 
 	/* Get power-down GPIO */
-	sensor->pwdn = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_LOW);
+	sensor->pwdn = devm_gpiod_get_optional(
+		dev, "pwdn", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "imx415-test: Failed to get pwdn GPIO\n");
 		return PTR_ERR(sensor->pwdn);

@@ -749,7 +749,8 @@ static int ov5647_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, sensor);
 
 	dev_info(dev, "ov5647-test: get PWDN gpio\n");
-	sensor->pwdn = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_HIGH);
+	sensor->pwdn = devm_gpiod_get_optional(
+		dev, "pwdn", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "ov5647-test: Failed to get PWDN GPIO\n");
 		return PTR_ERR(sensor->pwdn);
