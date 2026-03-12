@@ -692,6 +692,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI0>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -707,6 +708,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI1>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -722,6 +724,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI2>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -737,6 +740,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc2 RESET_APBC2_SEC_TWSI3>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -752,6 +756,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI4>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -767,6 +772,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI5>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -782,6 +788,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI6>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
@@ -797,6 +804,7 @@
 			clock-names = "func", "bus";
 			clock-frequency = <400000>;
 			resets = <&syscon_apbc RESET_APBC_TWSI8>;
+			power-domains = <&power K3_PMU_DUMMY_PWR_DOMAIN>;
 			status = "disabled";
 		};
 
