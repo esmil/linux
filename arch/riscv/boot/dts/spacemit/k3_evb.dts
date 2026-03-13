@@ -575,7 +575,7 @@
 	spacemit,tx-phase = <53>;
 	spacemit,rx-phase = <52>;
 
-	status = "okay";
+	status = "disabled";
 
 	mdio {
 		#address-cells = <1>;
