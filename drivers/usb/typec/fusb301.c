@@ -1113,7 +1113,9 @@ static int __maybe_unused fusb301_pm_suspend(struct device *dev)
 {
 	struct fusb301_chip *chip = dev_get_drvdata(dev);
 
-	fusb301_set_mode(chip, FUSB301_MODES_SNK);
+	flush_work(&chip->dwork);
+	flush_delayed_work(&chip->twork);
+
 	return 0;
 }
 
@@ -1121,7 +1123,8 @@ static int __maybe_unused fusb301_pm_resume(struct device *dev)
 {
 	struct fusb301_chip *chip = dev_get_drvdata(dev);
 
-	fusb301_set_mode(chip, FUSB301_MODES_DRP_ACC);
+	schedule_work(&chip->dwork);
+
 	return 0;
 }
 
