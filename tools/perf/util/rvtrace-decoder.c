@@ -1,10 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * SPDX-License-Identifier: GPL-2.0
- *
- * Copyright(C) 2015-2018 Linaro Limited.
- *
- * Author: Tor Jeremiassen <tor@ti.com>
- * Author: Mathieu Poirier <mathieu.poirier@linaro.org>
+ * Copyright(C) 2026 Spacemit Limited. All rights reserved.
+ * Author: liangzhen <zhen.liang@spacemit.com>
  */
 
 #include <linux/bitops.h>

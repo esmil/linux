@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2020 IAR Systems AB.
+ */
 
 #ifndef INCLUDE__NEXUS_RV_MSG_H__
 #define INCLUDE__NEXUS_RV_MSG_H__
