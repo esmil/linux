@@ -869,7 +869,7 @@ CCU_MUX_GATE_DEFINE(ccic1phy_clk, ccic1phy_parents, APMU_CCIC_CLK_RES_CTRL, 7, 1
 
 static const struct clk_parent_data sc2hclk_parents[] = {
 	CCU_PARENT_HW(pll1_d8_307p2),
-	CCU_PARENT_HW(pll1_d4_614p4),
+	CCU_PARENT_HW(pll1_d6_409p6),
 	CCU_PARENT_HW(pll1_d5_491p52),
 	CCU_PARENT_HW(pll2_d4),
 };
