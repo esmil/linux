@@ -475,7 +475,7 @@
 	snps,tso;
 	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii1>;
+	phy-handle = <&gmac1_phy>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -493,10 +493,29 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii1: phy@1 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
-			device_type = "ethernet-phy";
+		gmac1_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };

@@ -12,6 +12,7 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/pmu/k3_pmu.h>
 #include <dt-bindings/dma/k3-dmac.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	#address-cells = <2>;
