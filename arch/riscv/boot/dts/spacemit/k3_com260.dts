@@ -8,6 +8,7 @@
 #include "lcd/lcd_tc358762xbg_dpi_800x480.dtsi"
 #include "lcd_dsi_panel.dtsi"
 #include "k3-dp1.dtsi"
+#include "k3-camera.dtsi"
 
 / {
 	model = "SpacemiT K3 Com260";
@@ -178,6 +179,12 @@
 		};
 	};
 
+	i2c5_2_cfg: i2c5-2-cfg {
+		i2c5-0-pins {
+			power-source = <1800>;
+		};
+	};
+
 	i2c6-1-cfg {
 		i2c6-0-pins {
 			power-source = <3300>;
@@ -261,6 +268,16 @@
 	qspi-cfg {
 		/delete-node/ qspi-1-pins;
 		qspi-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	cam_mux_cfg: cam-mux-cfg {
+		cam-mux-pins {
+			pinmux = <K3_PADCONF(103, 0)>;
+
+			bias-pull-up;
+			drive-strength = <25>;
 			power-source = <1800>;
 		};
 	};
@@ -458,7 +475,7 @@
 	snps,tso;
 	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii1>;
+	phy-handle = <&gmac1_phy>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -476,10 +493,29 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii1: phy@1 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
-			device_type = "ethernet-phy";
+		gmac1_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };
@@ -1025,6 +1061,32 @@
 	status = "okay";
 };
 
+&i2c5 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c5_2_cfg>;
+
+	ov5647@36 {
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		csi-id = <0>;
+		vdd-supply = <&aldo3>;
+		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	imx415@37 {
+		compatible = "sony,imx415";
+		reg = <0x37>;
+		csi-id = <2>;
+		vdd-supply = <&aldo3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mux_cfg>;
+		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
 &dpu_crtc0 {
 	memory-region = <&dpu_resv0>;
 	spacemit-dpu-bitclk = <700000000>;
@@ -1337,4 +1399,33 @@
 			sound-dai = <&dp1>;
 		};
 	};
+};
+
+&ccic0 {
+	status = "okay";
+};
+
+&ccic1 {
+	status = "okay";
+};
+
+&ccic2 {
+	status = "okay";
+};
+
+&ccic3 {
+	status = "disabled";
+};
+
+&csiphy0 {
+	status = "okay";
+};
+
+&csiphy1 {
+	status = "okay";
+};
+
+&csiphy2 {
+	spacemit,bifmode-enable = <0>;
+	status = "okay";
 };

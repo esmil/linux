@@ -1,10 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * SPDX-License-Identifier: GPL-2.0
- *
- * Copyright(C) 2015-2018 Linaro Limited.
- *
- * Author: Tor Jeremiassen <tor@ti.com>
- * Author: Mathieu Poirier <mathieu.poirier@linaro.org>
+ * Copyright(C) 2026 Spacemit Limited. All rights reserved.
+ * Author: liangzhen <zhen.liang@spacemit.com>
  */
 
 #include <linux/bitops.h>
@@ -38,8 +35,6 @@
 #include "nexus-rv-decoder/nexus-rv-decoder.h"
 #include "../../arch/riscv/include/asm/insn.h"
 
-#define MAX_TIMESTAMP (~0ULL)
-
 struct rvtrace_auxtrace {
 	struct auxtrace auxtrace;
 	struct auxtrace_queues queues;
@@ -47,18 +42,17 @@ struct rvtrace_auxtrace {
 	struct itrace_synth_opts synth_opts;
 	struct perf_session *session;
 	struct machine *machine;
-	struct thread *unknown_thread;
 
 	u8 timeless_decoding;
 	u8 snapshot_mode;
 	u8 data_queued;
 
 	int num_cpu;
+	u64 latest_kernel_timestamp;
 	u32 auxtrace_type;
 	u64 branches_sample_type;
 	u64 branches_id;
 	u64 **metadata;
-	u64 kernel_start;
 	unsigned int pmu_type;
 };
 
@@ -69,28 +63,22 @@ struct rvtrace_queue {
 	struct auxtrace_buffer *buffer;
 	union perf_event *event_buf;
 	unsigned int queue_nr;
-	pid_t pid, tid;
-	int cpu;
 	u64 offset;
 };
 
-static void rvtrace_set_pid_tid_cpu(struct rvtrace_auxtrace *rvtrace,
-				    struct auxtrace_queue *queue)
+static void rvtrace_set_thread(struct rvtrace_queue *rvtraceq,
+			       pid_t tid)
 {
-	struct rvtrace_queue *rvtraceq = queue->priv;
+	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
 
-	/* CPU-wide tracing isn't supported yet */
-	if (queue->tid == -1)
-		return;
-
-	if ((!rvtraceq->thread) && (rvtraceq->tid != -1))
-		rvtraceq->thread = machine__find_thread(rvtrace->machine, -1, rvtraceq->tid);
-
-	if (rvtraceq->thread) {
-		rvtraceq->pid = rvtraceq->thread->pid_;
-		if (queue->cpu == -1)
-			rvtraceq->cpu = rvtraceq->thread->cpu;
+	if (tid != -1) {
+		thread__zput(rvtraceq->thread);
+		rvtraceq->thread = machine__find_thread(rvtrace->machine, -1, tid);
 	}
+
+	/* Couldn't find a known thread */
+	if (!rvtraceq->thread)
+		rvtraceq->thread = machine__idle_thread(rvtrace->machine);
 }
 
 static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
@@ -126,7 +114,7 @@ static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
 }
 
 static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode prv,
-			      size_t size, u8 *buffer)
+			      int context, size_t size, u8 *buffer)
 {
 	u8 cpumode;
 	u64 offset;
@@ -151,6 +139,8 @@ static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode
 		cpumode = PERF_RECORD_MISC_KERNEL;
 	else
 		cpumode = PERF_RECORD_MISC_USER;
+
+	rvtrace_set_thread(rvtraceq, context);
 
 	if (!thread__find_map(rvtraceq->thread, cpumode, address, &al))
 		goto out;
@@ -209,12 +199,24 @@ static void rvtrace_synth_copy_insn(struct rvtrace_queue *rvtraceq,
 	int ret;
 	u32 insn;
 
-	ret = rvtrace_mem_access(rvtraceq, sample->ip, packet->prv, sizeof(insn), (u8 *)&insn);
+	ret = rvtrace_mem_access(rvtraceq, sample->ip, packet->prv, packet->context,
+				 sizeof(insn), (u8 *)&insn);
 	if (!ret)
 		return;
 
 	sample->insn_len = riscv_insn_is_c(insn) ? 2 : 4;
 	memcpy(sample->insn, &insn, sample->insn_len);
+}
+
+static inline u64 rvtrace_resolve_sample_time(struct rvtrace_queue *rvtraceq,
+					      struct nexus_rv_packet *packet)
+{
+	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
+
+	if (!rvtrace->timeless_decoding)
+		return packet->timestamp;
+	else
+		return rvtrace->latest_kernel_timestamp;
 }
 
 static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
@@ -230,9 +232,12 @@ static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
 	event->sample.header.misc = rvtrace_cpu_mode(packet->prv);
 	event->sample.header.size = sizeof(struct perf_event_header);
 
+	/* Set time field based on rvtrace auxtrace config. */
+	sample.time = rvtrace_resolve_sample_time(rvtraceq, packet);
+
 	sample.ip = packet->start_addr;
-	sample.pid = rvtraceq->pid;
-	sample.tid = rvtraceq->tid;
+	sample.pid = thread__pid(rvtraceq->thread);
+	sample.tid = thread__tid(rvtraceq->thread);
 	sample.addr = packet->end_addr;
 	sample.insn_cnt = packet->insn_cnt;
 	sample.id = rvtraceq->rvtrace->branches_id;
@@ -317,18 +322,9 @@ static int rvtrace_synth_events(struct rvtrace_auxtrace *rvtrace,
 	return 0;
 }
 
-static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
+static int rvtrace_process_queue(struct rvtrace_queue *rvtraceq)
 {
-	int ret;
-	struct rvtrace_auxtrace *rvtrace = rvtraceq->rvtrace;
 	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
-
-	if (!rvtrace->kernel_start)
-		rvtrace->kernel_start = machine__kernel_start(rvtrace->machine);
-
-	ret = nexus_rv_insn_decode(rvtraceq->decoder);
-	if (ret)
-		return ret;
 
 	for (int i = 0; i < packet_buffer->size; i++) {
 		struct nexus_rv_packet packet = packet_buffer->packets[i];
@@ -337,6 +333,94 @@ static int rvtrace_run_decoder(struct rvtrace_queue *rvtraceq)
 	}
 
 	return 0;
+}
+
+static int rvtrace_get_trace(struct rvtrace_queue *rvtraceq)
+{
+	struct auxtrace_buffer *aux_buffer = rvtraceq->buffer;
+	struct auxtrace_buffer *old_buffer = aux_buffer;
+	struct auxtrace_queue *queue;
+
+	queue = &rvtraceq->rvtrace->queues.queue_array[rvtraceq->queue_nr];
+
+	aux_buffer = auxtrace_buffer__next(queue, aux_buffer);
+
+	/* If no more data, drop the previous auxtrace_buffer and return */
+	if (!aux_buffer) {
+		if (old_buffer)
+			auxtrace_buffer__drop_data(old_buffer);
+		return 0;
+	}
+
+	rvtraceq->buffer = aux_buffer;
+
+	/* If the aux_buffer doesn't have data associated, try to load it */
+	if (!aux_buffer->data) {
+		/* get the file desc associated with the perf data file */
+		int fd = perf_data__fd(rvtraceq->rvtrace->session->data);
+
+		aux_buffer->data = auxtrace_buffer__get_data(aux_buffer, fd);
+		if (!aux_buffer->data)
+			return -ENOMEM;
+	}
+
+	/* If valid, drop the previous buffer */
+	if (old_buffer)
+		auxtrace_buffer__drop_data(old_buffer);
+
+	return aux_buffer->size;
+}
+
+/*
+ * rvtrace_get_data_block: Fetch a block from the auxtrace_buffer queue
+ *                         if need be.
+ * Returns:     < 0     if error
+ *              = 0     if no more auxtrace_buffer to read
+ *              > 0     if the current buffer isn't empty yet
+ */
+static int rvtrace_get_data_block(struct rvtrace_queue *rvtraceq)
+{
+	int ret;
+
+	ret = rvtrace_get_trace(rvtraceq);
+	if (ret <= 0)
+		return ret;
+
+	/*
+	 * We cannot assume consecutive blocks in the data file
+	 * are contiguous, reset the decoder to force re-sync.
+	 */
+	ret = nexus_rv_insn_decoder_reset(rvtraceq->decoder);
+	if (ret)
+		return ret;
+
+	return rvtraceq->buffer->size;
+}
+
+static int rvtrace_run_timeless_decoder(struct rvtrace_queue *rvtraceq)
+{
+	int ret;
+
+	while (1) {
+		ret = rvtrace_get_data_block(rvtraceq);
+		if (ret < 0)
+			return ret;
+
+		if (ret == 0)
+			break;
+
+		ret = nexus_rv_insn_decode_data_block(rvtraceq->decoder,
+						      rvtraceq->buffer->data,
+						      rvtraceq->buffer->size);
+		if (ret)
+			return ret;
+
+		ret = rvtrace_process_queue(rvtraceq);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
 }
 
 static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
@@ -348,20 +432,233 @@ static int rvtrace_process_timeless_queues(struct rvtrace_auxtrace *rvtrace,
 		struct auxtrace_queue *queue = &rvtrace->queues.queue_array[i];
 		struct rvtrace_queue *rvtraceq = queue->priv;
 
-		if (rvtraceq && ((tid == -1) || (rvtraceq->tid == tid))) {
-			rvtrace_set_pid_tid_cpu(rvtrace, queue);
-			rvtrace_run_decoder(rvtraceq);
+		if (rvtraceq && ((tid == -1) || (queue->tid == tid))) {
+			rvtrace_set_thread(rvtraceq, queue->tid);
+			rvtrace_run_timeless_decoder(rvtraceq);
 		}
 	}
 
 	return 0;
 }
 
-
-static int rvtrace_flush_events(struct perf_session *session __maybe_unused,
-				const struct perf_tool *tool __maybe_unused)
+static u64 rvtrace_queue_get_timestamp(struct rvtrace_queue *rvtraceq)
 {
+	struct nexus_rv_packet_buffer *packet_buffer = &rvtraceq->decoder->packet_buffer;
+
+	for (int i = 0; i < packet_buffer->size; i++) {
+		struct nexus_rv_packet packet = packet_buffer->packets[i];
+		if (packet.sample_type == RVTRACE_RANGE)
+			return packet.timestamp;
+	}
+
 	return 0;
+}
+
+static int rvtrace_queue_first_timestamp(struct rvtrace_auxtrace *rvtrace,
+					 struct rvtrace_queue *rvtraceq,
+					 unsigned int queue_nr)
+{
+	int ret;
+	u64 timestamp = 0;
+
+	/* Decode the first segment of data until a timestamp is found,
+	 * then add it to the heap for sorting by time across multiple
+	 * queues.
+	 */
+	while (1) {
+		/*
+		 * Fetch an aux_buffer from this rvtraceq. Bail if no more
+		 * blocks or an error has been encountered.
+		 */
+		ret = rvtrace_get_data_block(rvtraceq);
+		if (ret <= 0)
+			goto out;
+
+		ret = nexus_rv_insn_decode_data_block(rvtraceq->decoder,
+						      rvtraceq->buffer->data,
+						      rvtraceq->buffer->size);
+		if (ret)
+			goto out;
+
+		timestamp = rvtrace_queue_get_timestamp(rvtraceq);
+
+		/* We found a timestamp, no need to continue. */
+		if (timestamp)
+			break;
+	}
+
+	/* We have a timestamp and add it to the min heap */
+	ret = auxtrace_heap__add(&rvtrace->heap, queue_nr, timestamp);
+out:
+	return ret;
+}
+
+static int rvtrace_process_timestamped_queues(struct rvtrace_auxtrace *rvtrace)
+{
+	int ret = 0;
+	unsigned int queue_nr, i;
+	struct auxtrace_queue *queue;
+	struct rvtrace_queue *rvtraceq;
+
+	/* First, find the first timestamp for each queue and add it to the heap. */
+	for (i = 0; i < rvtrace->queues.nr_queues; i++) {
+		queue = &rvtrace->queues.queue_array[i];
+		rvtraceq = queue->priv;
+		if (!rvtraceq)
+			continue;
+
+		rvtrace_set_thread(rvtraceq, queue->tid);
+
+		ret = rvtrace_queue_first_timestamp(rvtrace, rvtraceq, i);
+		if (ret)
+			return ret;
+	}
+
+	/* Process queues in the heap in timestamp order */
+	while (1) {
+		if (!rvtrace->heap.heap_cnt)
+			break;
+
+		/* Take the entry at the top of the min heap */
+		queue_nr = rvtrace->heap.heap_array[0].queue_nr;
+		queue = &rvtrace->queues.queue_array[queue_nr];
+		rvtraceq = queue->priv;
+
+		/*
+		 * Remove the top entry from the heap since we are about
+		 * to process it.
+		 */
+		auxtrace_heap__pop(&rvtrace->heap);
+
+		/*
+		 * Packets associated with this timestamp are already in
+		 * the rvtraceq->packet_buffer, so process them.
+		 */
+		ret = rvtrace_process_queue(rvtraceq);
+		if (ret)
+			return ret;
+
+		/*
+		 * Packets for this timestamp have been processed, time to
+		 * move on to the next timestamp, find the next timestamp
+		 * for this rvtraceq.
+		 */
+		ret = rvtrace_queue_first_timestamp(rvtrace, rvtraceq, queue_nr);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrace,
+                                               unsigned int queue_nr)
+{
+	struct nexus_rv_insn_decoder_params params;
+	struct rvtrace_queue *rvtraceq;
+
+	rvtraceq = zalloc(sizeof(*rvtraceq));
+	if (!rvtraceq)
+		return NULL;
+
+	rvtraceq->event_buf = malloc(PERF_SAMPLE_MAX_SIZE);
+	if (!rvtraceq->event_buf)
+		goto out_free;
+
+	rvtraceq->rvtrace = rvtrace;
+	rvtraceq->queue_nr = queue_nr;
+
+	params.mem_access = rvtrace_mem_access;
+	params.data = rvtraceq;
+	params.formatted = true;
+	if (!rvtrace->metadata[0][RVTRACE_ENCODER_INHB_SRC])
+		params.src_bits = rvtrace->metadata[0][RVTRACE_ENCODER_SRCBITS];
+
+	rvtraceq->decoder = nexus_rv_insn_decoder_new(&params);
+	if (!rvtraceq->decoder)
+		goto out_free;
+
+	rvtraceq->offset = 0;
+
+	return rvtraceq;
+
+out_free:
+	zfree(&rvtraceq->event_buf);
+	free(rvtraceq);
+
+	return NULL;
+}
+
+static int rvtrace_setup_queue(struct rvtrace_auxtrace *rvtrace,
+                              struct auxtrace_queue *queue,
+                              unsigned int queue_nr)
+{
+	struct rvtrace_queue *rvtraceq = queue->priv;
+
+	if (list_empty(&queue->head) || rvtraceq)
+		return 0;
+
+	rvtraceq = rvtrace_alloc_queue(rvtrace, queue_nr);
+
+	if (!rvtraceq)
+		return -ENOMEM;
+
+	queue->priv = rvtraceq;
+
+	return 0;
+}
+
+static int rvtrace_setup_queues(struct rvtrace_auxtrace *rvtrace)
+{
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < rvtrace->queues.nr_queues; i++) {
+		ret = rvtrace_setup_queue(rvtrace, &rvtrace->queues.queue_array[i], i);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int rvtrace_update_queues(struct rvtrace_auxtrace *rvtrace)
+{
+	if (rvtrace->queues.new_data) {
+		rvtrace->queues.new_data = false;
+		return rvtrace_setup_queues(rvtrace);
+	}
+
+	return 0;
+}
+
+static int rvtrace_flush_events(struct perf_session *session,
+				const struct perf_tool *tool)
+{
+	struct rvtrace_auxtrace *rvtrace = container_of(session->auxtrace,
+					struct rvtrace_auxtrace,
+					auxtrace);
+	int ret;
+
+	if (dump_trace)
+		return 0;
+
+	if (!tool->ordered_events)
+		return -EINVAL;
+
+	ret = rvtrace_update_queues(rvtrace);
+	if (ret < 0)
+		return ret;
+
+	if (rvtrace->timeless_decoding) {
+		/*
+		 * Pass tid = -1 to process all queues. But likely they will have
+		 * already been processed on PERF_RECORD_EXIT anyway.
+		 */
+		return rvtrace_process_timeless_queues(rvtrace, -1);
+	}
+
+	return rvtrace_process_timestamped_queues(rvtrace);
 }
 
 static void rvtrace_free_queue(void *priv)
@@ -417,133 +714,25 @@ static bool rvtrace_evsel_is_auxtrace(struct perf_session *session,
 	return evsel->core.attr.type == aux->pmu_type;
 }
 
-static int rvtrace_get_trace(struct nexus_rv_buffer *buffer, void *data)
+static int rvtrace_process_itrace_start(struct rvtrace_auxtrace *rvtrace,
+					union perf_event *event)
 {
-	struct rvtrace_queue *rvtraceq = data;
-	struct auxtrace_buffer *aux_buffer = rvtraceq->buffer;
-	struct auxtrace_buffer *old_buffer = aux_buffer;
-	struct auxtrace_queue *queue;
+	struct thread *th;
 
-	queue = &rvtraceq->rvtrace->queues.queue_array[rvtraceq->queue_nr];
-
-	aux_buffer = auxtrace_buffer__next(queue, aux_buffer);
-
-	/* If no more data, drop the previous auxtrace_buffer and return */
-	if (!aux_buffer) {
-		if (old_buffer)
-			auxtrace_buffer__drop_data(old_buffer);
-		buffer->len = 0;
-		return 0;
-	}
-
-	rvtraceq->buffer = aux_buffer;
-
-	/* If the aux_buffer doesn't have data associated, try to load it */
-	if (!aux_buffer->data) {
-		/* get the file desc associated with the perf data file */
-		int fd = perf_data__fd(rvtraceq->rvtrace->session->data);
-
-		aux_buffer->data = auxtrace_buffer__get_data(aux_buffer, fd);
-		if (!aux_buffer->data)
-			return -ENOMEM;
-	}
-
-	/* If valid, drop the previous buffer */
-	if (old_buffer)
-		auxtrace_buffer__drop_data(old_buffer);
-
-	buffer->len = aux_buffer->size;
-	buffer->buf = aux_buffer->data;
-
-	return 0;
-}
-
-static struct rvtrace_queue *rvtrace_alloc_queue(struct rvtrace_auxtrace *rvtrace,
-                                               unsigned int queue_nr)
-{
-	struct nexus_rv_insn_decoder_params params;
-	struct rvtrace_queue *rvtraceq;
-
-	rvtraceq = zalloc(sizeof(*rvtraceq));
-	if (!rvtraceq)
-		return NULL;
-
-	rvtraceq->event_buf = malloc(PERF_SAMPLE_MAX_SIZE);
-	if (!rvtraceq->event_buf)
-		goto out_free;
-
-	rvtraceq->rvtrace = rvtrace;
-	rvtraceq->queue_nr = queue_nr;
-	rvtraceq->pid = -1;
-	rvtraceq->tid = -1;
-	rvtraceq->cpu = -1;
-
-	params.get_trace = rvtrace_get_trace;
-	params.mem_access = rvtrace_mem_access;
-	params.data = rvtraceq;
-	params.formatted = true;
-	if (!rvtrace->metadata[0][RVTRACE_ENCODER_INHB_SRC])
-		params.src_bits = rvtrace->metadata[0][RVTRACE_ENCODER_SRCBITS];
-
-	rvtraceq->decoder = nexus_rv_insn_decoder_new(&params);
-	if (!rvtraceq->decoder)
-		goto out_free;
-
-	rvtraceq->offset = 0;
-
-	return rvtraceq;
-
-out_free:
-	zfree(&rvtraceq->event_buf);
-	free(rvtraceq);
-
-	return NULL;
-}
-
-static int rvtrace_setup_queue(struct rvtrace_auxtrace *rvtrace,
-                              struct auxtrace_queue *queue,
-                              unsigned int queue_nr)
-{
-	struct rvtrace_queue *rvtraceq = queue->priv;
-
-	if (list_empty(&queue->head) || rvtraceq)
+	if (rvtrace->timeless_decoding)
 		return 0;
 
-	rvtraceq = rvtrace_alloc_queue(rvtrace, queue_nr);
-
-	if (!rvtraceq)
+	/*
+	 * Add the tid/pid to the log so that we can get a match when
+	 * we get a contextID from the decoder.
+	 */
+	th = machine__findnew_thread(rvtrace->machine,
+				     event->itrace_start.pid,
+				     event->itrace_start.tid);
+	if (!th)
 		return -ENOMEM;
 
-	queue->priv = rvtraceq;
-
-	if (queue->cpu != -1)
-		rvtraceq->cpu = queue->cpu;
-
-	rvtraceq->tid = queue->tid;
-
-	return 0;
-}
-
-static int rvtrace_setup_queues(struct rvtrace_auxtrace *rvtrace)
-{
-	unsigned int i;
-	int ret;
-
-	for (i = 0; i < rvtrace->queues.nr_queues; i++) {
-		ret = rvtrace_setup_queue(rvtrace, &rvtrace->queues.queue_array[i], i);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
-static int rvtrace_update_queues(struct rvtrace_auxtrace *rvtrace)
-{
-	if (rvtrace->queues.new_data) {
-		rvtrace->queues.new_data = false;
-		return rvtrace_setup_queues(rvtrace);
-	}
+	thread__put(th);
 
 	return 0;
 }
@@ -567,9 +756,6 @@ static int rvtrace_process_event(struct perf_session *session,
 		return -EINVAL;
 	}
 
-	if (!rvtrace->timeless_decoding)
-		return -EINVAL;
-
 	if (sample->time && (sample->time != (u64) -1))
 		timestamp = sample->time;
 	else
@@ -581,8 +767,35 @@ static int rvtrace_process_event(struct perf_session *session,
 			return err;
 	}
 
-	if (event->header.type == PERF_RECORD_EXIT)
-		return rvtrace_process_timeless_queues(rvtrace, event->fork.tid);
+	switch (event->header.type) {
+	case PERF_RECORD_EXIT:
+		/*
+		 * Don't need to wait for rvtrace_flush_events() in per-thread/timeless
+		 * mode to start the decode because we know there will be no more trace
+		 * from this thread. All this does is emit samples earlier than waiting
+		 * for the flush in other modes, but with timestamps it makes sense to
+		 * wait for flush so that events from different threads are interleaved
+		 * properly.
+		 */
+		if (rvtrace->timeless_decoding)
+			return rvtrace_process_timeless_queues(rvtrace, event->fork.tid);
+		break;
+
+	case PERF_RECORD_ITRACE_START:
+		return rvtrace_process_itrace_start(rvtrace, event);
+
+	case PERF_RECORD_AUX:
+		/*
+		 * Record the latest kernel timestamp available for rollback when
+		 * no trace timestamp is available.
+		 */
+		if (timestamp)
+			rvtrace->latest_kernel_timestamp = timestamp;
+		break;
+
+	default:
+		break;
+	}
 
 	return 0;
 }

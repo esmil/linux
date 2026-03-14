@@ -1,7 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright(C) 2026 Spacemit Limited. All rights reserved.
+ * Author: liangzhen <zhen.liang@spacemit.com>
+ */
+
 #include <linux/pm_runtime.h>
 #include <linux/sysfs.h>
 #include <linux/rvtrace.h>
 #include "rvtrace-encoder.h"
+#include "rvtrace-timestamp.h"
 #include "coresight-priv.h"
 
 static ssize_t cpu_show(struct device *dev,
@@ -43,9 +50,38 @@ static ssize_t reset_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(reset);
 
+static ssize_t ts_ctrl_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct rvtrace_component *comp = dev_get_drvdata(dev->parent);
+	struct encoder_data *encoder_data = rvtrace_component_data(comp);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", encoder_data->ts_ctrl);
+}
+
+static ssize_t ts_ctrl_store(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf, size_t size)
+{
+	unsigned long val;
+	struct rvtrace_component *comp = dev_get_drvdata(dev->parent);
+	struct encoder_data *encoder_data = rvtrace_component_data(comp);
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+
+	spin_lock(&encoder_data->spinlock);
+	encoder_data->ts_ctrl = !!val;
+	spin_unlock(&encoder_data->spinlock);
+
+	return size;
+}
+static DEVICE_ATTR_RW(ts_ctrl);
+
 static struct attribute *trace_encoder_attrs[] = {
 	&dev_attr_cpu.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_ts_ctrl.attr,
 	NULL,
 };
 
@@ -276,6 +312,19 @@ static struct attribute *trace_encoder_features_attrs[] = {
 	NULL,
 };
 
+static umode_t timestamp_attr_is_visible(struct kobject *kobj,
+					 struct attribute *attr, int idx)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct rvtrace_component *comp = dev_get_drvdata(dev->parent);
+	struct encoder_data *encoder_data = rvtrace_component_data(comp);
+
+	if (encoder_data->has_timestamp)
+		return attr->mode;
+
+	return 0;
+}
+
 static const struct attribute_group trace_encoder_group = {
 	.attrs = trace_encoder_attrs,
 };
@@ -295,10 +344,19 @@ static const struct attribute_group trace_encoder_features_group = {
 	.name = "features",
 };
 
+extern const struct attribute *timestamp_attrs[];
+
+static const struct attribute_group trace_encoder_timestamp_group = {
+	.attrs = (struct attribute **)timestamp_attrs,
+	.name = "timestamp",
+	.is_visible = timestamp_attr_is_visible,
+};
+
 const struct attribute_group *trace_encoder_groups[] = {
 	&trace_encoder_group,
 	&trace_encoder_mgmt_group,
 	&trace_encoder_control_group,
 	&trace_encoder_features_group,
+	&trace_encoder_timestamp_group,
 	NULL,
 };

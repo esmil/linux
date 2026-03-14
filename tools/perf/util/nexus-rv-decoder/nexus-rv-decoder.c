@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright(C) 2026 Spacemit Limited. All rights reserved.
+ * Author: liangzhen <zhen.liang@spacemit.com>
+ */
 
 #include <linux/err.h>
 #include <linux/zalloc.h>
@@ -148,7 +152,7 @@ static int nexus_rv_pkt_defmt(struct nexus_rv_defmt_buf defmt_bufs[], FILE *nexu
 }
 
 // dump all nexus messages (from nexus file)
-static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
+static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder, FILE *nexus)
 {
 	const char *color = PERF_COLOR_BLUE;
 	int fld_def  = -1;
@@ -173,7 +177,7 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 	unsigned int mseo = 0;
 	for (;;) {
 		prev_byte = msg_byte;
-		if (fread(&msg_byte, 1, 1, decoder->nexus) != 1) break;  // EOF
+		if (fread(&msg_byte, 1, 1, nexus) != 1) break;  // EOF
 
 		if (find_next_package) {
 			if ((prev_byte & 0x3) == 0x3) { //last byte
@@ -340,9 +344,6 @@ static int nexus_rv_pkt_dump(struct nexus_rv_pkt_decoder *decoder)
 struct nexus_rv_pkt_decoder *nexus_rv_pkt_decoder_new(struct nexus_rv_pkt_decoder_params *params)
 {
 	struct nexus_rv_pkt_decoder *decoder;
-	char *dir;
-	char filename[PATH_MAX];
-	FILE *f;
 
 	if (!params)
 		return NULL;
@@ -354,15 +355,6 @@ struct nexus_rv_pkt_decoder *nexus_rv_pkt_decoder_new(struct nexus_rv_pkt_decode
 	decoder->formatted = params->formatted;
 	decoder->src_bits = params->src_bits;
 
-	/* TODO: The filename here is always trace.bin, which results in
-	 * only the last Nexus trace data being retained. A corresponding
-	 * Nexus filename should be generated for each AUX data.
-	 */
-	dir = getenv("PERF_BUILDID_DIR");
-	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
-	f = fopen(filename, "w+");
-	decoder->nexus = f;
-
 	return decoder;
 }
 
@@ -371,34 +363,57 @@ void nexus_rv_pkt_decoder_free(struct nexus_rv_pkt_decoder *decoder)
 	for (int i = 0; i < MAX_ID; ++i)
 		free(decoder->defmt_bufs[i].buf);
 
-	fclose(decoder->nexus);
 	free(decoder);
 }
 
 int nexus_rv_pkt_desc(struct nexus_rv_pkt_decoder *decoder, const unsigned char *buf, size_t len)
 {
 	int err;
+	char filename[PATH_MAX];
+	FILE *nexus;
+	char *dir = getenv("PERF_BUILDID_DIR");
+
+	/* TODO: The filename here is always trace.bin, which results in
+	 * only the last Nexus trace data being retained. A corresponding
+	 * Nexus filename should be generated for each AUX data.
+	 */
+	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
+	nexus = fopen(filename, "w+");
 
 	if (decoder->formatted) {
-		err = nexus_rv_pkt_defmt(decoder->defmt_bufs, decoder->nexus, buf, len);
+		err = nexus_rv_pkt_defmt(decoder->defmt_bufs, nexus, buf, len);
 		if (err) {
 			pr_err("Encoder: failed to remove coresight trace formatter\n");
 			return err;
 		}
+	} else {
+		size_t n = fwrite(buf, len, 1, nexus);
+		if (n != 1) {
+			pr_err("Encoder: failed to write nexus data\n");
+			fclose(nexus);
+			return -EINVAL;
+		}
 	}
 
-	fseek(decoder->nexus, 0, SEEK_SET);
-	err = nexus_rv_pkt_dump(decoder);
+	fseek(nexus, 0, SEEK_SET);
+	err = nexus_rv_pkt_dump(decoder, nexus);
+
+	fclose(nexus);
 
 	return err;
 }
 
 static int nexus_rv_init_packet_buffer(struct nexus_rv_packet_buffer *packet_buffer)
 {
-	packet_buffer->packets = calloc(BUFFER_SIZE, sizeof(struct nexus_rv_packet));
-	if (!packet_buffer->packets)
-		return -ENOMEM;
+	if (!packet_buffer->packets) {
+		packet_buffer->packets = calloc(BUFFER_SIZE, sizeof(struct nexus_rv_packet));
+		if (!packet_buffer->packets)
+			return -ENOMEM;
+	}
+
+	packet_buffer->size = 0;
 	packet_buffer->capacity = BUFFER_SIZE;
+
 	return 0;
 }
 
@@ -476,7 +491,7 @@ static int nexus_rv_insn_info_get(struct nexus_rv_insn_decoder *decoder, u8 *inf
 {
 	u32 insn;
 	u64 addr = decoder->nexdeco_pc;
-	if (!decoder->mem_access(decoder->data, addr, decoder->prv, sizeof(insn), (u8 *)&insn))
+	if (!decoder->mem_access(decoder->data, addr, decoder->prv, decoder->context, sizeof(insn), (u8 *)&insn))
 		return -EINVAL;
 
 	*info = INFO_LINEAR;
@@ -666,30 +681,33 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 
 	switch (TCODE) {
 	case NEXUS_TCODE_Ownership:
-		pr_debug2("********MSG - Ownership TCODE=%d SRC=%ld FORMAT=%ld PRV=%ld V=%ld CONTEXT=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(FORMAT), NEX_FLDGET(PRV), NEX_FLDGET(V), NEX_FLDGET(CONTEXT));
+		pr_debug2("********MSG - Ownership TCODE=%d SRC=%ld FORMAT=%ld PRV=%ld V=%ld CONTEXT=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(FORMAT), NEX_FLDGET(PRV), NEX_FLDGET(V), NEX_FLDGET(CONTEXT), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
 		decoder->prv = NEX_FLDGET(PRV);
 		decoder->v = NEX_FLDGET(V);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		if (NEX_FLDGET(FORMAT))
 			decoder->context = NEX_FLDGET(CONTEXT);
 		break;
 
 	case NEXUS_TCODE_DirectBranch:
-		pr_debug2("********MSG - DirectBranch TCODE=%d SRC=%ld ICNT=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ICNT));
+		pr_debug2("********MSG - DirectBranch TCODE=%d SRC=%ld ICNT=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ICNT), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 		break;
 
 	case NEXUS_TCODE_IndirectBranch:
-		pr_debug2("********MSG - IndirectBranch TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR));
+		pr_debug2("********MSG - IndirectBranch TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -700,10 +718,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_ProgTraceSync:
-		pr_debug2("********MSG - ProgTraceSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR));
+		pr_debug2("********MSG - ProgTraceSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -714,10 +733,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_DirectBranchSync:
-		pr_debug2("********MSG - DirectBranchSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR));
+		pr_debug2("********MSG - DirectBranchSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -729,10 +749,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_IndirectBranchSync:
-		pr_debug2("********MSG - IndirectBranchSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld ICNT=%ld FADDR=0x%lx\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR));
+		pr_debug2("********MSG - IndirectBranchSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
@@ -744,10 +765,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_IndirectBranchHist:
-		pr_debug2("********MSG - IndirectBranchHist TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx HIST=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(HIST));
+		pr_debug2("********MSG - IndirectBranchHist TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx HIST=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(HIST), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, NEX_FLDGET(HIST));
 
@@ -759,10 +781,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		break;
 
 	case NEXUS_TCODE_IndirectBranchHistSync:
-		pr_debug2("********MSG - IndirectBranchHistSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld CANCEL=%ld ICNT=%ld FADDR=0x%lx HIST=%ld\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(CANCEL), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(HIST));
+		pr_debug2("********MSG - IndirectBranchHistSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld CANCEL=%ld ICNT=%ld FADDR=0x%lx HIST=%ld TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(CANCEL), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(HIST), NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp = NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, NEX_FLDGET(HIST));
 
@@ -780,10 +803,11 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		if (rcode == 2)
 			hrepeat = NEX_FLDGET(HREPEAT);
 
-		pr_debug2("********MSG - ResourceFull TCODE=%d SRC=%ld RCODE=%ld RDATA=%ld HREPEAT=%d\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(RCODE), NEX_FLDGET(RDATA), hrepeat);
+		pr_debug2("********MSG - ResourceFull TCODE=%d SRC=%ld RCODE=%ld RDATA=%ld HREPEAT=%d TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(RCODE), NEX_FLDGET(RDATA), hrepeat, NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		if (rcode == 1 || rcode == 2) {
 			int rdata = NEX_FLDGET(RDATA);
 			if (rdata > 1) {
@@ -814,18 +838,19 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		if (cdf == 1)
 			hist = NEX_FLDGET(HIST);
 
-		pr_debug2("********MSG - ProgTraceCorrelation TCODE=%d SRC=%ld EVCODE=%ld CDF=%ld ICNT=%ld HIST=%d\n",
-				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(EVCODE), NEX_FLDGET(CDF), NEX_FLDGET(ICNT), hist);
+		pr_debug2("********MSG - ProgTraceCorrelation TCODE=%d SRC=%ld EVCODE=%ld CDF=%ld ICNT=%ld HIST=%d TSTAMP=%ld\n",
+				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(EVCODE), NEX_FLDGET(CDF), NEX_FLDGET(ICNT), hist, NEX_FLDGET(TSTAMP));
 
 		cpu = NEX_FLDGET(SRC);
+		decoder->timestamp += NEX_FLDGET(TSTAMP);
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, hist);
 
 		break;
 
 	case NEXUS_TCODE_Error:
-		pr_debug2("********MSG - Error TCODE=%d SRC=%ld ETYPE=%ld PAD=%ld\n",
-			      TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ETYPE), NEX_FLDGET(PAD));
+		pr_debug2("********MSG - Error TCODE=%d SRC=%ld ETYPE=%ld PAD=%ld TSTAMP=%ld\n",
+			      TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ETYPE), NEX_FLDGET(PAD), NEX_FLDGET(TSTAMP));
 		cpu = NEX_FLDGET(SRC);
 		break;
 
@@ -843,6 +868,7 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		packet.prv = decoder->prv;
 		packet.v = decoder->v;
 		packet.context = decoder->context;
+		packet.timestamp = decoder->timestamp;
 	} else {
 		packet.sample_type = RVTRACE_ERROR;
 	}
@@ -852,7 +878,7 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 	return ret;
 }
 
-static int nexus_rv_insn_dump(struct nexus_rv_insn_decoder *decoder, FILE *nexus)
+static int nexus_rv_insn_decode(struct nexus_rv_insn_decoder *decoder, FILE *nexus)
 {
 	int fld_def = -1;
 	int fld_bits = 0;
@@ -1044,13 +1070,13 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 	if (!decoder)
 		return NULL;
 
-	decoder->get_trace = params->get_trace;
 	decoder->mem_access = params->mem_access;
 	decoder->data = params->data;
 	decoder->formatted = params->formatted;
 	decoder->src_bits = params->src_bits;
 	decoder->nexdeco_pc = 1;
 	decoder->nexdeco_lastaddr = 1;
+	decoder->context = -1;
 
 	err = nexus_rv_init_stack(&decoder->stack);
 	if (err)
@@ -1064,6 +1090,7 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 
 err_out:
 	nexus_rv_free_stack(&decoder->stack);
+	nexus_rv_free_packet_buffer(&decoder->packet_buffer);
 	free(decoder);
 	return NULL;
 }
@@ -1078,57 +1105,59 @@ void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder)
 	free(decoder);
 }
 
-static int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder)
-{
-	decoder->nexdeco_pc = 1;
-	decoder->nexdeco_lastaddr = 1;
-
-	return nexus_rv_init_stack(&decoder->stack);
-}
-
-int nexus_rv_insn_decode(struct nexus_rv_insn_decoder *decoder)
+int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder)
 {
 	int err;
-	struct nexus_rv_buffer buffer;
+	decoder->nexdeco_pc = 1;
+	decoder->nexdeco_lastaddr = 1;
+	decoder->context = -1;
+
+	err = nexus_rv_init_stack(&decoder->stack);
+	if (err)
+		return err;
+
+	err = nexus_rv_init_packet_buffer(&decoder->packet_buffer);
+	if (err)
+		return err;
+
+	return 0;
+}
+
+int nexus_rv_insn_decode_data_block(struct nexus_rv_insn_decoder *decoder,
+				    const unsigned char *buf, size_t size)
+{
+	int err;
 	char filename[PATH_MAX];
 	FILE *nexus;
 	char *dir = getenv("PERF_BUILDID_DIR");
-	int i = 0;
 
-	while (1) {
-		buffer = (struct nexus_rv_buffer){ .buf = 0, };
-		err = decoder->get_trace(&buffer, decoder->data);
-		if (err)
-			return err;
+	/* TODO: The filename here is always trace.bin, which results in
+	 * only the last Nexus trace data being retained. A corresponding
+	 * Nexus filename should be generated for each AUX data.
+	 */
+	snprintf(filename, sizeof(filename), "%s/trace.bin", dir);
+	nexus = fopen(filename, "w+");
 
-		if (buffer.len == 0)
-			break;
-
-		snprintf(filename, sizeof(filename), "%s/trace%d.bin", dir, i++);
-		nexus = fopen(filename, "w+");
-
-		if (decoder->formatted) {
-			err = nexus_rv_pkt_defmt(decoder->defmt_bufs, nexus, buffer.buf, buffer.len);
-			if (err) {
-				pr_err("Encoder: failed to remove coresight trace formatter\n");
-				fclose(nexus);
-				return err;
-			}
-		}
-
-		fseek(nexus, 0, SEEK_SET);
-		err = nexus_rv_insn_dump(decoder, nexus);
+	if (decoder->formatted) {
+		err = nexus_rv_pkt_defmt(decoder->defmt_bufs, nexus, buf, size);
 		if (err) {
+			pr_err("Encoder: failed to remove coresight trace formatter\n");
 			fclose(nexus);
 			return err;
 		}
-
-		fclose(nexus);
-
-		err = nexus_rv_insn_decoder_reset(decoder);
-		if (err)
-			return err;
+	} else {
+		size_t n = fwrite(buf, size, 1, nexus);
+		if (n != 1) {
+			pr_err("Encoder: failed to write nexus data\n");
+			fclose(nexus);
+			return -EINVAL;
+		}
 	}
 
-	return 0;
+	fseek(nexus, 0, SEEK_SET);
+	err = nexus_rv_insn_decode(decoder, nexus);
+
+	fclose(nexus);
+
+	return err;
 }

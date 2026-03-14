@@ -374,6 +374,7 @@
 	mmc-pwrseq = <&sdio_pwrseq>;
 	no-mmc;
 	no-sd;
+	keep-power-in-suspend;
 	clock-frequency = <375000000>;
 	status = "disabled";
 };
@@ -492,7 +493,7 @@
 	snps,tso;
 	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii0>;
+	phy-handle = <&gmac0_phy>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -510,10 +511,30 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii0: phy@0 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
+		gmac0_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
 			device_type = "ethernet-phy";
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };
@@ -528,7 +549,7 @@
 	snps,tso;
 	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii1>;
+	phy-handle = <&gmac1_phy>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -546,10 +567,30 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii1: phy@1 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
+		gmac1_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
 			device_type = "ethernet-phy";
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };
@@ -564,7 +605,7 @@
 	snps,tso;
 	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii2>;
+	phy-handle = <&gmac2_phy>;
 	snps,reset-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -575,17 +616,37 @@
 	spacemit,tx-phase = <53>;
 	spacemit,rx-phase = <52>;
 
-	status = "okay";
+	status = "disabled";
 
 	mdio {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii2: phy@2 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
+		gmac2_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
 			device_type = "ethernet-phy";
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };
@@ -600,7 +661,7 @@
 	snps,tso;
 	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii3>;
+	phy-handle = <&gmac3_phy>;
 	snps,reset-gpios = <&gpio 2 11 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -618,10 +679,30 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii3: phy@3 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
+		gmac3_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
 			device_type = "ethernet-phy";
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };

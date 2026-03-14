@@ -403,7 +403,8 @@ static int imx219_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, sensor);
 
 	dev_info(dev, "imx219-test: get PWDN gpio\n");
-	sensor->pwdn = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_LOW);
+	sensor->pwdn = devm_gpiod_get_optional(
+		dev, "pwdn", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "imx219-test: Failed to get PWDN GPIO\n");
 		return PTR_ERR(sensor->pwdn);

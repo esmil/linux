@@ -1,4 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright(C) 2026 Spacemit Limited. All rights reserved.
+ * Author: liangzhen <zhen.liang@spacemit.com>
+ */
 
 #ifndef INCLUDE__NEXUS_RV_DECODER_H__
 #define INCLUDE__NEXUS_RV_DECODER_H__
@@ -32,7 +36,6 @@ struct nexus_rv_pkt_decoder {
 	bool formatted;
 	struct nexus_rv_defmt_buf defmt_bufs[MAX_ID];
 	u32 src_bits;
-	FILE *nexus;
 };
 
 struct nexus_rv_pkt_decoder_params {
@@ -44,11 +47,6 @@ struct nexus_rv_stack {
 	u64 *data;
 	int top;
 	int capacity;
-};
-
-struct nexus_rv_buffer {
-	const unsigned char *buf;
-	size_t len;
 };
 
 enum rvtrace_sample_type {
@@ -72,6 +70,7 @@ struct nexus_rv_packet {
 	enum riscv_privilege_mode prv;
 	bool v;
 	int context;
+	u64 timestamp;
 };
 
 struct nexus_rv_packet_buffer {
@@ -81,8 +80,7 @@ struct nexus_rv_packet_buffer {
 };
 
 struct nexus_rv_insn_decoder {
-	int (*get_trace)(struct nexus_rv_buffer *buffer, void *data);
-	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, size_t, u8 *);
+	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, int, size_t, u8 *);
 	void *data;
 	bool formatted;
 	struct nexus_rv_defmt_buf defmt_bufs[MAX_ID];
@@ -95,6 +93,7 @@ struct nexus_rv_insn_decoder {
 	u64 nexdeco_pc;
 	u64 nexdeco_lastaddr;
 	u64 current_pc;
+	u64 timestamp;
 	int disp_hist_repeat;
 	enum riscv_privilege_mode prv;
 	bool v;
@@ -104,8 +103,7 @@ struct nexus_rv_insn_decoder {
 };
 
 struct nexus_rv_insn_decoder_params {
-	int (*get_trace)(struct nexus_rv_buffer *buffer, void *data);
-	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, size_t, u8 *);
+	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, int, size_t, u8 *);
 	void *data;
 	bool formatted;
 	u32 src_bits;
@@ -121,6 +119,9 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 
 void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder);
 
-int nexus_rv_insn_decode(struct nexus_rv_insn_decoder *decoder);
+int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder);
+
+int nexus_rv_insn_decode_data_block(struct nexus_rv_insn_decoder *decoder,
+				    const unsigned char *buf, size_t size);
 
 #endif
