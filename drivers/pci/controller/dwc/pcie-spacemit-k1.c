@@ -11,6 +11,7 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/gfp.h>
+#include <linux/gpio/consumer.h>
 #include <linux/mfd/syscon.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of.h>
@@ -118,7 +119,6 @@ struct k1_pcie {
 	struct phy		*phys[MAX_PHYS];	/* multiple PHYs (from 'phys' property) */
 	int			phy_count;		/* number of valid entries in phys[] */
 	int			num_lanes;
-	struct gpio_desc *detect_gpiod;
 	int			port_id;
 	bool			link_up;
 #else
@@ -152,6 +152,32 @@ static int spacemit_pcie_check_phy_busy(struct k1_pcie *pcie)
 	}
 
 	return 0;
+}
+
+/*
+ * Read a GPIO from this port's DT node (non-devm, released immediately).
+ * Returns: 1 = high, 0 = low, -ENOENT = no such property, negative = error.
+ */
+static int k1_pcie_read_gpio_property(struct device *dev, const char *prop)
+{
+	struct gpio_desc *gpiod;
+	int ret;
+
+	gpiod = gpiod_get_optional(dev, prop, GPIOD_IN);
+	if (IS_ERR(gpiod)) {
+		ret = PTR_ERR(gpiod);
+		/* GPIO controller not ready, or peer holds the shared GPIO */
+		if (ret == -EBUSY)
+			return -EPROBE_DEFER;
+		return ret;
+	}
+
+	if (!gpiod)
+		return -ENOENT;
+
+	ret = gpiod_get_value(gpiod);
+	gpiod_put(gpiod);
+	return ret;
 }
 
 static int spacemit_pcie_config_lane_mux(struct k1_pcie *pcie)
@@ -623,17 +649,26 @@ static int k1_pcie_parse_port(struct k1_pcie *k1)
 			k1->phy_count = MAX_PHYS;
 		}
 
-		k1->detect_gpiod = devm_gpiod_get_optional(dev, "spacemit,device-detect", GPIOD_IN);
-		if (IS_ERR(k1->detect_gpiod))
-			return dev_err_probe(dev, PTR_ERR(k1->detect_gpiod),
-					"failed to get detect gpio\n");
-
-		if (k1->port_id == 0) {
-			if (k1->detect_gpiod && gpiod_get_value(k1->detect_gpiod)) {
-				dev_info(dev, "Port B device detected, degrading Port A to x2 mode\n");
+		/* Bifurcation GPIO: if asserted, yield lanes to the peer port */
+		ret = k1_pcie_read_gpio_property(dev, "spacemit,bifurcation");
+		if (ret < 0 && ret != -ENOENT)
+			return dev_err_probe(dev, ret, "Failed to read bifurcation GPIO\n");
+		if (ret > 0) {
+			if (k1->port_id == 0) {
+				dev_info(dev, "Bifurcation GPIO asserted, degrading to x2 mode\n");
 				k1->phy_count = 1;
 				k1->num_lanes = 2;
 			}
+		}
+
+		/* Device-detect GPIO: skip this port if no device is present */
+		ret = k1_pcie_read_gpio_property(dev, "spacemit,device-detect");
+		if (ret < 0 && ret != -ENOENT)
+			return dev_err_probe(dev, ret, "Failed to read device-detect GPIO\n");
+		/* ret: 1 = present, 0 = absent, -ENOENT = no GPIO (assume present) */
+		if (ret == 0) {
+			dev_info(dev, "Device not detected, skipping initialization\n");
+			return -ENODEV;
 		}
 
 		for (int i = 0; i < k1->phy_count; i++) {
@@ -931,7 +966,8 @@ static int k1_pcie_probe(struct platform_device *pdev)
 
 	ret = k1_pcie_parse_port(k1);
 	if (ret) {
-		dev_err_probe(dev, ret, "failed to parse port\n");
+		if (ret != -ENODEV)
+			dev_err_probe(dev, ret, "failed to parse port\n");
 		goto err_pm_runtime_put;
 	}
 
@@ -1002,29 +1038,7 @@ static struct platform_driver k1_pcie_driver = {
 	.driver = {
 		.name			= "spacemit-k1-pcie",
 		.of_match_table		= k1_pcie_of_match_table,
-		.pm 			= &k1_pcie_pm_ops,
-	#ifdef CONFIG_SOC_SPACEMIT_K3
-			/*
-			 * Force synchronous probing so that PCIe controllers are
-			 * initialized in device-tree order (pcie0_rc, pcie1_rc, ...).
-			 *
-			 * On K3 some root complexes share PHYs (e.g. Port A/B share
-			 * phy1). With asynchronous probing, Port B (pcie1_rc) may
-			 * probe first, initialize the shared PHY and mark it busy.
-			 * When Port A (pcie0_rc) probes later,
-			 * spacemit_k3_pcie_phy_is_busy() reports "PHY 1 is busy"
-			 * and k1_pcie_init() fails with -EBUSY, so Port A never
-			 * comes up even though hardware is present.
-			 *
-			 * For boards like k3_deb1 we want Port A, if enabled, to
-			 * have priority when sharing PHYs with other ports. Using
-			 * PROBE_FORCE_SYNCHRONOUS guarantees Port A is probed
-			 * before Port B and can claim the shared PHY first.
-			 */
-		.probe_type		= PROBE_FORCE_SYNCHRONOUS,
-#else
 		.probe_type		= PROBE_PREFER_ASYNCHRONOUS,
-#endif
 	},
 };
 module_platform_driver(k1_pcie_driver);

@@ -514,7 +514,7 @@
 	phys = <&phy0>, <&phy1>;
 	phy-names = "phy0", "phy1";
 	num-lanes = <4>;
-	spacemit,device-detect-gpios = <&gpio 2 25 GPIO_ACTIVE_HIGH>;
+	spacemit,bifurcation-gpios = <&gpio 2 25 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
@@ -524,6 +524,7 @@
 	phys = <&phy1>;
 	phy-names = "phy1";
 	num-lanes = <2>;
+	spacemit,device-detect-gpios = <&gpio 2 25 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
