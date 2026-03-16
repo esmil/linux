@@ -52,6 +52,7 @@ struct nexus_rv_stack {
 enum rvtrace_sample_type {
 	RVTRACE_EMPTY,
 	RVTRACE_RANGE,
+	RVTRACE_LOSS,
 	RVTRACE_ERROR,
 };
 

@@ -330,6 +330,8 @@ static int rvtrace_process_queue(struct rvtrace_queue *rvtraceq)
 		struct nexus_rv_packet packet = packet_buffer->packets[i];
 		if (packet.sample_type == RVTRACE_RANGE)
 			rvtrace_synth_branch_sample(rvtraceq, &packet);
+		else if (packet.sample_type == RVTRACE_LOSS)
+			fprintf(stdout, "RISC-V Trace: A FIFO overrun has resulted in the loss of one or more messages\n");
 	}
 
 	return 0;

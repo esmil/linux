@@ -860,7 +860,10 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 	}
 
 	if (ret >= 0) {
-		packet.sample_type = (!ret) ? RVTRACE_EMPTY : RVTRACE_RANGE;
+		if (TCODE == NEXUS_TCODE_Error)
+			packet.sample_type = RVTRACE_LOSS;
+		else
+			packet.sample_type = ret ? RVTRACE_RANGE : RVTRACE_EMPTY;
 		packet.start_addr = start_addr;
 		packet.end_addr = decoder->current_pc;
 		packet.insn_cnt = ret;
