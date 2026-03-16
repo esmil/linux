@@ -305,7 +305,7 @@ static int regulator_rpmi_enable(struct regulator_dev *reg)
 	ret = rpmi_mbox_send_message(context->chan, &msg);
 	if (ret)
 		return ret;
-	if (rx.status)
+	if (rx.status && (rx.status != RPMI_ERR_ALREADY))
 		return rpmi_to_linux_error(rx.status);
 
 	return 0;
@@ -329,7 +329,7 @@ static int regulator_rpmi_disable(struct regulator_dev *reg)
 	ret = rpmi_mbox_send_message(context->chan, &msg);
 	if (ret)
 		return ret;
-	if (rx.status)
+	if (rx.status && (rx.status != RPMI_ERR_ALREADY))
 		return rpmi_to_linux_error(rx.status);
 
 	return 0;
