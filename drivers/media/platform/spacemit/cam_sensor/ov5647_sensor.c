@@ -51,6 +51,7 @@ static struct ov5647 *global_ov5647;
 struct ov5647 {
 	struct i2c_client *client;
 	struct gpio_desc *pwdn;
+	struct gpio_desc *i2c_mux;
 	struct mutex lock;
 	struct regulator *vdd;
 	struct miscdevice miscdev;
@@ -651,6 +652,12 @@ static int ov5647_power_on(struct ov5647 *sensor)
 
 	dev_info(&sensor->client->dev, "ov5647-test: power_on enter\n");
 
+	/* Set I2C mux to select this sensor */
+	if (sensor->i2c_mux) {
+		dev_info(&sensor->client->dev, "ov5647-test: set i2c-mux high\n");
+		gpiod_set_value_cansleep(sensor->i2c_mux, 1);
+	}
+
 	dev_info(&sensor->client->dev, "ov5647-test: get vdd regulator\n");
 	sensor->vdd = devm_regulator_get(&sensor->client->dev, "vdd");
 	if (IS_ERR(sensor->vdd)) {
@@ -711,6 +718,11 @@ static void ov5647_power_off(struct ov5647 *sensor)
 		regulator_disable(sensor->vdd);
 	}
 
+	if (sensor->i2c_mux) {
+		dev_info(&sensor->client->dev, "ov5647-test: set i2c-mux low\n");
+		gpiod_set_value_cansleep(sensor->i2c_mux, 0);
+	}
+
 	dev_info(&sensor->client->dev, "ov5647-test: power_off done\n");
 }
 
@@ -737,6 +749,13 @@ static int ov5647_probe(struct i2c_client *client)
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "ov5647-test: Failed to get PWDN GPIO\n");
 		goto err_pwdn;
+	}
+
+	sensor->i2c_mux = devm_gpiod_get_optional(dev, "i2c-mux",
+		GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
+	if (IS_ERR(sensor->i2c_mux)) {
+		dev_warn(dev, "ov5647-test: Failed to get i2c-mux GPIO, continuing without it\n");
+		sensor->i2c_mux = NULL;
 	}
 
 	ret = ov5647_power_on(sensor);

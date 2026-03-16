@@ -45,6 +45,7 @@ static struct ov2735 *global_ov2735;
 struct ov2735 {
 	struct i2c_client *client;
 	struct gpio_desc *pwdn;
+	struct gpio_desc *i2c_mux;
 	struct clk *mclk;
 	struct mutex lock;
 	struct regulator *vdd;
@@ -392,6 +393,12 @@ static int ov2735_power_on(struct ov2735 *sensor)
 {
 	int ret;
 
+	/* Set I2C mux to select this sensor */
+	if (sensor->i2c_mux) {
+		dev_info(&sensor->client->dev, "ov2735-test: set i2c-mux high\n");
+		gpiod_set_value_cansleep(sensor->i2c_mux, 1);
+	}
+
 	sensor->mclk = devm_clk_get(&sensor->client->dev, "cam_mclk");
 	if (IS_ERR(sensor->mclk)) {
 		dev_err(&sensor->client->dev,
@@ -482,6 +489,11 @@ static void ov2735_power_off(struct ov2735 *sensor)
 		regulator_disable(sensor->vdd);
 	}
 
+	if (sensor->i2c_mux) {
+		dev_info(&sensor->client->dev, "ov2735-test: set i2c-mux low\n");
+		gpiod_set_value_cansleep(sensor->i2c_mux, 0);
+	}
+
 	dev_info(&sensor->client->dev, "ov2735-test: power_off done\n");
 }
 
@@ -508,6 +520,13 @@ static int ov2735_probe(struct i2c_client *client)
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "ov2735-test: Failed to get PWDN GPIO\n");
 		goto err_pwdn;
+	}
+
+	sensor->i2c_mux = devm_gpiod_get_optional(dev, "i2c-mux",
+		GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
+	if (IS_ERR(sensor->i2c_mux)) {
+		dev_warn(dev, "ov2735-test: Failed to get i2c-mux GPIO, continuing without it\n");
+		sensor->i2c_mux = NULL;
 	}
 
 	/* Power on and detect sensor before creating device node */
