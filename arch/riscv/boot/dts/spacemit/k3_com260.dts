@@ -1066,11 +1066,23 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c5_2_cfg>;
 
+	imx219@10 {
+		compatible = "sony,imx219";
+		reg = <0x10>;
+		csi-id = <0>;
+		vdd-supply = <&aldo3>;
+		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
 	ov5647@36 {
 		compatible = "ovti,ov5647";
 		reg = <0x36>;
-		csi-id = <0>;
+		csi-id = <2>;
 		vdd-supply = <&aldo3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mux_cfg>;
+		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -1082,8 +1094,9 @@
 		vdd-supply = <&aldo3>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&cam_mux_cfg>;
+		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
-		status = "okay";
+		status = "disabled";
 	};
 };
 
