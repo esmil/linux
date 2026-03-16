@@ -54,7 +54,6 @@ struct imx415 {
 	struct i2c_client *client;
 	struct gpio_desc *pwdn;
 	struct mutex lock;
-	bool power_on;
 	struct regulator *vdd;
 	struct miscdevice miscdev;
 };
@@ -790,14 +789,7 @@ static int imx415_power_on(struct imx415 *sensor)
 {
 	int ret = 0;
 
-	dev_info(&sensor->client->dev,
-		 "imx415-test: power_on enter, power_on=%d!!!!!!!!!!!!\n",
-		 sensor->power_on);
-	if (sensor->power_on) {
-		dev_info(&sensor->client->dev,
-			 "imx415-test: already powered on\n");
-		return 0;
-	}
+	dev_info(&sensor->client->dev, "imx415-test: power_on enter\n");
 
 	dev_info(&sensor->client->dev, "imx415-test: get vdd regulator\n");
 	sensor->vdd = devm_regulator_get(&sensor->client->dev, "vdd");
@@ -832,7 +824,6 @@ static int imx415_power_on(struct imx415 *sensor)
 		usleep_range(10000, 20000);
 	}
 
-	sensor->power_on = true;
 	dev_info(&sensor->client->dev, "imx415-test: power_on done\n");
 
 	return 0;
@@ -841,11 +832,6 @@ static int imx415_power_on(struct imx415 *sensor)
 static void imx415_power_off(struct imx415 *sensor)
 {
 	dev_info(&sensor->client->dev, "imx415-test: power_off enter\n");
-	if (!sensor->power_on) {
-		dev_info(&sensor->client->dev,
-			 "imx415-test: already powered off\n");
-		return;
-	}
 
 	if (sensor->pwdn) {
 		gpiod_set_value_cansleep(sensor->pwdn, 0);
@@ -856,7 +842,6 @@ static void imx415_power_off(struct imx415 *sensor)
 		regulator_disable(sensor->vdd);
 	}
 
-	sensor->power_on = false;
 	dev_info(&sensor->client->dev, "imx415-test: power_off done\n");
 }
 
@@ -940,8 +925,23 @@ static int imx415_probe(struct i2c_client *client)
 		dev, "pwdn", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "imx415-test: Failed to get pwdn GPIO\n");
-		return PTR_ERR(sensor->pwdn);
+		goto err_pwdn;
 	}
+
+	/* Power on and detect sensor before creating device node */
+	ret = imx415_power_on(sensor);
+	if (ret) {
+		dev_err(dev, "imx415-test: power on failed: %d\n", ret);
+		goto err_pwdn;
+	}
+
+	ret = imx415_detect(sensor);
+	if (ret) {
+		dev_err(dev, "imx415-test: sensor detect failed: %d\n", ret);
+		goto err_detect;
+	}
+
+	imx415_power_off(sensor);
 
 	sensor->miscdev.minor = MISC_DYNAMIC_MINOR;
 	sensor->miscdev.fops = &imx415_fops;
@@ -971,13 +971,24 @@ static int imx415_probe(struct i2c_client *client)
 		dev_err(dev,
 			"imx415-test: failed to register misc device: %d\n",
 			ret);
-		return ret;
+		goto err_misc_register;
 	}
 
 	global_imx415 = sensor;
 	dev_info(dev, "imx415-test: probe successful, ioctl device /dev/%s\n",
 		 sensor->miscdev.name);
 	return 0;
+
+err_misc_register:
+	imx415_power_off(sensor);
+	mutex_destroy(&sensor->lock);
+	return ret;
+
+err_detect:
+	imx415_power_off(sensor);
+err_pwdn:
+	mutex_destroy(&sensor->lock);
+	return ret;
 }
 
 static void imx415_remove(struct i2c_client *client)

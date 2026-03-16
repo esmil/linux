@@ -52,7 +52,6 @@ struct ov5647 {
 	struct i2c_client *client;
 	struct gpio_desc *pwdn;
 	struct mutex lock;
-	bool power_on;
 	struct regulator *vdd;
 	struct miscdevice miscdev;
 };
@@ -650,14 +649,7 @@ static int ov5647_power_on(struct ov5647 *sensor)
 {
 	int ret = 0;
 
-	dev_info(&sensor->client->dev,
-		 "ov5647-test: power_on enter, power_on=%d\n",
-		 sensor->power_on);
-	if (sensor->power_on) {
-		dev_info(&sensor->client->dev,
-			 "ov5647-test: already powered on\n");
-		return 0;
-	}
+	dev_info(&sensor->client->dev, "ov5647-test: power_on enter\n");
 
 	dev_info(&sensor->client->dev, "ov5647-test: get vdd regulator\n");
 	sensor->vdd = devm_regulator_get(&sensor->client->dev, "vdd");
@@ -685,8 +677,6 @@ static int ov5647_power_on(struct ov5647 *sensor)
 		dev_info(&sensor->client->dev, "ov5647-test: vdd set to 3.3V\n");
 	}
 
-
-
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "ov5647-test: drive PWDN low\n");
 		gpiod_set_value_cansleep(sensor->pwdn, 0);
@@ -702,7 +692,6 @@ static int ov5647_power_on(struct ov5647 *sensor)
 
 	usleep_range(20000, 21000);  /* OV5647 needs another 20ms after RESETB goes high */
 
-	sensor->power_on = true;
 	dev_info(&sensor->client->dev, "ov5647-test: power_on done\n");
 
 	return 0;
@@ -711,11 +700,6 @@ static int ov5647_power_on(struct ov5647 *sensor)
 static void ov5647_power_off(struct ov5647 *sensor)
 {
 	dev_info(&sensor->client->dev, "ov5647-test: power_off enter\n");
-	if (!sensor->power_on) {
-		dev_info(&sensor->client->dev,
-			 "ov5647-test: already powered off\n");
-		return;
-	}
 
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "ov5647-test: drive PWDN low\n");
@@ -727,7 +711,6 @@ static void ov5647_power_off(struct ov5647 *sensor)
 		regulator_disable(sensor->vdd);
 	}
 
-	sensor->power_on = false;
 	dev_info(&sensor->client->dev, "ov5647-test: power_off done\n");
 }
 
@@ -753,8 +736,22 @@ static int ov5647_probe(struct i2c_client *client)
 		dev, "pwdn", GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "ov5647-test: Failed to get PWDN GPIO\n");
-		return PTR_ERR(sensor->pwdn);
+		goto err_pwdn;
 	}
+
+	ret = ov5647_power_on(sensor);
+	if (ret) {
+		dev_err(dev, "ov5647-test: power on failed: %d\n", ret);
+		goto err_power_on;
+	}
+
+	ret = ov5647_detect(sensor);
+	if (ret) {
+		dev_err(dev, "ov5647-test: sensor detect failed: %d\n", ret);
+		goto err_detect;
+	}
+
+	ov5647_power_off(sensor);
 
 	sensor->miscdev.minor = MISC_DYNAMIC_MINOR;
 	sensor->miscdev.fops = &ov5647_fops;
@@ -782,13 +779,25 @@ static int ov5647_probe(struct i2c_client *client)
 		dev_err(dev,
 			"ov5647-test: failed to register misc device: %d\n",
 			ret);
-		return ret;
+		goto err_misc_register;
 	}
 
 	global_ov5647 = sensor;
 	dev_info(dev, "ov5647-test: probe successful, ioctl device /dev/%s\n",
 		 sensor->miscdev.name);
 	return 0;
+
+err_misc_register:
+	ov5647_power_off(sensor);
+	mutex_destroy(&sensor->lock);
+	return ret;
+
+err_detect:
+	ov5647_power_off(sensor);
+err_power_on:
+err_pwdn:
+	mutex_destroy(&sensor->lock);
+	return ret;
 }
 
 static void ov5647_remove(struct i2c_client *client)
