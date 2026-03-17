@@ -477,6 +477,14 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			google,remote-bus = <4>;
+
+			battery: battery@b {
+				compatible = "sbs,sbs-battery";
+				reg = <0x0b>;
+				sbs,i2c-retry-count = <2>;
+				sbs,poll-retry-count = <10>;
+				status = "okay";
+			};
 		};
 
 		/* EC PWM provider for fan control */
