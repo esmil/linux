@@ -1840,7 +1840,7 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 		if (!dp->edp_mode) {
 			if (dp->connector_status == connector_status_connected) {
 				if (inno_dp_audio_register(dp->dev))
-					DRM_INFO("%s() failed to register dp auido component\n", __func__);
+					DRM_INFO("%s() failed to register dp audio component\n", __func__);
 				else
 					dp->aud_registered = true;
 			} else {
@@ -1856,6 +1856,11 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 			if (dp->aud_registered && new_status == connector_status_disconnected) {
 				inno_dp_audio_unregister(dp->dev);
 				dp->aud_registered = false;
+			} else if (!dp->aud_registered && new_status == connector_status_connected) {
+				if (inno_dp_audio_register(dp->dev))
+					DRM_INFO("%s() failed to register dp audio component\n", __func__);
+				else
+					dp->aud_registered = true;
 			}
 		}
 	}
@@ -2345,7 +2350,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	if (!dp->edp_mode) {
 		ret = inno_dp_audio_register(dp->dev);
 		if (ret)
-			dev_err(dev, "failed to register dp auido component\n");
+			dev_err(dev, "failed to register dp audio component\n");
 		else
 			dp->aud_registered = true;
 	}
