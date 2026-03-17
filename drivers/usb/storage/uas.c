@@ -31,6 +31,7 @@
 #include "scsiglue.h"
 
 #define MAX_CMNDS 256
+#define UAS_STREAM_IN_MAX_BUF_SIZE 1024
 
 struct uas_dev_info {
 	struct usb_interface *intf;
@@ -559,6 +560,17 @@ static int uas_submit_urbs(struct scsi_cmnd *cmnd,
 {
 	struct uas_cmd_info *cmdinfo = scsi_cmd_priv(cmnd);
 	int err;
+
+#ifdef CONFIG_SOC_SPACEMIT_K3
+	if (devinfo->use_streams && (cmnd->cmnd[0] == REPORT_LUNS) &&
+		(cmnd->sdb.length > UAS_STREAM_IN_MAX_BUF_SIZE)) {
+		/*
+		 * Software workaround: Use Transfer TRBs' data buffer size
+		 * of not more than 1KB for Stream IN Endpoints.
+		 */
+		cmnd->sdb.length = UAS_STREAM_IN_MAX_BUF_SIZE;
+	}
+#endif
 
 	lockdep_assert_held(&devinfo->lock);
 	if (cmdinfo->state & SUBMIT_STATUS_URB) {

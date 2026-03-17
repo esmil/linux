@@ -106,7 +106,13 @@ static u32 rvtrace_devmem_access(u64 address, size_t size, u8 *buffer)
 
 	virt_addr = (char*)map_base + offset_in_page;
 
-	memcpy(buffer, virt_addr, size);
+	/*
+	 * Note: higher versions of glibc use automatic vectorization by
+	 * default for memcpy, which can lead to incorrect memory results.
+	 */
+	for (size_t i = 0; i < size; i++)
+		buffer[i] = ((volatile u8*)virt_addr)[i];
+	// memcpy(buffer, virt_addr, size);
 
 	munmap(map_base, mapped_size);
 	close(fd);
@@ -330,6 +336,8 @@ static int rvtrace_process_queue(struct rvtrace_queue *rvtraceq)
 		struct nexus_rv_packet packet = packet_buffer->packets[i];
 		if (packet.sample_type == RVTRACE_RANGE)
 			rvtrace_synth_branch_sample(rvtraceq, &packet);
+		else if (packet.sample_type == RVTRACE_LOSS)
+			fprintf(stdout, "RISC-V Trace: A FIFO overrun has resulted in the loss of one or more messages\n");
 	}
 
 	return 0;

@@ -1825,7 +1825,8 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 		new_status = soc_dp_hw_detect_hpd(dp);
 		soc_dp_hw_clean_hpd(dp);
 	} else {
-		new_status = connector_status_disconnected;
+		dp->connector_status = connector_status_disconnected;
+		return;
 	}
 
 	if (new_status != old_status) {
@@ -2175,18 +2176,6 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 	// Notify DRM core about the initial hotplug event
 	drm_kms_helper_hotplug_event(dp->drm);
 
-#if HOT_PLUG_THREAD_ENABLED
-	dev_info(dp->dev, "Starting HPD Polling Thread...\n");
-	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
-#else
-	ret = devm_request_threaded_irq(dp->dev, dp->irq, soc_dp_irq_handler,
-			soc_dp_hotplug_event_handler, 0, dev_name(dp->dev), dp);
-	if (ret) {
-		dev_err(dp->dev, "Failure requesting irq %d: %d.\n", dp->irq, ret);
-		return ret;
-	}
-#endif
-
 	return 0;
 }
 
@@ -2228,7 +2217,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 
 	ret = of_property_read_u32(dev->of_node, "gpios-bl", &dp->gpio_bl);
 	if (ret || !gpio_is_valid(dp->gpio_bl)) {
-		dev_info(dev, "missing dt property: gpios-bl\n");
+		dev_dbg(dev, "missing dt property: gpios-bl\n");
 		dp->gpio_bl = INVALID_GPIO;
 	} else {
 		ret = gpio_request(dp->gpio_bl, NULL);
@@ -2239,7 +2228,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 
 	ret = of_property_read_u32(dev->of_node, "gpios-enable", &dp->gpio_enable);
 	if (ret || !gpio_is_valid(dp->gpio_enable)) {
-		dev_info(dev, "missing dt property: gpios-enable\n");
+		dev_dbg(dev, "missing dt property: gpios-enable\n");
 		dp->gpio_enable = INVALID_GPIO;
 	} else {
 		ret = gpio_request(dp->gpio_enable, NULL);
@@ -2250,7 +2239,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 
 	ret = of_property_read_u32(dev->of_node, "gpios-power", &dp->gpio_power);
 	if (ret || !gpio_is_valid(dp->gpio_power)) {
-		dev_info(dev, "missing dt property: gpios-power\n");
+		dev_dbg(dev, "missing dt property: gpios-power\n");
 		dp->gpio_power = INVALID_GPIO;
 	} else {
 		ret = gpio_request(dp->gpio_power, NULL);
@@ -2340,6 +2329,18 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 
+#if HOT_PLUG_THREAD_ENABLED
+	dev_info(dp->dev, "Starting HPD Polling Thread...\n");
+	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
+#else
+	ret = devm_request_threaded_irq(dp->dev, dp->irq, soc_dp_irq_handler,
+			soc_dp_hotplug_event_handler, 0, dev_name(dp->dev), dp);
+	if (ret) {
+		dev_err(dp->dev, "Failure requesting irq %d: %d.\n", dp->irq, ret);
+		return ret;
+	}
+#endif
+
 #if IS_ENABLED(CONFIG_SND_SOC)
 	if (!dp->edp_mode) {
 		ret = inno_dp_audio_register(dp->dev);
@@ -2425,13 +2426,50 @@ static int inno_dp_drv_pm_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
+
+	DRM_INFO("%s()\n", __func__);
+
+#if HOT_PLUG_THREAD_ENABLED
+	cancel_delayed_work_sync(&dp->hpd_work);
+#endif
+
+	mutex_lock(&dp->mode_lock);
+	dp->suspended = true;
+	dp->connector_status = connector_status_disconnected;
+	mutex_unlock(&dp->mode_lock);
+
+	return 0;
+}
+
+static int inno_dp_drv_pm_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
+
+	DRM_INFO("%s()\n", __func__);
+
+	mutex_lock(&dp->mode_lock);
+	dp->suspended = false;
+	mutex_unlock(&dp->mode_lock);
+
+	soc_dp_dev_init(dp);
+
+#if HOT_PLUG_THREAD_ENABLED
+	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
+#endif
+
+	return 0;
+}
+
+static int inno_dp_drv_pm_suspend_late(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
 	int ret;
 
 	DRM_INFO("%s()\n", __func__);
 
 	mutex_lock(&dp->mode_lock);
-
-	dp->suspended = true;
 
 	if (dp->pxclk)
 		clk_disable_unprepare(dp->pxclk);
@@ -2448,7 +2486,7 @@ static int inno_dp_drv_pm_suspend(struct device *dev)
 	return 0;
 }
 
-static int inno_dp_drv_pm_resume(struct device *dev)
+static int inno_dp_drv_pm_resume_early(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
@@ -2467,8 +2505,6 @@ static int inno_dp_drv_pm_resume(struct device *dev)
 	if (dp->pxclk)
 		clk_prepare_enable(dp->pxclk);
 
-	dp->suspended = false;
-
 	mutex_unlock(&dp->mode_lock);
 
 	return 0;
@@ -2479,6 +2515,8 @@ static int inno_dp_drv_pm_resume(struct device *dev)
 static const struct dev_pm_ops inno_dp_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(inno_dp_drv_pm_suspend,
 				inno_dp_drv_pm_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(inno_dp_drv_pm_suspend_late,
+				     inno_dp_drv_pm_resume_early)
 };
 
 static const struct of_device_id soc_dp_match[] = {

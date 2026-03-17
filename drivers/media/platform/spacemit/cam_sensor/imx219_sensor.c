@@ -48,8 +48,8 @@ static struct imx219 *global_imx219;
 struct imx219 {
 	struct i2c_client *client;
 	struct gpio_desc *pwdn;
+	struct gpio_desc *i2c_mux;
 	struct mutex lock;
-	bool power_on;
 	struct regulator *vdd;
 	struct miscdevice miscdev;
 };
@@ -306,13 +306,12 @@ static int imx219_power_on(struct imx219 *sensor)
 {
 	int ret;
 
-	dev_info(&sensor->client->dev,
-		 "imx219-test: power_on enter, power_on=%d\n",
-		 sensor->power_on);
-	if (sensor->power_on) {
-		dev_info(&sensor->client->dev,
-			 "imx219-test: already powered on\n");
-		return 0;
+	dev_info(&sensor->client->dev, "imx219-test: power_on enter\n");
+
+	/* Set I2C mux to select this sensor */
+	if (sensor->i2c_mux) {
+		dev_info(&sensor->client->dev, "imx219-test: set i2c-mux high\n");
+		gpiod_set_value_cansleep(sensor->i2c_mux, 1);
 	}
 
 	dev_info(&sensor->client->dev, "imx219-test: get vdd regulator\n");
@@ -356,7 +355,6 @@ static int imx219_power_on(struct imx219 *sensor)
 
 	usleep_range(30000, 31000);
 
-	sensor->power_on = true;
 	dev_info(&sensor->client->dev, "imx219-test: power_on done\n");
 
 	return 0;
@@ -365,11 +363,6 @@ static int imx219_power_on(struct imx219 *sensor)
 static void imx219_power_off(struct imx219 *sensor)
 {
 	dev_info(&sensor->client->dev, "imx219-test: power_off enter\n");
-	if (!sensor->power_on) {
-		dev_info(&sensor->client->dev,
-			 "imx219-test: already powered off\n");
-		return;
-	}
 
 	if (sensor->pwdn) {
 		dev_info(&sensor->client->dev, "imx219-test: drive PWDN low\n");
@@ -381,7 +374,11 @@ static void imx219_power_off(struct imx219 *sensor)
 		regulator_disable(sensor->vdd);
 	}
 
-	sensor->power_on = false;
+	if (sensor->i2c_mux) {
+		dev_info(&sensor->client->dev, "imx219-test: set i2c-mux low\n");
+		gpiod_set_value_cansleep(sensor->i2c_mux, 0);
+	}
+
 	dev_info(&sensor->client->dev, "imx219-test: power_off done\n");
 }
 
@@ -410,6 +407,27 @@ static int imx219_probe(struct i2c_client *client)
 		return PTR_ERR(sensor->pwdn);
 	}
 
+	sensor->i2c_mux = devm_gpiod_get_optional(dev, "i2c-mux",
+		GPIOD_OUT_LOW | GPIOD_FLAGS_BIT_NONEXCLUSIVE);
+	if (IS_ERR(sensor->i2c_mux)) {
+		dev_warn(dev, "imx219-test: Failed to get i2c-mux GPIO, continuing without it\n");
+		sensor->i2c_mux = NULL;
+	}
+
+	ret = imx219_power_on(sensor);
+	if (ret) {
+		dev_err(dev, "imx219-test: power on failed: %d\n", ret);
+		goto err_power_on;
+	}
+
+	ret = imx219_detect(sensor);
+	if (ret) {
+		dev_err(dev, "imx219-test: sensor detect failed: %d\n", ret);
+		goto err_detect;
+	}
+
+	imx219_power_off(sensor);
+
 	sensor->miscdev.minor = MISC_DYNAMIC_MINOR;
 	sensor->miscdev.fops = &imx219_fops;
 	sensor->miscdev.parent = dev;
@@ -436,13 +454,24 @@ static int imx219_probe(struct i2c_client *client)
 		dev_err(dev,
 			"imx219-test: failed to register misc device: %d\n",
 			ret);
-		return ret;
+		goto err_misc_register;
 	}
 
 	global_imx219 = sensor;
 	dev_info(dev, "imx219-test: probe successful, ioctl device /dev/%s\n",
 		 sensor->miscdev.name);
 	return 0;
+
+err_misc_register:
+	imx219_power_off(sensor);
+	mutex_destroy(&sensor->lock);
+	return ret;
+
+err_detect:
+	imx219_power_off(sensor);
+err_power_on:
+	mutex_destroy(&sensor->lock);
+	return ret;
 }
 
 static void imx219_remove(struct i2c_client *client)
