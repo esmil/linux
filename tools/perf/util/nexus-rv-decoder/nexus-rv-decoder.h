@@ -80,26 +80,33 @@ struct nexus_rv_packet_buffer {
 	int capacity;
 };
 
+struct nexus_rv_src_context {
+	int src_id;
+	u64 nexdeco_pc;
+	u64 nexdeco_lastaddr;
+	u64 current_pc;
+	u64 timestamp;
+	enum riscv_privilege_mode prv;
+	bool v;
+	int context;
+	int resourcefull_icnt;
+	struct nexus_rv_stack stack;
+};
+
 struct nexus_rv_insn_decoder {
 	u32 (*mem_access)(void *, u64, enum riscv_privilege_mode, int, size_t, u8 *);
 	void *data;
 	bool formatted;
 	struct nexus_rv_defmt_buf defmt_bufs[MAX_ID];
 	u32 src_bits;
-	struct nexus_rv_stack stack;
 	int msg_field_pos;
 	u64 msg_fields[MSGFIELDS_MAX];
 	u64 saved_fields[MSGFIELDS_MAX];
 	int msg_field_cnt;
-	u64 nexdeco_pc;
-	u64 nexdeco_lastaddr;
-	u64 current_pc;
-	u64 timestamp;
 	int disp_hist_repeat;
-	enum riscv_privilege_mode prv;
-	bool v;
-	int context;
-	int resourcefull_icnt;
+	int current_src;
+	struct intlist *src_contexts;
+	struct nexus_rv_src_context *current_src_ctx;
 	struct nexus_rv_packet_buffer packet_buffer;
 };
 

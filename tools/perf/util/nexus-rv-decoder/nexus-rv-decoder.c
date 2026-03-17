@@ -15,6 +15,7 @@
 
 #include "../debug.h"
 #include "../color.h"
+#include "../intlist.h"
 #include "nexus-rv-decoder.h"
 #include "nexus-rv-msg.h"
 #include "../../../arch/riscv/include/asm/insn.h"
@@ -480,18 +481,72 @@ static void nexus_rv_free_stack(struct nexus_rv_stack *stack)
 	free(stack->data);
 }
 
-static int handle_error_msg(struct nexus_rv_insn_decoder *decoder, const char *err) {
+static struct nexus_rv_src_context* nexus_rv_get_src_context(struct nexus_rv_insn_decoder *decoder,
+							     int src_id)
+{
+	struct int_node *node;
+	struct nexus_rv_src_context *ctx;
+
+	node = intlist__find(decoder->src_contexts, src_id);
+	if (node)
+		return (struct nexus_rv_src_context *)node->priv;
+
+	ctx = zalloc(sizeof(struct nexus_rv_src_context));
+	if (!ctx)
+		return NULL;
+
+	ctx->src_id = src_id;
+	ctx->nexdeco_pc = 1;
+	ctx->nexdeco_lastaddr = 1;
+	ctx->prv = 0;
+	ctx->v = 0;
+	ctx->timestamp = 0;
+	ctx->context = -1;
+	ctx->resourcefull_icnt = 0;
+
+	if (nexus_rv_init_stack(&ctx->stack)) {
+		free(ctx);
+		return NULL;
+	}
+
+	/* Add to RB Tree */
+	node = intlist__findnew(decoder->src_contexts, src_id);
+	if (!node) {
+	        nexus_rv_free_stack(&ctx->stack);
+	        free(ctx);
+	        return NULL;
+	}
+
+	node->priv = ctx;
+
+	return ctx;
+}
+
+static void nexus_rv_free_src_contexts(struct intlist *src_contexts)
+{
+	struct int_node *node;
+
+	intlist__for_each_entry(node, src_contexts) {
+		struct nexus_rv_src_context *ctx = (struct nexus_rv_src_context *)node->priv;
+		nexus_rv_free_stack(&ctx->stack);
+		free(ctx);
+	}
+	intlist__delete(src_contexts);
+}
+
+static int handle_error_msg(struct nexus_rv_src_context *ctx, const char *err) {
 	pr_err("\nERROR: %s\n", err);
-	decoder->nexdeco_pc = 1; // 1 means, that last address is unknown
-	nexus_rv_init_stack(&decoder->stack);
+	ctx->nexdeco_pc = 1; // 1 means, that last address is unknown
+	nexus_rv_init_stack(&ctx->stack);
 	return -EINVAL;
 }
 
 static int nexus_rv_insn_info_get(struct nexus_rv_insn_decoder *decoder, u8 *info, u64 *dest)
 {
 	u32 insn;
-	u64 addr = decoder->nexdeco_pc;
-	if (!decoder->mem_access(decoder->data, addr, decoder->prv, decoder->context, sizeof(insn), (u8 *)&insn))
+	struct nexus_rv_src_context *ctx = decoder->current_src_ctx;
+	u64 addr = ctx->nexdeco_pc;
+	if (!decoder->mem_access(decoder->data, addr, ctx->prv, ctx->context, sizeof(insn), (u8 *)&insn))
 		return -EINVAL;
 
 	*info = INFO_LINEAR;
@@ -553,17 +608,18 @@ static int nexus_rv_emit_icnt(struct nexus_rv_insn_decoder *decoder, int n, u32 
 	u32 hist_mask;
 	u8 info;
 	int done_icnt = 0; // Number of done instruction count
+	struct nexus_rv_src_context *ctx = decoder->current_src_ctx;
 
-	if (decoder->nexdeco_pc & 1) return 0;  // Not synchronized ...
+	if (ctx->nexdeco_pc & 1) return 0;  // Not synchronized ...
 
 	// Adjust ICNT by what was handled by ResourceFull message[s] before this message (message with normal ICNT field)
-	//  NOTE: decoder->resourcefull_icnt maybe positive or negative!
-	if (n >= 0 && decoder->resourcefull_icnt != 0) {
-		n += decoder->resourcefull_icnt;
+	//  NOTE: ctx->resourcefull_icnt maybe positive or negative!
+	if (n >= 0 && ctx->resourcefull_icnt != 0) {
+		n += ctx->resourcefull_icnt;
 		if (n < 0)
-			return handle_error_msg(decoder, "ICNT adjustment ERROR");
+			return handle_error_msg(ctx, "ICNT adjustment ERROR");
 
-		decoder->resourcefull_icnt = 0;    // Make adjustment 'consumed'
+		ctx->resourcefull_icnt = 0;    // Make adjustment 'consumed'
 	}
 
 	hist_mask = 0;  // MSB is first in history, so we need sliding mask
@@ -579,36 +635,36 @@ static int nexus_rv_emit_icnt(struct nexus_rv_insn_decoder *decoder, int n, u32 
 	}
 
 	while (n != 0) {
-		decoder->current_pc = decoder->nexdeco_pc;
+		ctx->current_pc = ctx->nexdeco_pc;
 		if (nexus_rv_insn_info_get(decoder, &info, &a))
-			return handle_error_msg(decoder, "failed to get insn info");
+			return handle_error_msg(ctx, "failed to get insn info");
 
 		if (n > 0) {
 			n -= (info & INFO_4) ? 2 : 1;
 			if (n < 0)
-				return handle_error_msg(decoder, "ICNT too small");
+				return handle_error_msg(ctx, "ICNT too small");
 			done_icnt += 1;
 		}
 
 		if (info & INFO_CALL) {
-			u64 ret = decoder->nexdeco_pc + ((info & INFO_4) ? 4 : 2);
-			if (nexus_rv_stack_push(&decoder->stack, ret))
-				return handle_error_msg(decoder, "failed to push value to stack");
+			u64 ret = ctx->nexdeco_pc + ((info & INFO_4) ? 4 : 2);
+			if (nexus_rv_stack_push(&ctx->stack, ret))
+				return handle_error_msg(ctx, "failed to push value to stack");
 		}
 
 		if (info & INFO_INDIRECT) { // Cannot continue over indirect...
 			if (info & INFO_RET) {
-				u64 ret = nexus_rv_stack_pop(&decoder->stack);
-				decoder->nexdeco_pc = ret;
+				u64 ret = nexus_rv_stack_pop(&ctx->stack);
+				ctx->nexdeco_pc = ret;
 				if (n != 0) {
 					if (ret == 1)
-						return handle_error_msg(decoder, "Not enough entires on callstack");
+						return handle_error_msg(ctx, "Not enough entires on callstack");
 					continue;
 				}
 			}
 
 			if (n > 0)
-				return handle_error_msg(decoder, "indirect address encountered in ICNT");
+				return handle_error_msg(ctx, "indirect address encountered in ICNT");
 
 			break;
 		}
@@ -628,11 +684,11 @@ static int nexus_rv_emit_icnt(struct nexus_rv_insn_decoder *decoder, int n, u32 
 		}
 
 		if (info & INFO_JUMP)
-			decoder->nexdeco_pc = a;   // Direct jump/call/branch
+			ctx->nexdeco_pc = a;   // Direct jump/call/branch
 		else if (info & INFO_4)
-			decoder->nexdeco_pc += 4;
+			ctx->nexdeco_pc += 4;
 		else
-			decoder->nexdeco_pc += 2;
+			ctx->nexdeco_pc += 2;
 
 	}
 
@@ -675,8 +731,8 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 	u64 addr;
 	struct nexus_rv_packet packet;
 	int n = 0;
-	int cpu = 0;
-	u64 start_addr = decoder->nexdeco_pc;
+	int new_src = 0;
+	u64 start_addr = 0;
 	int TCODE = decoder->msg_fields[0];
 
 	switch (TCODE) {
@@ -684,116 +740,191 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		pr_debug2("********MSG - Ownership TCODE=%d SRC=%ld FORMAT=%ld PRV=%ld V=%ld CONTEXT=%ld TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(FORMAT), NEX_FLDGET(PRV), NEX_FLDGET(V), NEX_FLDGET(CONTEXT), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->prv = NEX_FLDGET(PRV);
-		decoder->v = NEX_FLDGET(V);
-		decoder->timestamp += NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+			struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+			decoder->current_src = new_src;
+			decoder->current_src_ctx = ctx;
+		}
+
+		decoder->current_src_ctx->prv = NEX_FLDGET(PRV);
+		decoder->current_src_ctx->v = NEX_FLDGET(V);
 		if (NEX_FLDGET(FORMAT))
-			decoder->context = NEX_FLDGET(CONTEXT);
+			decoder->current_src_ctx->context = NEX_FLDGET(CONTEXT);
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_DirectBranch:
 		pr_debug2("********MSG - DirectBranch TCODE=%d SRC=%ld ICNT=%ld TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ICNT), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp += NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+			struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+			decoder->current_src = new_src;
+			decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_IndirectBranch:
 		pr_debug2("********MSG - IndirectBranch TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp += NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
 		addr = NEX_FLDGET(UADDR);
-		decoder->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 0, decoder->nexdeco_lastaddr);
-		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->nexdeco_lastaddr);
-		decoder->nexdeco_pc = decoder->nexdeco_lastaddr;
+		decoder->current_src_ctx->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 0, decoder->current_src_ctx->nexdeco_lastaddr);
+		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->current_src_ctx->nexdeco_lastaddr);
+		decoder->current_src_ctx->nexdeco_pc = decoder->current_src_ctx->nexdeco_lastaddr;
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_ProgTraceSync:
 		pr_debug2("********MSG - ProgTraceSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp = NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
 		addr = NEX_FLDGET(FADDR);
-		decoder->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->nexdeco_lastaddr);
-		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->nexdeco_lastaddr);
-		decoder->nexdeco_pc = decoder->nexdeco_lastaddr;
+		decoder->current_src_ctx->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->current_src_ctx->nexdeco_lastaddr);
+		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->current_src_ctx->nexdeco_lastaddr);
+		decoder->current_src_ctx->nexdeco_pc = decoder->current_src_ctx->nexdeco_lastaddr;
+		decoder->current_src_ctx->timestamp = NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_DirectBranchSync:
 		pr_debug2("********MSG - DirectBranchSync TCODE=%d SRC=%ld SYNC=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp = NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
 		addr = NEX_FLDGET(FADDR);
-		decoder->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->nexdeco_lastaddr);
-		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->nexdeco_lastaddr);
-		decoder->nexdeco_pc = decoder->nexdeco_lastaddr;
-
+		decoder->current_src_ctx->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->current_src_ctx->nexdeco_lastaddr);
+		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->current_src_ctx->nexdeco_lastaddr);
+		decoder->current_src_ctx->nexdeco_pc = decoder->current_src_ctx->nexdeco_lastaddr;
+		decoder->current_src_ctx->timestamp = NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_IndirectBranchSync:
 		pr_debug2("********MSG - IndirectBranchSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld ICNT=%ld FADDR=0x%lx TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp = NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, 0x0);
 
 		addr = NEX_FLDGET(FADDR);
-		decoder->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->nexdeco_lastaddr);
-		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->nexdeco_lastaddr);
-		decoder->nexdeco_pc = decoder->nexdeco_lastaddr;
-
+		decoder->current_src_ctx->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->current_src_ctx->nexdeco_lastaddr);
+		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->current_src_ctx->nexdeco_lastaddr);
+		decoder->current_src_ctx->nexdeco_pc = decoder->current_src_ctx->nexdeco_lastaddr;
+		decoder->current_src_ctx->timestamp = NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_IndirectBranchHist:
 		pr_debug2("********MSG - IndirectBranchHist TCODE=%d SRC=%ld BTYPE=%ld ICNT=%ld UADDR=0x%lx HIST=%ld TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(BTYPE), NEX_FLDGET(ICNT), NEX_FLDGET(UADDR), NEX_FLDGET(HIST), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp += NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, NEX_FLDGET(HIST));
 
 		addr = NEX_FLDGET(UADDR);
-		decoder->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 0, decoder->nexdeco_lastaddr);
-		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->nexdeco_lastaddr);
-		decoder->nexdeco_pc = decoder->nexdeco_lastaddr;
-
+		decoder->current_src_ctx->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 0, decoder->current_src_ctx->nexdeco_lastaddr);
+		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->current_src_ctx->nexdeco_lastaddr);
+		decoder->current_src_ctx->nexdeco_pc = decoder->current_src_ctx->nexdeco_lastaddr;
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_IndirectBranchHistSync:
 		pr_debug2("********MSG - IndirectBranchHistSync TCODE=%d SRC=%ld SYNC=%ld BTYPE=%ld CANCEL=%ld ICNT=%ld FADDR=0x%lx HIST=%ld TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(SYNC), NEX_FLDGET(BTYPE), NEX_FLDGET(CANCEL), NEX_FLDGET(ICNT), NEX_FLDGET(FADDR), NEX_FLDGET(HIST), NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp = NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, NEX_FLDGET(HIST));
 
 		addr = NEX_FLDGET(FADDR);
-		decoder->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->nexdeco_lastaddr);
-		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->nexdeco_lastaddr);
-		decoder->nexdeco_pc = decoder->nexdeco_lastaddr;
-
+		decoder->current_src_ctx->nexdeco_lastaddr = nexus_rv_calculate_addr(addr, 1, decoder->current_src_ctx->nexdeco_lastaddr);
+		pr_debug2(".nexdeco_lastaddr=0x%lx\n", decoder->current_src_ctx->nexdeco_lastaddr);
+		decoder->current_src_ctx->nexdeco_pc = decoder->current_src_ctx->nexdeco_lastaddr;
+		decoder->current_src_ctx->timestamp = NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_ResourceFull:
@@ -806,14 +937,23 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		pr_debug2("********MSG - ResourceFull TCODE=%d SRC=%ld RCODE=%ld RDATA=%ld HREPEAT=%d TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(RCODE), NEX_FLDGET(RDATA), hrepeat, NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp += NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		if (rcode == 1 || rcode == 2) {
 			int rdata = NEX_FLDGET(RDATA);
 			if (rdata > 1) {
 				// Special calling to emit HIST only ...
 				if (decoder->disp_hist_repeat) {
-				    pr_debug2("RepeatHIST,0x%x,%d\n", rdata, decoder->disp_hist_repeat);
+					pr_debug2("RepeatHIST,0x%x,%d\n", rdata, decoder->disp_hist_repeat);
 					decoder->disp_hist_repeat = 0;
 				}
 				do {
@@ -822,14 +962,14 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 					if (ret < 0)
 						break;
 
-					decoder->resourcefull_icnt -= ret; // Consume, so next time ICNT will be adjusted
+					decoder->current_src_ctx->resourcefull_icnt -= ret; // Consume, so next time ICNT will be adjusted
 					hrepeat--;
 				} while (hrepeat > 0);
 			}
 		} else if (rcode == 0) {
-			decoder->resourcefull_icnt += NEX_FLDGET(RDATA);
+			decoder->current_src_ctx->resourcefull_icnt += NEX_FLDGET(RDATA);
 		}
-
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		break;
 
 	case NEXUS_TCODE_ProgTraceCorrelation:
@@ -841,17 +981,35 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		pr_debug2("********MSG - ProgTraceCorrelation TCODE=%d SRC=%ld EVCODE=%ld CDF=%ld ICNT=%ld HIST=%d TSTAMP=%ld\n",
 				TCODE, NEX_FLDGET(SRC), NEX_FLDGET(EVCODE), NEX_FLDGET(CDF), NEX_FLDGET(ICNT), hist, NEX_FLDGET(TSTAMP));
 
-		cpu = NEX_FLDGET(SRC);
-		decoder->timestamp += NEX_FLDGET(TSTAMP);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+
+		start_addr = decoder->current_src_ctx->nexdeco_pc;
 		n = NEX_FLDGET(ICNT);
 		ret = nexus_rv_emit_icnt(decoder, n, hist);
-
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_Error:
 		pr_debug2("********MSG - Error TCODE=%d SRC=%ld ETYPE=%ld PAD=%ld TSTAMP=%ld\n",
 			      TCODE, NEX_FLDGET(SRC), NEX_FLDGET(ETYPE), NEX_FLDGET(PAD), NEX_FLDGET(TSTAMP));
-		cpu = NEX_FLDGET(SRC);
+		new_src = NEX_FLDGET(SRC);
+		if (new_src != decoder->current_src) {
+		        struct nexus_rv_src_context *ctx = nexus_rv_get_src_context(decoder, new_src);
+		        if (!ctx)
+		                return -ENOMEM;
+
+		        decoder->current_src = new_src;
+		        decoder->current_src_ctx = ctx;
+		}
+		decoder->current_src_ctx->timestamp += NEX_FLDGET(TSTAMP);
 		break;
 
 	case NEXUS_TCODE_RepeatBranch:  // Handled differently!
@@ -865,13 +1023,13 @@ static int nexus_rv_msg_handle(struct nexus_rv_insn_decoder *decoder)
 		else
 			packet.sample_type = ret ? RVTRACE_RANGE : RVTRACE_EMPTY;
 		packet.start_addr = start_addr;
-		packet.end_addr = decoder->current_pc;
+		packet.end_addr = decoder->current_src_ctx->current_pc;
 		packet.insn_cnt = ret;
-		packet.cpu = cpu;
-		packet.prv = decoder->prv;
-		packet.v = decoder->v;
-		packet.context = decoder->context;
-		packet.timestamp = decoder->timestamp;
+		packet.cpu = new_src;
+		packet.prv = decoder->current_src_ctx->prv;
+		packet.v = decoder->current_src_ctx->v;
+		packet.context = decoder->current_src_ctx->context;
+		packet.timestamp = decoder->current_src_ctx->timestamp;
 	} else {
 		packet.sample_type = RVTRACE_ERROR;
 	}
@@ -1077,13 +1235,11 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 	decoder->data = params->data;
 	decoder->formatted = params->formatted;
 	decoder->src_bits = params->src_bits;
-	decoder->nexdeco_pc = 1;
-	decoder->nexdeco_lastaddr = 1;
-	decoder->context = -1;
+	decoder->current_src = -1;
 
-	err = nexus_rv_init_stack(&decoder->stack);
-	if (err)
-		goto err_out;
+	decoder->src_contexts = intlist__new(NULL);
+	if (!decoder->src_contexts)
+		 goto err_out;
 
 	err = nexus_rv_init_packet_buffer(&decoder->packet_buffer);
 	if (err)
@@ -1092,7 +1248,7 @@ struct nexus_rv_insn_decoder *nexus_rv_insn_decoder_new(struct nexus_rv_insn_dec
 	return decoder;
 
 err_out:
-	nexus_rv_free_stack(&decoder->stack);
+	nexus_rv_free_src_contexts(decoder->src_contexts);
 	nexus_rv_free_packet_buffer(&decoder->packet_buffer);
 	free(decoder);
 	return NULL;
@@ -1103,21 +1259,32 @@ void nexus_rv_insn_decoder_free(struct nexus_rv_insn_decoder *decoder)
 	for (int i = 0; i < MAX_ID; ++i)
 		free(decoder->defmt_bufs[i].buf);
 
+	nexus_rv_free_src_contexts(decoder->src_contexts);
 	nexus_rv_free_packet_buffer(&decoder->packet_buffer);
-	nexus_rv_free_stack(&decoder->stack);
 	free(decoder);
 }
 
 int nexus_rv_insn_decoder_reset(struct nexus_rv_insn_decoder *decoder)
 {
 	int err;
-	decoder->nexdeco_pc = 1;
-	decoder->nexdeco_lastaddr = 1;
-	decoder->context = -1;
+	struct int_node *node;
+	struct nexus_rv_src_context *ctx;
 
-	err = nexus_rv_init_stack(&decoder->stack);
-	if (err)
-		return err;
+	if (decoder->src_contexts) {
+		intlist__for_each_entry(node, decoder->src_contexts) {
+			ctx = (struct nexus_rv_src_context *)node->priv;
+			ctx->nexdeco_pc = 1;
+			ctx->nexdeco_lastaddr = 1;
+			ctx->prv = 0;
+			ctx->v = 0;
+			ctx->timestamp = 0;
+			ctx->context = -1;
+			ctx->resourcefull_icnt = 0;
+			nexus_rv_init_stack(&ctx->stack);
+		}
+	}
+	decoder->current_src_ctx = NULL;
+	decoder->current_src = -1;
 
 	err = nexus_rv_init_packet_buffer(&decoder->packet_buffer);
 	if (err)
