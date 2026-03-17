@@ -64,7 +64,7 @@ struct regval_list {
 	u8 data;
 };
 
-static struct regval_list imx415_1920x1080_10bit_112fps_tab[] = {
+__maybe_unused static struct regval_list imx415_1920x1080_10bit_112fps_tab[] = {
 	// @@1920x1080 crop 112fps 1485Mbps/Lane
 	// MCLK: 37.125Mhz
 	// resolution: 1920x1080
@@ -501,7 +501,7 @@ static struct regval_list imx415_1920x1080_12bit_112fps_tab[] = {
  * - 0x3024: VMAX[19:0] = 0x0B4C (2892)
  * - 0x3028: HMAX[15:0] = 0x016D (365)
  */
-static struct regval_list imx415_1920x1080_60fps_12bpp_4lane_regs[] = {
+__maybe_unused static struct regval_list imx415_1920x1080_60fps_12bpp_4lane_regs[] = {
 	{0x3008, 0x7F},	/* BCWAIT_TIME[9:0] */
 	{0x300A, 0x5B},	/* CPWAIT_TIME[9:0] */
 	{0x3020, 0x01},	/* HADD */
