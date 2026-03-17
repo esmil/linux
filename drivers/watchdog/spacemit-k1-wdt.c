@@ -729,8 +729,10 @@ err_alloc:
 		spa_wdt_stop(&info->wdt_dev);
 	}
 
+#if 0
 	watchdog_unregister_device(&info->wdt_dev);
 err_register_fail:
+#endif
 	spa_disable_wdt_clk(info);
 	clk_disable_unprepare(info->clk_bus);
 	clk_put(info->clk);
