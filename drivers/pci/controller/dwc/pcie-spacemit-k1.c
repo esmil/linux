@@ -429,7 +429,9 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	struct k1_pcie *k1 = to_k1_pcie(pci);
 	u32 reset_ctrl = k1->pmu_off + PCIE_CLK_RESET_CONTROL;
 	int ret;
+#ifndef CONFIG_SOC_SPACEMIT_K3
 	u32 val;
+#endif
 
 	regmap_update_bits(k1->pmu, reset_ctrl, LTSSM_EN, 0);
 	k1_pcie_toggle_soft_reset(k1);
