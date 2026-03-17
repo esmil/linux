@@ -431,6 +431,7 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	int ret;
 	u32 val;
 
+	regmap_update_bits(k1->pmu, reset_ctrl, LTSSM_EN, 0);
 	k1_pcie_toggle_soft_reset(k1);
 
 	ret = k1_pcie_enable_resources(k1);
@@ -463,7 +464,6 @@ static int k1_pcie_init(struct dw_pcie_rp *pp)
 	}
 #endif
 
-	regmap_update_bits(k1->pmu, reset_ctrl, LTSSM_EN, 0);
 	/*
 	 * Start by asserting fundamental reset (drive PERST# low).  The
 	 * PCI CEM spec says that PERST# should be deasserted at least
