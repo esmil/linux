@@ -498,6 +498,7 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	return devm_snd_dmaengine_pcm_register(&pdev->dev, &spacemit_dmaengine_pcm_config, 0);
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int spacemit_i2s_suspend(struct device *dev)
 {
 	struct spacemit_i2s_dev *i2s = dev_get_drvdata(dev);
@@ -537,6 +538,7 @@ static int spacemit_i2s_resume(struct device *dev)
 static const struct dev_pm_ops spacemit_i2s_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(spacemit_i2s_suspend, spacemit_i2s_resume)
 };
+#endif
 
 static const struct of_device_id spacemit_i2s_of_match[] = {
 	{ .compatible = "spacemit,k1-i2s", },
@@ -549,7 +551,9 @@ static struct platform_driver spacemit_i2s_driver = {
 	.driver = {
 		.name = "i2s-k1",
 		.of_match_table = spacemit_i2s_of_match,
+#ifdef CONFIG_PM_SLEEP
 		.pm = &spacemit_i2s_pm_ops,
+#endif
 	},
 };
 module_platform_driver(spacemit_i2s_driver);
