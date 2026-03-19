@@ -374,11 +374,11 @@ static int stmmac_mdio_write_c45(struct mii_bus *bus, int phyaddr,
 }
 
 /**
- * stmmac_mdio_reset
+ * ec_stmmac_mdio_reset
  * @bus: points to the mii_bus structure
  * Description: reset the MII bus
  */
-int stmmac_mdio_reset(struct mii_bus *bus)
+int ec_stmmac_mdio_reset(struct mii_bus *bus)
 {
 #if IS_ENABLED(CONFIG_STMMAC_PLATFORM)
 	struct stmmac_priv *priv = netdev_priv(bus->priv);
@@ -423,7 +423,7 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 	return 0;
 }
 
-int stmmac_pcs_setup(struct net_device *ndev)
+int ec_stmmac_pcs_setup(struct net_device *ndev)
 {
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	struct fwnode_handle *devnode, *pcsnode;
@@ -459,7 +459,7 @@ int stmmac_pcs_setup(struct net_device *ndev)
 	return 0;
 }
 
-void stmmac_pcs_clean(struct net_device *ndev)
+void ec_stmmac_pcs_clean(struct net_device *ndev)
 {
 	struct stmmac_priv *priv = netdev_priv(ndev);
 
@@ -570,11 +570,11 @@ static void stmmac_mdio_bus_config(struct stmmac_priv *priv)
 }
 
 /**
- * stmmac_mdio_register
+ * ec_stmmac_mdio_register
  * @ndev: net device structure
  * Description: it registers the MII bus
  */
-int stmmac_mdio_register(struct net_device *ndev)
+int ec_stmmac_mdio_register(struct net_device *ndev)
 {
 	int err = 0;
 	struct mii_bus *new_bus;
@@ -630,7 +630,7 @@ int stmmac_mdio_register(struct net_device *ndev)
 	}
 
 	if (mdio_bus_data->needs_reset)
-		new_bus->reset = &stmmac_mdio_reset;
+		new_bus->reset = &ec_stmmac_mdio_reset;
 
 	snprintf(new_bus->id, MII_BUS_ID_SIZE, "%s-%x",
 		 new_bus->name, priv->plat->bus_id);
@@ -716,11 +716,11 @@ bus_register_fail:
 }
 
 /**
- * stmmac_mdio_unregister
+ * ec_stmmac_mdio_unregister
  * @ndev: net device structure
  * Description: it unregisters the MII bus
  */
-int stmmac_mdio_unregister(struct net_device *ndev)
+int ec_stmmac_mdio_unregister(struct net_device *ndev)
 {
 	struct stmmac_priv *priv = netdev_priv(ndev);
 

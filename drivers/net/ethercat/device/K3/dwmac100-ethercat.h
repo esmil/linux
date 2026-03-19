@@ -106,6 +106,6 @@ enum ttc_control {
 #define DMA_MISSED_FRAME_OVE_M	0x00010000	/* Missed Frame Overflow */
 #define DMA_MISSED_FRAME_M_CNTR	0x0000ffff	/* Missed Frame Couinter */
 
-extern const struct stmmac_dma_ops dwmac100_dma_ops;
+extern const struct stmmac_dma_ops ec_dwmac100_dma_ops;
 
 #endif /* __DWMAC100_H__ */

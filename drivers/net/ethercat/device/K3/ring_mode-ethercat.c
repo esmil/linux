@@ -136,7 +136,7 @@ static int set_16kib_bfsize(int mtu)
 	return ret;
 }
 
-const struct stmmac_mode_ops ring_mode_ops = {
+const struct stmmac_mode_ops ec_ring_mode_ops = {
 	.is_jumbo_frm = is_jumbo_frm,
 	.jumbo_frm = jumbo_frm,
 	.refill_desc3 = refill_desc3,

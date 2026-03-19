@@ -884,7 +884,7 @@ static int tc_setup_cls(struct stmmac_priv *priv,
 	return ret;
 }
 
-struct timespec64 stmmac_calc_tas_basetime(ktime_t old_base_time,
+struct timespec64 ec_stmmac_calc_tas_basetime(ktime_t old_base_time,
 					   ktime_t current_time,
 					   u64 cycle_time)
 {
@@ -1037,7 +1037,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
 	/* Adjust for real system time */
 	priv->ptp_clock_ops.gettime64(&priv->ptp_clock_ops, &current_time);
 	current_time_ns = timespec64_to_ktime(current_time);
-	time = stmmac_calc_tas_basetime(qopt->base_time, current_time_ns,
+	time = ec_stmmac_calc_tas_basetime(qopt->base_time, current_time_ns,
 					qopt->cycle_time);
 
 	priv->est->btr[0] = (u32)time.tv_nsec;
@@ -1266,7 +1266,7 @@ static int tc_setup_mqprio_unimplemented(struct stmmac_priv *priv,
 	return -EOPNOTSUPP;
 }
 
-const struct stmmac_tc_ops dwmac4_tc_ops = {
+const struct stmmac_tc_ops ec_dwmac4_tc_ops = {
 	.init = tc_init,
 	.setup_cls_u32 = tc_setup_cls_u32,
 	.setup_cbs = tc_setup_cbs,
@@ -1277,7 +1277,7 @@ const struct stmmac_tc_ops dwmac4_tc_ops = {
 	.setup_mqprio = tc_setup_mqprio_unimplemented,
 };
 
-const struct stmmac_tc_ops dwmac510_tc_ops = {
+const struct stmmac_tc_ops ec_dwmac510_tc_ops = {
 	.init = tc_init,
 	.setup_cls_u32 = tc_setup_cls_u32,
 	.setup_cbs = tc_setup_cbs,

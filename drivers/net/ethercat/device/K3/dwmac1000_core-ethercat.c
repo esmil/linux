@@ -101,7 +101,7 @@ static void dwmac1000_set_umac_addr(struct mac_device_info *hw,
 				    unsigned int reg_n)
 {
 	void __iomem *ioaddr = hw->pcsr;
-	stmmac_set_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
+	ec_stmmac_set_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
 			    GMAC_ADDR_LOW(reg_n));
 }
 
@@ -110,7 +110,7 @@ static void dwmac1000_get_umac_addr(struct mac_device_info *hw,
 				    unsigned int reg_n)
 {
 	void __iomem *ioaddr = hw->pcsr;
-	stmmac_get_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
+	ec_stmmac_get_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
 			    GMAC_ADDR_LOW(reg_n));
 }
 
@@ -197,7 +197,7 @@ static void dwmac1000_set_filter(struct mac_device_info *hw,
 		struct netdev_hw_addr *ha;
 
 		netdev_for_each_uc_addr(ha, dev) {
-			stmmac_set_mac_addr(ioaddr, ha->addr,
+			ec_stmmac_set_mac_addr(ioaddr, ha->addr,
 					    GMAC_ADDR_HIGH(reg),
 					    GMAC_ADDR_LOW(reg));
 			reg++;
@@ -487,9 +487,9 @@ static void dwmac1000_set_mac_loopback(void __iomem *ioaddr, bool enable)
 	writel(value, ioaddr + GMAC_CONTROL);
 }
 
-const struct stmmac_ops dwmac1000_ops = {
+const struct stmmac_ops ec_dwmac1000_ops = {
 	.core_init = dwmac1000_core_init,
-	.set_mac = stmmac_set_mac,
+	.set_mac = ec_stmmac_set_mac,
 	.rx_ipc = dwmac1000_rx_ipc_enable,
 	.dump_regs = dwmac1000_dump_regs,
 	.host_irq_status = dwmac1000_irq_status,
@@ -506,7 +506,7 @@ const struct stmmac_ops dwmac1000_ops = {
 	.set_mac_loopback = dwmac1000_set_mac_loopback,
 };
 
-int dwmac1000_setup(struct stmmac_priv *priv)
+int ec_dwmac1000_setup(struct stmmac_priv *priv)
 {
 	struct mac_device_info *mac = priv->hw;
 
@@ -542,7 +542,7 @@ int dwmac1000_setup(struct stmmac_priv *priv)
 
 /* DWMAC 1000 HW Timestaming ops */
 
-void dwmac1000_get_ptptime(void __iomem *ptpaddr, u64 *ptp_time)
+void ec_dwmac1000_get_ptptime(void __iomem *ptpaddr, u64 *ptp_time)
 {
 	u64 ns;
 
@@ -552,7 +552,7 @@ void dwmac1000_get_ptptime(void __iomem *ptpaddr, u64 *ptp_time)
 	*ptp_time = ns;
 }
 
-void dwmac1000_timestamp_interrupt(struct stmmac_priv *priv)
+void ec_dwmac1000_timestamp_interrupt(struct stmmac_priv *priv)
 {
 	struct ptp_clock_event event;
 	u32 ts_status, num_snapshot;
@@ -596,7 +596,7 @@ static void dwmac1000_timestamp_interrupt_cfg(struct stmmac_priv *priv, bool en)
 	writel(intr_mask, ioaddr + GMAC_INT_MASK);
 }
 
-int dwmac1000_ptp_enable(struct ptp_clock_info *ptp,
+int ec_dwmac1000_ptp_enable(struct ptp_clock_info *ptp,
 			 struct ptp_clock_request *rq, int on)
 {
 	struct stmmac_priv *priv =

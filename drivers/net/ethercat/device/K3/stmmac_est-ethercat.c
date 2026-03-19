@@ -173,7 +173,7 @@ static void est_irq_status(struct stmmac_priv *priv, struct net_device *dev,
 	}
 }
 
-const struct stmmac_est_ops dwmac510_est_ops = {
+const struct stmmac_est_ops ec_dwmac510_est_ops = {
 	.configure = est_configure,
 	.irq_status = est_irq_status,
 };

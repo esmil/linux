@@ -47,11 +47,11 @@ static void stmmac_dwmac_mode_quirk(struct stmmac_priv *priv)
 	if (priv->chain_mode) {
 		dev_info(priv->device, "Chain mode enabled\n");
 		priv->mode = STMMAC_CHAIN_MODE;
-		mac->mode = &chain_mode_ops;
+		mac->mode = &ec_chain_mode_ops;
 	} else {
 		dev_info(priv->device, "Ring mode enabled\n");
 		priv->mode = STMMAC_RING_MODE;
-		mac->mode = &ring_mode_ops;
+		mac->mode = &ec_ring_mode_ops;
 	}
 }
 
@@ -70,10 +70,10 @@ static int stmmac_dwmac1_quirks(struct stmmac_priv *priv)
 			dev_warn(priv->device, "Extended descriptors not supported\n");
 		}
 
-		mac->desc = &enh_desc_ops;
+		mac->desc = &ec_enh_desc_ops;
 	} else {
 		dev_info(priv->device, "Normal descriptors\n");
-		mac->desc = &ndesc_ops;
+		mac->desc = &ec_ndesc_ops;
 	}
 
 	stmmac_dwmac_mode_quirk(priv);
@@ -92,7 +92,7 @@ static int stmmac_dwxlgmac_quirks(struct stmmac_priv *priv)
 	return 0;
 }
 
-int stmmac_reset(struct stmmac_priv *priv, void __iomem *ioaddr)
+int ec_stmmac_reset(struct stmmac_priv *priv, void __iomem *ioaddr)
 {
 	struct plat_stmmacenet_data *plat = priv ? priv->plat : NULL;
 
@@ -136,14 +136,14 @@ static const struct stmmac_hwif_entry {
 			.mmc_off = MMC_GMAC3_X_OFFSET,
 		},
 		.desc = NULL,
-		.dma = &dwmac100_dma_ops,
-		.mac = &dwmac100_ops,
-		.hwtimestamp = &dwmac1000_ptp,
-		.ptp = &dwmac1000_ptp_clock_ops,
+		.dma = &ec_dwmac100_dma_ops,
+		.mac = &ec_dwmac100_ops,
+		.hwtimestamp = &ec_dwmac1000_ptp,
+		.ptp = &ec_dwmac1000_ptp_clock_ops,
 		.mode = NULL,
 		.tc = NULL,
-		.mmc = &dwmac_mmc_ops,
-		.setup = dwmac100_setup,
+		.mmc = &ec_dwmac_mmc_ops,
+		.setup = ec_dwmac100_setup,
 		.quirks = stmmac_dwmac1_quirks,
 	}, {
 		.gmac = true,
@@ -155,14 +155,14 @@ static const struct stmmac_hwif_entry {
 			.mmc_off = MMC_GMAC3_X_OFFSET,
 		},
 		.desc = NULL,
-		.dma = &dwmac1000_dma_ops,
-		.mac = &dwmac1000_ops,
-		.hwtimestamp = &dwmac1000_ptp,
-		.ptp = &dwmac1000_ptp_clock_ops,
+		.dma = &ec_dwmac1000_dma_ops,
+		.mac = &ec_dwmac1000_ops,
+		.hwtimestamp = &ec_dwmac1000_ptp,
+		.ptp = &ec_dwmac1000_ptp_clock_ops,
 		.mode = NULL,
 		.tc = NULL,
-		.mmc = &dwmac_mmc_ops,
-		.setup = dwmac1000_setup,
+		.mmc = &ec_dwmac_mmc_ops,
+		.setup = ec_dwmac1000_setup,
 		.quirks = stmmac_dwmac1_quirks,
 	}, {
 		.gmac = false,
@@ -174,17 +174,17 @@ static const struct stmmac_hwif_entry {
 			.mmc_off = MMC_GMAC4_OFFSET,
 			.est_off = EST_GMAC4_OFFSET,
 		},
-		.desc = &dwmac4_desc_ops,
-		.dma = &dwmac4_dma_ops,
-		.mac = &dwmac4_ops,
-		.vlan = &dwmac_vlan_ops,
-		.hwtimestamp = &stmmac_ptp,
-		.ptp = &stmmac_ptp_clock_ops,
+		.desc = &ec_dwmac4_desc_ops,
+		.dma = &ec_dwmac4_dma_ops,
+		.mac = &ec_dwmac4_ops,
+		.vlan = &ec_dwmac_vlan_ops,
+		.hwtimestamp = &ec_stmmac_ptp,
+		.ptp = &ec_stmmac_ptp_clock_ops,
 		.mode = NULL,
-		.tc = &dwmac4_tc_ops,
-		.mmc = &dwmac_mmc_ops,
-		.est = &dwmac510_est_ops,
-		.setup = dwmac4_setup,
+		.tc = &ec_dwmac4_tc_ops,
+		.mmc = &ec_dwmac_mmc_ops,
+		.est = &ec_dwmac510_est_ops,
+		.setup = ec_dwmac4_setup,
 		.quirks = stmmac_dwmac4_quirks,
 	}, {
 		.gmac = false,
@@ -195,19 +195,19 @@ static const struct stmmac_hwif_entry {
 			.ptp_off = PTP_GMAC4_OFFSET,
 			.mmc_off = MMC_GMAC4_OFFSET,
 			.est_off = EST_GMAC4_OFFSET,
-			.fpe_reg = &dwmac5_fpe_reg,
+			.fpe_reg = &ec_dwmac5_fpe_reg,
 		},
-		.desc = &dwmac4_desc_ops,
-		.dma = &dwmac4_dma_ops,
-		.mac = &dwmac410_ops,
-		.vlan = &dwmac_vlan_ops,
-		.hwtimestamp = &stmmac_ptp,
-		.ptp = &stmmac_ptp_clock_ops,
-		.mode = &dwmac4_ring_mode_ops,
-		.tc = &dwmac510_tc_ops,
-		.mmc = &dwmac_mmc_ops,
-		.est = &dwmac510_est_ops,
-		.setup = dwmac4_setup,
+		.desc = &ec_dwmac4_desc_ops,
+		.dma = &ec_dwmac4_dma_ops,
+		.mac = &ec_dwmac410_ops,
+		.vlan = &ec_dwmac_vlan_ops,
+		.hwtimestamp = &ec_stmmac_ptp,
+		.ptp = &ec_stmmac_ptp_clock_ops,
+		.mode = &ec_dwmac4_ring_mode_ops,
+		.tc = &ec_dwmac510_tc_ops,
+		.mmc = &ec_dwmac_mmc_ops,
+		.est = &ec_dwmac510_est_ops,
+		.setup = ec_dwmac4_setup,
 		.quirks = NULL,
 	}, {
 		.gmac = false,
@@ -218,19 +218,19 @@ static const struct stmmac_hwif_entry {
 			.ptp_off = PTP_GMAC4_OFFSET,
 			.mmc_off = MMC_GMAC4_OFFSET,
 			.est_off = EST_GMAC4_OFFSET,
-			.fpe_reg = &dwmac5_fpe_reg,
+			.fpe_reg = &ec_dwmac5_fpe_reg,
 		},
-		.desc = &dwmac4_desc_ops,
-		.dma = &dwmac410_dma_ops,
-		.mac = &dwmac410_ops,
-		.vlan = &dwmac_vlan_ops,
-		.hwtimestamp = &stmmac_ptp,
-		.ptp = &stmmac_ptp_clock_ops,
-		.mode = &dwmac4_ring_mode_ops,
-		.tc = &dwmac510_tc_ops,
-		.mmc = &dwmac_mmc_ops,
-		.est = &dwmac510_est_ops,
-		.setup = dwmac4_setup,
+		.desc = &ec_dwmac4_desc_ops,
+		.dma = &ec_dwmac410_dma_ops,
+		.mac = &ec_dwmac410_ops,
+		.vlan = &ec_dwmac_vlan_ops,
+		.hwtimestamp = &ec_stmmac_ptp,
+		.ptp = &ec_stmmac_ptp_clock_ops,
+		.mode = &ec_dwmac4_ring_mode_ops,
+		.tc = &ec_dwmac510_tc_ops,
+		.mmc = &ec_dwmac_mmc_ops,
+		.est = &ec_dwmac510_est_ops,
+		.setup = ec_dwmac4_setup,
 		.quirks = NULL,
 	}, {
 		.gmac = false,
@@ -241,19 +241,19 @@ static const struct stmmac_hwif_entry {
 			.ptp_off = PTP_GMAC4_OFFSET,
 			.mmc_off = MMC_GMAC4_OFFSET,
 			.est_off = EST_GMAC4_OFFSET,
-			.fpe_reg = &dwmac5_fpe_reg,
+			.fpe_reg = &ec_dwmac5_fpe_reg,
 		},
-		.desc = &dwmac4_desc_ops,
-		.dma = &dwmac410_dma_ops,
-		.mac = &dwmac510_ops,
-		.vlan = &dwmac_vlan_ops,
-		.hwtimestamp = &stmmac_ptp,
-		.ptp = &stmmac_ptp_clock_ops,
-		.mode = &dwmac4_ring_mode_ops,
-		.tc = &dwmac510_tc_ops,
-		.mmc = &dwmac_mmc_ops,
-		.est = &dwmac510_est_ops,
-		.setup = dwmac4_setup,
+		.desc = &ec_dwmac4_desc_ops,
+		.dma = &ec_dwmac410_dma_ops,
+		.mac = &ec_dwmac510_ops,
+		.vlan = &ec_dwmac_vlan_ops,
+		.hwtimestamp = &ec_stmmac_ptp,
+		.ptp = &ec_stmmac_ptp_clock_ops,
+		.mode = &ec_dwmac4_ring_mode_ops,
+		.tc = &ec_dwmac510_tc_ops,
+		.mmc = &ec_dwmac_mmc_ops,
+		.est = &ec_dwmac510_est_ops,
+		.setup = ec_dwmac4_setup,
 		.quirks = NULL,
 	}, {
 		.gmac = false,
@@ -265,19 +265,19 @@ static const struct stmmac_hwif_entry {
 			.ptp_off = PTP_XGMAC_OFFSET,
 			.mmc_off = MMC_XGMAC_OFFSET,
 			.est_off = EST_XGMAC_OFFSET,
-			.fpe_reg = &dwxgmac3_fpe_reg,
+			.fpe_reg = &ec_dwxgmac3_fpe_reg,
 		},
-		.desc = &dwxgmac210_desc_ops,
-		.dma = &dwxgmac210_dma_ops,
-		.mac = &dwxgmac210_ops,
-		.vlan = &dwxgmac210_vlan_ops,
-		.hwtimestamp = &stmmac_ptp,
-		.ptp = &stmmac_ptp_clock_ops,
+		.desc = &ec_dwxgmac210_desc_ops,
+		.dma = &ec_dwxgmac210_dma_ops,
+		.mac = &ec_dwxgmac210_ops,
+		.vlan = &ec_dwxgmac210_vlan_ops,
+		.hwtimestamp = &ec_stmmac_ptp,
+		.ptp = &ec_stmmac_ptp_clock_ops,
 		.mode = NULL,
-		.tc = &dwmac510_tc_ops,
-		.mmc = &dwxgmac_mmc_ops,
-		.est = &dwmac510_est_ops,
-		.setup = dwxgmac2_setup,
+		.tc = &ec_dwmac510_tc_ops,
+		.mmc = &ec_dwxgmac_mmc_ops,
+		.est = &ec_dwmac510_est_ops,
+		.setup = ec_dwxgmac2_setup,
 		.quirks = NULL,
 	}, {
 		.gmac = false,
@@ -289,24 +289,24 @@ static const struct stmmac_hwif_entry {
 			.ptp_off = PTP_XGMAC_OFFSET,
 			.mmc_off = MMC_XGMAC_OFFSET,
 			.est_off = EST_XGMAC_OFFSET,
-			.fpe_reg = &dwxgmac3_fpe_reg,
+			.fpe_reg = &ec_dwxgmac3_fpe_reg,
 		},
-		.desc = &dwxgmac210_desc_ops,
-		.dma = &dwxgmac210_dma_ops,
-		.mac = &dwxlgmac2_ops,
-		.vlan = &dwxlgmac2_vlan_ops,
-		.hwtimestamp = &stmmac_ptp,
-		.ptp = &stmmac_ptp_clock_ops,
+		.desc = &ec_dwxgmac210_desc_ops,
+		.dma = &ec_dwxgmac210_dma_ops,
+		.mac = &ec_dwxlgmac2_ops,
+		.vlan = &ec_dwxlgmac2_vlan_ops,
+		.hwtimestamp = &ec_stmmac_ptp,
+		.ptp = &ec_stmmac_ptp_clock_ops,
 		.mode = NULL,
-		.tc = &dwmac510_tc_ops,
-		.mmc = &dwxgmac_mmc_ops,
-		.est = &dwmac510_est_ops,
-		.setup = dwxlgmac2_setup,
+		.tc = &ec_dwmac510_tc_ops,
+		.mmc = &ec_dwxgmac_mmc_ops,
+		.est = &ec_dwmac510_est_ops,
+		.setup = ec_dwxlgmac2_setup,
 		.quirks = stmmac_dwxlgmac_quirks,
 	},
 };
 
-int stmmac_hwif_init(struct stmmac_priv *priv)
+int ec_stmmac_hwif_init(struct stmmac_priv *priv)
 {
 	bool needs_xgmac = priv->plat->has_xgmac;
 	bool needs_gmac4 = priv->plat->has_gmac4;

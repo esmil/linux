@@ -469,7 +469,7 @@ static int stmmac_set_ringparam(struct net_device *netdev,
 	    !is_power_of_2(ring->tx_pending))
 		return -EINVAL;
 
-	return stmmac_reinit_ringparam(netdev, ring->rx_pending,
+	return ec_stmmac_reinit_ringparam(netdev, ring->rx_pending,
 				       ring->tx_pending);
 }
 
@@ -710,7 +710,8 @@ static int stmmac_get_sset_count(struct net_device *netdev, int sset)
 
 		return len;
 	case ETH_SS_TEST:
-		return stmmac_selftest_get_count(priv);
+		/* return stmmac_selftest_get_count(priv); */
+		return -EOPNOTSUPP;
 	default:
 		return -EOPNOTSUPP;
 	}
@@ -774,7 +775,7 @@ static void stmmac_get_strings(struct net_device *dev, u32 stringset, u8 *data)
 		stmmac_get_qstats_string(priv, p);
 		break;
 	case ETH_SS_TEST:
-		stmmac_selftest_get_strings(priv, p);
+		/* stmmac_selftest_get_strings(priv, p); */
 		break;
 	default:
 		WARN_ON(1);
@@ -1096,7 +1097,7 @@ static int stmmac_set_channels(struct net_device *dev,
 	    !chan->rx_count || !chan->tx_count)
 		return -EINVAL;
 
-	return stmmac_reinit_queues(dev, chan->rx_count, chan->tx_count);
+	return ec_stmmac_reinit_queues(dev, chan->rx_count, chan->tx_count);
 }
 
 static int stmmac_get_ts_info(struct net_device *dev,
@@ -1140,11 +1141,11 @@ static int stmmac_get_mm(struct net_device *ndev,
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	u32 frag_size;
 
-	if (!stmmac_fpe_supported(priv))
+	if (!ec_stmmac_fpe_supported(priv))
 		return -EOPNOTSUPP;
 
 	state->rx_min_frag_size = ETH_ZLEN;
-	frag_size = stmmac_fpe_get_add_frag_size(priv);
+	frag_size = ec_stmmac_fpe_get_add_frag_size(priv);
 	state->tx_min_frag_size = ethtool_mm_frag_size_add_to_min(frag_size);
 
 	ethtool_mmsv_get_mm(&priv->fpe_cfg.mmsv, state);
@@ -1164,7 +1165,7 @@ static int stmmac_set_mm(struct net_device *ndev, struct ethtool_mm_cfg *cfg,
 	if (err)
 		return err;
 
-	stmmac_fpe_set_add_frag_size(priv, frag_size);
+	ec_stmmac_fpe_set_add_frag_size(priv, frag_size);
 	ethtool_mmsv_set_mm(&priv->fpe_cfg.mmsv, cfg);
 
 	return 0;
@@ -1203,7 +1204,7 @@ static const struct ethtool_ops stmmac_ethtool_ops = {
 	.set_ringparam = stmmac_set_ringparam,
 	.get_pauseparam = stmmac_get_pauseparam,
 	.set_pauseparam = stmmac_set_pauseparam,
-	.self_test = stmmac_selftest_run,
+	/* .self_test = stmmac_selftest_run, */
 	.get_ethtool_stats = stmmac_get_ethtool_stats,
 	.get_strings = stmmac_get_strings,
 	.get_wol = stmmac_get_wol,
@@ -1230,7 +1231,7 @@ static const struct ethtool_ops stmmac_ethtool_ops = {
 	.get_mm_stats = stmmac_get_mm_stats,
 };
 
-void stmmac_set_ethtool_ops(struct net_device *netdev)
+void ec_stmmac_set_ethtool_ops(struct net_device *netdev)
 {
 	netdev->ethtool_ops = &stmmac_ethtool_ops;
 }

@@ -1430,7 +1430,7 @@ static void dwxgmac2_set_arp_offload(struct mac_device_info *hw, bool en,
 	writel(value, ioaddr + XGMAC_RX_CONFIG);
 }
 
-const struct stmmac_ops dwxgmac210_ops = {
+const struct stmmac_ops ec_dwxgmac210_ops = {
 	.core_init = dwxgmac2_core_init,
 	.update_caps = dwxgmac2_update_caps,
 	.set_mac = dwxgmac2_set_mac,
@@ -1468,7 +1468,7 @@ const struct stmmac_ops dwxgmac210_ops = {
 	.config_l3_filter = dwxgmac2_config_l3_filter,
 	.config_l4_filter = dwxgmac2_config_l4_filter,
 	.set_arp_offload = dwxgmac2_set_arp_offload,
-	.fpe_map_preemption_class = dwxgmac3_fpe_map_preemption_class,
+	.fpe_map_preemption_class = ec_dwxgmac3_fpe_map_preemption_class,
 };
 
 static void dwxlgmac2_rx_queue_enable(struct mac_device_info *hw, u8 mode,
@@ -1485,7 +1485,7 @@ static void dwxlgmac2_rx_queue_enable(struct mac_device_info *hw, u8 mode,
 	writel(value, ioaddr + XLGMAC_RXQ_ENABLE_CTRL0);
 }
 
-const struct stmmac_ops dwxlgmac2_ops = {
+const struct stmmac_ops ec_dwxlgmac2_ops = {
 	.core_init = dwxgmac2_core_init,
 	.set_mac = dwxgmac2_set_mac,
 	.rx_ipc = dwxgmac2_rx_ipc,
@@ -1522,10 +1522,10 @@ const struct stmmac_ops dwxlgmac2_ops = {
 	.config_l3_filter = dwxgmac2_config_l3_filter,
 	.config_l4_filter = dwxgmac2_config_l4_filter,
 	.set_arp_offload = dwxgmac2_set_arp_offload,
-	.fpe_map_preemption_class = dwxgmac3_fpe_map_preemption_class,
+	.fpe_map_preemption_class = ec_dwxgmac3_fpe_map_preemption_class,
 };
 
-int dwxgmac2_setup(struct stmmac_priv *priv)
+int ec_dwxgmac2_setup(struct stmmac_priv *priv)
 {
 	struct mac_device_info *mac = priv->hw;
 
@@ -1561,12 +1561,12 @@ int dwxgmac2_setup(struct stmmac_priv *priv)
 	mac->mii.reg_mask = GENMASK(15, 0);
 	mac->mii.clk_csr_shift = 19;
 	mac->mii.clk_csr_mask = GENMASK(21, 19);
-	mac->num_vlan = stmmac_get_num_vlan(priv->ioaddr);
+	mac->num_vlan = ec_stmmac_get_num_vlan(priv->ioaddr);
 
 	return 0;
 }
 
-int dwxlgmac2_setup(struct stmmac_priv *priv)
+int ec_dwxlgmac2_setup(struct stmmac_priv *priv)
 {
 	struct mac_device_info *mac = priv->hw;
 

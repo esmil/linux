@@ -617,24 +617,24 @@ struct stmmac_rx_routing {
 	u32 reg_shift;
 };
 
-int dwmac100_setup(struct stmmac_priv *priv);
-int dwmac1000_setup(struct stmmac_priv *priv);
-int dwmac4_setup(struct stmmac_priv *priv);
-int dwxgmac2_setup(struct stmmac_priv *priv);
-int dwxlgmac2_setup(struct stmmac_priv *priv);
+int ec_dwmac100_setup(struct stmmac_priv *priv);
+int ec_dwmac1000_setup(struct stmmac_priv *priv);
+int ec_dwmac4_setup(struct stmmac_priv *priv);
+int ec_dwxgmac2_setup(struct stmmac_priv *priv);
+int ec_dwxlgmac2_setup(struct stmmac_priv *priv);
 
-void stmmac_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
+void ec_stmmac_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
 			 unsigned int high, unsigned int low);
-void stmmac_get_mac_addr(void __iomem *ioaddr, unsigned char *addr,
+void ec_stmmac_get_mac_addr(void __iomem *ioaddr, unsigned char *addr,
 			 unsigned int high, unsigned int low);
-void stmmac_set_mac(void __iomem *ioaddr, bool enable);
+void ec_stmmac_set_mac(void __iomem *ioaddr, bool enable);
 
-void stmmac_dwmac4_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
+void ec_stmmac_dwmac4_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
 				unsigned int high, unsigned int low);
-void stmmac_dwmac4_get_mac_addr(void __iomem *ioaddr, unsigned char *addr,
+void ec_stmmac_dwmac4_get_mac_addr(void __iomem *ioaddr, unsigned char *addr,
 				unsigned int high, unsigned int low);
-void stmmac_dwmac4_set_mac(void __iomem *ioaddr, bool enable);
+void ec_stmmac_dwmac4_set_mac(void __iomem *ioaddr, bool enable);
 
-void dwmac_dma_flush_tx_fifo(void __iomem *ioaddr);
+void ec_dwmac_dma_flush_tx_fifo(void __iomem *ioaddr);
 
 #endif /* __COMMON_H__ */

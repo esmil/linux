@@ -32,7 +32,7 @@ static int enh_desc_get_tx_status(struct stmmac_extra_stats *x,
 
 		if (unlikely(tdes0 & ETDES0_FRAME_FLUSHED)) {
 			x->tx_frame_flushed++;
-			dwmac_dma_flush_tx_fifo(ioaddr);
+			ec_dwmac_dma_flush_tx_fifo(ioaddr);
 		}
 
 		if (unlikely(tdes0 & ETDES0_LOSS_CARRIER)) {
@@ -50,7 +50,7 @@ static int enh_desc_get_tx_status(struct stmmac_extra_stats *x,
 			x->tx_deferred++;
 
 		if (unlikely(tdes0 & ETDES0_UNDERFLOW_ERROR)) {
-			dwmac_dma_flush_tx_fifo(ioaddr);
+			ec_dwmac_dma_flush_tx_fifo(ioaddr);
 			x->tx_underflow++;
 		}
 
@@ -59,7 +59,7 @@ static int enh_desc_get_tx_status(struct stmmac_extra_stats *x,
 
 		if (unlikely(tdes0 & ETDES0_PAYLOAD_ERROR)) {
 			x->tx_payload_error++;
-			dwmac_dma_flush_tx_fifo(ioaddr);
+			ec_dwmac_dma_flush_tx_fifo(ioaddr);
 		}
 
 		ret = tx_err;
@@ -445,7 +445,7 @@ static void enh_desc_clear(struct dma_desc *p)
 	p->des2 = 0;
 }
 
-const struct stmmac_desc_ops enh_desc_ops = {
+const struct stmmac_desc_ops ec_enh_desc_ops = {
 	.tx_status = enh_desc_get_tx_status,
 	.rx_status = enh_desc_get_rx_status,
 	.get_tx_len = enh_desc_get_tx_len,

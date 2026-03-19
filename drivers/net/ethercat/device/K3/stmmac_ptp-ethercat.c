@@ -96,7 +96,7 @@ static int stmmac_adjust_time(struct ptp_clock_info *ptp, s64 delta)
 		basetime = timespec64_to_ktime(time);
 		cycle_time = (u64)priv->est->ctr[1] * NSEC_PER_SEC +
 			     priv->est->ctr[0];
-		time = stmmac_calc_tas_basetime(basetime,
+		time = ec_stmmac_calc_tas_basetime(basetime,
 						current_time_ns,
 						cycle_time);
 
@@ -293,13 +293,13 @@ static int stmmac_getcrosststamp(struct ptp_clock_info *ptp,
 }
 
 /* structure describing a PTP hardware clock */
-const struct ptp_clock_info stmmac_ptp_clock_ops = {
+const struct ptp_clock_info ec_stmmac_ptp_clock_ops = {
 	.owner = THIS_MODULE,
 	.name = "stmmac ptp",
 	.max_adj = 62500000,
 	.n_alarm = 0,
-	.n_ext_ts = 0, /* will be overwritten in stmmac_ptp_register */
-	.n_per_out = 0, /* will be overwritten in stmmac_ptp_register */
+	.n_ext_ts = 0, /* will be overwritten in ec_stmmac_ptp_register */
+	.n_per_out = 0, /* will be overwritten in ec_stmmac_ptp_register */
 	.n_pins = 0,
 	.pps = 0,
 	.adjfine = stmmac_adjust_freq,
@@ -310,7 +310,7 @@ const struct ptp_clock_info stmmac_ptp_clock_ops = {
 };
 
 /* structure describing a PTP hardware clock */
-const struct ptp_clock_info dwmac1000_ptp_clock_ops = {
+const struct ptp_clock_info ec_dwmac1000_ptp_clock_ops = {
 	.owner = THIS_MODULE,
 	.name = "stmmac ptp",
 	.max_adj = 62500000,
@@ -323,16 +323,16 @@ const struct ptp_clock_info dwmac1000_ptp_clock_ops = {
 	.adjtime = stmmac_adjust_time,
 	.gettime64 = stmmac_get_time,
 	.settime64 = stmmac_set_time,
-	.enable = dwmac1000_ptp_enable,
+	.enable = ec_dwmac1000_ptp_enable,
 };
 
 /**
- * stmmac_ptp_register
+ * ec_stmmac_ptp_register
  * @priv: driver private structure
  * Description: this function will register the ptp clock driver
  * to kernel. It also does some house keeping work.
  */
-void stmmac_ptp_register(struct stmmac_priv *priv)
+void ec_stmmac_ptp_register(struct stmmac_priv *priv)
 {
 	int i;
 
@@ -379,12 +379,12 @@ void stmmac_ptp_register(struct stmmac_priv *priv)
 }
 
 /**
- * stmmac_ptp_unregister
+ * ec_stmmac_ptp_unregister
  * @priv: driver private structure
  * Description: this function will remove/unregister the ptp clock driver
  * from the kernel.
  */
-void stmmac_ptp_unregister(struct stmmac_priv *priv)
+void ec_stmmac_ptp_unregister(struct stmmac_priv *priv)
 {
 	if (priv->ptp_clock) {
 		ptp_clock_unregister(priv->ptp_clock);

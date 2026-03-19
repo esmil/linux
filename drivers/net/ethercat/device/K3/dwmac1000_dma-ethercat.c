@@ -276,8 +276,8 @@ static void dwmac1000_rx_watchdog(struct stmmac_priv *priv,
 	writel(riwt, ioaddr + DMA_CHAN_RX_WATCHDOG(queue));
 }
 
-const struct stmmac_dma_ops dwmac1000_dma_ops = {
-	.reset = dwmac_dma_reset,
+const struct stmmac_dma_ops ec_dwmac1000_dma_ops = {
+	.reset = ec_dwmac_dma_reset,
 	.init_chan = dwmac1000_dma_init_channel,
 	.init_rx_chan = dwmac1000_dma_init_rx,
 	.init_tx_chan = dwmac1000_dma_init_tx,
@@ -285,15 +285,15 @@ const struct stmmac_dma_ops dwmac1000_dma_ops = {
 	.dump_regs = dwmac1000_dump_dma_regs,
 	.dma_rx_mode = dwmac1000_dma_operation_mode_rx,
 	.dma_tx_mode = dwmac1000_dma_operation_mode_tx,
-	.enable_dma_transmission = dwmac_enable_dma_transmission,
-	.enable_dma_irq = dwmac_enable_dma_irq,
-	.disable_dma_irq = dwmac_disable_dma_irq,
-	.start_tx = dwmac_dma_start_tx,
-	.stop_tx = dwmac_dma_stop_tx,
-	.start_rx = dwmac_dma_start_rx,
-	.stop_rx = dwmac_dma_stop_rx,
-	.dma_interrupt = dwmac_dma_interrupt,
+	.enable_dma_transmission = ec_dwmac_enable_dma_transmission,
+	.enable_dma_irq = ec_dwmac_enable_dma_irq,
+	.disable_dma_irq = ec_dwmac_disable_dma_irq,
+	.start_tx = ec_dwmac_dma_start_tx,
+	.stop_tx = ec_dwmac_dma_stop_tx,
+	.start_rx = ec_dwmac_dma_start_rx,
+	.stop_rx = ec_dwmac_dma_stop_rx,
+	.dma_interrupt = ec_dwmac_dma_interrupt,
 	.get_hw_feature = dwmac1000_get_hw_feature,
 	.rx_watchdog = dwmac1000_rx_watchdog,
 };
-EXPORT_SYMBOL_GPL(dwmac1000_dma_ops);
+EXPORT_SYMBOL_GPL(ec_dwmac1000_dma_ops);

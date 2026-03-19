@@ -318,7 +318,7 @@ static void dwxgmac2_update_vlan_hash(struct mac_device_info *hw, u32 hash,
 	}
 }
 
-const struct stmmac_vlan_ops dwmac_vlan_ops = {
+const struct stmmac_vlan_ops ec_dwmac_vlan_ops = {
 	.update_vlan_hash = vlan_update_hash,
 	.enable_vlan = vlan_enable,
 	.add_hw_vlan_rx_fltr = vlan_add_hw_rx_fltr,
@@ -328,12 +328,12 @@ const struct stmmac_vlan_ops dwmac_vlan_ops = {
 	.set_hw_vlan_mode = vlan_set_hw_mode,
 };
 
-const struct stmmac_vlan_ops dwxlgmac2_vlan_ops = {
+const struct stmmac_vlan_ops ec_dwxlgmac2_vlan_ops = {
 	.update_vlan_hash = dwxgmac2_update_vlan_hash,
 	.enable_vlan = vlan_enable,
 };
 
-const struct stmmac_vlan_ops dwxgmac210_vlan_ops = {
+const struct stmmac_vlan_ops ec_dwxgmac210_vlan_ops = {
 	.update_vlan_hash = dwxgmac2_update_vlan_hash,
 	.enable_vlan = vlan_enable,
 	.add_hw_vlan_rx_fltr = vlan_add_hw_rx_fltr,
@@ -343,7 +343,7 @@ const struct stmmac_vlan_ops dwxgmac210_vlan_ops = {
 	.set_hw_vlan_mode = vlan_set_hw_mode,
 };
 
-u32 stmmac_get_num_vlan(void __iomem *ioaddr)
+u32 ec_stmmac_get_num_vlan(void __iomem *ioaddr)
 {
 	u32 val, num_vlan;
 

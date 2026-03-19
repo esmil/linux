@@ -364,7 +364,7 @@ static void dwmac4_set_umac_addr(struct mac_device_info *hw,
 {
 	void __iomem *ioaddr = hw->pcsr;
 
-	stmmac_dwmac4_set_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
+	ec_stmmac_dwmac4_set_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
 				   GMAC_ADDR_LOW(reg_n));
 }
 
@@ -373,7 +373,7 @@ static void dwmac4_get_umac_addr(struct mac_device_info *hw,
 {
 	void __iomem *ioaddr = hw->pcsr;
 
-	stmmac_dwmac4_get_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
+	ec_stmmac_dwmac4_get_mac_addr(ioaddr, addr, GMAC_ADDR_HIGH(reg_n),
 				   GMAC_ADDR_LOW(reg_n));
 }
 
@@ -928,10 +928,10 @@ static int dwmac4_config_l4_filter(struct mac_device_info *hw, u32 filter_no,
 	return 0;
 }
 
-const struct stmmac_ops dwmac4_ops = {
+const struct stmmac_ops ec_dwmac4_ops = {
 	.core_init = dwmac4_core_init,
 	.update_caps = dwmac4_update_caps,
-	.set_mac = stmmac_set_mac,
+	.set_mac = ec_stmmac_set_mac,
 	.rx_ipc = dwmac4_rx_ipc_enable,
 	.rx_queue_enable = dwmac4_rx_queue_enable,
 	.rx_queue_prio = dwmac4_rx_queue_priority,
@@ -962,10 +962,10 @@ const struct stmmac_ops dwmac4_ops = {
 	.config_l4_filter = dwmac4_config_l4_filter,
 };
 
-const struct stmmac_ops dwmac410_ops = {
+const struct stmmac_ops ec_dwmac410_ops = {
 	.core_init = dwmac4_core_init,
 	.update_caps = dwmac4_update_caps,
-	.set_mac = stmmac_dwmac4_set_mac,
+	.set_mac = ec_stmmac_dwmac4_set_mac,
 	.rx_ipc = dwmac4_rx_ipc_enable,
 	.rx_queue_enable = dwmac4_rx_queue_enable,
 	.rx_queue_prio = dwmac4_rx_queue_priority,
@@ -989,19 +989,19 @@ const struct stmmac_ops dwmac410_ops = {
 	.pcs_ctrl_ane = dwmac4_ctrl_ane,
 	.debug = dwmac4_debug,
 	.set_filter = dwmac4_set_filter,
-	.flex_pps_config = dwmac5_flex_pps_config,
+	.flex_pps_config = ec_dwmac5_flex_pps_config,
 	.set_mac_loopback = dwmac4_set_mac_loopback,
 	.sarc_configure = dwmac4_sarc_configure,
 	.set_arp_offload = dwmac4_set_arp_offload,
 	.config_l3_filter = dwmac4_config_l3_filter,
 	.config_l4_filter = dwmac4_config_l4_filter,
-	.fpe_map_preemption_class = dwmac5_fpe_map_preemption_class,
+	.fpe_map_preemption_class = ec_dwmac5_fpe_map_preemption_class,
 };
 
-const struct stmmac_ops dwmac510_ops = {
+const struct stmmac_ops ec_dwmac510_ops = {
 	.core_init = dwmac4_core_init,
 	.update_caps = dwmac4_update_caps,
-	.set_mac = stmmac_dwmac4_set_mac,
+	.set_mac = ec_stmmac_dwmac4_set_mac,
 	.rx_ipc = dwmac4_rx_ipc_enable,
 	.rx_queue_enable = dwmac4_rx_queue_enable,
 	.rx_queue_prio = dwmac4_rx_queue_priority,
@@ -1025,20 +1025,20 @@ const struct stmmac_ops dwmac510_ops = {
 	.pcs_ctrl_ane = dwmac4_ctrl_ane,
 	.debug = dwmac4_debug,
 	.set_filter = dwmac4_set_filter,
-	.safety_feat_config = dwmac5_safety_feat_config,
-	.safety_feat_irq_status = dwmac5_safety_feat_irq_status,
-	.safety_feat_dump = dwmac5_safety_feat_dump,
-	.rxp_config = dwmac5_rxp_config,
-	.flex_pps_config = dwmac5_flex_pps_config,
+	.safety_feat_config = ec_dwmac5_safety_feat_config,
+	.safety_feat_irq_status = ec_dwmac5_safety_feat_irq_status,
+	.safety_feat_dump = ec_dwmac5_safety_feat_dump,
+	.rxp_config = ec_dwmac5_rxp_config,
+	.flex_pps_config = ec_dwmac5_flex_pps_config,
 	.set_mac_loopback = dwmac4_set_mac_loopback,
 	.sarc_configure = dwmac4_sarc_configure,
 	.set_arp_offload = dwmac4_set_arp_offload,
 	.config_l3_filter = dwmac4_config_l3_filter,
 	.config_l4_filter = dwmac4_config_l4_filter,
-	.fpe_map_preemption_class = dwmac5_fpe_map_preemption_class,
+	.fpe_map_preemption_class = ec_dwmac5_fpe_map_preemption_class,
 };
 
-int dwmac4_setup(struct stmmac_priv *priv)
+int ec_dwmac4_setup(struct stmmac_priv *priv)
 {
 	struct mac_device_info *mac = priv->hw;
 
@@ -1069,7 +1069,7 @@ int dwmac4_setup(struct stmmac_priv *priv)
 	mac->mii.reg_mask = GENMASK(20, 16);
 	mac->mii.clk_csr_shift = 8;
 	mac->mii.clk_csr_mask = GENMASK(11, 8);
-	mac->num_vlan = stmmac_get_num_vlan(priv->ioaddr);
+	mac->num_vlan = ec_stmmac_get_num_vlan(priv->ioaddr);
 
 	return 0;
 }

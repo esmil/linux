@@ -255,7 +255,7 @@ static void timestamp_interrupt(struct stmmac_priv *priv)
 	}
 }
 
-const struct stmmac_hwtimestamp stmmac_ptp = {
+const struct stmmac_hwtimestamp ec_stmmac_ptp = {
 	.config_hw_tstamping = config_hw_tstamping,
 	.init_systime = init_systime,
 	.config_sub_second_increment = config_sub_second_increment,
@@ -267,13 +267,13 @@ const struct stmmac_hwtimestamp stmmac_ptp = {
 	.hwtstamp_correct_latency = hwtstamp_correct_latency,
 };
 
-const struct stmmac_hwtimestamp dwmac1000_ptp = {
+const struct stmmac_hwtimestamp ec_dwmac1000_ptp = {
 	.config_hw_tstamping = config_hw_tstamping,
 	.init_systime = init_systime,
 	.config_sub_second_increment = config_sub_second_increment,
 	.config_addend = config_addend,
 	.adjust_systime = adjust_systime,
 	.get_systime = get_systime,
-	.get_ptptime = dwmac1000_get_ptptime,
-	.timestamp_interrupt = dwmac1000_timestamp_interrupt,
+	.get_ptptime = ec_dwmac1000_get_ptptime,
+	.timestamp_interrupt = ec_dwmac1000_timestamp_interrupt,
 };

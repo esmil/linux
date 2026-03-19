@@ -81,16 +81,16 @@
 
 #define GMAC_INT_FPE_EN			BIT(17)
 
-int dwmac5_safety_feat_config(void __iomem *ioaddr, unsigned int asp,
+int ec_dwmac5_safety_feat_config(void __iomem *ioaddr, unsigned int asp,
 			      struct stmmac_safety_feature_cfg *safety_cfg);
-int dwmac5_safety_feat_irq_status(struct net_device *ndev,
+int ec_dwmac5_safety_feat_irq_status(struct net_device *ndev,
 		void __iomem *ioaddr, unsigned int asp,
 		struct stmmac_safety_stats *stats);
-int dwmac5_safety_feat_dump(struct stmmac_safety_stats *stats,
+int ec_dwmac5_safety_feat_dump(struct stmmac_safety_stats *stats,
 			int index, unsigned long *count, const char **desc);
-int dwmac5_rxp_config(void __iomem *ioaddr, struct stmmac_tc_entry *entries,
+int ec_dwmac5_rxp_config(void __iomem *ioaddr, struct stmmac_tc_entry *entries,
 		      unsigned int count);
-int dwmac5_flex_pps_config(void __iomem *ioaddr, int index,
+int ec_dwmac5_flex_pps_config(void __iomem *ioaddr, int index,
 			   struct stmmac_pps_cfg *cfg, bool enable,
 			   u32 sub_second_inc, u32 systime_flags);
 

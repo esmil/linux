@@ -12,22 +12,22 @@
 #include "stmmac-ethercat.h"
 
 struct plat_stmmacenet_data *
-devm_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac);
+devm_ec_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac);
 
-struct clk *stmmac_pltfr_find_clk(struct plat_stmmacenet_data *plat_dat,
+struct clk *ec_stmmac_pltfr_find_clk(struct plat_stmmacenet_data *plat_dat,
 				  const char *name);
 
-int stmmac_get_platform_resources(struct platform_device *pdev,
+int ec_stmmac_get_platform_resources(struct platform_device *pdev,
 				  struct stmmac_resources *stmmac_res);
 
-int stmmac_pltfr_probe(struct platform_device *pdev,
+int ec_stmmac_pltfr_probe(struct platform_device *pdev,
 		       struct plat_stmmacenet_data *plat,
 		       struct stmmac_resources *res);
-int devm_stmmac_pltfr_probe(struct platform_device *pdev,
+int devm_ec_stmmac_pltfr_probe(struct platform_device *pdev,
 			    struct plat_stmmacenet_data *plat,
 			    struct stmmac_resources *res);
-void stmmac_pltfr_remove(struct platform_device *pdev);
-extern const struct dev_pm_ops stmmac_pltfr_pm_ops;
+void ec_stmmac_pltfr_remove(struct platform_device *pdev);
+extern const struct dev_pm_ops ec_stmmac_pltfr_pm_ops;
 
 static inline void *get_stmmac_bsp_priv(struct device *dev)
 {

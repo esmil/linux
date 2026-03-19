@@ -64,7 +64,7 @@ static void dwmac100_set_umac_addr(struct mac_device_info *hw,
 				   unsigned int reg_n)
 {
 	void __iomem *ioaddr = hw->pcsr;
-	stmmac_set_mac_addr(ioaddr, addr, MAC_ADDR_HIGH, MAC_ADDR_LOW);
+	ec_stmmac_set_mac_addr(ioaddr, addr, MAC_ADDR_HIGH, MAC_ADDR_LOW);
 }
 
 static void dwmac100_get_umac_addr(struct mac_device_info *hw,
@@ -72,7 +72,7 @@ static void dwmac100_get_umac_addr(struct mac_device_info *hw,
 				   unsigned int reg_n)
 {
 	void __iomem *ioaddr = hw->pcsr;
-	stmmac_get_mac_addr(ioaddr, addr, MAC_ADDR_HIGH, MAC_ADDR_LOW);
+	ec_stmmac_get_mac_addr(ioaddr, addr, MAC_ADDR_HIGH, MAC_ADDR_LOW);
 }
 
 static void dwmac100_set_filter(struct mac_device_info *hw,
@@ -154,9 +154,9 @@ static void dwmac100_set_mac_loopback(void __iomem *ioaddr, bool enable)
 	writel(value, ioaddr + MAC_CONTROL);
 }
 
-const struct stmmac_ops dwmac100_ops = {
+const struct stmmac_ops ec_dwmac100_ops = {
 	.core_init = dwmac100_core_init,
-	.set_mac = stmmac_set_mac,
+	.set_mac = ec_stmmac_set_mac,
 	.rx_ipc = dwmac100_rx_ipc_enable,
 	.dump_regs = dwmac100_dump_mac_regs,
 	.host_irq_status = dwmac100_irq_status,
@@ -168,7 +168,7 @@ const struct stmmac_ops dwmac100_ops = {
 	.set_mac_loopback = dwmac100_set_mac_loopback,
 };
 
-int dwmac100_setup(struct stmmac_priv *priv)
+int ec_dwmac100_setup(struct stmmac_priv *priv)
 {
 	struct mac_device_info *mac = priv->hw;
 

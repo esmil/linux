@@ -611,7 +611,7 @@ static int dwxgmac2_enable_tbs(struct stmmac_priv *priv, void __iomem *ioaddr,
 	return 0;
 }
 
-const struct stmmac_dma_ops dwxgmac210_dma_ops = {
+const struct stmmac_dma_ops ec_dwxgmac210_dma_ops = {
 	.reset = dwxgmac2_dma_reset,
 	.init = dwxgmac2_dma_init,
 	.init_chan = dwxgmac2_dma_init_chan,
