@@ -115,6 +115,26 @@
 			drive-strength = <47>;		/* DS8 */
 		};
 	};
+
+	mmc1-cfg {
+		mmc1-2-pins {
+			pinmux = <K3_PADCONF(86, 0)>;	/* cd gpio */
+
+			bias-pull-up = <1>;
+			drive-strength = <8>;
+			power-source = <3300>;
+		};
+	};
+
+	mmc1-uhs-cfg {
+		mmc1-2-pins {
+			pinmux = <K3_PADCONF(86, 0)>;	/* cd gpio */
+
+			bias-pull-up = <1>;
+			drive-strength = <8>;
+			power-source = <3300>;
+		};
+	};
 };
 
 &uart0 {
@@ -128,10 +148,9 @@
 };
 
 &sdcard {
-	pinctrl-names = "default","uhs","debug";
+	pinctrl-names = "default","uhs";
 	pinctrl-0 = <&mmc1_cfg>;
 	pinctrl-1 = <&mmc1_uhs_cfg>;
-	pinctrl-2 = <&mmc1_debug_cfg>;
 	bus-width = <4>;
 	wp-inverted;
 	cd-gpios = <&gpio 2 22 GPIO_ACTIVE_LOW>;
@@ -141,7 +160,7 @@
 	no-sdio;
 	clock-frequency = <204800000>;
 	spacemit,tx_delaycode = <0x1f>;
-	status = "disabled";
+	status = "okay";
 };
 
 &emmc {
@@ -152,11 +171,21 @@
 	no-sd;
 	no-sdio;
 	clock-frequency = <375000000>;
-	status = "disabled";
+	status = "okay";
+};
+
+&usb2_host_u2phy {
+	status = "okay";
+};
+
+&usb2_host {
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb20_host_drv_3_cfg>; /* GPIO103 */
+	status = "okay";
 };
 
 &usb3_porta_u2phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_porta_u3phy {
@@ -164,7 +193,7 @@
 	// pinctrl-0 = <&usb30_drd_int_1_cfg>, /* GPIO119 J12511 */
 	// 	    <&usb30_drd_dir_0_cfg>, /* GPIO86 J12512 */
 	// 	    <&usb30_drd_id_vbus_cfg>; /* GPIO116 J12602, GPIO117 J12515 */
-	status = "disabled";
+	status = "okay";
 };
 
 &usb3_porta {
@@ -173,11 +202,65 @@
 	maximum-speed = "high-speed";
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
-	status = "disabled";
+	status = "okay";
+};
+
+&usb3_portb_u2phy {
+	status = "okay";
+};
+
+&usb3_portb_u3phy {
+	status = "okay";
+};
+
+&usb3_portb {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portb_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
+};
+
+&usb3_portc_u2phy {
+	status = "okay";
+};
+
+&usb3_portc_u3phy {
+	status = "okay";
+};
+
+&usb3_portc {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portc_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
+};
+
+&usb3_portd_u2phy {
+	status = "okay";
+};
+
+&usb3_portd_u3phy {
+	status = "okay";
+};
+
+&usb3_portd {
+	/* Bringup stage, only enable USB2 phy */
+	/delete-property/ phys;
+	/delete-property/ phy-names;
+	maximum-speed = "high-speed";
+	phys = <&usb3_portd_u2phy>;
+	phy-names = "usb2-phy";
+	status = "okay";
 };
 
 &ufshc {
-	status = "disabled";
+	status = "okay";
 };
 
 &thermal_zones {
