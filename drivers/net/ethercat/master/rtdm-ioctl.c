@@ -647,6 +647,8 @@ static ATTRIBUTES int ec_ioctl_master_rescan(
         void *arg /**< ioctl() argument. */
         )
 {
+    EC_MASTER_DBG(master, 1, "Got rescan command via ioctl()."
+		    " Re-scanning on next possibility.\n");
     master->fsm.rescan_required = 1;
     return 0;
 }

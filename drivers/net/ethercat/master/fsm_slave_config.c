@@ -1056,18 +1056,14 @@ void ec_fsm_slave_config_enter_watchdog_divider(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    printk("config->watchdog_divider = 1000\n");
-
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_config_t *config = slave->config;
 
-//    config->watchdog_divider = 1000;
-
     if (config && config->watchdog_divider) {
         EC_SLAVE_DBG(slave, 1, "Setting watchdog divider to %u.\n",
                 config->watchdog_divider);
-        printk("config->watchdog_divider = 1000\n");
+
         ec_datagram_fpwr(datagram, slave->station_address, 0x0400, 2);
         EC_WRITE_U16(datagram->data, config->watchdog_divider);
         fsm->retries = EC_FSM_RETRIES;
@@ -1117,18 +1113,14 @@ void ec_fsm_slave_config_enter_watchdog(
         ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    printk("config->watchdog_intervals = 250\n");
-
     ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     ec_slave_config_t *config = slave->config;
 
-//    config->watchdog_intervals = 250;
-
     if (config && config->watchdog_intervals) {
         EC_SLAVE_DBG(slave, 1, "Setting process data"
                 " watchdog intervals to %u.\n", config->watchdog_intervals);
-        printk("config->watchdog_intervals = 250\n");
+
         ec_datagram_fpwr(datagram, slave->station_address, 0x0420, 2);
         EC_WRITE_U16(datagram->data, config->watchdog_intervals);
 

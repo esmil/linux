@@ -33,14 +33,17 @@
 #include "master.h"
 #include "device.h"
 
-/****************************************************************************/
+#include <linux/platform_device.h>
+#include <linux/of_net.h>
+#include <linux/of.h>
+#include <linux/io.h>
+#include <generated/autoconf.h>
+
+#define DRIVER_NAME "igh_ec_master"
 
 /****************************************************************************/
 
-int __init ec_init_module(void);
-void __exit ec_cleanup_module(void);
-
-static int ec_mac_parse(uint8_t *, const char *, int);
+int ec_mac_parse(uint8_t *, const char *, int);
 
 // prototypes for private functions
 int ec_mac_equal(const uint8_t *, const uint8_t *);
@@ -48,14 +51,12 @@ int ec_mac_is_broadcast(const uint8_t *);
 
 /****************************************************************************/
 
-static char *main_devices[EC_MAX_MASTERS]; /**< Main devices parameter. */
+//static char *main_devices[EC_MAX_MASTERS]; /**< Main devices parameter. */
 static unsigned int master_count; /**< Number of masters. */
-static char *backup_devices[EC_MAX_MASTERS]; /**< Backup devices parameter. */
-static unsigned int backup_count; /**< Number of backup devices. */
-static unsigned int debug_level;  /**< Debug level parameter. */
-static unsigned int run_on_cpu = 0xffffffff; /**< Bind created kernel threads
-                                               to a cpu. Default do not bind.
-                                              */
+static unsigned int debug_level = CONFIG_EC_MASTER_DEBUG_LEVEL;  /**< Debug level parameter. */
+static unsigned int run_on_cpu = CONFIG_EC_MASTER_RUN_ON_CPU; /**< Bind created kernel threads
+                                               		           to a cpu. Default do not bind.
+                                              		        */
 
 static ec_master_t *masters; /**< Array of masters. */
 static struct semaphore master_sem; /**< Master semaphore. */
@@ -69,38 +70,83 @@ char *ec_master_version_str = EC_MASTER_VERSION; /**< Version string. */
 
 /****************************************************************************/
 
-/** \cond */
-
-MODULE_AUTHOR("Florian Pose <fp@igh.de>");
-MODULE_DESCRIPTION("EtherCAT master driver module");
-MODULE_LICENSE("GPL");
-MODULE_VERSION(EC_MASTER_VERSION);
-
-module_param_array(main_devices, charp, &master_count, S_IRUGO);
-MODULE_PARM_DESC(main_devices, "MAC addresses of main devices");
-module_param_array(backup_devices, charp, &backup_count, S_IRUGO);
-MODULE_PARM_DESC(backup_devices, "MAC addresses of backup devices");
-module_param_named(debug_level, debug_level, uint, S_IRUGO);
-MODULE_PARM_DESC(debug_level, "Debug level");
-module_param_named(run_on_cpu, run_on_cpu, uint, S_IRUGO);
-MODULE_PARM_DESC(run_on_cpu, "Bind kthreads to a specific cpu");
-
-/** \endcond */
-
-/****************************************************************************/
-
-/** Module initialization.
- *
- * Initializes \a master_count masters.
- * \return 0 on success, else < 0
- */
-int __init ec_init_module(void)
+static int ec_parse_dt(struct platform_device *pdev)
 {
-    int i, ret = 0;
+    struct device_node *node = pdev->dev.of_node;
+    struct device_node *master_node, *eth_node;
+    int ret, i;
 
-    EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
+    if (!node) {
+        EC_ERR("No device tree node found\n");
+        return -EINVAL;
+    }
+
+    if (of_property_read_u32(node, "master-count", &master_count)) {
+        EC_ERR("Failed to read master-count\n");
+        return -EINVAL;
+    }
+
+    if (master_count <= 0 || master_count >= EC_MAX_MASTERS) {
+        EC_ERR("Invalid master-count: %u\n", master_count);
+        return -EINVAL;
+    }
+
+    for (i = 0; i < master_count; i++) {
+        char master_name[16];
+        snprintf(master_name, sizeof(master_name), "master%d", i);
+
+        master_node = of_get_child_by_name(node, master_name);
+        if (!master_node) {
+            EC_ERR("Missing master@%d subnode\n", i);
+            return -EINVAL;
+        }
+
+        eth_node = of_parse_phandle(master_node, "main-device", 0);
+        if (!eth_node) {
+            EC_ERR("Missing main-device in %s\n", master_name);
+            of_node_put(master_node);
+            return -EINVAL;
+        }
+
+        ret = of_get_mac_address(eth_node, macs[i][0]);
+        if (ret) {
+            EC_ERR("Failed to parse main-device for %s\n", master_name);
+            of_node_put(eth_node);
+            of_node_put(master_node);
+            return -EINVAL;
+        }
+
+        of_node_put(eth_node);
+
+        eth_node = of_parse_phandle(master_node, "backup-device", 0);
+        if (eth_node) {
+            ret = of_get_mac_address(eth_node, macs[i][1]);
+            if (ret) {
+                EC_ERR("Failed to parse backup-device for %s\n", master_name);
+                of_node_put(eth_node);
+                of_node_put(master_node);
+                return -EINVAL;
+            }
+            of_node_put(eth_node);
+        }
+
+        of_node_put(master_node);
+    }
+
+    return 0;
+}
+
+static int ec_probe(struct platform_device *pdev)
+{
+    int ret, i;
 
     sema_init(&master_sem, 1);
+
+    ret = ec_parse_dt(pdev);
+    if (ret) {
+	EC_ERR(DRIVER_NAME ": Failed to parse dts, error %d\n", ret);
+	master_count = 0;
+    }
 
     if (master_count) {
         if (alloc_chrdev_region(&device_number,
@@ -120,22 +166,6 @@ int __init ec_init_module(void)
         EC_ERR("Failed to create device class.\n");
         ret = PTR_ERR(class);
         goto out_cdev;
-    }
-
-    // zero MAC addresses
-    memset(macs, 0x00, sizeof(uint8_t) * EC_MAX_MASTERS * 2 * ETH_ALEN);
-
-    // process MAC parameters
-    for (i = 0; i < master_count; i++) {
-        ret = ec_mac_parse(macs[i][0], main_devices[i], 0);
-        if (ret)
-            goto out_class;
-
-        if (i < backup_count) {
-            ret = ec_mac_parse(macs[i][1], backup_devices[i], 1);
-            if (ret)
-                goto out_class;
-        }
     }
 
     // initialize static master variables
@@ -175,13 +205,7 @@ out_return:
     return ret;
 }
 
-/****************************************************************************/
-
-/** Module cleanup.
- *
- * Clears all master instances.
- */
-void __exit ec_cleanup_module(void)
+static void ec_remove(struct platform_device *pdev)
 {
     unsigned int i;
 
@@ -303,7 +327,7 @@ int ec_mac_is_broadcast(
  *
  * \return 0 on success, else < 0
  */
-static int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
+int ec_mac_parse(uint8_t *mac, const char *src, int allow_empty)
 {
     unsigned int i, value;
     const char *orig = src;
@@ -477,6 +501,7 @@ const char *ec_device_names[2] = {
  * \return Pointer to device, if accepted, or NULL if declined.
  * \ingroup DeviceInterface
  */
+
 ec_device_t *ecdev_offer(
         struct net_device *net_dev, /**< net_device to offer */
         ec_pollfunc_t poll, /**< device poll function */
@@ -665,10 +690,29 @@ const ec_request_state_t ec_request_state_translation_table[] = {
 
 /****************************************************************************/
 
-/** \cond */
+static const struct of_device_id ec_of_match[] = {
+    { .compatible = "spacemit,igh-ec-master" },
+    { },
+};
+MODULE_DEVICE_TABLE(of, ec_of_match);
 
-module_init(ec_init_module);
-module_exit(ec_cleanup_module);
+static struct platform_driver ec_master_driver = {
+    .probe = ec_probe,
+    .remove = ec_remove,
+    .driver = {
+        .name = DRIVER_NAME,
+        .of_match_table = of_match_ptr(ec_of_match),
+    },
+};
+
+module_platform_driver(ec_master_driver);
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Igh Ethercat master driver");
+
+/****************************************************************************/
+
+/** \cond */
 
 EXPORT_SYMBOL(ecdev_offer);
 

@@ -292,7 +292,8 @@ void ec_fsm_master_state_broadcast(
     if (datagram->working_counter != fsm->slaves_responding[fsm->dev_idx]) {
         fsm->rescan_required = 1;
         fsm->slaves_responding[fsm->dev_idx] = datagram->working_counter;
-        EC_MASTER_INFO(master, "%u slave(s) responding on %s device.\n",
+        EC_MASTER_INFO(master, "%u slave(s) responding on %s device. "
+                "Re-scanning on next possibility.\n",
                 fsm->slaves_responding[fsm->dev_idx],
                 ec_device_names[fsm->dev_idx != 0]);
     }
@@ -354,6 +355,8 @@ void ec_fsm_master_state_broadcast(
             master->scan_busy = 1;
             master->scan_index = 0;
             up(&master->scan_sem);
+
+            EC_MASTER_INFO(master, "Re-scanning now.\n");
 
             // clear all slaves and scan the bus
             fsm->rescan_required = 0;
@@ -651,7 +654,7 @@ void ec_fsm_master_action_idle(
     // check for pending SII write operations.
     if (ec_fsm_master_action_process_sii(fsm)) {
         return; // SII write request found
-	}
+    }
 
     ec_fsm_master_restart(fsm);
 }
@@ -770,7 +773,6 @@ void ec_fsm_master_state_read_state(
             slave->error_flag = 1;
             EC_SLAVE_DBG(slave, 1, "Slave did not respond to state query.\n");
         }
-        fsm->rescan_required = 1;
         ec_fsm_master_restart(fsm);
         return;
     }
@@ -1080,6 +1082,8 @@ void ec_fsm_master_enter_write_system_times(
 
     // scanning and setting system times complete
     ec_master_request_op(master);
+    EC_MASTER_DBG(master, 1, "After requesting OP, rescan_required is %u.\n",
+            fsm->rescan_required);
     ec_fsm_master_restart(fsm);
 }
 

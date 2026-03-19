@@ -4,6 +4,7 @@
 #
 
 obj-$(CONFIG_EC_MASTER) += ec_master.o
+
 ec_master-y += \
 	cdev.o \
 	coe_emerg_ring.o \
@@ -28,7 +29,6 @@ ec_master-y += \
 	ioctl.o \
 	mailbox.o \
 	master.o \
-	module.o \
 	pdo.o \
 	pdo_entry.o \
 	pdo_list.o \
@@ -46,3 +46,9 @@ ec_master-y += \
 	eoe_request.o \
 	ethernet.o \
 	fsm_eoe.o
+
+ifdef CONFIG_EC_MASTER_OF
+ec_master-y += module_of.o
+else
+ec_master-y += module.o
+endif

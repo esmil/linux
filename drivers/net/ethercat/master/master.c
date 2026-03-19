@@ -126,6 +126,7 @@ static int ec_master_eoe_thread(void *);
 void ec_master_find_dc_ref_clock(ec_master_t *);
 void ec_master_clear_device_stats(ec_master_t *);
 void ec_master_update_device_stats(ec_master_t *);
+void ec_master_nanosleep(const unsigned long);
 static void sc_reset_task_kicker(struct irq_work *work);
 static void sc_reset_task(struct work_struct *work);
 
@@ -703,9 +704,6 @@ int ec_master_enter_operation_phase(
 {
     int ret = 0;
     ec_slave_t *slave;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-#endif
 
     EC_MASTER_DBG(master, 1, "IDLE -> OPERATION.\n");
 
@@ -754,14 +752,6 @@ int ec_master_enter_operation_phase(
             slave++) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
-
-#ifdef EC_EOE
-    // ... but set EoE slaves to OP
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_is_open(eoe))
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
-#endif
 
     master->phase = EC_OPERATION;
     master->app_send_cb = NULL;
@@ -1413,16 +1403,18 @@ static enum hrtimer_restart ec_master_nanosleep_wakeup(struct hrtimer *timer)
 
 /****************************************************************************/
 
-
-/****************************************************************************/
-
 void ec_master_nanosleep(const unsigned long nsecs)
 {
     struct hrtimer_sleeper t;
     enum hrtimer_mode mode = HRTIMER_MODE_REL;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+    hrtimer_setup(&t.timer, ec_master_nanosleep_wakeup,
+            CLOCK_MONOTONIC, mode);
+#else
     hrtimer_init(&t.timer, CLOCK_MONOTONIC, mode);
     t.timer.function = ec_master_nanosleep_wakeup;
+#endif
     t.task = current;
     hrtimer_set_expires(&t.timer, ktime_set(0, nsecs));
 

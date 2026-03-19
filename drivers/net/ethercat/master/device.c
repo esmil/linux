@@ -624,12 +624,8 @@ void ecdev_receive(
         size_t size /**< number of bytes received */
         )
 {
-    const void *ec_data;
-    size_t ec_size;
-
-    ec_data = data + ETH_HLEN;
-    ec_size = size - ETH_HLEN;
-
+    const void *ec_data = data + ETH_HLEN;
+    size_t ec_size = size - ETH_HLEN;
 
     if (unlikely(!data)) {
         EC_MASTER_WARN(device->master, "%s() called with NULL data.\n",
