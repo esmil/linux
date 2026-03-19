@@ -2085,8 +2085,23 @@ static struct attribute *ufs_sysfs_lun_attributes[] = {
 	NULL,
 };
 
+static umode_t ufs_sysfs_lun_attributes_is_visible(struct kobject *kobj,
+		struct attribute *attr, int n)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct scsi_device *sdev = to_scsi_device(dev);
+	u8 lun = ufshcd_scsi_to_upiu_lun(sdev->lun);
+
+	/* Well-Known LUNs (e.g. RPMB 0xC4) don't support dDynCapNeeded */
+	if (lun & UFS_UPIU_WLUN_ID)
+		return 0;
+
+	return attr->mode;
+}
+
 const struct attribute_group ufs_sysfs_lun_attributes_group = {
 	.attrs = ufs_sysfs_lun_attributes,
+	.is_visible = ufs_sysfs_lun_attributes_is_visible,
 };
 
 void ufs_sysfs_add_nodes(struct device *dev)
