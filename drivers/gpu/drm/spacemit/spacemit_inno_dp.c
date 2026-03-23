@@ -326,6 +326,7 @@ struct soc_dp_dev {
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC)
 	uint32_t aud_mode;
+	bool card_instantiated;
 	bool aud_registered;
 #endif
 };
@@ -376,6 +377,32 @@ static int soc_dp_reg_read_range(struct soc_dp_dev *dp,
 }
 
 #if IS_ENABLED(CONFIG_SND_SOC)
+static int inno_dp_dai_probe(struct snd_soc_dai *dai)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+
+	if (!dp) {
+		dev_err(dp->dev, "Failed to get soc_dp_dev from dai probe\n");
+		return -EINVAL;
+	}
+	dp->card_instantiated = true;
+
+	return 0;
+}
+
+static int inno_dp_dai_remove(struct snd_soc_dai *dai)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+
+	if (!dp) {
+		dev_err(dp->dev, "Failed to get soc_dp_dev from dai remove\n");
+		return -EINVAL;
+	}
+	dp->card_instantiated = false;
+
+	return 0;
+}
+
 static int inno_dp_dai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
@@ -462,6 +489,8 @@ static int inno_dp_dai_trigger(struct snd_pcm_substream *substream,
 }
 
 const struct snd_soc_dai_ops inno_dp_dai_ops = {
+	.probe = inno_dp_dai_probe,
+	.remove = inno_dp_dai_remove,
 	.hw_params = inno_dp_dai_pcm_hw_params,
 	.set_fmt = inno_dp_dai_set_dai_fmt,
 	.trigger = inno_dp_dai_trigger,
@@ -1854,8 +1883,10 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 #if IS_ENABLED(CONFIG_SND_SOC)
 		if (!dp->edp_mode) {
 			if (dp->aud_registered && new_status == connector_status_disconnected) {
-				inno_dp_audio_unregister(dp->dev);
-				dp->aud_registered = false;
+				if (dp->card_instantiated) {
+					inno_dp_audio_unregister(dp->dev);
+					dp->aud_registered = false;
+				}
 			} else if (!dp->aud_registered && new_status == connector_status_connected) {
 				if (inno_dp_audio_register(dp->dev))
 					DRM_INFO("%s() failed to register dp audio component\n", __func__);
