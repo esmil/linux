@@ -2474,6 +2474,8 @@ static int inno_dp_drv_pm_suspend(struct device *dev)
 	dp->connector_status = connector_status_disconnected;
 	mutex_unlock(&dp->mode_lock);
 
+	drm_kms_helper_hotplug_event(dp->drm);
+
 	return 0;
 }
 
@@ -2487,8 +2489,6 @@ static int inno_dp_drv_pm_resume(struct device *dev)
 	mutex_lock(&dp->mode_lock);
 	dp->suspended = false;
 	mutex_unlock(&dp->mode_lock);
-
-	soc_dp_dev_init(dp);
 
 #if HOT_PLUG_THREAD_ENABLED
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
@@ -2542,6 +2542,8 @@ static int inno_dp_drv_pm_resume_early(struct device *dev)
 		clk_prepare_enable(dp->pxclk);
 
 	mutex_unlock(&dp->mode_lock);
+
+	soc_dp_dev_init(dp);
 
 	return 0;
 }
