@@ -2132,7 +2132,7 @@ static int k3_ccu_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret;
 
-	base_regmap = device_node_to_regmap(dev->of_node);
+	base_regmap = device_node_to_regmap(pdev->dev.parent->of_node);
 	if (IS_ERR(base_regmap))
 		return dev_err_probe(dev, PTR_ERR(base_regmap),
 				     "failed to get regmap\n");
