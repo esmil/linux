@@ -22,6 +22,7 @@
 #include <linux/sched_clock.h>
 #include <linux/stat.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/reset.h>
 #include <linux/platform_device.h>
 
@@ -327,17 +328,25 @@ static int timer_resume(struct clock_event_device *dev)
 	struct spacemit_timer_evt *evt;
 	struct spacemit_timer *tm;
 	unsigned long flags;
+	int ret = 0;
 
 	evt = container_of(dev, struct spacemit_timer_evt, ced);
 	tm = evt->timer;
 
-	/* Enable clocks first before accessing registers.
-	 * clk_prepare_enable is refcounted, safe to call multiple times.
-	 */
-	if (tm->clk_bus)
-		clk_prepare_enable(tm->clk_bus);
-	if (tm->clk)
-		clk_prepare_enable(tm->clk);
+	if (tm->clk_bus && !__clk_is_enabled(tm->clk_bus)) {
+		ret = clk_prepare_enable(tm->clk_bus);
+		if (ret) {
+			pr_err("Timer %d: Failed to enable bus clock in resume: %d\n", tm->id, ret);
+			return ret;
+		}
+	}
+	if (tm->clk && !__clk_is_enabled(tm->clk)) {
+		ret = clk_prepare_enable(tm->clk);
+		if (ret) {
+			pr_err("Timer %d: Failed to enable clock in resume: %d\n", tm->id, ret);
+			return ret;
+		}
+	}
 
 	spin_lock_irqsave(&(tm->tm_lock), flags);
 
@@ -769,7 +778,38 @@ static int spacemit_timer_suspend_noirq(struct device *dev)
 
 static int spacemit_timer_resume_noirq(struct device *dev)
 {
-	/* Clock enable is handled in timer_resume() callback */
+	struct platform_device *pdev = to_platform_device(dev);
+	struct device_node *np = pdev->dev.of_node;
+	unsigned int tid;
+	struct spacemit_timer *tm;
+	int ret = 0;
+
+	if (of_property_read_u32(np, "spacemit,timer-id", &tid))
+		return 0;
+
+	if (tid >= SPACEMIT_MAX_TIMER)
+		return 0;
+
+	tm = spacemit_timers[tid];
+	if (tm) {
+		/* Only restore clocks if they are not already enabled
+		 * (timer_resume may have already restored them) */
+		if (tm->clk_bus && !__clk_is_enabled(tm->clk_bus)) {
+			ret = clk_prepare_enable(tm->clk_bus);
+			if (ret) {
+				dev_err(dev, "Failed to enable bus clock: %d\n", ret);
+				return ret;
+			}
+		}
+		if (tm->clk && !__clk_is_enabled(tm->clk)) {
+			ret = clk_prepare_enable(tm->clk);
+			if (ret) {
+				dev_err(dev, "Failed to enable clock: %d\n", ret);
+				return ret;
+			}
+		}
+	}
+
 	return 0;
 }
 
