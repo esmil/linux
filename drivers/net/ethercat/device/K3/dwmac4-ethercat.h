@@ -532,6 +532,6 @@ static inline u32 mtl_low_credx_base_addr(const struct dwmac4_addrs *addrs,
 #define GMAC_PHYIF_CTRLSTATUS_SPEED_25		0x1
 #define GMAC_PHYIF_CTRLSTATUS_SPEED_2_5		0x0
 
-extern const struct stmmac_dma_ops dwmac4_dma_ops;
-extern const struct stmmac_dma_ops dwmac410_dma_ops;
+extern const struct stmmac_dma_ops ec_dwmac4_dma_ops;
+extern const struct stmmac_dma_ops ec_dwmac410_dma_ops;
 #endif /* __DWMAC4_H__ */

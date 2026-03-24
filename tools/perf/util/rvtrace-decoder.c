@@ -146,7 +146,8 @@ static u32 rvtrace_mem_access(void *data, u64 address, enum riscv_privilege_mode
 	else
 		cpumode = PERF_RECORD_MISC_USER;
 
-	rvtrace_set_thread(rvtraceq, context);
+	if (thread__tid(rvtraceq->thread) != context)
+		rvtrace_set_thread(rvtraceq, context);
 
 	if (!thread__find_map(rvtraceq->thread, cpumode, address, &al))
 		goto out;
@@ -237,6 +238,9 @@ static int rvtrace_synth_branch_sample(struct rvtrace_queue *rvtraceq,
 	event->sample.header.type = PERF_RECORD_SAMPLE;
 	event->sample.header.misc = rvtrace_cpu_mode(packet->prv);
 	event->sample.header.size = sizeof(struct perf_event_header);
+
+	if (thread__tid(rvtraceq->thread) != packet->context)
+		rvtrace_set_thread(rvtraceq, packet->context);
 
 	/* Set time field based on rvtrace auxtrace config. */
 	sample.time = rvtrace_resolve_sample_time(rvtraceq, packet);

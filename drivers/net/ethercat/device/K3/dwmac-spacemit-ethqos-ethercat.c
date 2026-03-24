@@ -24,7 +24,7 @@
 #include "stmmac-ethercat.h"
 #include "stmmac_platform-ethercat.h"
 
-#define DRIVER_NAME			"dwmac-spacemit-ethqos"
+#define DRIVER_NAME			"dwmac-spacemit-ethqos-ethercat"
 
 #define TUNING_CMD_LEN			50
 #define CLK_PHASE_CNT			256
@@ -638,11 +638,11 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 	if (!ops)
 		return dev_err_probe(dev, -EINVAL, "no of_match data");
 
-	ret = stmmac_get_platform_resources(pdev, &stmmac_res);
+	ret = ec_stmmac_get_platform_resources(pdev, &stmmac_res);
 	if (ret)
 		return ret;
 
-	plat_dat = devm_stmmac_probe_config_dt(pdev, stmmac_res.mac);
+	plat_dat = devm_ec_stmmac_probe_config_dt(pdev, stmmac_res.mac);
 	if (IS_ERR(plat_dat))
 		return PTR_ERR(plat_dat);
 
@@ -650,7 +650,7 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = devm_stmmac_pltfr_probe(pdev, plat_dat, &stmmac_res);
+	ret = devm_ec_stmmac_pltfr_probe(pdev, plat_dat, &stmmac_res);
 	if (ret)
 		return ret;
 
@@ -658,7 +658,7 @@ static int spacemit_ethqos_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id spacemit_ethqos_match[] = {
-	{ .compatible = "spacemit,k3-gmac", .data = &k3_gmac_ops },
+	{ .compatible = "spacemit,k3-ec-gmac", .data = &k3_gmac_ops },
 	{}
 };
 MODULE_DEVICE_TABLE(of, spacemit_ethqos_match);
@@ -667,7 +667,7 @@ static struct platform_driver spacemit_ethqos_driver = {
 	.probe  = spacemit_ethqos_probe,
 	.driver = {
 		.name           = DRIVER_NAME,
-		.pm             = &stmmac_pltfr_pm_ops,
+		.pm             = &ec_stmmac_pltfr_pm_ops,
 		.of_match_table = spacemit_ethqos_match,
 	},
 };

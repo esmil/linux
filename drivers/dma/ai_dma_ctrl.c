@@ -263,6 +263,7 @@ int ai_dmac_memcpy_by_2d(struct ai_dmac *c, dma_addr_t dma_dst, dma_addr_t dma_s
 
 	dsg = desc->sg;
 	dsg->hw->id = ai_dmac_read(c, AXI_DMAC_REG_TRANSFER_ID);
+	ai_dmac_write(c, AXI_DMAC_REG_SGDG_CFG, 0);
 	ai_dmac_write(c, AXI_DMAC_REG_CTRL, AXI_DMAC_CTRL_ENABLE | AXI_DMAC_CTRL_ENABLE_SG);
 
 	ai_dmac_write(c, AXI_DMAC_REG_SG_ADDRESS, (u32)dsg->hw_phys);
@@ -293,7 +294,7 @@ int ai_dmac_pack_start(struct ai_dmac *c, struct ai_pack_param *param,
 		reg |= AXI_DMAC_REG_PACK_MODE;
 	if (param->transpose == true)
 		reg |= AXI_DMAC_REG_TRANSPOSE;
-	if (param->pad == true)
+	if (kp || mp)
 		reg |= AXI_DMAC_REG_PAD_MODE;
 	reg |= param->ele_size << AXI_DMAC_REG_ELE_SIZE_OFFSET;
 	ai_dmac_write(c, AXI_DMAC_REG_SGDG_CFG, reg);

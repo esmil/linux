@@ -156,7 +156,7 @@ static void stmmac_exit_fs(struct net_device *dev);
 #define STMMAC_COAL_TIMER(x) (ns_to_ktime((x) * NSEC_PER_USEC))
 
 /**
- * stmmac_set_clk_tx_rate() - set the clock rate for the MAC transmit clock
+ * ec_stmmac_set_clk_tx_rate() - set the clock rate for the MAC transmit clock
  * @bsp_priv: BSP private data structure (unused)
  * @clk_tx_i: the transmit clock
  * @interface: the selected interface mode
@@ -171,7 +171,7 @@ static void stmmac_exit_fs(struct net_device *dev);
  *
  * plat_data->clk_tx_i must be filled in.
  */
-int stmmac_set_clk_tx_rate(void *bsp_priv, struct clk *clk_tx_i,
+int ec_stmmac_set_clk_tx_rate(void *bsp_priv, struct clk *clk_tx_i,
 			   phy_interface_t interface, int speed)
 {
 	long rate = rgmii_clock(speed);
@@ -185,7 +185,7 @@ int stmmac_set_clk_tx_rate(void *bsp_priv, struct clk *clk_tx_i,
 
 	return clk_set_rate(clk_tx_i, rate);
 }
-EXPORT_SYMBOL_GPL(stmmac_set_clk_tx_rate);
+EXPORT_SYMBOL_GPL(ec_stmmac_set_clk_tx_rate);
 
 /**
  * stmmac_verify_args - verify the driver parameters.
@@ -817,12 +817,12 @@ static void stmmac_setup_ptp(struct stmmac_priv *priv)
 			    ERR_PTR(ret));
 
 	if (stmmac_init_timestamping(priv) == 0)
-		stmmac_ptp_register(priv);
+		ec_stmmac_ptp_register(priv);
 }
 
 static void stmmac_release_ptp(struct stmmac_priv *priv)
 {
-	stmmac_ptp_unregister(priv);
+	ec_stmmac_ptp_unregister(priv);
 	clk_disable_unprepare(priv->plat->clk_ptp_ref);
 }
 
@@ -891,7 +891,7 @@ static void stmmac_mac_link_down(struct phylink_config *config,
 	if (priv->dma_cap.eee)
 		stmmac_set_eee_pls(priv, priv->hw, false);
 
-	if (stmmac_fpe_supported(priv))
+	if (ec_stmmac_fpe_supported(priv))
 		ethtool_mmsv_link_state_handle(&priv->fpe_cfg.mmsv, false);
 }
 
@@ -1009,7 +1009,7 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 	if (priv->dma_cap.eee)
 		stmmac_set_eee_pls(priv, priv->hw, true);
 
-	if (stmmac_fpe_supported(priv))
+	if (ec_stmmac_fpe_supported(priv))
 		ethtool_mmsv_link_state_handle(&priv->fpe_cfg.mmsv, true);
 
 	if (priv->plat->flags & STMMAC_FLAG_HWTSTAMP_CORRECT_LATENCY)
@@ -3100,7 +3100,7 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 	if (priv->extend_desc && (priv->mode == STMMAC_RING_MODE))
 		priv->plat->dma_cfg->atds = 1;
 
-	ret = stmmac_reset(priv, priv->ioaddr);
+	ret = ec_stmmac_reset(priv, priv->ioaddr);
 	if (ret) {
 		netdev_err(priv->dev, "Failed to reset the dma\n");
 		return ret;
@@ -4128,7 +4128,7 @@ static void __stmmac_release(struct net_device *dev)
 
 	stmmac_release_ptp(priv);
 
-	if (stmmac_fpe_supported(priv))
+	if (ec_stmmac_fpe_supported(priv))
 		ethtool_mmsv_stop(&priv->fpe_cfg.mmsv);
 }
 
@@ -6085,8 +6085,8 @@ static void stmmac_common_interrupt(struct stmmac_priv *priv)
 		stmmac_est_irq_status(priv, priv, priv->dev,
 				      &priv->xstats, tx_cnt);
 
-	if (stmmac_fpe_supported(priv))
-		stmmac_fpe_irq_status(priv);
+	if (ec_stmmac_fpe_supported(priv))
+		ec_stmmac_fpe_irq_status(priv);
 
 	/* To handle GMAC own interrupts */
 	if ((priv->plat->has_gmac) || xmac) {
@@ -6777,9 +6777,9 @@ static int stmmac_bpf(struct net_device *dev, struct netdev_bpf *bpf)
 
 	switch (bpf->command) {
 	case XDP_SETUP_PROG:
-		return stmmac_xdp_set_prog(priv, bpf->prog, bpf->extack);
+		return ec_stmmac_xdp_set_prog(priv, bpf->prog, bpf->extack);
 	case XDP_SETUP_XSK_POOL:
-		return stmmac_xdp_setup_pool(priv, bpf->xsk.pool,
+		return ec_stmmac_xdp_setup_pool(priv, bpf->xsk.pool,
 					     bpf->xsk.queue_id);
 	default:
 		return -EOPNOTSUPP;
@@ -6828,7 +6828,7 @@ static int stmmac_xdp_xmit(struct net_device *dev, int num_frames,
 	return nxmit;
 }
 
-void stmmac_disable_rx_queue(struct stmmac_priv *priv, u32 queue)
+void ec_stmmac_disable_rx_queue(struct stmmac_priv *priv, u32 queue)
 {
 	struct stmmac_channel *ch = &priv->channel[queue];
 	unsigned long flags;
@@ -6841,7 +6841,7 @@ void stmmac_disable_rx_queue(struct stmmac_priv *priv, u32 queue)
 	__free_dma_rx_desc_resources(priv, &priv->dma_conf, queue);
 }
 
-void stmmac_enable_rx_queue(struct stmmac_priv *priv, u32 queue)
+void ec_stmmac_enable_rx_queue(struct stmmac_priv *priv, u32 queue)
 {
 	struct stmmac_rx_queue *rx_q = &priv->dma_conf.rx_queue[queue];
 	struct stmmac_channel *ch = &priv->channel[queue];
@@ -6891,7 +6891,7 @@ void stmmac_enable_rx_queue(struct stmmac_priv *priv, u32 queue)
 	spin_unlock_irqrestore(&ch->lock, flags);
 }
 
-void stmmac_disable_tx_queue(struct stmmac_priv *priv, u32 queue)
+void ec_stmmac_disable_tx_queue(struct stmmac_priv *priv, u32 queue)
 {
 	struct stmmac_channel *ch = &priv->channel[queue];
 	unsigned long flags;
@@ -6904,7 +6904,7 @@ void stmmac_disable_tx_queue(struct stmmac_priv *priv, u32 queue)
 	__free_dma_tx_desc_resources(priv, &priv->dma_conf, queue);
 }
 
-void stmmac_enable_tx_queue(struct stmmac_priv *priv, u32 queue)
+void ec_stmmac_enable_tx_queue(struct stmmac_priv *priv, u32 queue)
 {
 	struct stmmac_tx_queue *tx_q = &priv->dma_conf.tx_queue[queue];
 	struct stmmac_channel *ch = &priv->channel[queue];
@@ -6944,7 +6944,7 @@ void stmmac_enable_tx_queue(struct stmmac_priv *priv, u32 queue)
 	spin_unlock_irqrestore(&ch->lock, flags);
 }
 
-void stmmac_xdp_release(struct net_device *dev)
+void ec_stmmac_xdp_release(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	u32 chan;
@@ -6979,7 +6979,7 @@ void stmmac_xdp_release(struct net_device *dev)
 	netif_carrier_off(dev);
 }
 
-int stmmac_xdp_open(struct net_device *dev)
+int ec_stmmac_xdp_open(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	u32 rx_cnt = priv->plat->rx_queues_to_use;
@@ -7088,7 +7088,7 @@ dma_desc_error:
 	return ret;
 }
 
-int stmmac_xsk_wakeup(struct net_device *dev, u32 queue, u32 flags)
+int ec_stmmac_xsk_wakeup(struct net_device *dev, u32 queue, u32 flags)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	struct stmmac_rx_queue *rx_q;
@@ -7199,7 +7199,7 @@ static const struct net_device_ops stmmac_netdev_ops = {
 	.ndo_vlan_rx_kill_vid = stmmac_vlan_rx_kill_vid,
 	.ndo_bpf = stmmac_bpf,
 	.ndo_xdp_xmit = stmmac_xdp_xmit,
-	.ndo_xsk_wakeup = stmmac_xsk_wakeup,
+	.ndo_xsk_wakeup = ec_stmmac_xsk_wakeup,
 	.ndo_hwtstamp_get = stmmac_hwtstamp_get,
 	.ndo_hwtstamp_set = stmmac_hwtstamp_set,
 };
@@ -7295,7 +7295,7 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	priv->chain_mode = chain_mode;
 
 	/* Initialize HW Interface */
-	ret = stmmac_hwif_init(priv);
+	ret = ec_stmmac_hwif_init(priv);
 	if (ret)
 		return ret;
 
@@ -7461,7 +7461,7 @@ static void stmmac_napi_del(struct net_device *dev)
 	}
 }
 
-int stmmac_reinit_queues(struct net_device *dev, u32 rx_cnt, u32 tx_cnt)
+int ec_stmmac_reinit_queues(struct net_device *dev, u32 rx_cnt, u32 tx_cnt)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	int ret = 0, i;
@@ -7486,7 +7486,7 @@ int stmmac_reinit_queues(struct net_device *dev, u32 rx_cnt, u32 tx_cnt)
 	return ret;
 }
 
-int stmmac_reinit_ringparam(struct net_device *dev, u32 rx_size, u32 tx_size)
+int ec_stmmac_reinit_ringparam(struct net_device *dev, u32 rx_size, u32 tx_size)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	int ret = 0;
@@ -7535,7 +7535,7 @@ static const struct xdp_metadata_ops stmmac_xdp_metadata_ops = {
 };
 
 /**
- * stmmac_dvr_probe
+ * ec_stmmac_dvr_probe
  * @device: device pointer
  * @plat_dat: platform data pointer
  * @res: stmmac resource pointer
@@ -7544,7 +7544,7 @@ static const struct xdp_metadata_ops stmmac_xdp_metadata_ops = {
  * Return:
  * returns 0 on success, otherwise errno.
  */
-int stmmac_dvr_probe(struct device *device,
+int ec_stmmac_dvr_probe(struct device *device,
 		     struct plat_stmmacenet_data *plat_dat,
 		     struct stmmac_resources *res)
 {
@@ -7578,7 +7578,7 @@ int stmmac_dvr_probe(struct device *device,
 	if (!priv->xstats.pcpu_stats)
 		return -ENOMEM;
 
-	stmmac_set_ethtool_ops(ndev);
+	ec_stmmac_set_ethtool_ops(ndev);
 	priv->pause_time = pause;
 	priv->plat = plat_dat;
 	priv->ioaddr = res->addr;
@@ -7779,7 +7779,7 @@ int stmmac_dvr_probe(struct device *device,
 
 	mutex_init(&priv->lock);
 
-	stmmac_fpe_init(priv);
+	ec_stmmac_fpe_init(priv);
 
 	stmmac_check_pcs_mode(priv);
 
@@ -7788,7 +7788,7 @@ int stmmac_dvr_probe(struct device *device,
 	if (!pm_runtime_enabled(device))
 		pm_runtime_enable(device);
 
-	ret = stmmac_mdio_register(ndev);
+	ret = ec_stmmac_mdio_register(ndev);
 	if (ret < 0) {
 		dev_err_probe(priv->device, ret,
 			      "MDIO bus (id: %d) registration failed\n",
@@ -7796,7 +7796,7 @@ int stmmac_dvr_probe(struct device *device,
 		goto error_mdio_register;
 	}
 
-	ret = stmmac_pcs_setup(ndev);
+	ret = ec_stmmac_pcs_setup(ndev);
 	if (ret)
 		goto error_pcs_setup;
 
@@ -7851,9 +7851,9 @@ int stmmac_dvr_probe(struct device *device,
 error_netdev_register:
 	phylink_destroy(priv->phylink);
 error_phy_setup:
-	stmmac_pcs_clean(ndev);
+	ec_stmmac_pcs_clean(ndev);
 error_pcs_setup:
-	stmmac_mdio_unregister(ndev);
+	ec_stmmac_mdio_unregister(ndev);
 error_mdio_register:
 	stmmac_napi_del(ndev);
 error_hw_init:
@@ -7863,15 +7863,15 @@ error_wq_init:
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(stmmac_dvr_probe);
+EXPORT_SYMBOL_GPL(ec_stmmac_dvr_probe);
 
 /**
- * stmmac_dvr_remove
+ * ec_stmmac_dvr_remove
  * @dev: device pointer
  * Description: this function resets the TX/RX processes, disables the MAC RX/TX
  * changes the link status, releases the DMA descriptor rings.
  */
-void stmmac_dvr_remove(struct device *dev)
+void ec_stmmac_dvr_remove(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
@@ -7898,8 +7898,8 @@ void stmmac_dvr_remove(struct device *dev)
 		reset_control_assert(priv->plat->stmmac_rst);
 	reset_control_assert(priv->plat->stmmac_ahb_rst);
 
-	stmmac_pcs_clean(ndev);
-	stmmac_mdio_unregister(ndev);
+	ec_stmmac_pcs_clean(ndev);
+	ec_stmmac_mdio_unregister(ndev);
 
 	destroy_workqueue(priv->wq);
 	mutex_destroy(&priv->lock);
@@ -7908,16 +7908,16 @@ void stmmac_dvr_remove(struct device *dev)
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
 }
-EXPORT_SYMBOL_GPL(stmmac_dvr_remove);
+EXPORT_SYMBOL_GPL(ec_stmmac_dvr_remove);
 
 /**
- * stmmac_suspend - suspend callback
+ * ec_stmmac_suspend - suspend callback
  * @dev: device pointer
  * Description: this is the function to suspend the device and it is called
  * by the platform driver to stop the network queue, release the resources,
  * program the PMT register (for WoL), clean and release driver resources.
  */
-int stmmac_suspend(struct device *dev)
+int ec_stmmac_suspend(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
@@ -7968,7 +7968,7 @@ int stmmac_suspend(struct device *dev)
 	phylink_suspend(priv->phylink, stmmac_wol_enabled_mac(priv));
 	rtnl_unlock();
 
-	if (stmmac_fpe_supported(priv))
+	if (ec_stmmac_fpe_supported(priv))
 		ethtool_mmsv_stop(&priv->fpe_cfg.mmsv);
 
 	if (priv->plat->suspend)
@@ -7976,7 +7976,7 @@ int stmmac_suspend(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(stmmac_suspend);
+EXPORT_SYMBOL_GPL(ec_stmmac_suspend);
 
 static void stmmac_reset_rx_queue(struct stmmac_priv *priv, u32 queue)
 {
@@ -8015,12 +8015,12 @@ static void stmmac_reset_queues_param(struct stmmac_priv *priv)
 }
 
 /**
- * stmmac_resume - resume callback
+ * ec_stmmac_resume - resume callback
  * @dev: device pointer
  * Description: when resume this function is invoked to setup the DMA and CORE
  * in a usable state.
  */
-int stmmac_resume(struct device *dev)
+int ec_stmmac_resume(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
@@ -8054,7 +8054,7 @@ int stmmac_resume(struct device *dev)
 		pinctrl_pm_select_default_state(priv->device);
 		/* reset the phy so that it's ready */
 		if (priv->mii)
-			stmmac_mdio_reset(priv->mii);
+			ec_stmmac_mdio_reset(priv->mii);
 	}
 
 	if (!(priv->plat->flags & STMMAC_FLAG_SERDES_UP_AFTER_PHY_LINKUP) &&
@@ -8116,11 +8116,11 @@ int stmmac_resume(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(stmmac_resume);
+EXPORT_SYMBOL_GPL(ec_stmmac_resume);
 
 /* This is not the same as EXPORT_GPL_SIMPLE_DEV_PM_OPS() when CONFIG_PM=n */
-DEFINE_SIMPLE_DEV_PM_OPS(stmmac_simple_pm_ops, stmmac_suspend, stmmac_resume);
-EXPORT_SYMBOL_GPL(stmmac_simple_pm_ops);
+DEFINE_SIMPLE_DEV_PM_OPS(ec_stmmac_simple_pm_ops, ec_stmmac_suspend, ec_stmmac_resume);
+EXPORT_SYMBOL_GPL(ec_stmmac_simple_pm_ops);
 
 #ifndef MODULE
 static int __init stmmac_cmdline_opt(char *str)

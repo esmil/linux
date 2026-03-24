@@ -330,5 +330,5 @@ enum rtc_control {
 #define GMAC_PTP_ATNR	0x30
 #define GMAC_PTP_ATSR	0x34
 
-extern const struct stmmac_dma_ops dwmac1000_dma_ops;
+extern const struct stmmac_dma_ops ec_dwmac1000_dma_ops;
 #endif /* __DWMAC1000_H__ */

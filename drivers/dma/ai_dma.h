@@ -45,8 +45,6 @@ struct ai_pack_param {
 	u32 k_size;
 	u32 mr_size;
 	u32 kr_size;
-	u32 mp_size;
-	u32 kp_size;
 };
 
 struct req_addr_info {
@@ -66,7 +64,6 @@ struct aipack_param {
 	size_t mr_size;
 	bool pack;
 	bool transpose;
-	bool pad;
 	unsigned int pad_value;
 	enum aipack_element ele_size;
 };

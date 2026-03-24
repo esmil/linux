@@ -80,7 +80,7 @@
 #define PACKAGE_NAME "ethercat"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ethercat 1.6.1"
+#define PACKAGE_STRING "ethercat 1.6.8"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "ethercat"
@@ -89,10 +89,10 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.6.1"
+#define PACKAGE_VERSION "1.6.8"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "1.6.1"
+#define VERSION "1.6.8"

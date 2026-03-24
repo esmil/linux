@@ -295,7 +295,7 @@ static void ndesc_clear(struct dma_desc *p)
 	p->des2 = 0;
 }
 
-const struct stmmac_desc_ops ndesc_ops = {
+const struct stmmac_desc_ops ec_ndesc_ops = {
 	.tx_status = ndesc_get_tx_status,
 	.rx_status = ndesc_get_rx_status,
 	.get_tx_len = ndesc_get_tx_len,

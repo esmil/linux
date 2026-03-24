@@ -359,7 +359,7 @@ static void dwxgmac2_set_tbs(struct dma_edesc *p, u32 sec, u32 nsec)
 	p->des7 = 0;
 }
 
-const struct stmmac_desc_ops dwxgmac210_desc_ops = {
+const struct stmmac_desc_ops ec_dwxgmac210_desc_ops = {
 	.tx_status = dwxgmac2_get_tx_status,
 	.rx_status = dwxgmac2_get_rx_status,
 	.get_tx_len = dwxgmac2_get_tx_len,

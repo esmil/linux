@@ -485,9 +485,9 @@
 #define XGMAC_ET_LT_DVLAN_CTAG_STAG	12
 #define XGMAC_ET_LT_DVLAN_STAG_CTAG	13
 
-extern const struct stmmac_ops dwxgmac210_ops;
-extern const struct stmmac_ops dwxlgmac2_ops;
-extern const struct stmmac_dma_ops dwxgmac210_dma_ops;
-extern const struct stmmac_desc_ops dwxgmac210_desc_ops;
+extern const struct stmmac_ops ec_dwxgmac210_ops;
+extern const struct stmmac_ops ec_dwxlgmac2_ops;
+extern const struct stmmac_dma_ops ec_dwxgmac210_dma_ops;
+extern const struct stmmac_desc_ops ec_dwxgmac210_desc_ops;
 
 #endif /* __STMMAC_DWXGMAC2_H__ */

@@ -105,20 +105,20 @@ static void dwmac100_dma_diagnostic_fr(struct stmmac_extra_stats *x,
 	}
 }
 
-const struct stmmac_dma_ops dwmac100_dma_ops = {
-	.reset = dwmac_dma_reset,
+const struct stmmac_dma_ops ec_dwmac100_dma_ops = {
+	.reset = ec_dwmac_dma_reset,
 	.init = dwmac100_dma_init,
 	.init_rx_chan = dwmac100_dma_init_rx,
 	.init_tx_chan = dwmac100_dma_init_tx,
 	.dump_regs = dwmac100_dump_dma_regs,
 	.dma_tx_mode = dwmac100_dma_operation_mode_tx,
 	.dma_diagnostic_fr = dwmac100_dma_diagnostic_fr,
-	.enable_dma_transmission = dwmac_enable_dma_transmission,
-	.enable_dma_irq = dwmac_enable_dma_irq,
-	.disable_dma_irq = dwmac_disable_dma_irq,
-	.start_tx = dwmac_dma_start_tx,
-	.stop_tx = dwmac_dma_stop_tx,
-	.start_rx = dwmac_dma_start_rx,
-	.stop_rx = dwmac_dma_stop_rx,
-	.dma_interrupt = dwmac_dma_interrupt,
+	.enable_dma_transmission = ec_dwmac_enable_dma_transmission,
+	.enable_dma_irq = ec_dwmac_enable_dma_irq,
+	.disable_dma_irq = ec_dwmac_disable_dma_irq,
+	.start_tx = ec_dwmac_dma_start_tx,
+	.stop_tx = ec_dwmac_dma_stop_tx,
+	.start_rx = ec_dwmac_dma_start_rx,
+	.stop_rx = ec_dwmac_dma_stop_rx,
+	.dma_interrupt = ec_dwmac_dma_interrupt,
 };

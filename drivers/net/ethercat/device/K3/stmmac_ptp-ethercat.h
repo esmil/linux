@@ -98,13 +98,13 @@ struct ptp_clock_info;
 struct ptp_clock_request;
 struct stmmac_priv;
 
-int dwmac1000_ptp_enable(struct ptp_clock_info *ptp,
+int ec_dwmac1000_ptp_enable(struct ptp_clock_info *ptp,
 			 struct ptp_clock_request *rq, int on);
 
-void dwmac1000_get_ptptime(void __iomem *ptpaddr, u64 *ptp_time);
-void dwmac1000_timestamp_interrupt(struct stmmac_priv *priv);
+void ec_dwmac1000_get_ptptime(void __iomem *ptpaddr, u64 *ptp_time);
+void ec_dwmac1000_timestamp_interrupt(struct stmmac_priv *priv);
 
-extern const struct ptp_clock_info stmmac_ptp_clock_ops;
-extern const struct ptp_clock_info dwmac1000_ptp_clock_ops;
+extern const struct ptp_clock_info ec_stmmac_ptp_clock_ops;
+extern const struct ptp_clock_info ec_dwmac1000_ptp_clock_ops;
 
 #endif	/* __STMMAC_PTP_H__ */

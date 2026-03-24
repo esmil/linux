@@ -394,7 +394,7 @@ enum stmmac_state {
 	STMMAC_SERVICE_SCHED,
 };
 
-extern const struct dev_pm_ops stmmac_simple_pm_ops;
+extern const struct dev_pm_ops ec_stmmac_simple_pm_ops;
 
 static inline bool stmmac_wol_enabled_mac(struct stmmac_priv *priv)
 {
@@ -406,26 +406,26 @@ static inline bool stmmac_wol_enabled_phy(struct stmmac_priv *priv)
 	return !priv->plat->pmt && device_may_wakeup(priv->device);
 }
 
-int stmmac_mdio_unregister(struct net_device *ndev);
-int stmmac_mdio_register(struct net_device *ndev);
-int stmmac_mdio_reset(struct mii_bus *mii);
-int stmmac_pcs_setup(struct net_device *ndev);
-void stmmac_pcs_clean(struct net_device *ndev);
-void stmmac_set_ethtool_ops(struct net_device *netdev);
+int ec_stmmac_mdio_unregister(struct net_device *ndev);
+int ec_stmmac_mdio_register(struct net_device *ndev);
+int ec_stmmac_mdio_reset(struct mii_bus *mii);
+int ec_stmmac_pcs_setup(struct net_device *ndev);
+void ec_stmmac_pcs_clean(struct net_device *ndev);
+void ec_stmmac_set_ethtool_ops(struct net_device *netdev);
 
-void stmmac_ptp_register(struct stmmac_priv *priv);
-void stmmac_ptp_unregister(struct stmmac_priv *priv);
-int stmmac_xdp_open(struct net_device *dev);
-void stmmac_xdp_release(struct net_device *dev);
-int stmmac_resume(struct device *dev);
-int stmmac_suspend(struct device *dev);
-void stmmac_dvr_remove(struct device *dev);
-int stmmac_dvr_probe(struct device *device,
+void ec_stmmac_ptp_register(struct stmmac_priv *priv);
+void ec_stmmac_ptp_unregister(struct stmmac_priv *priv);
+int ec_stmmac_xdp_open(struct net_device *dev);
+void ec_stmmac_xdp_release(struct net_device *dev);
+int ec_stmmac_resume(struct device *dev);
+int ec_stmmac_suspend(struct device *dev);
+void ec_stmmac_dvr_remove(struct device *dev);
+int ec_stmmac_dvr_probe(struct device *device,
 		     struct plat_stmmacenet_data *plat_dat,
 		     struct stmmac_resources *res);
-int stmmac_reinit_queues(struct net_device *dev, u32 rx_cnt, u32 tx_cnt);
-int stmmac_reinit_ringparam(struct net_device *dev, u32 rx_size, u32 tx_size);
-int stmmac_set_clk_tx_rate(void *bsp_priv, struct clk *clk_tx_i,
+int ec_stmmac_reinit_queues(struct net_device *dev, u32 rx_cnt, u32 tx_cnt);
+int ec_stmmac_reinit_ringparam(struct net_device *dev, u32 rx_size, u32 tx_size);
+int ec_stmmac_set_clk_tx_rate(void *bsp_priv, struct clk *clk_tx_i,
 			   phy_interface_t interface, int speed);
 
 static inline bool stmmac_xdp_is_enabled(struct stmmac_priv *priv)
@@ -433,12 +433,12 @@ static inline bool stmmac_xdp_is_enabled(struct stmmac_priv *priv)
 	return !!priv->xdp_prog;
 }
 
-void stmmac_disable_rx_queue(struct stmmac_priv *priv, u32 queue);
-void stmmac_enable_rx_queue(struct stmmac_priv *priv, u32 queue);
-void stmmac_disable_tx_queue(struct stmmac_priv *priv, u32 queue);
-void stmmac_enable_tx_queue(struct stmmac_priv *priv, u32 queue);
-int stmmac_xsk_wakeup(struct net_device *dev, u32 queue, u32 flags);
-struct timespec64 stmmac_calc_tas_basetime(ktime_t old_base_time,
+void ec_stmmac_disable_rx_queue(struct stmmac_priv *priv, u32 queue);
+void ec_stmmac_enable_rx_queue(struct stmmac_priv *priv, u32 queue);
+void ec_stmmac_disable_tx_queue(struct stmmac_priv *priv, u32 queue);
+void ec_stmmac_enable_tx_queue(struct stmmac_priv *priv, u32 queue);
+int ec_stmmac_xsk_wakeup(struct net_device *dev, u32 queue, u32 flags);
+struct timespec64 ec_stmmac_calc_tas_basetime(ktime_t old_base_time,
 					   ktime_t current_time,
 					   u64 cycle_time);
 

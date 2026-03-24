@@ -36,7 +36,7 @@ struct stmmac_fpe_reg {
 	const u32 int_en_bit;		/* Frame Preemption Interrupt Enable */
 };
 
-bool stmmac_fpe_supported(struct stmmac_priv *priv)
+bool ec_stmmac_fpe_supported(struct stmmac_priv *priv)
 {
 	return priv->dma_cap.fpesel && priv->fpe_cfg.reg &&
 		priv->hw->mac->fpe_map_preemption_class;
@@ -129,7 +129,7 @@ static void stmmac_fpe_event_status(struct stmmac_priv *priv, int status)
 		ethtool_mmsv_event_handle(mmsv, ETHTOOL_MMSV_LP_SENT_RESPONSE_MPACKET);
 }
 
-void stmmac_fpe_irq_status(struct stmmac_priv *priv)
+void ec_stmmac_fpe_irq_status(struct stmmac_priv *priv)
 {
 	const struct stmmac_fpe_reg *reg = priv->fpe_cfg.reg;
 	void __iomem *ioaddr = priv->ioaddr;
@@ -165,7 +165,7 @@ void stmmac_fpe_irq_status(struct stmmac_priv *priv)
 	stmmac_fpe_event_status(priv, status);
 }
 
-void stmmac_fpe_init(struct stmmac_priv *priv)
+void ec_stmmac_fpe_init(struct stmmac_priv *priv)
 {
 	ethtool_mmsv_init(&priv->fpe_cfg.mmsv, priv->dev,
 			  &stmmac_mmsv_ops);
@@ -175,7 +175,7 @@ void stmmac_fpe_init(struct stmmac_priv *priv)
 		dev_info(priv->device, "FPE is not supported by driver.\n");
 }
 
-int stmmac_fpe_get_add_frag_size(struct stmmac_priv *priv)
+int ec_stmmac_fpe_get_add_frag_size(struct stmmac_priv *priv)
 {
 	const struct stmmac_fpe_reg *reg = priv->fpe_cfg.reg;
 	void __iomem *ioaddr = priv->ioaddr;
@@ -183,7 +183,7 @@ int stmmac_fpe_get_add_frag_size(struct stmmac_priv *priv)
 	return FIELD_GET(FPE_MTL_ADD_FRAG_SZ, readl(ioaddr + reg->mtl_fpe_reg));
 }
 
-void stmmac_fpe_set_add_frag_size(struct stmmac_priv *priv, u32 add_frag_size)
+void ec_stmmac_fpe_set_add_frag_size(struct stmmac_priv *priv, u32 add_frag_size)
 {
 	const struct stmmac_fpe_reg *reg = priv->fpe_cfg.reg;
 	void __iomem *ioaddr = priv->ioaddr;
@@ -197,7 +197,7 @@ void stmmac_fpe_set_add_frag_size(struct stmmac_priv *priv, u32 add_frag_size)
 #define ALG_ERR_MSG "TX algorithm SP is not suitable for one-to-many mapping"
 #define WEIGHT_ERR_MSG "TXQ weight %u differs across other TXQs in TC: [%u]"
 
-int dwmac5_fpe_map_preemption_class(struct net_device *ndev,
+int ec_dwmac5_fpe_map_preemption_class(struct net_device *ndev,
 				    struct netlink_ext_ack *extack, u32 pclass)
 {
 	u32 val, offset, count, queue_weight, preemptible_txqs = 0;
@@ -249,7 +249,7 @@ update_mapping:
 	return 0;
 }
 
-int dwxgmac3_fpe_map_preemption_class(struct net_device *ndev,
+int ec_dwxgmac3_fpe_map_preemption_class(struct net_device *ndev,
 				      struct netlink_ext_ack *extack, u32 pclass)
 {
 	u32 val, offset, count, preemptible_txqs = 0;
@@ -292,7 +292,7 @@ int dwxgmac3_fpe_map_preemption_class(struct net_device *ndev,
 	return 0;
 }
 
-const struct stmmac_fpe_reg dwmac5_fpe_reg = {
+const struct stmmac_fpe_reg ec_dwmac5_fpe_reg = {
 	.mac_fpe_reg = GMAC5_MAC_FPE_CTRL_STS,
 	.mtl_fpe_reg = GMAC5_MTL_FPE_CTRL_STS,
 	.rxq_ctrl1_reg = GMAC_RXQ_CTRL1,
@@ -301,7 +301,7 @@ const struct stmmac_fpe_reg dwmac5_fpe_reg = {
 	.int_en_bit = GMAC_INT_FPE_EN,
 };
 
-const struct stmmac_fpe_reg dwxgmac3_fpe_reg = {
+const struct stmmac_fpe_reg ec_dwxgmac3_fpe_reg = {
 	.mac_fpe_reg = XGMAC_MAC_FPE_CTRL_STS,
 	.mtl_fpe_reg = XGMAC_MTL_FPE_CTRL_STS,
 	.rxq_ctrl1_reg = XGMAC_RXQ_CTRL1,

@@ -13,6 +13,23 @@ config EC_MASTER
 
 if EC_MASTER
 
+config EC_MASTER_OF
+    bool "Use Device Tree for EtherCAT master setup"
+    depends on OF
+    default y
+    help
+      Use Device Tree to provide EtherCAT master configuration,
+      including master instances and bound Ethernet devices.
+
+      This mode is intended for platform-integrated setups where
+      EtherCAT master parameters are fixed by the board description,
+      so runtime module parameters are not needed.
+
+      If disabled, the original upstream module-parameter based
+      configuration path is used instead.
+
+if EC_MASTER_OF
+
 config EC_MASTER_RUN_ON_CPU
     int "Run EtherCAT master on CPU"
     default 1
@@ -30,5 +47,7 @@ config EC_MASTER_DEBUG_LEVEL
       0: No debug information.
       1: Error messages.
       2: Full debug information.
+
+endif # EC_MASTER_OF
 
 endif # EC_MASTER

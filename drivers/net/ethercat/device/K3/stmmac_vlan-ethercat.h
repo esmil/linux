@@ -55,10 +55,10 @@
 #define HW_FEATURE3			0x00000128
 #define VLAN_HW_FEAT_NRVF		GENMASK(2, 0)
 
-extern const struct stmmac_vlan_ops dwmac_vlan_ops;
-extern const struct stmmac_vlan_ops dwxgmac210_vlan_ops;
-extern const struct stmmac_vlan_ops dwxlgmac2_vlan_ops;
+extern const struct stmmac_vlan_ops ec_dwmac_vlan_ops;
+extern const struct stmmac_vlan_ops ec_dwxgmac210_vlan_ops;
+extern const struct stmmac_vlan_ops ec_dwxlgmac2_vlan_ops;
 
-u32 stmmac_get_num_vlan(void __iomem *ioaddr);
+u32 ec_stmmac_get_num_vlan(void __iomem *ioaddr);
 
 #endif /* __STMMAC_VLAN_H__ */

@@ -326,6 +326,7 @@ struct soc_dp_dev {
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC)
 	uint32_t aud_mode;
+	bool card_instantiated;
 	bool aud_registered;
 #endif
 };
@@ -376,6 +377,32 @@ static int soc_dp_reg_read_range(struct soc_dp_dev *dp,
 }
 
 #if IS_ENABLED(CONFIG_SND_SOC)
+static int inno_dp_dai_probe(struct snd_soc_dai *dai)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+
+	if (!dp) {
+		dev_err(dp->dev, "Failed to get soc_dp_dev from dai probe\n");
+		return -EINVAL;
+	}
+	dp->card_instantiated = true;
+
+	return 0;
+}
+
+static int inno_dp_dai_remove(struct snd_soc_dai *dai)
+{
+	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
+
+	if (!dp) {
+		dev_err(dp->dev, "Failed to get soc_dp_dev from dai remove\n");
+		return -EINVAL;
+	}
+	dp->card_instantiated = false;
+
+	return 0;
+}
+
 static int inno_dp_dai_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct soc_dp_dev *dp = snd_soc_dai_get_drvdata(dai);
@@ -462,6 +489,8 @@ static int inno_dp_dai_trigger(struct snd_pcm_substream *substream,
 }
 
 const struct snd_soc_dai_ops inno_dp_dai_ops = {
+	.probe = inno_dp_dai_probe,
+	.remove = inno_dp_dai_remove,
 	.hw_params = inno_dp_dai_pcm_hw_params,
 	.set_fmt = inno_dp_dai_set_dai_fmt,
 	.trigger = inno_dp_dai_trigger,
@@ -1840,7 +1869,7 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 		if (!dp->edp_mode) {
 			if (dp->connector_status == connector_status_connected) {
 				if (inno_dp_audio_register(dp->dev))
-					DRM_INFO("%s() failed to register dp auido component\n", __func__);
+					DRM_INFO("%s() failed to register dp audio component\n", __func__);
 				else
 					dp->aud_registered = true;
 			} else {
@@ -1854,8 +1883,15 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 #if IS_ENABLED(CONFIG_SND_SOC)
 		if (!dp->edp_mode) {
 			if (dp->aud_registered && new_status == connector_status_disconnected) {
-				inno_dp_audio_unregister(dp->dev);
-				dp->aud_registered = false;
+				if (dp->card_instantiated) {
+					inno_dp_audio_unregister(dp->dev);
+					dp->aud_registered = false;
+				}
+			} else if (!dp->aud_registered && new_status == connector_status_connected) {
+				if (inno_dp_audio_register(dp->dev))
+					DRM_INFO("%s() failed to register dp audio component\n", __func__);
+				else
+					dp->aud_registered = true;
 			}
 		}
 	}
@@ -2345,7 +2381,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	if (!dp->edp_mode) {
 		ret = inno_dp_audio_register(dp->dev);
 		if (ret)
-			dev_err(dev, "failed to register dp auido component\n");
+			dev_err(dev, "failed to register dp audio component\n");
 		else
 			dp->aud_registered = true;
 	}
@@ -2438,6 +2474,8 @@ static int inno_dp_drv_pm_suspend(struct device *dev)
 	dp->connector_status = connector_status_disconnected;
 	mutex_unlock(&dp->mode_lock);
 
+	drm_kms_helper_hotplug_event(dp->drm);
+
 	return 0;
 }
 
@@ -2451,8 +2489,6 @@ static int inno_dp_drv_pm_resume(struct device *dev)
 	mutex_lock(&dp->mode_lock);
 	dp->suspended = false;
 	mutex_unlock(&dp->mode_lock);
-
-	soc_dp_dev_init(dp);
 
 #if HOT_PLUG_THREAD_ENABLED
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
@@ -2506,6 +2542,8 @@ static int inno_dp_drv_pm_resume_early(struct device *dev)
 		clk_prepare_enable(dp->pxclk);
 
 	mutex_unlock(&dp->mode_lock);
+
+	soc_dp_dev_init(dp);
 
 	return 0;
 }

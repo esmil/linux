@@ -252,7 +252,7 @@ static int stmmac_pci_probe(struct pci_dev *pdev,
 	plat->suspend = stmmac_pci_suspend;
 	plat->resume = stmmac_pci_resume;
 
-	return stmmac_dvr_probe(&pdev->dev, plat, &res);
+	return ec_stmmac_dvr_probe(&pdev->dev, plat, &res);
 }
 
 /**
@@ -263,7 +263,7 @@ static int stmmac_pci_probe(struct pci_dev *pdev,
  */
 static void stmmac_pci_remove(struct pci_dev *pdev)
 {
-	stmmac_dvr_remove(&pdev->dev);
+	ec_stmmac_dvr_remove(&pdev->dev);
 }
 
 /* synthetic ID, no official vendor */
@@ -287,7 +287,7 @@ static struct pci_driver stmmac_pci_driver = {
 	.probe = stmmac_pci_probe,
 	.remove = stmmac_pci_remove,
 	.driver         = {
-		.pm     = &stmmac_simple_pm_ops,
+		.pm     = &ec_stmmac_simple_pm_ops,
 	},
 };
 

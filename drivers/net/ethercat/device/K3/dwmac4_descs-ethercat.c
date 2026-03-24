@@ -562,7 +562,7 @@ static void dwmac4_set_tbs(struct dma_edesc *p, u32 sec, u32 nsec)
 	p->des7 = 0;
 }
 
-const struct stmmac_desc_ops dwmac4_desc_ops = {
+const struct stmmac_desc_ops ec_dwmac4_desc_ops = {
 	.tx_status = dwmac4_wrback_get_tx_status,
 	.rx_status = dwmac4_wrback_get_rx_status,
 	.get_tx_len = dwmac4_rd_get_tx_len,
@@ -595,6 +595,6 @@ const struct stmmac_desc_ops dwmac4_desc_ops = {
 	.set_tbs = dwmac4_set_tbs,
 };
 
-const struct stmmac_mode_ops dwmac4_ring_mode_ops = {
+const struct stmmac_mode_ops ec_dwmac4_ring_mode_ops = {
 	.set_16kib_bfsize = set_16kib_bfsize,
 };

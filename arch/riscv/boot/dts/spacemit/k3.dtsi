@@ -81,7 +81,7 @@
 
 		osc_32k: clock-32k {
 			compatible = "fixed-clock";
-			clock-frequency = <32000>;
+			clock-frequency = <32768>;
 			clock-output-names = "osc_32k";
 			#clock-cells = <0>;
 		};
@@ -297,115 +297,166 @@
 			status = "okay";
 		};
 
-		syscon_mpmu: system-controller@d4050000 {
-			compatible = "spacemit,k3-syscon-mpmu", "syscon";
+		syscon_mpmu_reg: system-controller@d4050000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xd4050000 0x0 0x10000>;
-			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>,
-				 <&vctcxo_24m>, <&reserved_clk>, <&external_clk>;
-			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
-				      "reserved_clk", "external_clk";
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_mpmu: clock-controller {
+				compatible = "spacemit,k3-syscon-mpmu";
+				clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>,
+					<&vctcxo_24m>, <&reserved_clk>, <&external_clk>;
+				clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+						"reserved_clk", "external_clk";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		pll: clock-controller@d4090000 {
-			compatible = "spacemit,k3-pll", "syscon";
+		pll_reg: system-controller@d4090000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xd4090000 0x0 0x10000>;
-			clocks = <&vctcxo_24m>;
-			spacemit,mpmu = <&syscon_mpmu>;
-			#clock-cells = <1>;
+
+			pll: clock-controller {
+				compatible = "spacemit,k3-pll";
+				clocks = <&vctcxo_24m>;
+				spacemit,mpmu = <&syscon_mpmu_reg>;
+				#clock-cells = <1>;
+			};
 		};
 
-		syscon_apmu: system-controller@d4282800 {
-			compatible = "spacemit,k3-syscon-apmu", "syscon";
+		syscon_apmu_reg: system-controller@d4282800 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xd4282800 0x0 0x400>;
-			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
-				 <&reserved_clk>, <&external_clk>;
-			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
-				      "reserved_clk", "external_clk";
-			#clock-cells = <1>;
-			#power-domain-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_apmu: clock-controller {
+				compatible = "spacemit,k3-syscon-apmu";
+				clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
+					<&reserved_clk>, <&external_clk>;
+				clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+						"reserved_clk", "external_clk";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_apbc: system-controller@d4015000 {
-			compatible = "spacemit,k3-syscon-apbc", "syscon";
+		syscon_apbc_reg: system-controller@d4015000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xd4015000 0x0 0x1000>;
-			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
-				 <&reserved_clk>, <&external_clk>;
-			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
-				      "reserved_clk", "external_clk";
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_apbc: clock-controller {
+				compatible = "spacemit,k3-syscon-apbc";
+				clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
+					<&reserved_clk>, <&external_clk>;
+				clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+						"reserved_clk", "external_clk";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_apbc2: system-controller@f0610000 {
-			compatible = "spacemit,k3-syscon-apbc2", "syscon";
+		syscon_apbc2_reg: system-controller@f0610000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xf0610000 0x0 0x2000>;
-			clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
-				 <&reserved_clk>, <&external_clk>;
-			clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
-				      "reserved_clk", "external_clk";
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_apbc2: clock-controller {
+				compatible = "spacemit,k3-syscon-apbc2";
+				clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
+					<&reserved_clk>, <&external_clk>;
+				clock-names = "osc_32k", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
+						"reserved_clk", "external_clk";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_dciu: system-controller@d8440000 {
-			compatible = "spacemit,k3-syscon-dciu", "syscon";
+		syscon_dciu_reg: system-controller@d8440000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xd8440000 0x0 0xc000>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_dciu: clock-controller {
+				compatible = "spacemit,k3-syscon-dciu";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rcpu_sysctrl: system-controller@c0880000 {
-			compatible = "spacemit,k3-syscon-rcpu-sysctrl", "syscon";
+		syscon_rcpu_sysctrl_reg: system-controller@c0880000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc0880000 0x0 0x1000>;
-			clocks = <&vctcxo_24m>, <&external_clk>;
-			clock-names = "vctcxo_24m", "external_clk";
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rcpu_sysctrl: clock-controller {
+				compatible = "spacemit,k3-syscon-rcpu-sysctrl";
+				clocks = <&vctcxo_24m>, <&external_clk>;
+				clock-names = "vctcxo_24m", "external_clk";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rcpu_uartctrl: system-controller@c0881f00 {
-			compatible = "spacemit,k3-syscon-rcpu-uartctrl", "syscon";
+		syscon_rcpu_uartctrl_reg: system-controller@c0881f00 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc0881f00 0x0 0x100>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rcpu_uartctrl: clock-controller {
+				compatible = "spacemit,k3-syscon-rcpu-uartctrl";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rcpu_i2sctrl: system-controller@c0882000 {
-			compatible = "spacemit,k3-syscon-rcpu-i2sctrl", "syscon";
+		syscon_rcpu_i2sctrl_reg: system-controller@c0882000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc0882000 0x0 0x1000>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rcpu_i2sctrl: clock-controller {
+				compatible = "spacemit,k3-syscon-rcpu-i2sctrl";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rcpu_spictrl: system-controller@c0885f00 {
-			compatible = "spacemit,k3-syscon-rcpu-spictrl", "syscon";
+		syscon_rcpu_spictrl_reg: system-controller@c0885f00 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc0885f00 0x0 0x100>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rcpu_spictrl: clock-controller {
+				compatible = "spacemit,k3-syscon-rcpu-spictrl";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rcpu_i2cctrl: system-controller@c0886f00 {
-			compatible = "spacemit,k3-syscon-rcpu-i2cctrl", "syscon";
+		syscon_rcpu_i2cctrl_reg: system-controller@c0886f00 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc0886f00 0x0 0x100>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rcpu_i2cctrl: clock-controller {
+				compatible = "spacemit,k3-syscon-rcpu-i2cctrl";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rpmu: system-controller@c088c000 {
-			compatible = "spacemit,k3-syscon-rpmu", "syscon";
+		syscon_rpmu_reg: system-controller@c088c000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc088c000 0x0 0x800>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rpmu: clock-controller {
+				compatible = "spacemit,k3-syscon-rpmu";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
-		syscon_rcpu_pwmctrl: system-controller@c088d000 {
-			compatible = "spacemit,k3-syscon-rcpu-pwmctrl", "syscon";
+		syscon_rcpu_pwmctrl_reg: system-controller@c088d000 {
+			compatible = "simple-mfd", "syscon";
 			reg = <0x0 0xc088d000 0x0 0x100>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
+
+			syscon_rcpu_pwmctrl: clock-controller {
+				compatible = "spacemit,k3-syscon-rcpu-pwmctrl";
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
 		};
 
 		syscon_gpio: syscon-gpio{
@@ -450,8 +501,8 @@
 			interrupts = <60 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-parent = <&saplic>;
 			spacemit,gpio-edge = <&syscon_gpio_edge>;
-			spacemit,apbc = <&syscon_apbc 0x50>;
-			spacemit,apmu = <&syscon_apmu>;
+			spacemit,apbc = <&syscon_apbc_reg 0x50>;
+			spacemit,apmu = <&syscon_apmu_reg>;
 		};
 
 		pdma: pdma@d4000000 {
@@ -1512,8 +1563,8 @@
 		usb3_porta_u3phy: phy@cad30000 {
 			compatible = "spacemit,k3-usb3-phy",
 				     "spacemit,k3-typec-switch";
-			spacemit,syscon-apmu = <&syscon_apmu>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apmu = <&syscon_apmu_reg>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			clocks = <&syscon_apmu CLK_APMU_USB3_PORTA_BUS>;
 			reg = <0x0 0xcad30000 0x0 0x200>,
 			      <0x0 0xcad40000 0x0 0x200>;
@@ -1549,8 +1600,8 @@
 
 		usb3_portb_u3phy: phy@81f00000{
 			compatible = "spacemit,k3-usb3-phy";
-			spacemit,syscon-apmu = <&syscon_apmu>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apmu = <&syscon_apmu_reg>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			reg = <0x0 0x81f00000 0x0 0x200>;
 			combo-usb-bit = <2>;
 			#phy-cells = <0>;
@@ -1586,8 +1637,8 @@
 
 		usb3_portc_u3phy: phy@82000000{
 			compatible = "spacemit,k3-usb3-phy";
-			spacemit,syscon-apmu = <&syscon_apmu>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apmu = <&syscon_apmu_reg>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			reg = <0x0 0x82000000 0x0 0x200>;
 			combo-usb-bit = <1>;
 			#phy-cells = <0>;
@@ -1623,8 +1674,8 @@
 
 		usb3_portd_u3phy: phy@82100000{
 			compatible = "spacemit,k3-usb3-phy";
-			spacemit,syscon-apmu = <&syscon_apmu>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apmu = <&syscon_apmu_reg>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			reg = <0x0 0x82100000 0x0 0x200>;
 			combo-usb-bit = <0>;
 			#phy-cells = <0>;
@@ -1687,7 +1738,7 @@
 		eth0: ethernet@cac80000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xcac80000 0x0 0x2000>;
-			spacemit,apmu = <&syscon_apmu>;
+			spacemit,apmu = <&syscon_apmu_reg>;
 			spacemit,ctrl-offset = <0x3e4>;
 			spacemit,dline-offset = <0x3e8>;
 			clocks = <&syscon_apmu CLK_APMU_EMAC0_BUS>,
@@ -1706,7 +1757,7 @@
 		eth1: ethernet@cac82000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xcac82000 0x0 0x2000>;
-			spacemit,apmu = <&syscon_apmu>;
+			spacemit,apmu = <&syscon_apmu_reg>;
 			spacemit,ctrl-offset = <0x3ec>;
 			spacemit,dline-offset = <0x3f0>;
 			clocks = <&syscon_apmu CLK_APMU_EMAC1_BUS>,
@@ -1725,7 +1776,7 @@
 		eth2: ethernet@cac8e000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xcac8e000 0x0 0x2000>;
-			spacemit,apmu = <&syscon_apmu>;
+			spacemit,apmu = <&syscon_apmu_reg>;
 			spacemit,ctrl-offset = <0x248>;
 			spacemit,dline-offset = <0x24c>;
 			clocks = <&syscon_apmu CLK_APMU_EMAC2_BUS>,
@@ -1744,7 +1795,7 @@
 		eth3: ethernet@a0000000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xa0000000 0x0 0x2000>;
-			spacemit,apmu = <&syscon_rcpu_sysctrl>;
+			spacemit,apmu = <&syscon_rcpu_sysctrl_reg>;
 			spacemit,ctrl-offset = <0x0e4>;
 			spacemit,dline-offset = <0x0e8>;
 			clocks = <&syscon_rcpu_sysctrl CLK_RCPU_SYSCTRL_REMAC_BUS>,
@@ -2065,7 +2116,7 @@
 		phy0: phy-pcie@81d00000 {
 			compatible = "spacemit,k3-pcie-phy";
 			reg = <0x0 0x81d00000 0x0 0x1000>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			num-lanes = <2>;
 			spacemit,phy-id = <0>;
 			#phy-cells = <0>;
@@ -2075,7 +2126,7 @@
 		phy1: phy-pcie@81e00000 {
 			compatible = "spacemit,k3-pcie-phy";
 			reg = <0x0 0x81e00000 0x0 0x1000>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			num-lanes = <2>;
 			spacemit,phy-id = <1>;
 			#phy-cells = <0>;
@@ -2085,7 +2136,7 @@
 		phy2: phy-pcie@81f00000 {
 			compatible = "spacemit,k3-pcie-phy";
 			reg = <0x0 0x81f00000 0x0 0x1000>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			num-lanes = <1>;
 			spacemit,phy-id = <2>;
 			#phy-cells = <0>;
@@ -2095,7 +2146,7 @@
 		phy3: phy-pcie@82000000 {
 			compatible = "spacemit,k3-pcie-phy";
 			reg = <0x0 0x82000000 0x0 0x1000>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			num-lanes = <1>;
 			spacemit,phy-id = <3>;
 			#phy-cells = <0>;
@@ -2105,7 +2156,7 @@
 		phy4: phy-pcie@82100000 {
 			compatible = "spacemit,k3-pcie-phy";
 			reg = <0x0 0x82100000 0x0 0x1000>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			num-lanes = <1>;
 			spacemit,phy-id = <4>;
 			#phy-cells = <0>;
@@ -2115,7 +2166,7 @@
 		phy5: phy-pcie@82200000 {
 			compatible = "spacemit,k3-pcie-phy";
 			reg = <0x0 0x82200000 0x0 0x1000>;
-			spacemit,syscon-apb-spare = <&pll>;
+			spacemit,syscon-apb-spare = <&pll_reg>;
 			num-lanes = <1>;
 			spacemit,phy-id = <5>;
 			#phy-cells = <0>;
@@ -2163,7 +2214,7 @@
 				reset-names = "dbi", "mstr", "slv";
 			linux,pci-domain = <0>;
 			msi-parent = <&simsic>;
-			spacemit,apmu = <&syscon_apmu 0x1f0>;
+			spacemit,apmu = <&syscon_apmu_reg 0x1f0>;
 
 			iommu-map = <0x0 &iommu 0x00000 0x10000>;
 
@@ -2205,7 +2256,7 @@
 			linux,pci-domain = <1>;
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <1>;
-			spacemit,apmu = <&syscon_apmu 0x1d0>;
+			spacemit,apmu = <&syscon_apmu_reg 0x1d0>;
 
 			iommu-map = <0x0 &iommu 0x10000 0x10000>;
 
@@ -2247,7 +2298,7 @@
 			linux,pci-domain = <2>;
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <2>;
-			spacemit,apmu = <&syscon_apmu 0x1c8>;
+			spacemit,apmu = <&syscon_apmu_reg 0x1c8>;
 
 			iommu-map = <0x0 &iommu 0x20000 0x10000>;
 
@@ -2289,7 +2340,7 @@
 			linux,pci-domain = <3>;
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <3>;
-			spacemit,apmu = <&syscon_apmu 0x1e0>;
+			spacemit,apmu = <&syscon_apmu_reg 0x1e0>;
 			status = "disabled";
 		};
 
@@ -2328,7 +2379,7 @@
 			linux,pci-domain = <4>;
 			msi-parent = <&simsic>;
 			spacemit,pcie-port = <4>;
-			spacemit,apmu = <&syscon_apmu 0x1e8>;
+			spacemit,apmu = <&syscon_apmu_reg 0x1e8>;
 			status = "disabled";
 		};
 

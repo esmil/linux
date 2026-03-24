@@ -384,7 +384,7 @@ static void dwmac_mmc_read(void __iomem *mmcaddr, struct stmmac_counters *mmc)
 	mmc->mmc_rx_fpe_fragment_cntr += readl(mmcaddr + MMC_RX_FPE_FRAG);
 }
 
-const struct stmmac_mmc_ops dwmac_mmc_ops = {
+const struct stmmac_mmc_ops ec_dwmac_mmc_ops = {
 	.ctrl = dwmac_mmc_ctrl,
 	.intr_all_mask = dwmac_mmc_intr_all_mask,
 	.read = dwmac_mmc_read,
@@ -599,7 +599,7 @@ static void dwxgmac_mmc_read(void __iomem *mmcaddr, struct stmmac_counters *mmc)
 			     &mmc->mmc_rx_icmp_err_octets);
 }
 
-const struct stmmac_mmc_ops dwxgmac_mmc_ops = {
+const struct stmmac_mmc_ops ec_dwxgmac_mmc_ops = {
 	.ctrl = dwxgmac_mmc_ctrl,
 	.intr_all_mask = dwxgmac_mmc_intr_all_mask,
 	.read = dwxgmac_mmc_read,

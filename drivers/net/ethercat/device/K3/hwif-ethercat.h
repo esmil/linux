@@ -666,31 +666,31 @@ struct stmmac_regs_off {
 	u32 est_off;
 };
 
-extern const struct stmmac_desc_ops enh_desc_ops;
-extern const struct stmmac_desc_ops ndesc_ops;
+extern const struct stmmac_desc_ops ec_enh_desc_ops;
+extern const struct stmmac_desc_ops ec_ndesc_ops;
 
-extern const struct stmmac_hwtimestamp stmmac_ptp;
-extern const struct stmmac_hwtimestamp dwmac1000_ptp;
+extern const struct stmmac_hwtimestamp ec_stmmac_ptp;
+extern const struct stmmac_hwtimestamp ec_dwmac1000_ptp;
 
-extern const struct stmmac_mode_ops ring_mode_ops;
-extern const struct stmmac_mode_ops chain_mode_ops;
+extern const struct stmmac_mode_ops ec_ring_mode_ops;
+extern const struct stmmac_mode_ops ec_chain_mode_ops;
 
-extern const struct stmmac_ops dwmac100_ops;
-extern const struct stmmac_dma_ops dwmac100_dma_ops;
-extern const struct stmmac_ops dwmac1000_ops;
-extern const struct stmmac_dma_ops dwmac1000_dma_ops;
-extern const struct stmmac_ops dwmac4_ops;
-extern const struct stmmac_dma_ops dwmac4_dma_ops;
-extern const struct stmmac_ops dwmac410_ops;
-extern const struct stmmac_dma_ops dwmac410_dma_ops;
-extern const struct stmmac_ops dwmac510_ops;
-extern const struct stmmac_tc_ops dwmac4_tc_ops;
-extern const struct stmmac_tc_ops dwmac510_tc_ops;
+extern const struct stmmac_ops ec_dwmac100_ops;
+extern const struct stmmac_dma_ops ec_dwmac100_dma_ops;
+extern const struct stmmac_ops ec_dwmac1000_ops;
+extern const struct stmmac_dma_ops ec_dwmac1000_dma_ops;
+extern const struct stmmac_ops ec_dwmac4_ops;
+extern const struct stmmac_dma_ops ec_dwmac4_dma_ops;
+extern const struct stmmac_ops ec_dwmac410_ops;
+extern const struct stmmac_dma_ops ec_dwmac410_dma_ops;
+extern const struct stmmac_ops ec_dwmac510_ops;
+extern const struct stmmac_tc_ops ec_dwmac4_tc_ops;
+extern const struct stmmac_tc_ops ec_dwmac510_tc_ops;
 
 #define GMAC_VERSION		0x00000020	/* GMAC CORE Version */
 #define GMAC4_VERSION		0x00000110	/* GMAC4+ CORE Version */
 
-int stmmac_reset(struct stmmac_priv *priv, void __iomem *ioaddr);
-int stmmac_hwif_init(struct stmmac_priv *priv);
+int ec_stmmac_reset(struct stmmac_priv *priv, void __iomem *ioaddr);
+int ec_stmmac_hwif_init(struct stmmac_priv *priv);
 
 #endif /* __STMMAC_HWIF_H__ */

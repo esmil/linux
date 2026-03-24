@@ -692,13 +692,13 @@ static void devm_stmmac_remove_config_dt(void *data)
 }
 
 /**
- * devm_stmmac_probe_config_dt
+ * devm_ec_stmmac_probe_config_dt
  * @pdev: platform_device structure
  * @mac: MAC address to use
  * Description: Devres variant of stmmac_probe_config_dt().
  */
 struct plat_stmmacenet_data *
-devm_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
+devm_ec_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
 {
 	struct plat_stmmacenet_data *plat;
 	int ret;
@@ -716,14 +716,14 @@ devm_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
 }
 #else
 struct plat_stmmacenet_data *
-devm_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
+devm_ec_stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
 {
 	return ERR_PTR(-EINVAL);
 }
 #endif /* CONFIG_OF */
-EXPORT_SYMBOL_GPL(devm_stmmac_probe_config_dt);
+EXPORT_SYMBOL_GPL(devm_ec_stmmac_probe_config_dt);
 
-struct clk *stmmac_pltfr_find_clk(struct plat_stmmacenet_data *plat_dat,
+struct clk *ec_stmmac_pltfr_find_clk(struct plat_stmmacenet_data *plat_dat,
 				  const char *name)
 {
 	for (int i = 0; i < plat_dat->num_clks; i++)
@@ -732,9 +732,9 @@ struct clk *stmmac_pltfr_find_clk(struct plat_stmmacenet_data *plat_dat,
 
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(stmmac_pltfr_find_clk);
+EXPORT_SYMBOL_GPL(ec_stmmac_pltfr_find_clk);
 
-int stmmac_get_platform_resources(struct platform_device *pdev,
+int ec_stmmac_get_platform_resources(struct platform_device *pdev,
 				  struct stmmac_resources *stmmac_res)
 {
 	memset(stmmac_res, 0, sizeof(*stmmac_res));
@@ -782,7 +782,7 @@ int stmmac_get_platform_resources(struct platform_device *pdev,
 
 	return PTR_ERR_OR_ZERO(stmmac_res->addr);
 }
-EXPORT_SYMBOL_GPL(stmmac_get_platform_resources);
+EXPORT_SYMBOL_GPL(ec_stmmac_get_platform_resources);
 
 /**
  * stmmac_pltfr_init
@@ -832,14 +832,14 @@ static int stmmac_plat_resume(struct device *dev, void *bsp_priv)
 }
 
 /**
- * stmmac_pltfr_probe
+ * ec_stmmac_pltfr_probe
  * @pdev: platform device pointer
  * @plat: driver data platform structure
  * @res: stmmac resources structure
  * Description: This calls the platform's init() callback and probes the
  * stmmac driver.
  */
-int stmmac_pltfr_probe(struct platform_device *pdev,
+int ec_stmmac_pltfr_probe(struct platform_device *pdev,
 		       struct plat_stmmacenet_data *plat,
 		       struct stmmac_resources *res)
 {
@@ -854,7 +854,7 @@ int stmmac_pltfr_probe(struct platform_device *pdev,
 	if (ret)
 		return ret;
 
-	ret = stmmac_dvr_probe(&pdev->dev, plat, res);
+	ret = ec_stmmac_dvr_probe(&pdev->dev, plat, res);
 	if (ret) {
 		stmmac_pltfr_exit(pdev, plat);
 		return ret;
@@ -862,54 +862,54 @@ int stmmac_pltfr_probe(struct platform_device *pdev,
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(stmmac_pltfr_probe);
+EXPORT_SYMBOL_GPL(ec_stmmac_pltfr_probe);
 
 static void devm_stmmac_pltfr_remove(void *data)
 {
 	struct platform_device *pdev = data;
 
-	stmmac_pltfr_remove(pdev);
+	ec_stmmac_pltfr_remove(pdev);
 }
 
 /**
- * devm_stmmac_pltfr_probe
+ * devm_ec_stmmac_pltfr_probe
  * @pdev: pointer to the platform device
  * @plat: driver data platform structure
  * @res: stmmac resources
- * Description: Devres variant of stmmac_pltfr_probe(). Allows users to skip
- * calling stmmac_pltfr_remove() on driver detach.
+ * Description: Devres variant of ec_stmmac_pltfr_probe(). Allows users to skip
+ * calling ec_stmmac_pltfr_remove() on driver detach.
  */
-int devm_stmmac_pltfr_probe(struct platform_device *pdev,
+int devm_ec_stmmac_pltfr_probe(struct platform_device *pdev,
 			    struct plat_stmmacenet_data *plat,
 			    struct stmmac_resources *res)
 {
 	int ret;
 
-	ret = stmmac_pltfr_probe(pdev, plat, res);
+	ret = ec_stmmac_pltfr_probe(pdev, plat, res);
 	if (ret)
 		return ret;
 
 	return devm_add_action_or_reset(&pdev->dev, devm_stmmac_pltfr_remove,
 					pdev);
 }
-EXPORT_SYMBOL_GPL(devm_stmmac_pltfr_probe);
+EXPORT_SYMBOL_GPL(devm_ec_stmmac_pltfr_probe);
 
 /**
- * stmmac_pltfr_remove
+ * ec_stmmac_pltfr_remove
  * @pdev: pointer to the platform device
- * Description: This undoes the effects of stmmac_pltfr_probe() by removing the
+ * Description: This undoes the effects of ec_stmmac_pltfr_probe() by removing the
  * driver and calling the platform's exit() callback.
  */
-void stmmac_pltfr_remove(struct platform_device *pdev)
+void ec_stmmac_pltfr_remove(struct platform_device *pdev)
 {
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	struct plat_stmmacenet_data *plat = priv->plat;
 
-	stmmac_dvr_remove(&pdev->dev);
+	ec_stmmac_dvr_remove(&pdev->dev);
 	stmmac_pltfr_exit(pdev, plat);
 }
-EXPORT_SYMBOL_GPL(stmmac_pltfr_remove);
+EXPORT_SYMBOL_GPL(ec_stmmac_pltfr_remove);
 
 static int stmmac_bus_clks_config(struct stmmac_priv *priv, bool enabled)
 {
@@ -1009,12 +1009,12 @@ static int __maybe_unused stmmac_pltfr_noirq_resume(struct device *dev)
 	return 0;
 }
 
-const struct dev_pm_ops stmmac_pltfr_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(stmmac_suspend, stmmac_resume)
+const struct dev_pm_ops ec_stmmac_pltfr_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(ec_stmmac_suspend, ec_stmmac_resume)
 	SET_RUNTIME_PM_OPS(stmmac_runtime_suspend, stmmac_runtime_resume, NULL)
 	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(stmmac_pltfr_noirq_suspend, stmmac_pltfr_noirq_resume)
 };
-EXPORT_SYMBOL_GPL(stmmac_pltfr_pm_ops);
+EXPORT_SYMBOL_GPL(ec_stmmac_pltfr_pm_ops);
 
 MODULE_DESCRIPTION("STMMAC 10/100/1000 Ethernet platform support");
 MODULE_AUTHOR("Giuseppe Cavallaro <peppe.cavallaro@st.com>");

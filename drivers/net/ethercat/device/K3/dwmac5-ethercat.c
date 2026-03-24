@@ -183,7 +183,7 @@ static void dwmac5_handle_dma_err(struct net_device *ndev,
 			STAT_OFF(dma_errors), stats);
 }
 
-int dwmac5_safety_feat_config(void __iomem *ioaddr, unsigned int asp,
+int ec_dwmac5_safety_feat_config(void __iomem *ioaddr, unsigned int asp,
 			      struct stmmac_safety_feature_cfg *safety_feat_cfg)
 {
 	struct stmmac_safety_feature_cfg all_safety_feats = {
@@ -264,7 +264,7 @@ int dwmac5_safety_feat_config(void __iomem *ioaddr, unsigned int asp,
 	return 0;
 }
 
-int dwmac5_safety_feat_irq_status(struct net_device *ndev,
+int ec_dwmac5_safety_feat_irq_status(struct net_device *ndev,
 		void __iomem *ioaddr, unsigned int asp,
 		struct stmmac_safety_stats *stats)
 {
@@ -310,7 +310,7 @@ static const struct dwmac5_error {
 	{ dwmac5_dma_errors },
 };
 
-int dwmac5_safety_feat_dump(struct stmmac_safety_stats *stats,
+int ec_dwmac5_safety_feat_dump(struct stmmac_safety_stats *stats,
 			int index, unsigned long *count, const char **desc)
 {
 	int module = index / 32, offset = index % 32;
@@ -430,7 +430,7 @@ dwmac5_rxp_get_next_entry(struct stmmac_tc_entry *entries, unsigned int count,
 	return NULL;
 }
 
-int dwmac5_rxp_config(void __iomem *ioaddr, struct stmmac_tc_entry *entries,
+int ec_dwmac5_rxp_config(void __iomem *ioaddr, struct stmmac_tc_entry *entries,
 		      unsigned int count)
 {
 	struct stmmac_tc_entry *entry, *frag;
@@ -517,7 +517,7 @@ re_enable:
 	return ret;
 }
 
-int dwmac5_flex_pps_config(void __iomem *ioaddr, int index,
+int ec_dwmac5_flex_pps_config(void __iomem *ioaddr, int index,
 			   struct stmmac_pps_cfg *cfg, bool enable,
 			   u32 sub_second_inc, u32 systime_flags)
 {

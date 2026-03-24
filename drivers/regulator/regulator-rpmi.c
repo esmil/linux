@@ -383,20 +383,24 @@ static struct regulator_desc *rpmi_regulator_enumerate(struct rpmi_regulator_con
 	reg->context = context;
 
 	reg->desc = kzalloc(sizeof(*desc), GFP_KERNEL);
-	if (!reg->desc)
+	if (!reg->desc) {
+		kfree(reg);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	desc = reg->desc;
 
 	ret = regulator_rpmi_get_attrs(id, reg);
-	if (ret)
-		return dev_err_ptr_probe(dev, ret,
-				"Failed to get domain-%u attrs, %d\n", id, ret);
+	if (ret) {
+		dev_err_probe(dev, ret, "Failed to get domain-%u attrs, %d\n", id, ret);
+		goto err;
+	}
 
 	ret = regulator_rpmi_get_supported_level(id, reg);
-	if (ret)
-		return dev_err_ptr_probe(dev, ret,
-				"Failed to get domain-%u levels, %d\n", id, ret);
+	if (ret) {
+		dev_err_probe(dev, ret, "Failed to get domain-%u supported levels, %d\n", id, ret);
+		goto err;
+	}
 
 	desc->ops = &regulator_rpmi_ops;
 	desc->owner = THIS_MODULE;
@@ -404,8 +408,11 @@ static struct regulator_desc *rpmi_regulator_enumerate(struct rpmi_regulator_con
 	desc->id = reg->id;
 
 	*regptr = reg;
-
 	return desc;
+err:
+	kfree(reg->desc);
+	kfree(reg);
+	return ERR_PTR(ret);
 }
 
 static int regulator_rpmi_probe(struct platform_device *pdev)

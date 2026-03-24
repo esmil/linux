@@ -64,4 +64,4 @@
 
 #define EST_GCL_DATA			0x00000034
 
-extern const struct stmmac_est_ops dwmac510_est_ops;
+extern const struct stmmac_est_ops ec_dwmac510_est_ops;

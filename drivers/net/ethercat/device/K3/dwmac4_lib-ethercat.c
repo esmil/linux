@@ -13,7 +13,7 @@
 #include "dwmac4-ethercat.h"
 #include "stmmac-ethercat.h"
 
-int dwmac4_dma_reset(void __iomem *ioaddr)
+int ec_dwmac4_dma_reset(void __iomem *ioaddr)
 {
 	u32 value = readl(ioaddr + DMA_BUS_MODE);
 
@@ -26,7 +26,7 @@ int dwmac4_dma_reset(void __iomem *ioaddr)
 				 10000, 1000000);
 }
 
-void dwmac4_set_rx_tail_ptr(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_set_rx_tail_ptr(struct stmmac_priv *priv, void __iomem *ioaddr,
 			    u32 tail_ptr, u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -34,7 +34,7 @@ void dwmac4_set_rx_tail_ptr(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(tail_ptr, ioaddr + DMA_CHAN_RX_END_ADDR(dwmac4_addrs, chan));
 }
 
-void dwmac4_set_tx_tail_ptr(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_set_tx_tail_ptr(struct stmmac_priv *priv, void __iomem *ioaddr,
 			    u32 tail_ptr, u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -42,7 +42,7 @@ void dwmac4_set_tx_tail_ptr(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(tail_ptr, ioaddr + DMA_CHAN_TX_END_ADDR(dwmac4_addrs, chan));
 }
 
-void dwmac4_dma_start_tx(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_dma_start_tx(struct stmmac_priv *priv, void __iomem *ioaddr,
 			 u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -56,7 +56,7 @@ void dwmac4_dma_start_tx(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + GMAC_CONFIG);
 }
 
-void dwmac4_dma_stop_tx(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_dma_stop_tx(struct stmmac_priv *priv, void __iomem *ioaddr,
 			u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -67,7 +67,7 @@ void dwmac4_dma_stop_tx(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + DMA_CHAN_TX_CONTROL(dwmac4_addrs, chan));
 }
 
-void dwmac4_dma_start_rx(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_dma_start_rx(struct stmmac_priv *priv, void __iomem *ioaddr,
 			 u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -83,7 +83,7 @@ void dwmac4_dma_start_rx(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + GMAC_CONFIG);
 }
 
-void dwmac4_dma_stop_rx(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_dma_stop_rx(struct stmmac_priv *priv, void __iomem *ioaddr,
 			u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -93,7 +93,7 @@ void dwmac4_dma_stop_rx(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + DMA_CHAN_RX_CONTROL(dwmac4_addrs, chan));
 }
 
-void dwmac4_set_tx_ring_len(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_set_tx_ring_len(struct stmmac_priv *priv, void __iomem *ioaddr,
 			    u32 len, u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -101,7 +101,7 @@ void dwmac4_set_tx_ring_len(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(len, ioaddr + DMA_CHAN_TX_RING_LEN(dwmac4_addrs, chan));
 }
 
-void dwmac4_set_rx_ring_len(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_set_rx_ring_len(struct stmmac_priv *priv, void __iomem *ioaddr,
 			    u32 len, u32 chan)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -109,7 +109,7 @@ void dwmac4_set_rx_ring_len(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(len, ioaddr + DMA_CHAN_RX_RING_LEN(dwmac4_addrs, chan));
 }
 
-void dwmac4_enable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_enable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 			   u32 chan, bool rx, bool tx)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -123,7 +123,7 @@ void dwmac4_enable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + DMA_CHAN_INTR_ENA(dwmac4_addrs, chan));
 }
 
-void dwmac410_enable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac410_enable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 			     u32 chan, bool rx, bool tx)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -137,7 +137,7 @@ void dwmac410_enable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + DMA_CHAN_INTR_ENA(dwmac4_addrs, chan));
 }
 
-void dwmac4_disable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac4_disable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 			    u32 chan, bool rx, bool tx)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -151,7 +151,7 @@ void dwmac4_disable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + DMA_CHAN_INTR_ENA(dwmac4_addrs, chan));
 }
 
-void dwmac410_disable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
+void ec_dwmac410_disable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 			      u32 chan, bool rx, bool tx)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -165,7 +165,7 @@ void dwmac410_disable_dma_irq(struct stmmac_priv *priv, void __iomem *ioaddr,
 	writel(value, ioaddr + DMA_CHAN_INTR_ENA(dwmac4_addrs, chan));
 }
 
-int dwmac4_dma_interrupt(struct stmmac_priv *priv, void __iomem *ioaddr,
+int ec_dwmac4_dma_interrupt(struct stmmac_priv *priv, void __iomem *ioaddr,
 			 struct stmmac_extra_stats *x, u32 chan, u32 dir)
 {
 	const struct dwmac4_addrs *dwmac4_addrs = priv->plat->dwmac4_addrs;
@@ -224,7 +224,7 @@ int dwmac4_dma_interrupt(struct stmmac_priv *priv, void __iomem *ioaddr,
 	return ret;
 }
 
-void stmmac_dwmac4_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
+void ec_stmmac_dwmac4_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
 				unsigned int high, unsigned int low)
 {
 	unsigned long data;
@@ -241,7 +241,7 @@ void stmmac_dwmac4_set_mac_addr(void __iomem *ioaddr, const u8 addr[6],
 }
 
 /* Enable disable MAC RX/TX */
-void stmmac_dwmac4_set_mac(void __iomem *ioaddr, bool enable)
+void ec_stmmac_dwmac4_set_mac(void __iomem *ioaddr, bool enable)
 {
 	u32 value = readl(ioaddr + GMAC_CONFIG);
 	u32 old_val = value;
@@ -255,7 +255,7 @@ void stmmac_dwmac4_set_mac(void __iomem *ioaddr, bool enable)
 		writel(value, ioaddr + GMAC_CONFIG);
 }
 
-void stmmac_dwmac4_get_mac_addr(void __iomem *ioaddr, unsigned char *addr,
+void ec_stmmac_dwmac4_get_mac_addr(void __iomem *ioaddr, unsigned char *addr,
 				unsigned int high, unsigned int low)
 {
 	unsigned int hi_addr, lo_addr;

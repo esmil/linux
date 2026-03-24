@@ -45,6 +45,7 @@ struct dwc3_generic {
 #ifdef CONFIG_SOC_SPACEMIT
 	struct phy *usb3_phy;
 	bool reset_on_resume;
+	bool wakeup_source;
 	void *priv;
 #endif
 };
@@ -165,6 +166,7 @@ static int dwc3_generic_probe(struct platform_device *pdev)
 		phy_set_speed(dwc3g->usb3_phy, usb_get_maximum_speed(dev));
 
 		if (device_property_read_bool(dev, "wakeup-source")) {
+			dwc3g->wakeup_source = true;
 			if (dwc3g->reset_on_resume)
 				return dev_err_probe(
 					dev, -EINVAL,
@@ -209,10 +211,13 @@ static int dwc3_generic_probe(struct platform_device *pdev)
 					priv->wakeup_irq, ret);
 				return ret;
 			}
-			device_init_wakeup(dev, true);
 			dev_pm_set_wake_irq(dev, priv->wakeup_irq);
 		}
 	}
+
+	/* Make sure dwc3 core not reinitialize the phys */
+	if (!dwc3g->reset_on_resume)
+		device_init_wakeup(dev, true);
 #endif
 
 	dwc3g->num_clocks = ret;
@@ -254,7 +259,7 @@ static int dwc3_generic_suspend(struct device *dev)
 	}
 
 	if (of_device_is_compatible(dev->of_node, "spacemit,k1-dwc3") &&
-	    device_may_wakeup(dev)) {
+	    dwc3g->wakeup_source) {
 		spacemit_k1_clear_wakeup_irqs(dwc3g);
 		spacemit_k1_enable_wakeup_irqs(dwc3g);
 	}
