@@ -13,6 +13,7 @@
 #include <linux/cpuhotplug.h>
 
 #include <asm/sbi.h>
+#include <asm/insn.h>
 
 /* Registered per-cpu bp/wp */
 static DEFINE_PER_CPU(struct perf_event *, pcpu_hw_bp_events[HW_BP_NUM_MAX]);
@@ -370,6 +371,149 @@ int hw_breakpoint_arch_parse(struct perf_event *bp,
 	return ret;
 }
 
+/* Get effective address from epc load/store instruction */
+static unsigned long get_load_store_badaddr(struct pt_regs *regs, unsigned long *badaddr)
+{
+	int ret = -EINVAL;
+	unsigned long epc = regs->epc;
+	u32 insn;
+	int rs1, imm;
+	unsigned long rs1_val;
+
+	/* Read insnuction */
+	if (user_mode(regs)) {
+		if (__copy_from_user_inatomic(&insn, (void __user *)epc, sizeof(insn))) {
+			pr_err("Failed to read user insnuction at epc=0x%lx\n", epc);
+			return ret;
+		}
+	} else {
+		if (copy_from_kernel_nofault(&insn, (void *)epc, sizeof(insn))) {
+			pr_err("Failed to read kernel insnuction at epc=0x%lx\n", epc);
+			return ret;
+		}
+	}
+
+	static const unsigned int regs_offs[] = {
+		offsetof(struct pt_regs, epc),
+		offsetof(struct pt_regs, ra),
+		offsetof(struct pt_regs, sp),
+		offsetof(struct pt_regs, gp),
+		offsetof(struct pt_regs, tp),
+		offsetof(struct pt_regs, t0),
+		offsetof(struct pt_regs, t1),
+		offsetof(struct pt_regs, t2),
+		offsetof(struct pt_regs, s0),
+		offsetof(struct pt_regs, s1),
+		offsetof(struct pt_regs, a0),
+		offsetof(struct pt_regs, a1),
+		offsetof(struct pt_regs, a2),
+		offsetof(struct pt_regs, a3),
+		offsetof(struct pt_regs, a4),
+		offsetof(struct pt_regs, a5),
+		offsetof(struct pt_regs, a6),
+		offsetof(struct pt_regs, a7),
+		offsetof(struct pt_regs, s2),
+		offsetof(struct pt_regs, s3),
+		offsetof(struct pt_regs, s4),
+		offsetof(struct pt_regs, s5),
+		offsetof(struct pt_regs, s6),
+		offsetof(struct pt_regs, s7),
+		offsetof(struct pt_regs, s8),
+		offsetof(struct pt_regs, s9),
+		offsetof(struct pt_regs, s10),
+		offsetof(struct pt_regs, s11),
+		offsetof(struct pt_regs, t3),
+		offsetof(struct pt_regs, t4),
+		offsetof(struct pt_regs, t5),
+		offsetof(struct pt_regs, status),
+		offsetof(struct pt_regs, badaddr),
+		offsetof(struct pt_regs, cause),
+		offsetof(struct pt_regs, orig_a0),
+	};
+
+	/* Check if 32-bit insnuction */
+	if (INSN_LEN(insn) == 4) {
+		rs1 = RV_EXTRACT_RS1_REG(insn);
+
+		if ((insn & INSN_MASK_LB) == INSN_MATCH_LB ||
+		    (insn & INSN_MASK_LH) == INSN_MATCH_LH ||
+		    (insn & INSN_MASK_LW) == INSN_MATCH_LW ||
+		    (insn & INSN_MASK_LD) == INSN_MATCH_LD ||
+		    (insn & INSN_MASK_LBU) == INSN_MATCH_LBU ||
+		    (insn & INSN_MASK_LHU) == INSN_MATCH_LHU ||
+		    (insn & INSN_MASK_LWU) == INSN_MATCH_LWU) {
+			imm = IMM_I(insn);
+			rs1_val = regs_get_register(regs, regs_offs[rs1]);
+			*badaddr = rs1_val + imm;
+			ret = 0;
+		}
+
+		if ((insn & INSN_MASK_SB) == INSN_MATCH_SB ||
+		    (insn & INSN_MASK_SH) == INSN_MATCH_SH ||
+		    (insn & INSN_MASK_SW) == INSN_MATCH_SW ||
+		    (insn & INSN_MASK_SD) == INSN_MATCH_SD) {
+			imm = IMM_S(insn);
+			rs1_val = regs_get_register(regs, regs_offs[rs1]);
+			*badaddr = rs1_val + imm;
+			ret = 0;
+		}
+	} else {
+		/* C.LDSP */
+		if ((insn & INSN_MASK_C_LDSP) == INSN_MATCH_C_LDSP) {
+			imm = RVC_LDSP_IMM(insn);
+			*badaddr = regs->sp + imm;
+			ret = 0;
+		}
+
+		/* C.SDSP */
+		if ((insn & INSN_MASK_C_SDSP) == INSN_MATCH_C_SDSP) {
+			imm = RVC_SDSP_IMM(insn);
+			*badaddr = regs->sp + imm;
+			ret = 0;
+		}
+
+		/* C.LWSP */
+		if ((insn & INSN_MASK_C_LWSP) == INSN_MATCH_C_LWSP) {
+			imm = RVC_LWSP_IMM(insn);
+			*badaddr = regs->sp + imm;
+			ret = 0;
+		}
+
+		/* C.SWSP */
+		if ((insn & INSN_MASK_C_SWSP) == INSN_MATCH_C_SWSP) {
+			imm = RVC_SWSP_IMM(insn);
+			*badaddr = regs->sp + imm;
+			ret = 0;
+		}
+
+		rs1 = RVC_RS1S(insn);
+
+		/* C.LD, C.SD, C.FLD, C.SLD */
+		if ((insn & INSN_MASK_C_LD) == INSN_MATCH_C_LD ||
+		    (insn & INSN_MASK_C_SD) == INSN_MATCH_C_SD ||
+		    (insn & INSN_MASK_C_FLD) == INSN_MATCH_C_FLD ||
+		    (insn & INSN_MASK_C_FSD) == INSN_MATCH_C_FSD) {
+			imm = RVC_LD_IMM(insn);
+			rs1_val = regs_get_register(regs, regs_offs[rs1]);
+			*badaddr = rs1_val + imm;
+			ret = 0;
+		}
+
+		/* C.LW, C.SW, C.FLW, C.SLW */
+		if ((insn & INSN_MASK_C_LW) == INSN_MATCH_C_LW ||
+		    (insn & INSN_MASK_C_SW) == INSN_MATCH_C_SW ||
+		    (insn & INSN_MASK_C_FLW) == INSN_MATCH_C_FLW ||
+		    (insn & INSN_MASK_C_FSW) == INSN_MATCH_C_FSW) {
+			imm = RVC_LW_IMM(insn);
+			rs1_val = regs_get_register(regs, regs_offs[rs1]);
+			*badaddr = rs1_val + imm;
+			ret = 0;
+		}
+	}
+
+	return ret;
+}
+
 /*
  * HW Breakpoint/watchpoint handler
  */
@@ -378,6 +522,8 @@ static int hw_breakpoint_handler(struct die_args *args)
 	int ret = NOTIFY_DONE;
 	struct arch_hw_breakpoint *bp;
 	struct perf_event *event;
+	bool match;
+	unsigned long badaddr;
 	int i;
 
 	for (i = 0; i < dbtr_total_num; i++) {
@@ -397,7 +543,19 @@ static int hw_breakpoint_handler(struct die_args *args)
 
 		/* Watchpoint */
 		case RV_DBTR_WP:
-			if (bp->address == csr_read(CSR_STVAL)) {
+			match = (bp->address == csr_read(CSR_STVAL));
+			if (!match) {
+				/* Hardware bug: When a breakpoint exception occurs
+				 * on an instruction load, or store, stval does not
+				 * contain the correct faulting virtual address.
+				 * So we can get the correct fault virtual address
+				 * by parsing the load/store instruction at the epc
+				 * address.
+				 */
+				if (!get_load_store_badaddr(args->regs, &badaddr))
+					match = (bp->address == badaddr);
+			}
+			if (match) {
 				perf_bp_event(event, args->regs);
 				ret = NOTIFY_STOP;
 			}
