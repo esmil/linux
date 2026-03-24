@@ -7,7 +7,7 @@
 	csiphy0: csiphy@d420a000 {
 		compatible = "spacemit,csi-dphy";
 		cell-index = <0>;
-		spacemit,apmu = <&syscon_apmu>;
+		spacemit,apmu = <&syscon_apmu_reg>;
 		spacemit,ctrl-offset = <0x37c>;
 		spacemit,bifmode-enable = <0>;
 		reg = <0x0 0xd420a000 0x0 0x13f>;
@@ -22,7 +22,7 @@
 	csiphy1: csiphy@d420a800 {
 		compatible = "spacemit,csi-dphy";
 		cell-index = <1>;
-		spacemit,apmu = <&syscon_apmu>;
+		spacemit,apmu = <&syscon_apmu_reg>;
 		spacemit,ctrl-offset = <0x37c>;
 		spacemit,bifmode-enable = <0>;
 		reg = <0x0 0xd420a800 0x0 0x13f>;
@@ -37,7 +37,7 @@
 	csiphy2: csiphy@d4206000 {
 		compatible = "spacemit,csi-dphy";
 		cell-index = <2>;
-		spacemit,apmu = <&syscon_apmu>;
+		spacemit,apmu = <&syscon_apmu_reg>;
 		spacemit,ctrl-offset = <0x37c>;
 		spacemit,bifmode-enable = <1>;
 		reg = <0x0 0xd4206000 0x0 0x13f>;
