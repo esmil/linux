@@ -761,12 +761,18 @@ void hw_breakpoint_pmu_read(struct perf_event *bp)
 
 void clear_ptrace_hw_breakpoint(struct task_struct *tsk)
 {
-	/* TODO */
+	memset(tsk->thread.ptrace_bps, 0, sizeof(tsk->thread.ptrace_bps));
 }
 
 void flush_ptrace_hw_breakpoint(struct task_struct *tsk)
 {
-	/* TODO */
+	int i;
+	struct thread_struct *t = &tsk->thread;
+
+	for (i = 0; i < dbtr_total_num; i++) {
+		unregister_hw_breakpoint(t->ptrace_bps[i]);
+		t->ptrace_bps[i] = NULL;
+	}
 }
 
 static int __init arch_hw_breakpoint_init(void)
