@@ -712,12 +712,12 @@
 
 			map1 {
 				trip = <&gpu_alert1>;
-				cooling-device = <&imggpu 1 2>;
+				cooling-device = <&imggpu 2 3>;
 			};
 
 			map2 {
 				trip = <&gpu_alert2>;
-				cooling-device = <&imggpu 2 3>;
+				cooling-device = <&imggpu 4 5>;
 			};
 		};
 	};
