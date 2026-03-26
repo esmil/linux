@@ -1669,9 +1669,50 @@
 			clocks = <&syscon_apmu CLK_APMU_GPU>;
 			clock-names = "clk_rgx";
 			resets = <&syscon_apmu RESET_APMU_GPU>;
+			operating-points-v2 = <&imggpu_opp_table>;
 			#cooling-cells = <2>;
 			thermal-zone = "thermal_gpu";
 			status = "okay";
+
+			imggpu_opp_table: opp-table {
+				compatible = "operating-points-v2";
+
+				opp-409000000 {
+					opp-hz = /bits/ 64 <409000000>;
+					opp-microvolt = <800000>;
+					clock-latency-ns = <100000>;
+				};
+
+				opp-491000000 {
+					opp-hz = /bits/ 64 <491000000>;
+					opp-microvolt = <800000>;
+					clock-latency-ns = <100000>;
+				};
+
+				opp-614000000 {
+					opp-hz = /bits/ 64 <614000000>;
+					opp-microvolt = <900000>;
+					clock-latency-ns = <100000>;
+				};
+
+				opp-819000000 {
+					opp-hz = /bits/ 64 <819000000>;
+					opp-microvolt = <900000>;
+					clock-latency-ns = <100000>;
+				};
+
+				opp-1000000000 {
+					opp-hz = /bits/ 64 <1000000000>;
+					opp-microvolt = <950000>;
+					clock-latency-ns = <100000>;
+				};
+
+				opp-1228000000 {
+					opp-hz = /bits/ 64 <1228000000>;
+					opp-microvolt = <950000>;
+					clock-latency-ns = <100000>;
+				};
+			};
 		};
 
                 ec_master: ethercat_master {
