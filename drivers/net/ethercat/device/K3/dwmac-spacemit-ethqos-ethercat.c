@@ -113,16 +113,17 @@ static int devm_spacemit_glue_init(struct platform_device *pdev,
 #define TX_PHASE			1
 #define RX_PHASE			0
 
-#define PHY_INTF_RGMII			BIT(3)
-#define PHY_INTF_MII			BIT(4)
+#define PHY_INTF_MODE_MASK		GENMASK(4, 3)
+
+#define PHY_INTF_RMII			FIELD_PREP(PHY_INTF_MODE_MASK, 0x0)
+#define PHY_INTF_RGMII			FIELD_PREP(PHY_INTF_MODE_MASK, 0x1)
+#define PHY_INTF_MII			FIELD_PREP(PHY_INTF_MODE_MASK, 0x3)
 
 /* only valid for rmii, invert tx clk */
 #define RMII_TX_CLK_SEL			BIT(6)
 /* only valid for rmii, invert rx clk */
 #define RMII_RX_CLK_SEL			BIT(7)
 
-#define WAKE_IRQ_EN			BIT(9)
-#define PHY_IRQ_EN			BIT(12)
 #define AXI_SINGLE_ID			BIT(13)
 
 /* dline register bits */
@@ -268,34 +269,31 @@ static int k3_eqos_iface_config(struct spacemit_ethqos *eqos)
 {
 	struct device *dev = &eqos->pdev->dev;
 	phy_interface_t iface = eqos->phy_iface;
-	u32 mask, val;
+	u32 val;
 	int ret;
-
-	mask = PHY_INTF_RGMII | PHY_INTF_MII | WAKE_IRQ_EN;
-
-	val = eqos->wol_irq_enable ? WAKE_IRQ_EN : 0;
 
 	switch (iface) {
 	case PHY_INTERFACE_MODE_MII:
-		val |= PHY_INTF_MII;
+		val = PHY_INTF_MII;
 		break;
 
 	case PHY_INTERFACE_MODE_RMII:
+		val = PHY_INTF_RMII;
 		break;
 
 	case PHY_INTERFACE_MODE_RGMII:
 	case PHY_INTERFACE_MODE_RGMII_ID:
 	case PHY_INTERFACE_MODE_RGMII_RXID:
 	case PHY_INTERFACE_MODE_RGMII_TXID:
-		val |= PHY_INTF_RGMII;
+		val = PHY_INTF_RGMII;
 		break;
 
 	default:
 		dev_warn(dev, "unsupported phy-mode: %s\n", phy_modes(iface));
 		return -EINVAL; /* don't write unexpected bits */
 	}
-	ret = regmap_update_bits(eqos->apmu, eqos->ctrl_off, mask, val);
-
+	ret = regmap_update_bits(eqos->apmu, eqos->ctrl_off,
+				 PHY_INTF_MODE_MASK, val);
 	if (!ret)
 		dev_info(dev, "phy-mode=%s val=0x%08x\n", phy_modes(iface), val);
 
@@ -547,6 +545,22 @@ static int devm_k3_bind_plat_ops(struct spacemit_ethqos *eqos)
 	return 0;
 }
 
+static void k3_eqos_config_caps(struct spacemit_ethqos *eqos)
+{
+	struct plat_stmmacenet_data *plat_dat = eqos->plat;
+	/*
+	 * If GMAC TX clock is derived from PHY RXC, stopping RXC in EEE/LPI
+	 * will remove the TX clock and cause TX timeouts. Require RXC to run
+	 * in LPI.
+	 */
+	if (phy_interface_mode_is_rgmii(eqos->phy_iface) && !eqos->tx_clk_from_soc)
+		plat_dat->flags |= STMMAC_FLAG_RX_CLK_RUNS_IN_LPI;
+
+	/* When used as an EtherCAT device, only one TX and one RX queue are used. */
+	plat_dat->tx_queues_to_use = 1;
+	plat_dat->rx_queues_to_use = 1;
+}
+
 static int k3_setup_plat(struct spacemit_ethqos *eqos)
 {
 	struct device *dev = &eqos->pdev->dev;
@@ -570,17 +584,11 @@ static int k3_setup_plat(struct spacemit_ethqos *eqos)
 	if (ret)
 		goto err_disable_tx_clk;
 
-	/*
-	 * If GMAC TX clock is derived from PHY RXC, stopping RXC in EEE/LPI
-	 * will remove the TX clock and cause TX timeouts. Require RXC to run
-	 * in LPI.
-	 */
-	if (phy_interface_mode_is_rgmii(eqos->phy_iface) && !eqos->tx_clk_from_soc)
-		eqos->plat->flags |= STMMAC_FLAG_RX_CLK_RUNS_IN_LPI;
-
 	ret = k3_delayline_init(eqos);
 	if (ret)
 		goto err_disable_tx_clk;
+
+	k3_eqos_config_caps(eqos);
 
 	return 0;
 
