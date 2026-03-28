@@ -1725,6 +1725,35 @@
                         };
 		};
 
+		gmac_default_rxq_setup: rx-queues-config {
+			snps,rx-queues-to-use = <2>;
+			snps,rx-sched-sp;
+
+			queue0 {
+				snps,dcb-algorithm;
+				snps,priority = <0x0f>;
+				snps,map-to-dma-channel = <0>;
+			};
+
+			queue1 {
+				snps,dcb-algorithm;
+				snps,priority = <0xf0>;
+				snps,map-to-dma-channel = <1>;
+			};
+		};
+
+		gmac_default_txq_setup: tx-queues-config {
+			snps,tx-queues-to-use = <2>;
+
+			queue0 {
+				snps,dcb-algorithm;
+			};
+
+			queue1 {
+				snps,dcb-algorithm;
+			};
+		};
+
 		eth0: ethernet@cac80000 {
 			compatible = "spacemit,k3-gmac", "snps,dwmac-5.10a";
 			reg = <0x0 0xcac80000 0x0 0x2000>;
@@ -1741,6 +1770,8 @@
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
+			snps,mtl-rx-config = <&gmac_default_rxq_setup>;
+			snps,mtl-tx-config = <&gmac_default_txq_setup>;
 			status = "disabled";
 		};
 
@@ -1760,6 +1791,8 @@
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
+			snps,mtl-rx-config = <&gmac_default_rxq_setup>;
+			snps,mtl-tx-config = <&gmac_default_txq_setup>;
 			status = "disabled";
 		};
 
@@ -1779,6 +1812,8 @@
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
 			snps,axi-config = <&gmac_axi_setup>;
+			snps,mtl-rx-config = <&gmac_default_rxq_setup>;
+			snps,mtl-tx-config = <&gmac_default_txq_setup>;
 			status = "disabled";
 		};
 
