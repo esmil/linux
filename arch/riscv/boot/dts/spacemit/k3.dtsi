@@ -1851,9 +1851,11 @@
 				 <&syscon_mpmu CLK_MPMU_I2S0_SYSCLK>,
 				 <&syscon_apbc CLK_APBC_I2S0_BCLK>,
 				 <&syscon_apbc CLK_APBC_I2S0_BUS>,
-				 <&syscon_apbc CLK_APBC_I2S0>;
+				 <&syscon_apbc CLK_APBC_I2S0>,
+				 <&syscon_mpmu CLK_MPMU_I2S_SYSCLK>,
+				 <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
 			clock-names = "sysclk_div", "sysclk",
-				      "bclk", "sspa_bus", "sspa";
+				      "bclk", "sspa_bus", "sspa", "c_sysclk", "c_bclk";
 			resets = <&syscon_apbc RESET_APBC_I2S0>;
 			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
 					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
@@ -1862,6 +1864,8 @@
 					  <&syscon_mpmu CLK_MPMU_I2S0_SYSCLK_SEL>;
 			assigned-clock-rates = <307200000>, <307200000>,
 					       <12288000>, <1536000>, <614400000>;
+			/* must set to same value when enable multi i2s: 8000/16000/48000Hz */
+			/* spacemit,fixed-sample-rate = <48000>; */
 			dmas = <&pdma 22>, <&pdma 21>;
 			dma-names = "rx", "tx";
 			status = "disabled";
@@ -1874,8 +1878,10 @@
 			clocks = <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK>,
 				 <&syscon_apbc CLK_APBC_I2S1_BCLK>,
 				 <&syscon_apbc CLK_APBC_I2S1_BUS>,
-				 <&syscon_apbc CLK_APBC_I2S1>;
-			clock-names = "sysclk", "bclk", "sspa_bus", "sspa";
+				 <&syscon_apbc CLK_APBC_I2S1>,
+				 <&syscon_mpmu CLK_MPMU_I2S_SYSCLK>,
+				 <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
+			clock-names = "sysclk", "bclk", "sspa_bus", "sspa", "c_sysclk", "c_bclk";
 			resets = <&syscon_apbc RESET_APBC_I2S1>;
 			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
 					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
@@ -1884,6 +1890,8 @@
 					  <&syscon_mpmu CLK_MPMU_I2S1_SYSCLK_SRC>;
 			assigned-clock-rates = <307200000>, <307200000>,
 					       <12288000>, <1536000>, <307200000>;
+			/* must set to same value when enable multi i2s: 8000/16000/48000Hz */
+			/* spacemit,fixed-sample-rate = <48000>; */
 			dmas = <&pdma 24>, <&pdma 23>;
 			dma-names = "rx", "tx";
 			status = "disabled";
@@ -1897,9 +1905,11 @@
 				 <&syscon_mpmu CLK_MPMU_I2S2_SYSCLK>,
 				 <&syscon_apbc CLK_APBC_I2S2_BCLK>,
 				 <&syscon_apbc CLK_APBC_I2S2_BUS>,
-				 <&syscon_apbc CLK_APBC_I2S2>;
+				 <&syscon_apbc CLK_APBC_I2S2>,
+				 <&syscon_mpmu CLK_MPMU_I2S_SYSCLK>,
+				 <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
 			clock-names = "sysclk_div", "sysclk",
-				      "bclk", "sspa_bus", "sspa";
+				      "bclk", "sspa_bus", "sspa", "c_sysclk", "c_bclk";
 			resets = <&syscon_apbc RESET_APBC_I2S2>;
 			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
 					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
@@ -1908,6 +1918,8 @@
 					  <&syscon_mpmu CLK_MPMU_I2S2_SYSCLK_SEL>;
 			assigned-clock-rates = <307200000>, <307200000>,
 					       <12288000>, <1536000>, <614400000>;
+			/* must set to same value when enable multi i2s: 8000/16000/48000Hz */
+			/* spacemit,fixed-sample-rate = <48000>; */
 			dmas = <&pdma 57>, <&pdma 56>;
 			dma-names = "rx", "tx";
 			status = "disabled";
@@ -1921,9 +1933,11 @@
 				 <&syscon_mpmu CLK_MPMU_I2S3_SYSCLK>,
 				 <&syscon_apbc CLK_APBC_I2S3_BCLK>,
 				 <&syscon_apbc CLK_APBC_I2S3_BUS>,
-				 <&syscon_apbc CLK_APBC_I2S3>;
+				 <&syscon_apbc CLK_APBC_I2S3>,
+				 <&syscon_mpmu CLK_MPMU_I2S_SYSCLK>,
+				 <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
 			clock-names = "sysclk_div", "sysclk",
-				      "bclk", "sspa_bus", "sspa";
+				      "bclk", "sspa_bus", "sspa", "c_sysclk", "c_bclk";
 			resets = <&syscon_apbc RESET_APBC_I2S3>;
 			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
 					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
@@ -1932,6 +1946,8 @@
 					  <&syscon_mpmu CLK_MPMU_I2S3_SYSCLK_SEL>;
 			assigned-clock-rates = <307200000>, <307200000>,
 					       <12288000>, <1536000>, <614400000>;
+			/* must set to same value when enable multi i2s: 8000/16000/48000Hz */
+			/* spacemit,fixed-sample-rate = <48000>; */
 			dmas = <&pdma 59>, <&pdma 58>;
 			dma-names = "rx", "tx";
 			status = "disabled";
@@ -1945,9 +1961,11 @@
 				 <&syscon_mpmu CLK_MPMU_I2S4_SYSCLK>,
 				 <&syscon_apbc CLK_APBC_I2S4_BCLK>,
 				 <&syscon_apbc CLK_APBC_I2S4_BUS>,
-				 <&syscon_apbc CLK_APBC_I2S4>;
+				 <&syscon_apbc CLK_APBC_I2S4>,
+				 <&syscon_mpmu CLK_MPMU_I2S_SYSCLK>,
+				 <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
 			clock-names = "sysclk_div", "sysclk",
-				      "bclk", "sspa_bus", "sspa";
+				      "bclk", "sspa_bus", "sspa", "c_sysclk", "c_bclk";
 			resets = <&syscon_apbc RESET_APBC_I2S4>;
 			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
 					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
@@ -1956,6 +1974,8 @@
 					  <&syscon_mpmu CLK_MPMU_I2S4_SYSCLK_SEL>;
 			assigned-clock-rates = <307200000>, <307200000>,
 					       <12288000>, <1536000>, <614400000>;
+			/* must set to same value when enable multi i2s: 8000/16000/48000Hz */
+			/* spacemit,fixed-sample-rate = <48000>; */
 			dmas = <&pdma 61>, <&pdma 60>;
 			dma-names = "rx", "tx";
 			status = "disabled";
@@ -1969,9 +1989,11 @@
 				 <&syscon_mpmu CLK_MPMU_I2S5_SYSCLK>,
 				 <&syscon_apbc CLK_APBC_I2S5_BCLK>,
 				 <&syscon_apbc CLK_APBC_I2S5_BUS>,
-				 <&syscon_apbc CLK_APBC_I2S5>;
+				 <&syscon_apbc CLK_APBC_I2S5>,
+				 <&syscon_mpmu CLK_MPMU_I2S_SYSCLK>,
+				 <&syscon_mpmu CLK_MPMU_I2S_BCLK>;
 			clock-names = "sysclk_div", "sysclk",
-				      "bclk", "sspa_bus", "sspa";
+				      "bclk", "sspa_bus", "sspa", "c_sysclk", "c_bclk";
 			resets = <&syscon_apbc RESET_APBC_I2S5>;
 			assigned-clocks = <&syscon_mpmu CLK_MPMU_I2S_153P6_BASE>,
 					  <&syscon_mpmu CLK_MPMU_I2S_SYSCLK_SRC>,
@@ -1980,6 +2002,8 @@
 					  <&syscon_mpmu CLK_MPMU_I2S5_SYSCLK_SEL>;
 			assigned-clock-rates = <307200000>, <307200000>,
 					       <12288000>, <1536000>, <614400000>;
+			/* must set to same value when enable multi i2s: 8000/16000/48000Hz */
+			/* spacemit,fixed-sample-rate = <48000>; */
 			dmas = <&pdma 63>, <&pdma 62>;
 			dma-names = "rx", "tx";
 			status = "disabled";
