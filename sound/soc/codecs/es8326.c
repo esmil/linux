@@ -673,7 +673,11 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 {
 	struct snd_soc_component *component = dai->component;
 	struct es8326_priv *es8326 = snd_soc_component_get_drvdata(component);
+	#ifdef SPACEMIT_CONFIG_CODEC_ES8326
+	unsigned int offset_l, offset_r, hp_state;
+	#else
 	unsigned int offset_l, offset_r;
+	#endif
 
 	if (mute) {
 		if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -707,9 +711,12 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 			regmap_write(es8326->regmap, ES8326_HPR_OFFSET_INI, offset_r);
 			es8326->calibrated = true;
 		}
+#ifndef SPACEMIT_CONFIG_CODEC_ES8326
 		regmap_update_bits(es8326->regmap, ES8326_CLK_INV, 0xc0, 0x00);
                 regmap_update_bits(es8326->regmap, ES8326_CLK_MUX, 0x80, 0x00);
+#endif
 		if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
+			#ifndef SPACEMIT_CONFIG_CODEC_ES8326
 			regmap_update_bits(es8326->regmap, ES8326_DAC_DSM, 0x01, 0x01);
 			usleep_range(1000, 5000);
 			regmap_update_bits(es8326->regmap, ES8326_DAC_DSM, 0x01, 0x00);
@@ -718,12 +725,27 @@ static int es8326_mute(struct snd_soc_dai *dai, int mute, int direction)
 			regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x30, 0x30);
 			regmap_write(es8326->regmap, ES8326_HP_DRIVER, 0xa1);
 			regmap_write(es8326->regmap, ES8326_HP_CAL, ES8326_HP_ON);
+			#else
+			regmap_read(es8326->regmap, ES8326_HP_CAL, &hp_state);
+			if (hp_state != ES8326_HP_ON) {
+				regmap_update_bits(es8326->regmap, ES8326_CLK_INV, 0xc0, 0x00);
+				regmap_update_bits(es8326->regmap, ES8326_CLK_MUX, 0x80, 0x00);
+				regmap_update_bits(es8326->regmap, ES8326_DAC_DSM, 0x01, 0x01);
+				usleep_range(1000, 5000);
+				regmap_update_bits(es8326->regmap, ES8326_DAC_DSM, 0x01, 0x00);
+				usleep_range(1000, 5000);
+				regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x30, 0x20);
+				regmap_update_bits(es8326->regmap, ES8326_HP_DRIVER_REF, 0x30, 0x30);
+				regmap_write(es8326->regmap, ES8326_HP_DRIVER, 0xa1);
+				regmap_write(es8326->regmap, ES8326_HP_CAL, ES8326_HP_ON);
+				if (!es8326->hp && !es8326->typec_hp) {
+					msleep(800);
+					es8326_enable_spk(es8326, true);
+				}
+			}
+			#endif
 			regmap_update_bits(es8326->regmap, ES8326_DAC_MUTE,
 					ES8326_MUTE_MASK, ~(ES8326_MUTE));
-			#ifdef SPACEMIT_CONFIG_CODEC_ES8326
-			if (!es8326->hp && !es8326->typec_hp)
-				es8326_enable_spk(es8326, true);
-			#endif
 		} else {
 			msleep(300);
 			if (es8326->version > ES8326_VERSION_B) {
@@ -1422,7 +1444,7 @@ int headphone_connect_event(struct notifier_block *nb, unsigned long event,
 		if (es8326_priv_ptr->hp == 0 && es8326_priv_ptr->typec_hp == 0) {
 			es8326_disable_micbias(es8326_priv_ptr->component);
 			dev_dbg(es8326_priv_ptr->component->dev, "Report hp remove event\n");
-			es8326_enable_spk(es8326_priv_ptr, true);
+			//es8326_enable_spk(es8326_priv_ptr, true);
 			snd_soc_jack_report(es8326_priv_ptr->jack, 0, SND_JACK_HEADSET);
 			/* mute adc when mic path switch */
 			regmap_write(es8326_priv_ptr->regmap, ES8326_ADC1_SRC, es8326_priv_ptr->mic1_src);
