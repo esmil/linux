@@ -804,7 +804,7 @@ static int v2d_probe(struct platform_device *pdev)
 	if (ret < 0)
 		V2DLOGI("Failed to deassert v2d_reset\n");
 
-	clk_set_rate(info->clkcore, 409600000);
+	clk_set_rate(info->clkcore, 750000000);
 
 	info->clkio = devm_clk_get(dev, "v2d-io");
 	if (IS_ERR(info->clkio)) {
