@@ -56,6 +56,10 @@ struct spacemit_i2s_dev {
 	struct clk *bclk;
 	struct clk *sspa_bus;
 	struct clk *sspa_clk;
+	struct clk *c_sysclk;
+	struct clk *c_bclk;
+
+	unsigned int fixed_sample_rate;
 
 	struct snd_dmaengine_dai_dma_data capture_dma_data;
 	struct snd_dmaengine_dai_dma_data playback_dma_data;
@@ -114,6 +118,13 @@ static int spacemit_i2s_startup(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *dai)
 {
 	struct spacemit_i2s_dev *i2s = snd_soc_dai_get_drvdata(dai);
+
+	if (i2s->fixed_sample_rate) {
+		snd_pcm_hw_constraint_minmax(substream->runtime,
+					     SNDRV_PCM_HW_PARAM_RATE,
+					     i2s->fixed_sample_rate,
+					     i2s->fixed_sample_rate);
+	}
 
 	switch (i2s->dai_fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
@@ -212,6 +223,10 @@ static int spacemit_i2s_hw_params(struct snd_pcm_substream *substream,
 		    params_rate(params) *
 		    data_bits;
 
+	ret = clk_set_rate(i2s->c_bclk, bclk_rate);
+	if (ret)
+		return ret;
+
 	ret = clk_set_rate(i2s->bclk, bclk_rate);
 	if (ret)
 		return ret;
@@ -231,6 +246,10 @@ static int spacemit_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 	i2s->sysclk_freq = freq;
 
 	ret = clk_set_rate(i2s->sysclk_div, freq);
+	if (ret)
+		return ret;
+
+	ret = clk_set_rate(i2s->c_sysclk, freq);
 	if (ret)
 		return ret;
 
@@ -466,6 +485,15 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	if (IS_ERR(i2s->bclk))
 		return dev_err_probe(i2s->dev, PTR_ERR(i2s->bclk), "failed to enable bit clock\n");
 
+	i2s->c_sysclk = devm_clk_get_enabled(i2s->dev, "c_sysclk");
+	if (IS_ERR(i2s->c_sysclk))
+		return dev_err_probe(i2s->dev, PTR_ERR(i2s->c_sysclk),
+				     "failed to enable c_sysclk\n");
+
+	i2s->c_bclk = devm_clk_get_enabled(i2s->dev, "c_bclk");
+	if (IS_ERR(i2s->c_bclk))
+		return dev_err_probe(i2s->dev, PTR_ERR(i2s->c_bclk), "failed to enable c_bclk\n");
+
 	i2s->sspa_bus = devm_clk_get_enabled(i2s->dev, "sspa_bus");
 	if (IS_ERR(i2s->sspa_bus))
 		return dev_err_probe(i2s->dev, PTR_ERR(i2s->sspa_bus), "failed to enable sspa_bus clock\n");
@@ -482,6 +510,9 @@ static int spacemit_i2s_probe(struct platform_device *pdev)
 	if (IS_ERR(i2s->reset))
 		return dev_err_probe(i2s->dev, PTR_ERR(i2s->reset),
 				     "failed to get reset control");
+
+	of_property_read_u32(pdev->dev.of_node, "spacemit,fixed-sample-rate",
+			     &i2s->fixed_sample_rate);
 
 	dev_set_drvdata(i2s->dev, i2s);
 
@@ -507,11 +538,15 @@ static int spacemit_i2s_suspend(struct device *dev)
 	clk_set_rate(i2s->bclk, 0);
 	clk_set_rate(i2s->sysclk, 0);
 	clk_set_rate(i2s->sysclk_div, 0);
+	clk_set_rate(i2s->c_bclk, 0);
+	clk_set_rate(i2s->c_sysclk, 0);
 	clk_disable_unprepare(i2s->sspa_clk);
 	clk_disable_unprepare(i2s->sspa_bus);
 	clk_disable_unprepare(i2s->bclk);
 	clk_disable_unprepare(i2s->sysclk);
 	clk_disable_unprepare(i2s->sysclk_div);
+	clk_disable_unprepare(i2s->c_bclk);
+	clk_disable_unprepare(i2s->c_sysclk);
 	reset_control_assert(i2s->reset);
 
 	return 0;
@@ -522,6 +557,8 @@ static int spacemit_i2s_resume(struct device *dev)
 	struct spacemit_i2s_dev *i2s = dev_get_drvdata(dev);
 
 	reset_control_deassert(i2s->reset);
+	clk_prepare_enable(i2s->c_sysclk);
+	clk_prepare_enable(i2s->c_bclk);
 	clk_prepare_enable(i2s->sysclk_div);
 	clk_prepare_enable(i2s->sysclk);
 	clk_prepare_enable(i2s->bclk);
@@ -529,6 +566,7 @@ static int spacemit_i2s_resume(struct device *dev)
 	clk_prepare_enable(i2s->sspa_clk);
 	clk_set_rate(i2s->sysclk_div, i2s->sysclk_freq);
 	clk_set_rate(i2s->sysclk, i2s->sysclk_freq);
+	clk_set_rate(i2s->c_sysclk, i2s->sysclk_freq);
 	spacemit_i2s_init(i2s);
 	spacemit_i2s_fmt_setting(i2s, i2s->dai_fmt);
 
