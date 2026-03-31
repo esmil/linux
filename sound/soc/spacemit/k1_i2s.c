@@ -223,6 +223,10 @@ static int spacemit_i2s_hw_params(struct snd_pcm_substream *substream,
 		    params_rate(params) *
 		    data_bits;
 
+	ret = clk_set_rate(i2s->c_sysclk, bclk_rate * 2);
+	if (ret)
+		return ret;
+
 	ret = clk_set_rate(i2s->c_bclk, bclk_rate);
 	if (ret)
 		return ret;
@@ -246,10 +250,6 @@ static int spacemit_i2s_set_sysclk(struct snd_soc_dai *cpu_dai, int clk_id,
 	i2s->sysclk_freq = freq;
 
 	ret = clk_set_rate(i2s->sysclk_div, freq);
-	if (ret)
-		return ret;
-
-	ret = clk_set_rate(i2s->c_sysclk, freq);
 	if (ret)
 		return ret;
 
@@ -566,7 +566,6 @@ static int spacemit_i2s_resume(struct device *dev)
 	clk_prepare_enable(i2s->sspa_clk);
 	clk_set_rate(i2s->sysclk_div, i2s->sysclk_freq);
 	clk_set_rate(i2s->sysclk, i2s->sysclk_freq);
-	clk_set_rate(i2s->c_sysclk, i2s->sysclk_freq);
 	spacemit_i2s_init(i2s);
 	spacemit_i2s_fmt_setting(i2s, i2s->dai_fmt);
 
