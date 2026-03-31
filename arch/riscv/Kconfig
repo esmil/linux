@@ -415,7 +415,7 @@ config ARCH_RV64I
 	bool "RV64I"
 	select 64BIT
 	select ARCH_SUPPORTS_INT128 if CC_HAS_INT128
-	select SWIOTLB if MMU && !SOC_SPACEMIT_K3
+	select SWIOTLB if MMU
 
 endchoice
 
