@@ -2432,6 +2432,39 @@
 			status = "disabled";
 		};
 
+		pcie0_ep: pcie_ep@80000000 {
+			compatible = "spacemit,k3-pcie-ep";
+			reg = <0x0 0x80000000 0x0 0x00100000>, /* dbi */
+				<0x0 0x80100000 0x0 0x00100000>, /* dbi2 */
+				<0x0 0x80200000 0x0 0x00001000>, /* elbi */
+				<0x0 0x80300000 0x0 0x00001000>, /* atu */
+				<0x0 0x80380000 0x0 0x00001000>, /* dma */
+				<0x11 0x00000000 0x0 0x10000000>, /* addr_space */
+				<0x0 0x82900000 0x0 0x00001000>; /* phy ahb */
+			reg-names = "dbi", "dbi2", "elbi", "atu", "dma", "addr_space", "link";
+
+			interrupt-parent = <&saplic>;
+			interrupts = <141 IRQ_TYPE_LEVEL_HIGH>, <219 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "dma", "global";
+
+			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_BUS>,
+				 <&syscon_apmu CLK_APMU_PCIE_PORTA_MSTR>,
+				 <&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
+			clock-names = "dbi", "mstr", "slv";
+			resets = <&syscon_apmu RESET_APMU_PCIE_PORTA_DBI>,
+				 <&syscon_apmu RESET_APMU_PCIE_PORTA_MSTR>,
+				 <&syscon_apmu RESET_APMU_PCIE_PORTA_SLV>;
+			reset-names = "dbi", "mstr", "slv";
+
+			spacemit,pcie-port = <0>;
+			spacemit,apmu = <&syscon_apmu 0x1f0>;
+
+			msi-parent = <&simsic>;
+			max-link-speed = <3>;
+			num-lanes = <8>;
+			status = "disabled";
+		};
+
 		ufshc: ufshc@0xc0e00000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
