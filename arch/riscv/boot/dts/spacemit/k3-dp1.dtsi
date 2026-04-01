@@ -52,14 +52,13 @@
 	dp1: dp1@cac88000 {
 		compatible = "spacemit,inno-dp1";
 		reg = <0x0 0xcac88000 0x0 0x4000>;
+		spacemit,apmu = <&syscon_apmu>;
 		interrupt-parent = <&saplic>;
 		interrupts = <140 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&syscon_apmu CLK_APMU_EDP1_PXCLK>;
 		clock-names = "pxclk";
 		resets = <&syscon_apmu RESET_APMU_EDP1>;
 		reset-names= "reset";
-		color_format = <1>;
-		ref_clock = <24000000>;
 		dp-id = <1>;
 		#sound-dai-cells = <0>;
 		status = "disabled";
