@@ -101,7 +101,12 @@
 #define CFG_SW_INIT_DONE BIT(11)
 #define CFG_PU_SSC_OUT BIT(23)
 
+#define PCIE_PHY_OVERRIDE 0x18
+#define OVRD_MPU_U3 BIT(17)
+#define CFG_MPU_U3 BIT(16)
+
 #define PHY_MODE_CFG 0x0C
+#define CFG_LFPS_RX_FILTER_EN BIT(11)
 #define CFG_LFPS_TPERIOD GENMASK(9, 8)
 #define LFPS_TPERIOD_USB 0x3
 
@@ -245,6 +250,18 @@ static int k3_usb3phy_init_single(struct k3_usb3phy *k3_phy,
 	int ret;
 	u32 version, reg;
 
+	regmap_update_bits(regm, PCIE_PHY_OVERRIDE,
+			   OVRD_MPU_U3 | CFG_MPU_U3, 0);
+
+	ret = regmap_read(regm, PHY_CLK_CFG, &reg);
+	if (ret)
+		return ret;
+
+	if (reg & CFG_SW_INIT_DONE) {
+		dev_dbg(&phy->dev, "PHY already initialized, skip init\n");
+		return 0;
+	}
+
 	ret = regmap_read(regm, PHY_VERSION, &version);
 	if (ret)
 		return ret;
@@ -346,6 +363,35 @@ static int k3_usb3phy_init_single(struct k3_usb3phy *k3_phy,
 	return 0;
 }
 
+static int k3_usb3phy_power_on(struct phy *phy)
+{
+	struct k3_usb3phy *k3_phy = phy_get_drvdata(phy);
+
+	if (k3_phy->nop)
+		return 0;
+
+	/* RX Filter requires soc 24M, which is disabled during system sleep */
+	for (int i = 0; i < MAX_NUM_PHY && k3_phy->regmap_bases[i]; i++)
+		regmap_set_bits(k3_phy->regmap_bases[i], PHY_MODE_CFG,
+				CFG_LFPS_RX_FILTER_EN);
+
+	return 0;
+}
+
+static int k3_usb3phy_power_off(struct phy *phy)
+{
+	struct k3_usb3phy *k3_phy = phy_get_drvdata(phy);
+
+	if (k3_phy->nop)
+		return 0;
+
+	for (int i = 0; i < MAX_NUM_PHY && k3_phy->regmap_bases[i]; i++)
+		regmap_clear_bits(k3_phy->regmap_bases[i], PHY_MODE_CFG,
+				  CFG_LFPS_RX_FILTER_EN);
+
+	return 0;
+}
+
 static int k3_usb3phy_init(struct phy *phy)
 {
 	struct k3_usb3phy *k3_phy = phy_get_drvdata(phy);
@@ -367,6 +413,28 @@ static int k3_usb3phy_init(struct phy *phy)
 
 static int k3_usb3phy_exit(struct phy *phy)
 {
+	struct k3_usb3phy *k3_phy = phy_get_drvdata(phy);
+	int ret;
+
+	if (k3_phy->nop)
+		return 0;
+
+	/* Completely shutdown the phy */
+	for (int i = 0; i < MAX_NUM_PHY; i++) {
+		if (!k3_phy->regmap_bases[i])
+			continue;
+
+		ret = regmap_update_bits(k3_phy->regmap_bases[i], PHY_CLK_CFG,
+					 CFG_SW_INIT_DONE, 0);
+		if (ret)
+			return ret;
+
+		ret = regmap_update_bits(k3_phy->regmap_bases[i], PCIE_PHY_OVERRIDE,
+					 OVRD_MPU_U3 | CFG_MPU_U3, OVRD_MPU_U3);
+		if (ret)
+			return ret;
+	}
+
 	return 0;
 }
 
@@ -387,6 +455,8 @@ static int k3_usb3phy_set_speed(struct phy *phy, int speed)
 static const struct phy_ops k3_usb3phy_ops = {
 	.init = k3_usb3phy_init,
 	.exit = k3_usb3phy_exit,
+	.power_on = k3_usb3phy_power_on,
+	.power_off = k3_usb3phy_power_off,
 	.set_speed = k3_usb3phy_set_speed,
 	.owner = THIS_MODULE,
 };
