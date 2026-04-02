@@ -129,7 +129,7 @@ static int spacemit_chan_send_data(struct mbox_chan *chan, void *data)
 	writel(j, (void *)&mbox->regs->mbox_irq[USER1_MBOX_OFFSET].irq_en_set);
 
         /* send data */
-	writel('c', (void *)&mbox->regs->mbox_msg[chan_num]);
+	writel(data ? *(u32 *)data : 0, (void *)&mbox->regs->mbox_msg[chan_num]);
 #if 0
         /* set other end new msg irq thresh */
         j = readl((void *)&mbox->regs->mbox_thresh[USER1_MBOX_OFFSET].thresh0);
