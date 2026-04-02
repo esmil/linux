@@ -243,13 +243,16 @@ static int spacemit_mailbox_probe(struct platform_device *pdev)
 	}
 
 	mbox->ap_communicate = of_property_read_bool(pdev->dev.of_node, "ap-communicate");
+	mbox->is_remote = (bool)(uintptr_t)of_device_get_match_data(dev);
 
-	/* request irq */
-	ret = devm_request_irq(dev, platform_get_irq(pdev, 0),
-			       spacemit_mbox_irq, 0, dev_name(dev), mbox);
-	if (ret) {
-		dev_err(dev, "Failed to register IRQ handler: %d\n", ret);
-		return ret;
+	/* request irq only for local mailbox */
+	if (!mbox->is_remote) {
+		ret = devm_request_irq(dev, platform_get_irq(pdev, 0),
+				       spacemit_mbox_irq, 0, dev_name(dev), mbox);
+		if (ret) {
+			dev_err(dev, "Failed to register IRQ handler: %d\n", ret);
+			return ret;
+		}
 	}
 
 	/* register the mailbox controller */
@@ -292,7 +295,8 @@ static void spacemit_mailbox_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id spacemit_mailbox_of_match[] = {
-	{ .compatible = "spacemit,k3-mailbox", },
+	{ .compatible = "spacemit,k3-mailbox", .data = (void *)false },
+	{ .compatible = "spacemit,k3-rmailbox", .data = (void *)true },
 	{},
 };
 MODULE_DEVICE_TABLE(of, spacemit_mailbox_of_match);

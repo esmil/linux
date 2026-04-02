@@ -146,6 +146,7 @@ struct spacemit_mailbox {
 	mbox_reg_desc_t *regs;
 	spinlock_t lock;
 	bool ap_communicate;
+	bool is_remote;
 };
 
 #define USER0_MBOX_OFFSET ((mbox->ap_communicate) ? 1 : 0)
