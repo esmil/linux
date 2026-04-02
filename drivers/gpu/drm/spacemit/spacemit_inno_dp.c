@@ -682,7 +682,7 @@ retry_eio:
 			usleep_range(1000, 1100);
 			goto retry_eio;
 		}
-		dev_err(dp->dev, "AUX error, cmd: 0x%x, address: 0x%x, size %d, status: 0x%x, code: 0x%x\n",
+		dev_err(dp->dev, "AUX error, cmd: 0x%x, address: 0x%x, size %ld, status: 0x%x, code: 0x%x\n",
 			cmd, msg->address, msg->size, status, val);
 		return -EIO;
 	}
@@ -2047,6 +2047,12 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 	for (i = 0; i < ARRAY_SIZE(soc_dp_link_priority_table); i++) {
 		uint32_t capacity;
 
+		if (soc_dp_hw_detect_hpd(dp) == connector_status_disconnected) {
+			mutex_unlock(&dp->mode_lock);
+			dev_warn(dp->dev, "DP: Training failed for the connector is disconnected\n");
+			return;
+		}
+
 		cfg = &soc_dp_link_priority_table[i];
 
 		/* Filter 1: Check HW Capabilities (Source & Sink limits) */
@@ -2215,7 +2221,6 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 		new_status = soc_dp_hw_detect_hpd(dp);
 		soc_dp_hw_clean_hpd(dp);
 	} else {
-		dp->connector_status = connector_status_disconnected;
 		mutex_unlock(&dp->mode_lock);
 		return;
 	}
@@ -2573,20 +2578,6 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 	}
 #endif
 
-	// Update connector status using hardware detection interface
-#if HPD_BYPASS
-	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
-	mdelay(5);
-#endif
-	dp->connector_status = soc_dp_hw_detect_hpd(dp);
-	soc_dp_hw_clean_hpd(dp);
-
-	if (dp->connector_status == connector_status_connected)
-		soc_dp_hw_read_sink_caps(dp);
-
-	// Notify DRM core about the initial hotplug event
-	drm_kms_helper_hotplug_event(dp->drm);
-
 	return 0;
 }
 
@@ -2740,6 +2731,28 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC)
+	if (!dp->edp_mode) {
+		ret = inno_dp_audio_register(dp->dev);
+		if (ret)
+			dev_err(dev, "failed to register dp audio component\n");
+		else
+			dp->aud_registered = true;
+	}
+#endif
+
+#if HPD_BYPASS
+	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
+	mdelay(5);
+#endif
+	dp->connector_status = soc_dp_hw_detect_hpd(dp);
+	soc_dp_hw_clean_hpd(dp);
+
+	if (dp->connector_status == connector_status_connected)
+		soc_dp_hw_read_sink_caps(dp);
+
+	drm_kms_helper_hotplug_event(dp->drm);
+
 #if HOT_PLUG_THREAD_ENABLED
 	dev_info(dp->dev, "Starting HPD Polling Thread...\n");
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
@@ -2749,16 +2762,6 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	if (ret) {
 		dev_err(dp->dev, "Failure requesting irq %d: %d.\n", dp->irq, ret);
 		return ret;
-	}
-#endif
-
-#if IS_ENABLED(CONFIG_SND_SOC)
-	if (!dp->edp_mode) {
-		ret = inno_dp_audio_register(dp->dev);
-		if (ret)
-			dev_err(dev, "failed to register dp audio component\n");
-		else
-			dp->aud_registered = true;
 	}
 #endif
 
@@ -2856,10 +2859,7 @@ static int inno_dp_drv_pm_suspend(struct device *dev)
 
 	mutex_lock(&dp->mode_lock);
 	dp->suspended = true;
-	dp->connector_status = connector_status_disconnected;
 	mutex_unlock(&dp->mode_lock);
-
-	drm_kms_helper_hotplug_event(dp->drm);
 
 	return 0;
 }
@@ -2874,6 +2874,18 @@ static int inno_dp_drv_pm_resume(struct device *dev)
 	mutex_lock(&dp->mode_lock);
 	dp->suspended = false;
 	mutex_unlock(&dp->mode_lock);
+
+#if HPD_BYPASS
+	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
+	mdelay(5);
+#endif
+	dp->connector_status = soc_dp_hw_detect_hpd(dp);
+	soc_dp_hw_clean_hpd(dp);
+
+	if (dp->connector_status == connector_status_connected)
+		soc_dp_hw_read_sink_caps(dp);
+
+	drm_kms_helper_hotplug_event(dp->drm);
 
 #if HOT_PLUG_THREAD_ENABLED
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
@@ -2926,9 +2938,9 @@ static int inno_dp_drv_pm_resume_early(struct device *dev)
 	if (dp->pxclk)
 		clk_prepare_enable(dp->pxclk);
 
-	mutex_unlock(&dp->mode_lock);
-
 	soc_dp_dev_init(dp);
+
+	mutex_unlock(&dp->mode_lock);
 
 	return 0;
 }
