@@ -1412,6 +1412,8 @@ EXPORT_SYMBOL_GPL(spacemit_headphone_notifier_call_chain);
 int headphone_connect_event(struct notifier_block *nb, unsigned long event,
     void *v)
 {
+	unsigned int dac_mute_state = 0;
+
 	switch(event){
 	case HEADSET_EVENT_CONNECTED:
 		pr_info("codec got the chain event: HEADSET_EVENT_CONNECTED\n");
@@ -1444,7 +1446,11 @@ int headphone_connect_event(struct notifier_block *nb, unsigned long event,
 		if (es8326_priv_ptr->hp == 0 && es8326_priv_ptr->typec_hp == 0) {
 			es8326_disable_micbias(es8326_priv_ptr->component);
 			dev_dbg(es8326_priv_ptr->component->dev, "Report hp remove event\n");
-			//es8326_enable_spk(es8326_priv_ptr, true);
+
+			regmap_read(es8326_priv_ptr->regmap, ES8326_DAC_MUTE, &dac_mute_state);
+			if ((dac_mute_state & ES8326_MUTE_MASK) != ES8326_MUTE)
+				es8326_enable_spk(es8326_priv_ptr, true);
+
 			snd_soc_jack_report(es8326_priv_ptr->jack, 0, SND_JACK_HEADSET);
 			/* mute adc when mic path switch */
 			regmap_write(es8326_priv_ptr->regmap, ES8326_ADC1_SRC, es8326_priv_ptr->mic1_src);
