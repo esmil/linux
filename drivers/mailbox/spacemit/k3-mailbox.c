@@ -111,40 +111,20 @@ static int spacemit_chan_send_data(struct mbox_chan *chan, void *data)
 
 	spin_lock_irqsave(&mbox->lock, flags);
 
-#if 0
-	/* disable new msg irq */
-	j = readl((void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_clr);
-	j |= (1 << (chan_num * 2));
-	writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_clr);
-
-	/* clear pending */
-	j = readl((void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_status_clr);
-	j |= (1 << (chan_num * 2));
-	writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_status_clr);
-#endif
-
-	/* enable the other end new msg irq */
-	j = readl((void *)&mbox->regs->mbox_irq[USER1_MBOX_OFFSET].irq_en_set);
-	j |= (1 << (chan_num * 2));
-	writel(j, (void *)&mbox->regs->mbox_irq[USER1_MBOX_OFFSET].irq_en_set);
-
         /* send data */
 	writel(data ? *(u32 *)data : 0, (void *)&mbox->regs->mbox_msg[chan_num]);
-#if 0
-        /* set other end new msg irq thresh */
-        j = readl((void *)&mbox->regs->mbox_thresh[USER1_MBOX_OFFSET].thresh0);
-        j |= 7 << (chan_num * 8);
-        writel(j, (void *)&mbox->regs->mbox_thresh[USER1_MBOX_OFFSET].thresh0);
-#endif
-	/* set not full thresh */
-	j = readl((void *)&mbox->regs->mbox_thresh[USER0_MBOX_OFFSET].thresh0);
-	j |= 1 << (chan_num * 8 + 4);
-	writel(j, (void *)&mbox->regs->mbox_thresh[USER0_MBOX_OFFSET].thresh0);
 
-	/* enable not full irq */
-	j = readl((void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_set);
-	j |= (1 << (chan_num * 2 + 1));
-	writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_set);
+	if (!mbox->is_remote) {
+		/* set not full thresh */
+		j = readl((void *)&mbox->regs->mbox_thresh[USER0_MBOX_OFFSET].thresh0);
+		j |= 1 << (chan_num * 8 + 4);
+		writel(j, (void *)&mbox->regs->mbox_thresh[USER0_MBOX_OFFSET].thresh0);
+
+		/* enable not full irq */
+		j = readl((void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_set);
+		j |= (1 << (chan_num * 2 + 1));
+		writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_set);
+	}
 
 	spin_unlock_irqrestore(&mbox->lock, flags);
 
@@ -155,7 +135,7 @@ static int spacemit_chan_startup(struct mbox_chan *chan)
 {
 	struct spacemit_mailbox *mbox = chan->con_priv;
 	u32 chan_num = chan - mbox->controller.chans;
-	u32 msg;
+	u32 msg, j;
 	mbox_msg_status_t mstatus;
 	unsigned long flags;
 
@@ -167,6 +147,13 @@ static int spacemit_chan_startup(struct mbox_chan *chan)
 		msg = readl((void *)&mbox->regs->mbox_msg[chan_num]);
 		if (mstatus.bits.num_msg == 0)
 			break;
+	}
+
+	/* Enable USER0 new-msg IRQ for local mailbox to receive cross-die messages */
+	if (!mbox->is_remote) {
+		j = readl((void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_set);
+		j |= (1 << (chan_num * 2));
+		writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_en_set);
 	}
 
 	spin_unlock_irqrestore(&mbox->lock, flags);
@@ -270,9 +257,20 @@ static int spacemit_mailbox_probe(struct platform_device *pdev)
 	mbox->controller.ops = &spacemit_chan_ops;
 	mbox->controller.chans = chans;
 	mbox->controller.num_chans = SPACEMIT_NUM_CHANNELS;
-	mbox->controller.txdone_irq = true;
-	mbox->controller.txdone_poll = false;
-	mbox->controller.txpoll_period = 5;
+
+	if (mbox->is_remote) {
+		/* Remote mailbox: txdone IRQ fires on the remote CPU,
+		 * not locally. Use polling with last_tx_done() == true
+		 * to free the channel immediately.
+		 */
+		mbox->controller.txdone_irq = false;
+		mbox->controller.txdone_poll = true;
+		mbox->controller.txpoll_period = 1;
+	} else {
+		mbox->controller.txdone_irq = true;
+		mbox->controller.txdone_poll = false;
+		mbox->controller.txpoll_period = 5;
+	}
 
 	spin_lock_init(&mbox->lock);
 	platform_set_drvdata(pdev, mbox);
