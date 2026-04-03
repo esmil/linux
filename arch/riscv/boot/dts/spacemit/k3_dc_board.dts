@@ -317,8 +317,6 @@
 &qspi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&qspi_cfg>;
-	spacemit,qspi-tx-dma = <0>;
-	spacemit,qspi-rx-dma = <0>;
 	status = "okay";
 
 	flash@0 {
