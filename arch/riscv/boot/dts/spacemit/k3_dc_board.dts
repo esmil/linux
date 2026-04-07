@@ -1165,6 +1165,19 @@
 		interrupts = <0 26 IRQ_TYPE_EDGE_FALLING>;
 		status = "okay";
 	};
+
+	light_sensor: cm32183@29 {
+		compatible = "capella,cm32183";
+		reg = <0x29>;
+		status = "okay";
+	};
+
+        light_sensor2: cm32181@10 {
+		compatible = "capella,cm32181";
+		reg = <0x10>;
+		status = "okay";
+	};
+
 };
 
 /*
