@@ -7,7 +7,7 @@
 		compatible = "spacemit,saturn-hee";
 		reg = <0 0xc0340000 0 0x54000>;
 		hw_ver = <2>;
-		ports = <&dpu_crtc0>;
+		ports = <&dpu_crtc0>, <&dpu_crtc1>;
 	};
 
 	dpu_crtc0: dpu_crtc0 {
@@ -45,14 +45,16 @@
 
 			port@0 {
 				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
 				dpu_crtc0_out0: endpoint@0 {
+					reg = <0>;
 					remote-endpoint = <&dsi0_in>;
 				};
-			};
 
-			port@1 {
-				reg = <1>;
 				dpu_crtc0_out1: endpoint@1 {
+					reg = <1>;
 					remote-endpoint = <&wb0_in0>;
 				};
 			};
@@ -66,6 +68,20 @@
 		interrupt-parent = <&saplic>;
 		interrupts = <89 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "OFFLINE_IRQ";
+		clocks = <&syscon_apmu CLK_APMU_LCD_PXCLK>,
+			<&syscon_apmu CLK_APMU_LCD_MCLK>,
+			<&syscon_apmu CLK_APMU_LCD_HCLK>,
+			<&syscon_apmu CLK_APMU_DSI_ESC>,
+			<&syscon_apmu CLK_APMU_DPU_ACLK>,
+			<&syscon_apmu CLK_APMU_LCD_DSC>;
+		clock-names = "pxclk", "mclk", "hclk", "escclk", "aclk", "dscclk";
+		resets = <&syscon_apmu RESET_APMU_LCD_MCLK>,
+			<&syscon_apmu RESET_APMU_LCD>,
+			<&syscon_apmu RESET_APMU_DSI_ESC>,
+			<&syscon_apmu RESET_APMU_DPU_ACLK>,
+			<&syscon_apmu RESET_APMU_LCD_DSCCLK>;
+		reset-names= "mclk_reset", "lcd_reset", "esc_reset", "aclk_reset", "dsc_reset";
+		power-domains = <&power K3_PMU_LCD0_PWR_DOMAIN>;
 		pipeline-id = <2>;
 		is_edp = <1>;
 		ip = "spacemit-saturn";
@@ -118,7 +134,7 @@
 	wb0 {
 		compatible = "spacemit,wb0";
 		dev-id = <0>;
-		status = "disabled";
+		status = "ok";
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;

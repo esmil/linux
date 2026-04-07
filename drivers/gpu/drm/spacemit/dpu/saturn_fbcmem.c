@@ -292,13 +292,8 @@ int saturn_adjust_rdma_fbcmem(struct spacemit_hw_device *hwdev,
 				DRM_DEBUG("rdma%u, cur_rdma_fbcmem_size = %u, fbc_mems_left[%u] = %u\n",
 					index, cur_rdma_fbcmem_size, index/2, fbc_mems_left[index/2]);
 				rdmas[index].fbcmem.map = false;
-				if ((rdmas[index].is_offline_mode == true) && (index == 3)) {
-					rdmas[index].fbcmem.size = cur_rdma_fbcmem_size;
-					rdmas[index].fbcmem.start = fbc_mems_left[index/2] - cur_rdma_fbcmem_size;
-				} else {
-					rdmas[index].fbcmem.start = pri_fbcmem_size - fbc_mems_left[index/2];
-					rdmas[index].fbcmem.size = fbc_mems_left[index/2];//use all the mem left
-				}
+				rdmas[index].fbcmem.start = pri_fbcmem_size - fbc_mems_left[index/2];
+				rdmas[index].fbcmem.size = fbc_mems_left[index/2];//use all the mem left
 				fbc_mems_left[index/2] = 0;
 				DRM_DEBUG("FBC_MEM: rdma: id = %d, size = %u, actually size = %u, start = %u, map = %u, fbc_mems_left[%u] = 0\n",
 					index, cur_rdma_fbcmem_size, rdmas[index].fbcmem.size, rdmas[index].fbcmem.start, rdmas[index].fbcmem.map, index/2);
