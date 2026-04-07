@@ -544,24 +544,29 @@ static int spacemit_crtc_atomic_check(struct drm_crtc *crtc,
 	trace_spacemit_crtc_atomic_check(a_crtc->dev_id);
 
 	ret = spacemit_crtc_atomic_check_scaling(crtc, state);
+	if (ret) {
+		DRM_ERROR("crtc_id=%u check_scaling FAILED ret=%d\n",
+			  crtc->base.id, ret);
+		return -EINVAL;
+	}
 
 	if (spacemit_crtc_atomic_check_color_matrix(crtc, state)) {
-		DRM_DEBUG("The value of color matrix is invalid\n");
+		DRM_ERROR("The value of color matrix is invalid\n");
 		return -EINVAL;
 	}
 
 	if (spacemit_crtc_atomic_check_gamma_table(crtc, state)) {
-		DRM_DEBUG("The value of gamma table is invalid!\n");
+		DRM_ERROR("The value of gamma table is invalid!\n");
 		return -EINVAL;
 	}
 
 	if (spacemit_crtc_atomic_check_end_tone_mapping(crtc, state)) {
-		DRM_DEBUG("The value of end tone mapping is invalid!\n");
+		DRM_ERROR("The value of end tone mapping is invalid!\n");
 		return -EINVAL;
 	}
 
 	if (spacemit_crtc_atomic_check_fbmem(crtc, state)) {
-		DRM_DEBUG("Failed to satisfy fbcmem size for all rdmas!\n");
+		DRM_ERROR("Failed to satisfy fbcmem size for all rdmas!\n");
 		return -EINVAL;
 	}
 
@@ -571,7 +576,7 @@ static int spacemit_crtc_atomic_check(struct drm_crtc *crtc,
 	}
 
 	if (spacemit_crtc_atomic_check_aclk(crtc, state)) {
-		DRM_INFO("Failed to satisfy aclk for all rdmas!\n");
+		DRM_ERROR("Failed to satisfy aclk for all rdmas!\n");
 		return -EINVAL;
 	}
 

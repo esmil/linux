@@ -248,27 +248,53 @@ static const struct drm_encoder_helper_funcs spacemit_wb_encoder_helper_funcs = 
 static int spacemit_wb_connector_get_modes(struct drm_connector *connector)
 {
 	struct drm_device *dev = connector->dev;
+	struct drm_connector *c;
+	struct drm_connector_list_iter conn_iter;
+	struct drm_display_mode *mode, *dup;
 	int cnt = 0;
-	struct drm_display_mode *mode_dynamic;
-	struct drm_display_mode mode = {
+	struct drm_display_mode mode_256x600 = {
 			DRM_MODE("256x600", DRM_MODE_TYPE_DRIVER, 20276, 256, 360,
 			364, 474, 0, 600, 650, 654, 704, 0,
 			DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC) };
 
 	DRM_DEBUG("%s()\n", __func__);
-	cnt = drm_add_modes_noedid(connector, dev->mode_config.max_width,
+
+	/*
+	 * Mirror modes from all non-writeback connectors (e.g. DSI panel).
+	 * drm_add_modes_noedid() only covers standard VESA resolutions and
+	 * misses panel-specific ones, so we copy them here.
+	 */
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(c, &conn_iter) {
+		if (c == connector)
+			continue;
+		if (c->connector_type == DRM_MODE_CONNECTOR_WRITEBACK)
+			continue;
+		list_for_each_entry(mode, &c->modes, head) {
+			dup = drm_mode_duplicate(dev, mode);
+			if (!dup) {
+				DRM_ERROR("wb: failed to dup mode %s\n", mode->name);
+				continue;
+			}
+			drm_mode_probed_add(connector, dup);
+			DRM_INFO("wb: mirrored mode %s from connector %s\n",
+				 dup->name, c->name);
+			cnt++;
+		}
+	}
+	drm_connector_list_iter_end(&conn_iter);
+
+	/* Add standard VESA modes as additional options */
+	cnt += drm_add_modes_noedid(connector, dev->mode_config.max_width,
 				    dev->mode_config.max_height);
 
-	mode_dynamic = drm_mode_duplicate(connector->dev, &mode);
-	if (!mode_dynamic) {
-		DRM_ERROR("allocatre mode_dynamic failed\n");
-		return cnt;
+	/* Add hardware-specific 256x600 mode */
+	dup = drm_mode_duplicate(connector->dev, &mode_256x600);
+	if (dup) {
+		drm_mode_set_name(dup);
+		drm_mode_probed_add(connector, dup);
+		cnt++;
 	}
-
-	drm_mode_set_name(mode_dynamic);
-
-	drm_mode_probed_add(connector, mode_dynamic);
-	cnt++;
 
 	return cnt;
 }
@@ -416,7 +442,7 @@ static int spacemit_wb_context_init(struct spacemit_wb *wb, struct device_node *
 		DRM_ERROR("failed to find crtc mask\n");
 		return -EINVAL;
 	}
-	DRM_INFO("find possible crtcs: 0x%08x\n", crtc_mask);
+	DRM_INFO("wb find possible crtcs: 0x%08x\n", crtc_mask);
 
 	wb->wb_connector.encoder.possible_crtcs = crtc_mask;
 
@@ -526,6 +552,9 @@ static int spacemit_wb_bind(struct device *dev, struct device *master, void *dat
 	struct spacemit_drm_private *priv = drm->dev_private;
 	struct spacemit_wb *wb = dev_get_drvdata(dev);
 	struct device_node *np = wb->pdev->dev.of_node;
+	struct drm_encoder *enc;
+	struct drm_encoder *wb_enc;
+	u32 all_clones;
 	int id = -1;
 	int ret;
 
@@ -554,6 +583,29 @@ static int spacemit_wb_bind(struct device *dev, struct device *master, void *dat
 	if (ret) {
 		DRM_ERROR("drm_connector_init() failed\n");
 		return ret;
+	}
+
+	/*
+	 * drm_mode_config_validate() auto-fills possible_clones=0 to
+	 * drm_encoder_mask(self). So DSI ends up with 0x1, WB with 0x2.
+	 * drm_atomic_check_valid_clones() then rejects the commit because
+	 * DSI's possible_clones(0x1) doesn't include WB(0x2).
+	 * Fix: set both to the full encoder mask so they can share a CRTC.
+	 */
+	wb_enc = &priv->wb_connector[id]->encoder;
+	all_clones = drm_encoder_mask(wb_enc);
+
+	/* First pass: collect mask of all display encoders */
+	drm_for_each_encoder(enc, drm) {
+		if (enc != wb_enc)
+			all_clones |= drm_encoder_mask(enc);
+	}
+
+	/* Second pass: set possible_clones = all, for everyone */
+	drm_for_each_encoder(enc, drm) {
+		enc->possible_clones = all_clones;
+		DRM_INFO("wb: encoder %u possible_clones = 0x%x\n",
+			 enc->base.id, enc->possible_clones);
 	}
 
 	spacemit_wb_create_properties(&wb->wb_connector.base);
