@@ -90,6 +90,34 @@ static int spacemit_crtc_atomic_check_color_matrix(struct drm_crtc *crtc,
 	return ret;
 }
 
+static int spacemit_crtc_atomic_check_color_temp(struct drm_crtc *crtc,
+					  struct drm_crtc_state *state)
+{
+	struct spacemit_crtc_state *ac = to_spacemit_crtc_state(state);
+	struct drm_property_blob *blob = ac->pp_color_temperature_blob_property;
+	int *coef_data;
+	int n;
+
+	if (blob){
+		coef_data = (int *)blob->data;
+		for (n = 0; n < 9; n++){
+			if ((coef_data[n] > 32767) || (coef_data[n] < -32768)){
+				DRM_ERROR("color temp table is invalid %d\n", coef_data[n]);
+				return -EINVAL;
+			}
+		}
+
+		for (n = 9; n < 12; n++){
+			if ((coef_data[n] > 16777215) || (coef_data[n] < -16777216)){
+				DRM_ERROR("color temp offset is invalid %d\n", coef_data[n]);
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
+}
+
 static int spacemit_crtc_atomic_check_gamma_table(struct drm_crtc *crtc,
 					  struct drm_crtc_state *state)
 {
@@ -550,6 +578,11 @@ static int spacemit_crtc_atomic_check(struct drm_crtc *crtc,
 		return -EINVAL;
 	}
 
+	if (spacemit_crtc_atomic_check_color_temp(crtc, state)){
+		DRM_ERROR("The value of color temperature is invalid\n");
+		return -EINVAL;
+	}
+
 	if (spacemit_crtc_atomic_check_color_matrix(crtc, state)) {
 		DRM_ERROR("The value of color matrix is invalid\n");
 		return -EINVAL;
@@ -663,6 +696,8 @@ static void spacemit_crtc_atomic_flush(struct drm_crtc *crtc,
 		hwdev->conf_gamma_table(a_crtc, old_state);
 	if (hwdev->conf_end_tone_mapping)
 		hwdev->conf_end_tone_mapping(a_crtc, old_state);
+	if (hwdev->conf_matrix)
+		hwdev->conf_matrix(a_crtc, old_state);
 	spacemit_crtc_atomic_update_mclk(crtc, old_state);
 
 	if (new_state->expected_present_time != 0) {
@@ -718,6 +753,9 @@ static struct drm_crtc_state *spacemit_crtc_duplicate_state(struct drm_crtc *crt
 	if (state->gamma_table_blob_prop)
 		drm_property_blob_get(state->gamma_table_blob_prop);
 
+	if (state->pp_color_temperature_blob_property)
+		drm_property_blob_get(state->pp_color_temperature_blob_property);
+
 	if (state->end_tone_mapping_blob_prop)
 		drm_property_blob_get(state->end_tone_mapping_blob_prop);
 
@@ -757,6 +795,9 @@ static void spacemit_crtc_destroy_state(struct drm_crtc *crtc,
 
 		if (spacemit_state->gamma_table_blob_prop)
 			drm_property_blob_put(spacemit_state->gamma_table_blob_prop);
+
+		if (spacemit_state->pp_color_temperature_blob_property)
+			drm_property_blob_put(spacemit_state->pp_color_temperature_blob_property);
 
 		if (spacemit_state->pp_acad_blob_prop)
 			drm_property_blob_put(spacemit_state->pp_acad_blob_prop);
@@ -844,6 +885,14 @@ static int spacemit_crtc_atomic_set_property(struct drm_crtc *crtc,
 	} else if (property == a_crtc->offline_mode_property) {
 		a_crtc->is_offline_mode = val;
 		return 0;
+	} else if (property == a_crtc->pp_color_temperature_property){
+		ret = spacemit_atomic_replace_property_blob_from_id(crtc->dev,
+					&s->pp_color_temperature_blob_property,
+					val,
+					-1,
+					sizeof(int),
+					&replaced);
+		return ret;
 	} else if (property == a_crtc->wb_property) {
 		a_crtc->wb_pos = val;
 		return 0;
@@ -923,6 +972,9 @@ static int spacemit_crtc_atomic_get_property(struct drm_crtc *crtc,
 		*val = s->post_scl_on;
 	} else if (property == a_crtc->acad_property) {
 		*val = (s->pp_acad_blob_prop) ? s->pp_acad_blob_prop->base.id : 0;
+	} else if (property == a_crtc->pp_color_temperature_property){
+		if (s->pp_color_temperature_blob_property)
+			*val = (s->pp_color_temperature_blob_property) ? s->pp_color_temperature_blob_property->base.id : 0;
 	} else if (property == a_crtc->end_tone_mapping_property) {
 		*val = (s->end_tone_mapping_blob_prop) ? s->end_tone_mapping_blob_prop->base.id : 0;
 	} else if (property == a_crtc->expected_present_time) {
@@ -1072,6 +1124,16 @@ static int spacemit_crtc_create_properties(struct drm_crtc *crtc)
 	}
 	drm_object_attach_property(&crtc->base, prop, 0);
 	a_crtc->post_scaler_property = prop;
+
+	prop = drm_property_create(crtc->dev,
+			DRM_MODE_PROP_ATOMIC | DRM_MODE_PROP_BLOB,
+			"pp_cct", 0);
+	if (!prop) {
+		DRM_ERROR("create cct_prop failed!");
+		return -ENOMEM;
+	}
+	drm_object_attach_property(&crtc->base, prop, 0);
+	a_crtc->pp_color_temperature_property = prop;
 
 	prop = drm_property_create_range(crtc->dev, DRM_MODE_PROP_RANGE,
 			"WB_POS", SPACEMIT_WB_RDMA0, SPACEMIT_WB_POST2);
