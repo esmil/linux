@@ -1821,6 +1821,28 @@ static void soc_dp_hw_disable(struct soc_dp_dev *dp)
 	/* 2. Disable Transmitters */
 	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
 
+	/* Disable LDO */
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_LDO_D0, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_LDO_D1, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_LDO_D2, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_LDO_D3, 0);
+
+	/* Disable Driver */
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_DRV_D0, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_DRV_D1, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_DRV_D2, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_DRV_D3, 0);
+
+	/* Disable P2S */
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_P2S_D0, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_P2S_D1, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_P2S_D2, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_EN_P2S_D3, 0);
+
+	/*Disable BG_EN */
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_BG_EN, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_BG_EN_RCAL, 0);
+
 	/* 3. Power Down PLLs (MPLL and PREPLL) */
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_MPLL_PD, 1);
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_PREPLL_PD, 1);
@@ -1946,12 +1968,24 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 		}
 	}
 
-	list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
-		if (mode->hdisplay == 3840) {
-			if (drm_mode_vrefresh(mode) > 60) {
-				list_del(&mode->head);
-				drm_mode_destroy(dev, mode);
-				count--;
+	if (dp->link.max_num_lanes > SOC_DP_LANE_2) {
+		list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
+			if (mode->hdisplay == 3840) {
+				if (drm_mode_vrefresh(mode) > 60) {
+					list_del(&mode->head);
+					drm_mode_destroy(dev, mode);
+					count--;
+				}
+			}
+		}
+	} else {
+		list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
+			if (mode->hdisplay == 3840) {
+				if (drm_mode_vrefresh(mode) > 30) {
+					list_del(&mode->head);
+					drm_mode_destroy(dev, mode);
+					count--;
+				}
 			}
 		}
 	}
@@ -2103,7 +2137,7 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 			cfg->rate, cfg->lanes);
 	}
 
-	soc_dp_hw_set_msa_and_enable_video(dp, adjusted_mode, cfg->rate, cfg->lanes);
+	soc_dp_hw_set_msa_and_enable_video(dp, adjusted_mode, dp->link_rate, dp->lane_count);
 
 	mutex_unlock(&dp->mode_lock);
 	if (dp->backlight)
@@ -2903,6 +2937,8 @@ static int inno_dp_drv_pm_suspend_late(struct device *dev)
 	DRM_INFO("%s()\n", __func__);
 
 	mutex_lock(&dp->mode_lock);
+
+	soc_dp_hw_disable(dp);
 
 	if (dp->pxclk)
 		clk_disable_unprepare(dp->pxclk);

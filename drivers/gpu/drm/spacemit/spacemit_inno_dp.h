@@ -175,6 +175,10 @@
 #define SOC_DPTX_ANA_TX_MAINSEL_D1                    0x01ac,4,0   // da_tx_mainsel_d1[4:0];Output voltage level control registers of lane1.;Imain = Ibias * mainsel[4:0]
 
 // SOC_DPTX_ANA_TX_CTRL3: 0x01b0
+#define SOC_DPTX_ANA_TX_EN_P2S_D3                     0x01b0,31,31 // reg_tx_en_p2s_d3/2/1/0;Serializer enable control of 4 data lanes;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_P2S_D2                     0x01b0,30,30 //
+#define SOC_DPTX_ANA_TX_EN_P2S_D1                     0x01b0,29,29 //
+#define SOC_DPTX_ANA_TX_EN_P2S_D0                     0x01b0,28,28 //
 #define SOC_DPTX_ANA_TX_MODE_D3                       0x01b0,27,27 // reg_tx_mode_d3/2/1/0;Output driver mode control of 4 data lanes;1’b0: select voltage mode driver;1’b1: enable current mode driver;
 #define SOC_DPTX_ANA_TX_MODE_D2                       0x01b0,26,26 //
 #define SOC_DPTX_ANA_TX_MODE_D1                       0x01b0,25,25 //
@@ -184,11 +188,26 @@
 #define SOC_DPTX_ANA_TX_PRESEL_D3                     0x01b0,6,4   // da_tx_presel_d3[2:0];Pre-cursor pre-emphasis level control registers of lane3.;Ipre = Ibias * presel[2:0]
 #define SOC_DPTX_ANA_TX_PRESEL_D2                     0x01b0,2,0   // da_tx_presel_d2[2:0];Pre-cursor pre-emphasis level control registers of lan2.;Ipre = Ibias * presel[2:0]
 
+// SOC_DPTX_ANA_TX_CTRL6: 0x01bc
+#define SOC_DPTX_ANA_BG_VREF5                         0x01bc,15,14 // ANA_BG_VREF5
+#define SOC_DPTX_ANA_BG_VREF4                         0x01bc,13,12 // ANA_BG_VREF4
+#define SOC_DPTX_ANA_BG_VREF3                         0x01bc,11,10 // ANA_BG_VREF3
+#define SOC_DPTX_ANA_BG_VREF2                         0x01bc,9,8   // ANA_BG_VREF2
+#define SOC_DPTX_ANA_BG_VREF                          0x01bc,7,6   // ANA_BG_VREF
+#define SOC_DPTX_ANA_BG_VREF1                         0x01bc,5,4   // ANA_BG_VREF1
+#define SOC_DPTX_ANA_BG_EN_CHOP                       0x01bc,3,3   // ANA_BG_EN_CHOP
+#define SOC_DPTX_ANA_BG_EN                            0x01bc,2,2   // ANA_BG_EN
+#define SOC_DPTX_ANA_BG_ISEL                          0x01bc,1,1   // ANA_BG_ISEL
+#define SOC_DPTX_ANA_BG_VSEL                          0x01bc,0,0   // ANA_BG_VSEL
+
 // SOC_DPTX_ANA_TX_CTRL7: 0x01c0
+#define SOC_DPTX_ANA_BG_EN_RCAL                       0x01c0,27,27 // ANA_BG_EN_RCAL;Termination resistor calibration enable control in Bias;1’b0: disable;1’b1: enable;W: software configure value.only ANA_RTCAL_BYPASS is 1'b1 valid.;R: analog real value,software configure or hardware generate.
 #define SOC_DPTX_ANA_BG_RCAL_SEL                      0x01c0,26,25 // ANA_BG_RCAL_SEL;The resistance calibration,adjust the termination resistor to approach the off-chip reference resistor.;W: software configure value.only ANA_RTCAL_BYPASS is 1'b1 valid.;R: analog real value,software configure or hardware generate.
+#define SOC_DPTX_AD_BG_RCAL_OUT                       0x01c0,24,24 // AD_BG_RCAL_OUT;The resistance calibration result.
 #define SOC_DPTX_ANA_RTCAL_FREQDIV_LBIT               0x01c0,23,16 // ANA_RTCAL_FREQDIV_LBIT;reg_rtcal_freqdiv[7:0],The resistance calibration clock divider.
 #define SOC_DPTX_ANA_RTCAL_BYPASS                     0x01c0,15,15 // ANA_RTCAL_BYPASS;Control the configuration method for termination resistance.;0: hardware adjust.;1: bypass,software configure.
 #define SOC_DPTX_ANA_RTCAL_FREQDIV_HBIT               0x01c0,14,8  // ANA_RTCAL_FREQDIV_HBIT;reg_rtcal_freqdiv[14:8],The resistance calibration clock divider.
+#define SOC_DPTX_ANA_BG_RCAL_VAL                      0x01c0,5,0   // ANA_BG_RCAL_VAL;The resistance calibration software configure value.;W: software configure value.only ANA_RTCAL_BYPASS is 1'b1 valid.;R: analog real value,software configure or hardware generate.
 
 // SOC_DPTX_ANA_TX_CTRL8: 0x01c4
 #define SOC_DPTX_ANA_TX_RTM_D3                        0x01c4,29,24 // ANA_TX_RTM_D3;Differential termination resistance control registers of lane3,RT = 4000 / rtm[5:0];W: software configure value.only ANA_RTCAL_BYPASS is 1'b1 valid.;R: analog real value,software configure or hardware generate.
