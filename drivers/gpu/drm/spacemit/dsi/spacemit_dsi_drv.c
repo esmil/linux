@@ -471,6 +471,9 @@ static void dsi_config_video_mode(struct spacemit_dsi_device *dsi_ctx, struct sp
 	else
 		dsi_write(base_addr, DSI_VPN_CTRL_0, (0x50 << CFG_VPN_DLY_CNT_SHIFT) | 0xc08);
 
+	if (mipi_info->split_enable)
+		dsi_write(base_addr, DSI_VPN_CTRL_0, (0x258 << CFG_VPN_DLY_CNT_SHIFT) | 0x54f);
+
     /* SET UP LCD1 TIMING REGISTERS FOR DSI BUS */
 	dsi_write(base_addr, DSI_VPN_TIMING_0, (hact << 16) | httl);
 	dsi_write(base_addr, DSI_VPN_TIMING_1, (hsync << 16) | hbp);
@@ -610,7 +613,7 @@ static void dsi_config_cmd_mode(struct spacemit_dsi_device *dsi_ctx, struct spac
 }
 
 static int dsi_write_cmd_array(struct spacemit_dsi_device *dsi_ctx,
-									struct spacemit_dsi_cmd_desc *cmds, int count)
+					struct spacemit_dsi_cmd_desc *cmds, int count)
 {
 	struct spacemit_dsi_cmd_desc cmd_line;
 	uint8_t type, parameter[SPACEMIT_DSI_MAX_TX_FIFO_BYTES], len;
@@ -796,13 +799,11 @@ static void spacemit_dsi_sw_sleep(struct spacemit_dsi_device *device_ctx, bool s
 	void *base;
 	base = ioremap(0xD4282800, 0x400);
 
-	// regmap_read(device_ctx->apmu_base, APMU_LCD_CLK_RES_CTRL1, &reg);
 	reg = readl(base + APMU_LCD_CLK_RES_CTRL1);
 	if (sleep)
 		reg |= APMU_LCD_SW_SLEEP;
 	else
 		reg &= ~(APMU_LCD_SW_SLEEP);
-	// regmap_write(device_ctx->apmu_base, APMU_LCD_CLK_RES_CTRL1, reg);
 	writel(reg, base + APMU_LCD_CLK_RES_CTRL1);
 	udelay(100);
 
@@ -813,9 +814,10 @@ static void spacemit_dsi_sw_sleep(struct spacemit_dsi_device *device_ctx, bool s
  * spacemit_dsi_update_vrr - update variable refresh rate parameters
  * @vrr_param: variable refresh rate parameters, for example：vrr_vfp.
  */
-static void spacemit_dsi_update_vrr(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_vrr_param *vrr_param)
+static void spacemit_dsi0_update_vrr(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_vrr_param *vrr_param)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 	void __iomem *base_addr = device_ctx->base_addr;
 	uint32_t v_total;
 
@@ -835,37 +837,56 @@ static void spacemit_dsi_update_vrr(struct spacemit_dsi_device *device_ctx, stru
 	mipi_info->vrr_param.vrr_vfp = vrr_param->vrr_vfp;
 }
 
-static int spacemit_dsi0_open(struct spacemit_dsi_device* device_ctx, bool ready);
-static int spacemit_dsi1_open(struct spacemit_dsi_device* device_ctx, bool ready);
-static int spacemit_dsi_open(struct spacemit_dsi_device* device_ctx, bool ready)
+static void spacemit_dsi1_update_vrr(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_vrr_param *vrr_param)
+{
+	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
+	void __iomem *base_addr = device_ctx->base_addr;
+	uint32_t v_total;
+
+	if (!vrr_param)
+		return;
+
+	if (device_ctx->version < DSI_VERSION_2 ||
+			vrr_param->vrr_vfp == mipi_info->vrr_param.vrr_vfp) {
+		pr_debug("%s, dsi version_%d: vrr_vfp = %d, mipi vrr vfp = %d.\n",
+				__func__, device_ctx->version, vrr_param->vrr_vfp, mipi_info->vrr_param.vrr_vfp);
+		return;
+	}
+
+	v_total = mipi_info->height + vrr_param->vrr_vfp + mipi_info->vbp + mipi_info->vsync;
+	dsi_write(base_addr, DSI_VPN_TIMING_2, ((mipi_info->height) << 16) | (v_total));
+
+	mipi_info->vrr_param.vrr_vfp = vrr_param->vrr_vfp;
+}
+
+static void spacemit_dsi_update_vrr(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_vrr_param *vrr_param)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
 
-	spacemit_dsi0_open(device_ctx, ready);
+	spacemit_dsi0_update_vrr(device_ctx, vrr_param);
 	if (mipi_info->split_enable)
-		spacemit_dsi1_open(device_ctx, ready);
+		spacemit_dsi1_update_vrr(device_ctx, vrr_param);
 
 	device_ctx->base_addr = device_ctx->base_addr_dsi0;
-
-	return 0;
 }
 
 static int spacemit_dsi0_open(struct spacemit_dsi_device* device_ctx, bool ready)
 {
 	int lane_number;
-	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	struct spacemit_mipi_info *mipi_info;
 	uint32_t irq_st;
-
-	device_ctx->base_addr = device_ctx->base_addr_dsi0;
-
 #ifdef LCD_IS_READY
 	return 0;
 #endif
-
-	if ((device_ctx == NULL) || (mipi_info == NULL)) {
+	if (device_ctx == NULL) {
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	mipi_info = &device_ctx->mipi_info;
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
+
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
 	if (!ready)
 		dptc_board_init();
@@ -908,19 +929,21 @@ static int spacemit_dsi0_open(struct spacemit_dsi_device* device_ctx, bool ready
 static int spacemit_dsi1_open(struct spacemit_dsi_device* device_ctx, bool ready)
 {
 	int lane_number;
-	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	struct spacemit_mipi_info *mipi_info;
 	uint32_t irq_st;
-
-	device_ctx->base_addr = device_ctx->base_addr_dsi1;
 
 #ifdef LCD_IS_READY
 	return 0;
 #endif
 
-	if ((device_ctx == NULL) || (mipi_info == NULL)) {
+	if (device_ctx == NULL) {
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	mipi_info = &device_ctx->mipi_info;
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
+
 #ifdef CONFIG_SOC_SPACEMIT_K3_FPGA
 	if (!ready)
 		dptc_board_init();
@@ -958,16 +981,20 @@ static int spacemit_dsi1_open(struct spacemit_dsi_device* device_ctx, bool ready
 	return 0;
 }
 
-static int spacemit_dsi0_close(struct spacemit_dsi_device* device_ctx);
-static int spacemit_dsi1_close(struct spacemit_dsi_device* device_ctx);
-static int spacemit_dsi_close(struct spacemit_dsi_device* device_ctx)
+static int spacemit_dsi_open(struct spacemit_dsi_device *device_ctx, bool ready)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	int ret;
 
-	spacemit_dsi0_close(device_ctx);
+	ret = spacemit_dsi0_open(device_ctx, ready);
+	if (ret)
+		return ret;
 
-	if(mipi_info->split_enable)
-		spacemit_dsi1_close(device_ctx);
+	if (mipi_info->split_enable) {
+		ret = spacemit_dsi1_open(device_ctx, ready);
+		if (ret)
+			return ret;
+	}
 
 	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
@@ -976,8 +1003,6 @@ static int spacemit_dsi_close(struct spacemit_dsi_device* device_ctx)
 
 static int spacemit_dsi0_close(struct spacemit_dsi_device* device_ctx)
 {
-	device_ctx->base_addr = device_ctx->base_addr_dsi0;
-
 #ifdef LCD_IS_READY
 	return 0;
 #endif
@@ -986,6 +1011,8 @@ static int spacemit_dsi0_close(struct spacemit_dsi_device* device_ctx)
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
 	if (device_ctx->status == DSI_STATUS_UNINIT)
 		return 0;
@@ -1007,8 +1034,6 @@ static int spacemit_dsi0_close(struct spacemit_dsi_device* device_ctx)
 
 static int spacemit_dsi1_close(struct spacemit_dsi_device* device_ctx)
 {
-	device_ctx->base_addr = device_ctx->base_addr_dsi1;
-
 #ifdef LCD_IS_READY
 	return 0;
 #endif
@@ -1017,6 +1042,8 @@ static int spacemit_dsi1_close(struct spacemit_dsi_device* device_ctx)
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
 
 	pr_debug("%s: dsi(%d) Enter\n", __func__, device_ctx->id);
 
@@ -1031,16 +1058,20 @@ static int spacemit_dsi1_close(struct spacemit_dsi_device* device_ctx)
 	return 0;
 }
 
-static int spacemit_dsi0_ready_for_datatx(struct spacemit_dsi_device* device_ctx);
-static int spacemit_dsi1_ready_for_datatx(struct spacemit_dsi_device* device_ctx);
-static int spacemit_dsi_ready_for_datatx(struct spacemit_dsi_device* device_ctx)
+static int spacemit_dsi_close(struct spacemit_dsi_device *device_ctx)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	int ret;
 
-	spacemit_dsi0_ready_for_datatx(device_ctx);
+	ret = spacemit_dsi0_close(device_ctx);
+	if (ret)
+		return ret;
 
-	if (mipi_info->split_enable)
-		spacemit_dsi1_ready_for_datatx(device_ctx);
+	if (mipi_info->split_enable) {
+		ret = spacemit_dsi1_close(device_ctx);
+		if (ret)
+			return ret;
+	}
 
 	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
@@ -1049,18 +1080,18 @@ static int spacemit_dsi_ready_for_datatx(struct spacemit_dsi_device* device_ctx)
 
 static int spacemit_dsi0_ready_for_datatx(struct spacemit_dsi_device* device_ctx)
 {
-	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
-
-	device_ctx->base_addr = device_ctx->base_addr_dsi0;
-
 #ifdef LCD_IS_READY
 	return 0;
 #endif
+	struct spacemit_mipi_info *mipi_info;
 
-	if ((device_ctx == NULL) || (mipi_info == NULL)) {
+	if (device_ctx == NULL) {
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	mipi_info = &device_ctx->mipi_info;
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
 	if (device_ctx->status == DSI_STATUS_UNINIT)
 		return 0;
@@ -1078,18 +1109,24 @@ static int spacemit_dsi0_ready_for_datatx(struct spacemit_dsi_device* device_ctx
 
 static int spacemit_dsi1_ready_for_datatx(struct spacemit_dsi_device* device_ctx)
 {
-	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
-
-	device_ctx->base_addr = device_ctx->base_addr_dsi1;
-
 #ifdef LCD_IS_READY
 	return 0;
 #endif
+	struct spacemit_mipi_info *mipi_info;
 
-	if ((device_ctx == NULL) || (mipi_info == NULL)) {
-		pr_err("%s: Invalid param\n", __func__);
+	if (device_ctx == NULL) {
+		pr_err("%s: Invalid device_ctx param\n", __func__);
 		return -1;
 	}
+
+	mipi_info = &device_ctx->mipi_info;
+
+	if (mipi_info == NULL) {
+		pr_err("%s: Invalid mipi_info\n", __func__);
+		return -1;
+	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
 
 	pr_debug("%s: dsi(%d) Enter\n", __func__, device_ctx->id);
 
@@ -1102,31 +1139,53 @@ static int spacemit_dsi1_ready_for_datatx(struct spacemit_dsi_device* device_ctx
 	return 0;
 }
 
-static void spacemit_dsi_enable_irq(struct spacemit_dsi_device *device_ctx, bool enable)
-{
-	dsi_enable_irq(device_ctx->base_addr, enable);
-}
-
-static int spacemit_dsi0_close_datatx(struct spacemit_dsi_device* device_ctx);
-static int spacemit_dsi1_close_datatx(struct spacemit_dsi_device* device_ctx);
-static int spacemit_dsi_close_datatx(struct spacemit_dsi_device* device_ctx)
+static int spacemit_dsi_ready_for_datatx(struct spacemit_dsi_device *device_ctx)
 {
 	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	int ret;
 
-	spacemit_dsi0_close_datatx(device_ctx);
+	ret = spacemit_dsi0_ready_for_datatx(device_ctx);
+	if (ret)
+		return ret;
 
-	if(mipi_info->split_enable)
-		spacemit_dsi1_close_datatx(device_ctx);
+	if (mipi_info->split_enable) {
+		ret = spacemit_dsi1_ready_for_datatx(device_ctx);
+		if (ret)
+			return ret;
+	}
 
 	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
 	return 0;
 }
 
-static int spacemit_dsi0_close_datatx(struct spacemit_dsi_device* device_ctx)
+static void spacemit_dsi0_enable_irq(struct spacemit_dsi_device *device_ctx, bool enable)
 {
 	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
+	dsi_enable_irq(device_ctx->base_addr, enable);
+}
+
+static void spacemit_dsi1_enable_irq(struct spacemit_dsi_device *device_ctx, bool enable)
+{
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
+
+	dsi_enable_irq(device_ctx->base_addr, enable);
+}
+
+static void spacemit_dsi_enable_irq(struct spacemit_dsi_device *device_ctx, bool enable)
+{
+	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	spacemit_dsi0_enable_irq(device_ctx, enable);
+
+	if (mipi_info->split_enable)
+		spacemit_dsi1_enable_irq(device_ctx, enable);
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
+}
+
+static int spacemit_dsi0_close_datatx(struct spacemit_dsi_device* device_ctx)
+{
 #ifdef LCD_IS_READY
 	return 0;
 #endif
@@ -1135,6 +1194,8 @@ static int spacemit_dsi0_close_datatx(struct spacemit_dsi_device* device_ctx)
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
 	if (device_ctx->status == DSI_STATUS_UNINIT)
 		return 0;
@@ -1147,18 +1208,17 @@ static int spacemit_dsi0_close_datatx(struct spacemit_dsi_device* device_ctx)
 	return 0;
 }
 
-int spacemit_dsi1_close_datatx(struct spacemit_dsi_device* device_ctx)
+static int spacemit_dsi1_close_datatx(struct spacemit_dsi_device *device_ctx)
 {
-	device_ctx->base_addr = device_ctx->base_addr_dsi1;
-
 #ifdef LCD_IS_READY
 	return 0;
 #endif
-
 	if (device_ctx == NULL) {
 		pr_err("%s: Invalid param\n", __func__);
 		return -1;
 	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
 
 	pr_debug("%s: dsi(%d) Enter\n", __func__, device_ctx->id);
 
@@ -1168,8 +1228,27 @@ int spacemit_dsi1_close_datatx(struct spacemit_dsi_device* device_ctx)
 	return 0;
 }
 
-static int spacemit_dsi_write_cmds(struct spacemit_dsi_device *device_ctx,
-									struct spacemit_dsi_cmd_desc *cmds, int count)
+static int spacemit_dsi_close_datatx(struct spacemit_dsi_device *device_ctx)
+{
+	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	int ret;
+
+	ret = spacemit_dsi0_close_datatx(device_ctx);
+	if (ret)
+		return ret;
+
+	if (mipi_info->split_enable) {
+		ret = spacemit_dsi1_close_datatx(device_ctx);
+		if (ret)
+			return ret;
+	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
+
+	return 0;
+}
+
+static int spacemit_dsi0_write_cmds(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_cmd_desc *cmds, int count)
 {
 #ifdef LCD_IS_READY
 	return 0;
@@ -1180,12 +1259,56 @@ static int spacemit_dsi_write_cmds(struct spacemit_dsi_device *device_ctx,
 		return -1;
 	}
 
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
+
 	if (device_ctx->status == DSI_STATUS_UNINIT)
 		return 0;
 
 	pr_debug("%s: dsi(%d) Enter\n", __func__, device_ctx->id);
 
 	return dsi_write_cmd_array(device_ctx, cmds, count);
+}
+
+static int spacemit_dsi1_write_cmds(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_cmd_desc *cmds, int count)
+{
+
+#ifdef LCD_IS_READY
+	return 0;
+#endif
+	if ((device_ctx == NULL) || (cmds == NULL)) {
+		pr_err("%s: Invalid param\n", __func__);
+		return -1;
+	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
+
+	if (device_ctx->status == DSI_STATUS_UNINIT)
+		return 0;
+
+	pr_debug("%s: dsi(%d) Enter\n", __func__, device_ctx->id);
+
+	return dsi_write_cmd_array(device_ctx, cmds, count);
+}
+
+static int spacemit_dsi_write_cmds(struct spacemit_dsi_device *device_ctx,
+					struct spacemit_dsi_cmd_desc *cmds, int count)
+{
+	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	int ret;
+
+	ret = spacemit_dsi0_write_cmds(device_ctx, cmds, count);
+	if (ret)
+		return ret;
+
+	if (mipi_info->split_enable) {
+		ret = spacemit_dsi1_write_cmds(device_ctx, cmds, count);
+		if (ret)
+			return ret;
+	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
+
+	return 0;
 }
 
 static int spacemit_dsi_read_cmds(struct spacemit_dsi_device *device_ctx, struct spacemit_dsi_rx_buf *dbuf,
@@ -1212,9 +1335,10 @@ static int spacemit_dsi_parse_dt(struct spacemit_dsi_device *device_ctx, struct 
 	return 0;
 }
 
-static int spacemit_dsi_isr(struct spacemit_dsi_device *device_ctx)
+static int spacemit_dsi0_isr(struct spacemit_dsi_device* device_ctx)
 {
 	uint32_t irq_st;
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
 	irq_st = dsi_read(device_ctx->base_addr, DSI_IRQ_ST);
 
@@ -1229,6 +1353,48 @@ static int spacemit_dsi_isr(struct spacemit_dsi_device *device_ctx)
 
 	if (irq_st & DSI_IRQ_VPN_BF_OVERRUN_ERR)
 		pr_err_ratelimited("DSI: DSI_IRQ_VPN_BF_OVERRUN_ERR\n");
+
+	return 0;
+}
+
+static int spacemit_dsi1_isr(struct spacemit_dsi_device* device_ctx)
+{
+	uint32_t irq_st;
+	device_ctx->base_addr = device_ctx->base_addr_dsi1;
+
+	irq_st = dsi_read(device_ctx->base_addr, DSI_IRQ_ST);
+
+	/*clear interrupt*/
+	dsi_write(device_ctx->base_addr, DSI_IRQ_ST, irq_st);
+
+	if (irq_st & DSI_IRQ_PHY_FIFO_UNDERRUN)
+		pr_err_ratelimited("DSI: DSI_IRQ_PHY_FIFO_UNDERRUN\n");
+
+	if (irq_st & DSI_IRQ_VPN_BF_UNDERRUN_ERR)
+		pr_err_ratelimited("DSI: DSI_IRQ_VPN_BF_UNDERRUN_ERR\n");
+
+	if (irq_st & DSI_IRQ_VPN_BF_OVERRUN_ERR)
+		pr_err_ratelimited("DSI: DSI_IRQ_VPN_BF_OVERRUN_ERR\n");
+
+	return 0;
+}
+
+static int spacemit_dsi_isr(struct spacemit_dsi_device *device_ctx)
+{
+	struct spacemit_mipi_info *mipi_info = &device_ctx->mipi_info;
+	int ret;
+
+	ret = spacemit_dsi0_isr(device_ctx);
+	if (ret)
+		return ret;
+
+	if (mipi_info->split_enable) {
+		ret = spacemit_dsi1_isr(device_ctx);
+		if (ret)
+			return ret;
+	}
+
+	device_ctx->base_addr = device_ctx->base_addr_dsi0;
 
 	return 0;
 }

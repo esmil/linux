@@ -429,6 +429,16 @@ config PCIE_SPACEMIT_K1
          are available on the K1 SoC; the first of these shares a PHY
          with a USB 3.0 host controller (one or the other can be used).
 
+config PCIE_SPACEMIT_EP
+	tristate "Spacemit PCIe controller (endpoint mode)"
+	depends on OF && (ARCH_SPACEMIT || COMPILE_TEST)
+	depends on PCI_ENDPOINT
+	select PCIE_DW_EP
+	help
+	  Say Y here to enable support for the PCIe controllers on Spacemit SoCs
+	  to work in endpoint mode. The PCIe controller uses the DesignWare core
+	  plus Spacemit-specific hardware wrappers.
+
 config PCIE_SPEAR13XX
 	bool "STMicroelectronics SPEAr PCIe controller"
 	depends on ARCH_SPEAR13XX || COMPILE_TEST

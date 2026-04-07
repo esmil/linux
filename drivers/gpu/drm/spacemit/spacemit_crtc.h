@@ -72,7 +72,7 @@
 #define DPU_BITCLK_DEFAULT	624000000
 #define DPU_DSIPLL_REG0_DEFAULT	0x8010c563
 #define DPU_DSIPLL_REG1_DEFAULT	0x0bcec4ec
-#define DPU_DSIPLL_REG2_DEFAULT	0xa00010a0
+#define DPU_DSIPLL_REG2_DEFAULT	0x800078a0
 
 #define CMDLIST_ADDRL_ALIGN_BITS		(4) //From cmdlist_reg_0[] in CMDLIST_REG
 #define CMDLIST_ADDRL_ALIGN_MASK		((u32)(~(BIT(CMDLIST_ADDRL_ALIGN_BITS) - 1)))
@@ -210,6 +210,7 @@ struct spacemit_crtc {
 	uint32_t dsipll_reg1;
 	uint32_t dsipll_reg2;
 	void __iomem *dsipll_base;
+	void __iomem *dsi1pll_base;
 	bool dsipll_valid;
 	uint32_t aclk;
 	uint32_t escclk;

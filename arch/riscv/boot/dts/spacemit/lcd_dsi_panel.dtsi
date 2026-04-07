@@ -12,7 +12,8 @@
 
 	dpu_crtc0: dpu_crtc0 {
 		compatible = "spacemit,dpu-saturn";
-		reg = <0 0xd421a800 0 0x300>;
+		reg = <0x0 0xd421a800 0x0 0x200>,
+			<0x0 0xd421aa00 0x0 0x200>;
 		interrupt-parent = <&saplic>;
 		interrupts = <90 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "ONLINE_IRQ";
@@ -60,7 +61,8 @@
 
 	dpu_crtc1: dpu_crtc1 {
 		compatible = "spacemit,dpu-saturn";
-		reg = <0 0xd421a800 0 0x300>;
+		reg = <0x0 0xd421a800 0x0 0x200>,
+			<0x0 0xd421aa00 0x0 0x200>;
 		interrupt-parent = <&saplic>;
 		interrupts = <89 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "OFFLINE_IRQ";

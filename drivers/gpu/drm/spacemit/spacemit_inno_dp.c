@@ -13,6 +13,8 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
+#include <linux/mfd/syscon.h>
+#include <linux/regmap.h>
 #include <linux/backlight.h>
 #include <drm/drm_of.h>
 #include <drm/drm_device.h>
@@ -34,7 +36,7 @@
 
 #define INVALID_GPIO	0xFFFFFFFF
 
-#define ACTIVATE_DO_DIV	0
+#define ACTIVATE_DO_DIV	1
 #define HPD_BYPASS	0
 
 #define HOT_PLUG_THREAD_ENABLED 1
@@ -42,6 +44,12 @@
 
 #define SOC_DP_SWING_MAX  2
 #define SOC_DP_PREEMP_MAX 2
+#define SOC_DP_AUX_MAX_RETRIES 3
+
+#define SOC_DP_APMU_CLK_CTRL	0x23c
+#define SOC_DP_QOS_BASE		0xd4282c00
+#define SOC_DP_QOS_SIZE		0x200
+#define SOC_DP_QOS_MUX_CTRL	0x12c
 
 #ifdef CONFIG_SOC_DP_DRIVER_QEMU
 #include <linux/proc_fs.h>
@@ -107,7 +115,6 @@ static const struct soc_dp_link_config {
 
 	/* --- Tier 2: Medium Bandwidth (~5-6 Gbps) --- */
 	{SOC_DP_LINK_RATE_2_70, SOC_DP_LANE_2}, /* 5.40 Gbps */
-	{SOC_DP_LINK_RATE_5_40, SOC_DP_LANE_1}, /* 5.40 Gbps */
 	{SOC_DP_LINK_RATE_1_62, SOC_DP_LANE_4}, /* 6.48 Gbps */
 
 	/* --- Tier 3: High Bandwidth (~10 Gbps) --- */
@@ -239,7 +246,7 @@ static const struct soc_dp_pixel_pll_cfg pixel_pll_cfg_table[] = {
 	{ 533250, 2130000, 0x08, 711,  0x3, 0x0, 0x0, 0x1, 0x01, 0x1, 533250, true },
 	{ 443250, 1770000, 0x08, 591,  0x3, 0x0, 0x0, 0x1, 0x01, 0x1, 443250, true },
 	{ 375000, 3000000, 0x01, 125,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 375000, true },
-	{ 372000, 2980000, 0x01, 124,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 371370, true },
+	{ 372000, 2980000, 0x01, 124,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 372000, true },
 	{ 348500, 2790000, 0x06, 697,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 348500, true },
 	{ 307200, 1540000, 0x01, 64,   0x3, 0x0, 0x1, 0x0, 0x00, 0x0, 307200, true },
 	{ 297000, 2376000, 0x01, 99,   0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 297000, true },
@@ -247,10 +254,10 @@ static const struct soc_dp_pixel_pll_cfg pixel_pll_cfg_table[] = {
 	{ 277440, 2770000, 0x05, 578,  0x3, 0x0, 0x0, 0x3, 0x01, 0x1, 277440, true },
 	{ 245760, 2457600, 0x05, 512,  0x3, 0x0, 0x0, 0x3, 0x01, 0x1, 245760, true },
 	{ 241500, 1932000, 0x02, 161,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 241500, true },
-	{ 236000, 2830000, 0x01, 118,  0x3, 0x0, 0x0, 0x0, 0x06, 0x1, 235690, true },
+	{ 236000, 2830000, 0x01, 118,  0x3, 0x0, 0x0, 0x0, 0x06, 0x1, 236000, true },
 	{ 204800, 2048000, 0x03, 256,  0x3, 0x0, 0x0, 0x3, 0x01, 0x1, 204800, true },
 	{ 193250, 2320000, 0x08, 773,  0x3, 0x0, 0x0, 0x0, 0x06, 0x1, 193250, true },
-	{ 189000, 1510000, 0x01,  63,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 188550, true },
+	{ 189000, 1510000, 0x01,  63,  0x3, 0x0, 0x0, 0x0, 0x04, 0x1, 189000, true },
 	{ 187500, 3000000, 0x01, 125,  0x3, 0x0, 0x0, 0x0, 0x08, 0x1, 187500, true },
 	{ 162000, 2592000, 0x01, 108,  0x3, 0x0, 0x0, 0x0, 0x08, 0x1, 162000, true },
 	{ 156000, 2810000, 0x01, 117,  0x3, 0x0, 0x0, 0x0, 0x09, 0x1, 156000, true },
@@ -261,6 +268,7 @@ static const struct soc_dp_pixel_pll_cfg pixel_pll_cfg_table[] = {
 	{ 140000, 2520000, 0x01, 105,  0x3, 0x0, 0x0, 0x0, 0x09, 0x1, 140000, true },
 	{ 138500, 2220000, 0x03, 277,  0x3, 0x0, 0x0, 0x0, 0x08, 0x1, 138500, true },
 	{ 122000, 2930000, 0x01, 122,  0x3, 0x0, 0x0, 0x0, 0x0c, 0x1, 122000, true },
+	{ 121750, 2920000, 0x04, 487,  0x3, 0x0, 0x0, 0x0, 0x0c, 0x1, 121750, true },
 	{ 108000, 2810000, 0x01, 117,  0x3, 0x0, 0x0, 0x0, 0x0d, 0x1, 108000, true },
 	{ 106500, 1700000, 0x01,  71,  0x3, 0x0, 0x0, 0x0, 0x08, 0x1, 106500, true },
 	{ 83500,  2000000, 0x02, 167,  0x3, 0x0, 0x0, 0x0, 0x0c, 0x1, 83500,  true },
@@ -286,10 +294,14 @@ struct soc_dp_dev {
 	struct backlight_device *backlight;
 
 	void __iomem *regs;
+	struct regmap *apmu;
+	struct regmap *qos;
 	struct drm_dp_aux aux;
 
 	/* Buffer to store raw DPCD data */
 	uint8_t dpcd[DP_RECEIVER_CAP_SIZE];
+	int lane_count;
+	uint32_t link_rate;
 
 	/* Structure to store negotiated link parameters */
 	struct {
@@ -307,12 +319,13 @@ struct soc_dp_dev {
 	u32 gpio_enable;
 
 	bool edp_mode;
+	int dpu_id;
 	bool use_ext_pixel_clock;
 	int pixel_clock;
 	struct mutex mode_lock;
 	bool suspended;
 
-	uint32_t ref;
+	uint32_t ref_clk;
 	uint32_t color_format;
 
 #ifdef CONFIG_SOC_DP_DRIVER_QEMU
@@ -330,6 +343,27 @@ struct soc_dp_dev {
 	bool aud_registered;
 #endif
 };
+
+static const struct regmap_config soc_dp_qos_regmap_config = {
+	.reg_bits = 32,
+	.val_bits = 32,
+	.reg_stride = 4,
+	.max_register = SOC_DP_QOS_SIZE - 4,
+};
+
+static struct regmap *soc_dp_qos_init_regmap(struct device *dev,
+					      resource_size_t base,
+					      resource_size_t size,
+					      const struct regmap_config *config)
+{
+	void __iomem *regs;
+
+	regs = devm_ioremap(dev, base, size);
+	if (!regs)
+		return ERR_PTR(-ENOMEM);
+
+	return devm_regmap_init_mmio(dev, regs, config);
+}
 
 static int soc_dp_reg_write(struct soc_dp_dev *dp,
 		uint32_t offset, uint32_t bit_wide, uint32_t mask, uint32_t val)
@@ -361,6 +395,16 @@ static int soc_dp_reg_write_range(struct soc_dp_dev *dp,
 
 	mask = (uint32_t)(((((uint64_t)1) << (high - low + 1)) - 1) << low);
 	return soc_dp_reg_write(dp, offset, 32, mask, (val << low) & mask);
+}
+
+static int soc_dp_reg_only_write_range(struct soc_dp_dev *dp,
+		uint32_t offset, uint32_t high, uint32_t low, uint32_t val)
+	{
+	uint32_t mask;
+
+	mask = (uint32_t)(((((uint64_t)1) << (high - low + 1)) - 1) << low);
+	writel((val << low) & mask, (char *)dp->regs + offset);
+	return 0;
 }
 
 static int soc_dp_reg_read_range(struct soc_dp_dev *dp,
@@ -548,7 +592,7 @@ static uint32_t soc_dp_aux_get_cmd(struct drm_dp_aux_msg *msg)
 static ssize_t soc_dp_aux_transfer(struct drm_dp_aux *aux,
 				   struct drm_dp_aux_msg *msg)
 {
-	int ret, i;
+	int ret, i, retries = 0;
 	unsigned long timeout;
 
 	struct soc_dp_dev *dp = container_of(aux, struct soc_dp_dev, aux);
@@ -564,6 +608,7 @@ static ssize_t soc_dp_aux_transfer(struct drm_dp_aux *aux,
 
 	cmd = soc_dp_aux_get_cmd(msg);
 
+retry_eio:
 	/* 2. Prepare Data for Write (if applicable) */
 	if (!is_read) {
 		/* Pack bytes into 32-bit words (Little Endian packing) */
@@ -610,11 +655,11 @@ static ssize_t soc_dp_aux_transfer(struct drm_dp_aux *aux,
 		return ret;
 	}
 
-	/* 6. Clear Interrupt Status (W1C) */
-	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_REPLY_EVENT_INT_STA, 1);
-
-	/* 7. Read Status */
+	/* 6. Read Status */
 	soc_dp_reg_read_range(dp, SOC_DPTX_AUX_STATUS, &status);
+
+	/* 7. Clear Interrupt Status (W1C) */
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_REPLY_EVENT_INT_STA, 1);
 
 	/* Map HW status to DRM reply codes */
 	switch (status) {
@@ -630,7 +675,15 @@ static ssize_t soc_dp_aux_transfer(struct drm_dp_aux *aux,
 	default:
 		/* Check error code if status is weird */
 		soc_dp_reg_read_range(dp, SOC_DPTX_AUX_REPLY_ERR_CODE, &val);
-		dev_err(dp->dev, "AUX error, status: 0x%x, code: 0x%x\n", status, val);
+		if (retries < SOC_DP_AUX_MAX_RETRIES) {
+			retries++;
+			dev_dbg(dp->dev, "AUX retry, cmd: 0x%x, address: 0x%x status: 0x%x retries %d/%d\n",
+				 cmd, msg->address, status, retries, SOC_DP_AUX_MAX_RETRIES);
+			usleep_range(1000, 1100);
+			goto retry_eio;
+		}
+		dev_err(dp->dev, "AUX error, cmd: 0x%x, address: 0x%x, size %ld, status: 0x%x, code: 0x%x\n",
+			cmd, msg->address, msg->size, status, val);
 		return -EIO;
 	}
 
@@ -662,7 +715,106 @@ static void soc_dp_aux_init(struct soc_dp_dev *dp)
 	drm_dp_aux_register(&dp->aux);
 }
 
-static const struct soc_dp_pixel_pll_cfg* find_pixel_pll_cfg(uint32_t pclk_khz) {
+static uint64_t soc_dp_abs_diff(uint64_t a, uint64_t b)
+{
+	return (a > b) ? (a - b) : (b - a);
+}
+
+static uint32_t soc_dp_div64(uint64_t *n, uint32_t base)
+{
+#ifdef ACTIVATE_DO_DIV
+	return do_div(*n, base);
+#else
+	uint32_t rem = *n % base;
+	*n = *n / base;
+	return rem;
+#endif
+}
+
+static uint32_t soc_dp_get_rate_khz(uint8_t pre, uint16_t fb, uint32_t frac,
+				    uint32_t ref_clk_khz, uint32_t total_div)
+{
+	uint64_t vco_hz;
+	uint64_t ref_hz = (uint64_t)ref_clk_khz * 1000;
+	uint64_t int_part;
+	uint64_t frac_part;
+
+	/* Integer part: (Ref * FB) / Pre */
+	int_part = ref_hz * fb;
+	int_part += (pre / 2);
+	soc_dp_div64(&int_part, pre);
+
+	/* Fractional part: (Ref * Frac) / (Pre * 2^24) */
+	frac_part = ref_hz * frac;
+
+	frac_part += (pre / 2);
+	soc_dp_div64(&frac_part, pre);
+
+	frac_part += (SOC_DP_PLL_FRAC_MOD / 2);
+	soc_dp_div64(&frac_part, SOC_DP_PLL_FRAC_MOD);
+
+	vco_hz = int_part + frac_part;
+
+	/* Final Rate = VCO / total_div */
+	vco_hz += (total_div / 2); // Rounding before final division
+	soc_dp_div64(&vco_hz, total_div);
+
+	vco_hz += 500; // Rounding for 1000
+	soc_dp_div64(&vco_hz, 1000);
+
+	return (uint32_t)vco_hz;
+}
+
+static int soc_dp_get_pixel_pll_div_total(const struct soc_dp_pixel_pll_cfg *cfg,
+					  uint32_t *div_total)
+{
+	static const uint8_t divm_factors[] = { 1, 2, 3, 5 };
+
+	if (!cfg || !div_total || !cfg->valid || !cfg->divp)
+		return -EINVAL;
+
+	if (cfg->div5_en) {
+		*div_total = 5;
+		return 0;
+	}
+
+	if (cfg->divaux == 1) {
+		if (cfg->divm >= ARRAY_SIZE(divm_factors))
+			return -EINVAL;
+
+		*div_total = 2 * divm_factors[cfg->divm] * cfg->divp;
+		return 0;
+	}
+
+	if (cfg->divaux < 2)
+		return -EINVAL;
+
+	*div_total = 2 * cfg->divaux * cfg->divp;
+	return 0;
+}
+
+static bool soc_dp_pixel_pll_cfg_matches(const struct soc_dp_pixel_pll_cfg *cfg,
+					 uint32_t target_pclk_khz,
+					 uint32_t ref_clk_khz)
+{
+	uint32_t div_total;
+	uint32_t actual_pclk_khz;
+
+	if (soc_dp_get_pixel_pll_div_total(cfg, &div_total))
+		return false;
+
+	actual_pclk_khz = soc_dp_get_rate_khz(cfg->prediv, cfg->fbdiv, cfg->frac,
+					      ref_clk_khz, div_total);
+
+	if (cfg->actual_pclk_khz &&
+	    soc_dp_abs_diff(actual_pclk_khz, cfg->actual_pclk_khz) > SOC_DP_PLL_ERR_TOLERANCE)
+		return false;
+
+	return soc_dp_abs_diff(actual_pclk_khz, target_pclk_khz) <= SOC_DP_PLL_ERR_TOLERANCE;
+}
+
+static const struct soc_dp_pixel_pll_cfg* find_pixel_pll_cfg(uint32_t pclk_khz,
+							      uint32_t ref_clk_khz) {
 	const struct soc_dp_pixel_pll_cfg *best_match = NULL;
 	uint32_t min_diff = 0xFFFFFFFF;
 	int num_configs = sizeof(pixel_pll_cfg_table) / sizeof(pixel_pll_cfg_table[0]);
@@ -671,15 +823,20 @@ static const struct soc_dp_pixel_pll_cfg* find_pixel_pll_cfg(uint32_t pclk_khz) 
 		uint32_t current_target = pixel_pll_cfg_table[i].target_pclk_khz;
 		uint32_t diff = (pclk_khz > current_target) ? (pclk_khz - current_target) : (current_target - pclk_khz);
 
-		if (diff == 0) {
+		if (diff == 0 && soc_dp_pixel_pll_cfg_matches(&pixel_pll_cfg_table[i],
+							      pclk_khz, ref_clk_khz)) {
 			return &pixel_pll_cfg_table[i];
 		}
 
-		if ((pclk_khz / 100) == (current_target / 100)) {
+		if ((pclk_khz / 100) == (current_target / 100) &&
+		    soc_dp_pixel_pll_cfg_matches(&pixel_pll_cfg_table[i],
+						 pclk_khz, ref_clk_khz)) {
 			return &pixel_pll_cfg_table[i];
 		}
 
-		if (diff < min_diff && diff < 2000) {
+		if (diff < min_diff && diff < 500 &&
+		    soc_dp_pixel_pll_cfg_matches(&pixel_pll_cfg_table[i],
+						 pclk_khz, ref_clk_khz)) {
 			min_diff = diff;
 			best_match = &pixel_pll_cfg_table[i];
 		}
@@ -760,9 +917,12 @@ static int soc_dp_hw_read_sink_caps(struct soc_dp_dev *dp)
 		dp->link.max_rate = SOC_DP_LINK_RATE_8_10;
 		break;
 	default:
-		dev_warn(dp->dev, "Unknown DPCD Max Rate: 0x%x, defaulting to 1.62G\n", max_bw);
-		dp->link.max_rate = SOC_DP_LINK_RATE_1_62;
-		break;
+		dev_warn(dp->dev, "Unknown DPCD Max Rate: 0x%x, defaulting to 2.70G\n", max_bw);
+		dp->link.revision = 0x14;
+		dp->link.max_rate = SOC_DP_LINK_RATE_2_70;
+		dp->link.max_num_lanes = SOC_DP_LANE_2;
+		dp->link.enhanced_framing = 1;
+		return -1;
 	}
 
 	/* 4. Parse and determine Lane Count */
@@ -782,6 +942,228 @@ static int soc_dp_hw_read_sink_caps(struct soc_dp_dev *dp)
 	return 0;
 }
 
+static int soc_dp_is_better_config(bool new_valid, bool new_is_int, uint8_t new_pre, uint32_t new_vco,
+				   bool best_valid, bool best_is_int, uint8_t best_pre, uint32_t best_vco)
+{
+	if (!new_valid) return 0;
+	if (!best_valid) return 1;
+
+	if (new_is_int && !best_is_int) return 1;
+	if (!new_is_int && best_is_int) return 0;
+
+	if (new_pre < best_pre) return 1;
+	if (new_pre > best_pre) return 0;
+
+	if (new_vco > best_vco) return 1;
+
+	return 0;
+}
+
+static int soc_dp_solve_pll_frac(uint32_t target_vco_khz, uint32_t ref_clk_khz,
+				 uint8_t *best_pre, uint16_t *best_fb, uint32_t *best_frac)
+{
+	uint64_t min_err = ~0ULL;
+	int found = 0;
+	bool best_is_int = false;
+	int pre;
+
+	/* Iterate pre-divider 1 to 63 to find best PFD frequency */
+	for (pre = 1; pre <= 63; pre++) {
+		uint64_t ref_clk_hz = (uint64_t)ref_clk_khz * 1000;
+		uint64_t target_vco_hz = (uint64_t)target_vco_khz * 1000;
+
+		/* Calculate required multiplier: Mult = (TargetVCO * Pre) / Ref */
+		uint64_t num = target_vco_hz * pre;
+		uint64_t den = ref_clk_hz;
+		uint64_t remainder;
+		uint64_t fb_val;
+		uint64_t frac_val;
+		uint64_t actual_vco;
+		uint64_t diff;
+		bool current_is_int;
+
+		fb_val = num;
+		remainder = soc_dp_div64(&fb_val, (uint32_t)den);
+
+		if (fb_val > 4095) continue;
+
+		/* Frac = (Remainder * 2^24 + Ref/2) / Ref */
+		frac_val = remainder * SOC_DP_PLL_FRAC_MOD;
+		frac_val += (den / 2);
+		soc_dp_div64(&frac_val, (uint32_t)den);
+
+		if (frac_val > 0xFFFFFF)
+			frac_val = 0xFFFFFF;
+
+		/*
+		* Calculate actual VCO for error checking.
+		* VCO = (Ref * FB / Pre) + (Ref * Frac / (Pre * 2^24))
+		*/
+		{
+			uint64_t vco_int, vco_frac;
+			/* Integer part: (Ref * FB) / Pre */
+			vco_int = ref_clk_hz * fb_val;
+			soc_dp_div64(&vco_int, pre);
+			/* Fractional part: (Ref * Frac) / (Pre * 2^24) */
+			vco_frac = ref_clk_hz * frac_val;
+			soc_dp_div64(&vco_frac, pre);
+			soc_dp_div64(&vco_frac, SOC_DP_PLL_FRAC_MOD);
+
+			actual_vco = vco_int + vco_frac;
+		}
+
+		diff = soc_dp_abs_diff(actual_vco, target_vco_hz);
+		current_is_int = (frac_val == 0);
+
+		if (diff < min_err) {
+			min_err = diff;
+			*best_pre = pre;
+			*best_fb = (uint16_t)fb_val;
+			*best_frac = (uint32_t)frac_val;
+			best_is_int = current_is_int;
+			found = 1;
+		} else if (diff == min_err) {
+			if (current_is_int && !best_is_int) {
+			*best_pre = pre;
+			*best_fb = (uint16_t)fb_val;
+			*best_frac = (uint32_t)frac_val;
+			best_is_int = true;
+			found = 1;
+			}
+		}
+	}
+
+	return found ? 0 : -1;
+}
+
+static int soc_dp_calc_pixel_pll(uint32_t target_pclk_khz, uint32_t ref_clk_khz, struct soc_dp_pixel_pll_cfg *cfg)
+{
+	struct soc_dp_pixel_pll_cfg best = {0};
+	int pclk_div;
+
+	/* Strategy 1: Div5 Path (VCO = PCLK * 5) */
+	{
+		struct soc_dp_pixel_pll_cfg curr = {0};
+		uint32_t div_total = 5;
+		uint32_t target_vco = target_pclk_khz * div_total;
+
+		if (target_vco >= SOC_DP_VCO_MIN_KHZ && target_vco <= SOC_DP_VCO_MAX_KHZ) {
+			uint8_t pre;
+			uint16_t fb;
+			uint32_t frac;
+
+			if (soc_dp_solve_pll_frac(target_vco, ref_clk_khz, &pre, &fb, &frac) == 0) {
+			uint32_t actual_pclk = soc_dp_get_rate_khz(pre, fb, frac, ref_clk_khz, div_total);
+
+			if (soc_dp_abs_diff(actual_pclk, target_pclk_khz) <= SOC_DP_PLL_ERR_TOLERANCE) {
+				curr.valid = true;
+				curr.vco_freq_khz = target_vco;
+				curr.actual_pclk_khz = actual_pclk;
+				curr.prediv = pre; curr.fbdiv = fb; curr.frac = frac;
+
+				curr.frac_pd = (frac == 0) ? 3 : 0;
+
+				curr.div5_en = 1;
+				curr.divaux = 0; curr.divm = 0; curr.divp = 0;
+
+				if (soc_dp_is_better_config(curr.valid, (curr.frac==0), curr.prediv, curr.vco_freq_khz,
+						best.valid, (best.frac==0), best.prediv, best.vco_freq_khz)) {
+					best = curr;
+				}
+			}
+			}
+		}
+	}
+
+	/* Strategy 2 & 3: Iterate PclkDiv (1 to 31) */
+	for (pclk_div = 1; pclk_div <= 31; pclk_div++) {
+
+		/* Strategy 2: DivM Path (DivAux = 1) */
+		int divm_factors[] = {1, 2, 3, 5};
+		int divm_regs[]    = {0, 1, 2, 3};
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			struct soc_dp_pixel_pll_cfg curr = {0};
+			int m_val = divm_factors[i];
+			uint32_t div_total = 2 * m_val * pclk_div;
+			uint32_t target_vco = target_pclk_khz * div_total;
+			uint8_t pre;
+			uint16_t fb;
+			uint32_t frac;
+
+			if (target_vco < SOC_DP_VCO_MIN_KHZ || target_vco > SOC_DP_VCO_MAX_KHZ) continue;
+
+			if (soc_dp_solve_pll_frac(target_vco, ref_clk_khz, &pre, &fb, &frac) == 0) {
+			uint32_t actual_pclk = soc_dp_get_rate_khz(pre, fb, frac, ref_clk_khz, div_total);
+
+			if (soc_dp_abs_diff(actual_pclk, target_pclk_khz) > SOC_DP_PLL_ERR_TOLERANCE) continue;
+
+			curr.valid = true;
+			curr.vco_freq_khz = target_vco;
+			curr.actual_pclk_khz = actual_pclk;
+			curr.prediv = pre; curr.fbdiv = fb; curr.frac = frac;
+
+			curr.frac_pd = (frac == 0) ? 3 : 0;
+
+			curr.div5_en = 0;
+			curr.divaux = 1;         /* Must be 1 to enable DivM logic */
+			curr.divm = divm_regs[i];
+			curr.divp = pclk_div;
+
+			if (soc_dp_is_better_config(curr.valid, (curr.frac==0), curr.prediv, curr.vco_freq_khz,
+					best.valid, (best.frac==0), best.prediv, best.vco_freq_khz)) {
+				best = curr;
+			}
+			}
+		}
+
+		/* Strategy 3: DivAux Path (DivAux > 1) */
+		{
+			int aux;
+			for (aux = 2; aux <= 31; aux++) {
+			struct soc_dp_pixel_pll_cfg curr = {0};
+			uint32_t div_total = 2 * aux * pclk_div;
+			uint32_t target_vco = target_pclk_khz * div_total;
+			uint8_t pre;
+			uint16_t fb;
+			uint32_t frac;
+
+			if (target_vco < SOC_DP_VCO_MIN_KHZ || target_vco > SOC_DP_VCO_MAX_KHZ) continue;
+
+			if (soc_dp_solve_pll_frac(target_vco, ref_clk_khz, &pre, &fb, &frac) == 0) {
+				uint32_t actual_pclk = soc_dp_get_rate_khz(pre, fb, frac, ref_clk_khz, div_total);
+
+				if (soc_dp_abs_diff(actual_pclk, target_pclk_khz) > SOC_DP_PLL_ERR_TOLERANCE) continue;
+
+				curr.valid = true;
+				curr.vco_freq_khz = target_vco;
+				curr.actual_pclk_khz = actual_pclk;
+				curr.prediv = pre; curr.fbdiv = fb; curr.frac = frac;
+
+				curr.frac_pd = (frac == 0) ? 3 : 0;
+
+				curr.div5_en = 0;
+				curr.divaux = aux;
+				curr.divm = 0; /* Ignored when divaux != 1 */
+				curr.divp = pclk_div;
+
+				if (soc_dp_is_better_config(curr.valid, (curr.frac==0), curr.prediv, curr.vco_freq_khz,
+						best.valid, (best.frac==0), best.prediv, best.vco_freq_khz)) {
+				best = curr;
+				}
+			}
+			}
+		}
+	}
+
+	if (!best.valid)
+		return -EINVAL;
+
+	*cfg = best;
+	return 0;
+}
+
 static int soc_dp_check_pll_lock(struct soc_dp_dev *dp)
 {
 	uint32_t pll_locked;
@@ -791,9 +1173,7 @@ static int soc_dp_check_pll_lock(struct soc_dp_dev *dp)
 #else
 	pll_locked = 1;
 #endif
-	if (pll_locked) {
-		dev_info(dp->dev, "Pre_pll locked.\n");
-	} else {
+	if (!pll_locked) {
 		dev_err(dp->dev, "Pre_pll unlocked.\n");
 		return -EINVAL;
 	}
@@ -803,9 +1183,7 @@ static int soc_dp_check_pll_lock(struct soc_dp_dev *dp)
 #else
 	pll_locked = 1;
 #endif
-	if (pll_locked) {
-		dev_info(dp->dev, "Post_pll locked.\n");
-	} else {
+	if (!pll_locked) {
 		dev_err(dp->dev, "Post_pll unlocked.\n");
 		return -EINVAL;
 	}
@@ -874,6 +1252,7 @@ static void soc_dp_calc_pixel_pll_to_reg(struct soc_dp_dev *dp, const struct soc
 static int soc_dp_hw_set_pll(struct soc_dp_dev *dp, enum soc_dp_link_rate rate, uint32_t pclk)
 {
 	const struct soc_dp_pixel_pll_cfg *pixel_pll_cfg;
+	int ret;
 
 	dev_info(dp->dev, "Setting PLL to Rate %d kHz, Pclk %d kHz\n", rate, pclk);
 
@@ -891,18 +1270,27 @@ static int soc_dp_hw_set_pll(struct soc_dp_dev *dp, enum soc_dp_link_rate rate, 
 		return -EINVAL;
 	}
 
-	pixel_pll_cfg = find_pixel_pll_cfg(pclk);
+	pixel_pll_cfg = find_pixel_pll_cfg(pclk, dp->ref_clk);
 	if (pixel_pll_cfg) {
 		soc_dp_calc_pixel_pll_to_reg(dp, pixel_pll_cfg);
 	} else {
-		dev_err(dp->dev, "Unsupported pixel clock %d\n", pclk);
-		return -EINVAL;
+		struct soc_dp_pixel_pll_cfg pll_cfg;
+
+		memset(&pll_cfg, 0, sizeof(pll_cfg));
+		ret = soc_dp_calc_pixel_pll(pclk, dp->ref_clk, &pll_cfg);
+		if (ret) {
+			dev_err(dp->dev, "Unsupported pixel clock %d\n", pclk);
+			return ret;
+		}
+		dev_info(dp->dev, "pixel pll config: prediv %d, fbdiv %d, frac_pd %d, frac %d, div5_en %d, divm %d, divaux %d, divp %d\n",
+			 pll_cfg.prediv, pll_cfg.fbdiv, pll_cfg.frac_pd, pll_cfg.frac, pll_cfg.div5_en, pll_cfg.divm, pll_cfg.divaux, pll_cfg.divp);
+		soc_dp_calc_pixel_pll_to_reg(dp, &pll_cfg);
 	}
 
 	return 0;
 }
 
-static void soc_dp_phy_config_lane_count(struct soc_dp_dev *dp, enum soc_dp_lane_count lanes)
+static void soc_dp_phy_config_lanes(struct soc_dp_dev *dp, enum soc_dp_lane_count lanes)
 {
 	uint32_t phy_lanes_val;
 
@@ -919,42 +1307,12 @@ static void soc_dp_phy_config_lane_count(struct soc_dp_dev *dp, enum soc_dp_lane
 		break;
 	}
 
-	dev_info(dp->dev, "Configuring PHY Lane Count: %d (Reg: %d)\n",
+	dev_dbg(dp->dev, "Configuring PHY Lane Count: %d (Reg: %d)\n",
 		 lanes, phy_lanes_val);
 
 	/* Set the number of active lanes */
 	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_NUM_LANES, phy_lanes_val);
-}
-
-static void soc_dp_phy_enable_lanes(struct soc_dp_dev *dp, enum soc_dp_lane_count lanes)
-{
-	uint32_t lane_en;
-
-	switch (lanes) {
-	case SOC_DP_LANE_1:
-		lane_en = 0x1;       /* Enable Lane 0 */
-		break;
-	case SOC_DP_LANE_2:
-		lane_en = 0x3;       /* Enable Lane 0, 1 */
-		break;
-	case SOC_DP_LANE_4:
-	default:
-		lane_en = 0xF;       /* Enable Lane 0, 1, 2, 3 */
-		break;
-	}
-
-	dev_info(dp->dev, "Enabling PHY Transmitters: Mask 0x%x\n", lane_en);
-
-	/* Enable Transmitters for the selected lanes */
-	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, lane_en);
-}
-
-static void soc_dp_phy_disable_lanes(struct soc_dp_dev *dp)
-{
-	dev_info(dp->dev, "Disabling PHY Transmitters\n");
-
-	/* Disable Transmitters */
-	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
+	dp->lane_count = lanes;
 }
 
 /*
@@ -993,49 +1351,54 @@ static void soc_dp_hw_clean_hpd(struct soc_dp_dev *dp)
 	soc_dp_reg_read_range(dp, SOC_DPTX_HOT_UNPLUG_EVENT, &unplug_event);
 
 	if (plug_event)
-		soc_dp_reg_write_range(dp, SOC_DPTX_HOT_PLUG_EVENT, 0x1);
+		soc_dp_reg_only_write_range(dp, SOC_DPTX_HOT_PLUG_EVENT, 0x1);
 
 	if (unplug_event)
-		soc_dp_reg_write_range(dp, SOC_DPTX_HOT_UNPLUG_EVENT, 0x1);
+		soc_dp_reg_only_write_range(dp, SOC_DPTX_HOT_UNPLUG_EVENT, 0x1);
 #endif
 }
 
-/* Mappings for PHY Swing/Emphasis Levels */
-static const uint32_t phy_swing_map[] = { 0x0, 0x1, 0x2, 0x3 };
-static const uint32_t phy_preemp_map[] = { 0x0, 0x1, 0x2, 0x3 };
-
-static void soc_dp_phy_set_lane_settings(struct soc_dp_dev *dp,
-					 uint8_t training_set[4])
+static int soc_dp_phy_power_on(struct soc_dp_dev *dp)
 {
-	int i;
-	uint32_t swing, preemp;
+	int ret;
+	uint32_t lane_en;
 
-	for (i = 0; i < 4; i++) {
-		swing = training_set[i] & DP_TRAIN_VOLTAGE_SWING_MASK;
-		preemp = (training_set[i] & DP_TRAIN_PRE_EMPHASIS_MASK) >> DP_TRAIN_PRE_EMPHASIS_SHIFT;
-
-		swing = phy_swing_map[swing];
-		preemp = phy_preemp_map[preemp];
-
-		switch (i) {
-		case 0:
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE0_TX_VSWING, swing);
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE0_TX_PREEMP, preemp);
-			break;
-		case 1:
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE1_TX_VSWING, swing);
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE1_TX_PREEMP, preemp);
-			break;
-		case 2:
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE2_TX_VSWING, swing);
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE2_TX_PREEMP, preemp);
-			break;
-		case 3:
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE3_TX_VSWING, swing);
-			soc_dp_reg_write_range(dp, SOC_DPTX_PHY_LANE3_TX_PREEMP, preemp);
-			break;
-		}
+	switch (dp->lane_count) {
+	case SOC_DP_LANE_1:
+		lane_en = 0x1;
+		break;
+	case SOC_DP_LANE_2:
+		lane_en = 0x3;
+		break;
+	case SOC_DP_LANE_4:
+		default:
+		lane_en = 0xF;
+		break;
 	}
+
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_MPLL_PD, 0);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_PREPLL_PD, 0);
+	mdelay(2);
+
+	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, lane_en);
+	mdelay(2);
+
+	ret = soc_dp_check_pll_lock(dp);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int soc_dp_phy_power_off(struct soc_dp_dev *dp)
+{
+	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
+	mdelay(2);
+
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_PREPLL_PD, 1);
+	mdelay(2);
+
+	return 0;
 }
 
 static int soc_dp_set_training_pattern(struct soc_dp_dev *dp, uint8_t pattern)
@@ -1091,7 +1454,7 @@ static int soc_dp_set_training_pattern(struct soc_dp_dev *dp, uint8_t pattern)
  * Configure PHY Rate Register
  * This must be called before Link Training.
  */
-static void soc_dp_hw_config_phy_rate(struct soc_dp_dev *dp, enum soc_dp_link_rate rate)
+static void soc_dp_phy_config_rate(struct soc_dp_dev *dp, enum soc_dp_link_rate rate)
 {
 	uint32_t rate_val = 0;
 
@@ -1115,6 +1478,7 @@ static void soc_dp_hw_config_phy_rate(struct soc_dp_dev *dp, enum soc_dp_link_ra
 	}
 
 	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_RATE, rate_val);
+	dp->link_rate = rate;
 }
 
 static int soc_dp_link_train_clock_recovery(struct soc_dp_dev *dp, enum soc_dp_link_rate rate, enum soc_dp_lane_count lanes)
@@ -1123,8 +1487,6 @@ static int soc_dp_link_train_clock_recovery(struct soc_dp_dev *dp, enum soc_dp_l
 	uint8_t training_set[4] = {0};
 	int retries = 0;
 	int i, ret;
-
-	soc_dp_phy_set_lane_settings(dp, training_set);
 
 #ifndef CONFIG_SOC_DP_DRIVER_QEMU
 	ret = drm_dp_dpcd_write(&dp->aux, DP_TRAINING_LANE0_SET,
@@ -1173,8 +1535,6 @@ static int soc_dp_link_train_clock_recovery(struct soc_dp_dev *dp, enum soc_dp_l
 			training_set[i] = v | (p << DP_TRAIN_PRE_EMPHASIS_SHIFT);
 		}
 
-		soc_dp_phy_set_lane_settings(dp, training_set);
-
 		ret = drm_dp_dpcd_write(&dp->aux, DP_TRAINING_LANE0_SET,
 					training_set, lanes);
 		if (ret < 0) {
@@ -1194,11 +1554,18 @@ static int soc_dp_link_train_channel_eq(struct soc_dp_dev *dp, enum soc_dp_link_
 {
 	uint8_t link_status[DP_LINK_STATUS_SIZE];
 	uint8_t training_set[4] = {0};
+	uint8_t training_pattern = DP_TRAINING_PATTERN_2;
 	int retries = 0;
 	int i, ret;
 
-	/* Use TPS2 for EQ phase */
-	ret = soc_dp_set_training_pattern(dp, DP_TRAINING_PATTERN_2);
+	if (dp->dpcd[DP_MAX_LANE_COUNT] & DP_TPS3_SUPPORTED) {
+		training_pattern = DP_TRAINING_PATTERN_3;
+		dev_info(dp->dev, "Link Training: Using TPS3\n");
+	} else {
+		dev_info(dp->dev, "Link Training: Using TPS2\n");
+	}
+
+	ret = soc_dp_set_training_pattern(dp, training_pattern);
 	if (ret < 0) {
 		soc_dp_set_training_pattern(dp, DP_TRAINING_PATTERN_DISABLE);
 		return ret;
@@ -1239,8 +1606,6 @@ static int soc_dp_link_train_channel_eq(struct soc_dp_dev *dp, enum soc_dp_link_
 
 			training_set[i] = v | (p << DP_TRAIN_PRE_EMPHASIS_SHIFT);
 		}
-
-		soc_dp_phy_set_lane_settings(dp, training_set);
 
 		ret = drm_dp_dpcd_write(&dp->aux, DP_TRAINING_LANE0_SET,
 					training_set, lanes);
@@ -1407,9 +1772,6 @@ static void soc_dp_hw_set_msa_and_enable_video(struct soc_dp_dev *dp, const stru
 	else
 		soc_dp_reg_write_range(dp, SOC_DPTX_VSYNC_IN_POLARITY, 0);
 
-	DRM_INFO("%s() hdisplay %d hsync_start %d hsync_end %d htotal %d dp pixel clock %d dpu pixel clock %d flags 0x%x\n", __func__, mode->hdisplay, mode->hsync_start, mode->hsync_end, mode->htotal, mode->clock, dp->pixel_clock, mode->flags);
-	DRM_INFO("%s() vdisplay %d vsync_start %d vsync_end %d vtotal %d \n", __func__, mode->vdisplay, mode->vsync_start, mode->vsync_end, mode->vtotal);
-
 	soc_dp_reg_write_range(dp, SOC_DPTX_HSYNC_IN_POLARITY, 1);
 	soc_dp_reg_write_range(dp, SOC_DPTX_VSYNC_IN_POLARITY, 1);
 
@@ -1445,7 +1807,7 @@ static void soc_dp_hw_set_msa_and_enable_video(struct soc_dp_dev *dp, const stru
 	soc_dp_reg_write_range(dp, SOC_DPTX_VID_BIST_EN, 0);
 
 	// 6. Enable video stream
-	dev_info(dp->dev, "Enabling Video Stream...\n");
+	dev_dbg(dp->dev, "Enabling Video Stream...\n");
 	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_STREAM_ENABLE, 1);
 }
 
@@ -1459,10 +1821,7 @@ static void soc_dp_hw_disable(struct soc_dp_dev *dp)
 	/* 2. Disable Transmitters */
 	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
 
-	/* 3. Power Down PHY */
-	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_POWERDOWN, 0xc);
-
-	/* 4. Power Down PLLs (MPLL and PREPLL) */
+	/* 3. Power Down PLLs (MPLL and PREPLL) */
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_MPLL_PD, 1);
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_PREPLL_PD, 1);
 }
@@ -1566,16 +1925,11 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 	struct soc_dp_dev *dp = container_of(connector, struct soc_dp_dev, connector);
 	struct drm_display_mode *preferred_mode = NULL;
 
-	if (soc_dp_hw_read_sink_caps(dp)) {
-		dev_err(dp->dev, "Failed to read sink capabilities\n");
-		dp->link.revision = 0x14; // DP 1.4
-		dp->link.max_rate = SOC_DP_LINK_RATE_5_40;
-		dp->link.max_num_lanes = SOC_DP_LANE_4;
-		dp->link.enhanced_framing = 1;
-	}
+	mutex_lock(&dp->mode_lock);
 
 	edid = drm_edid_read_custom(connector, soc_dp_conn_get_edid_block, dp);
 	if (!edid) {
+		mutex_unlock(&dp->mode_lock);
 		dev_err(dp->dev, "Failed to read EDID\n");
 		return drm_add_modes_noedid(connector, 1920, 1080);
 	}
@@ -1623,6 +1977,8 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 
 	drm_edid_free(edid);
 
+	mutex_unlock(&dp->mode_lock);
+
 	return count;
 }
 
@@ -1643,12 +1999,12 @@ static const struct drm_encoder_funcs soc_dp_encoder_funcs = {
 
 static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 {
+	int ret;
 	int i;
 	struct soc_dp_dev *dp = container_of(encoder, struct soc_dp_dev, encoder);
 
 	uint32_t req_bw;
 	int bpp;
-	bool config_success = false;
 	const struct soc_dp_link_config *cfg;
 	struct drm_display_mode *adjusted_mode = &dp->mode;
 	uint64_t clk_val;
@@ -1670,7 +2026,19 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 		}
 		clk_val = clk_get_rate(dp->pxclk);
 		dp->pixel_clock = clk_val / 1000;
-		DRM_INFO("get dp pxclk=%lld\n", clk_val);
+	}
+
+	/* use DP pixel clock */
+	if (!dp->use_ext_pixel_clock && dp->dpu_id == 0) {
+		ret = regmap_update_bits(dp->apmu, SOC_DP_APMU_CLK_CTRL,
+					 BIT(2), BIT(2));
+		if (ret)
+			dev_err(dp->dev, "Failed to enable dpu0 DP/eDP pixel clock mux: %d\n", ret);
+	} else if (!dp->use_ext_pixel_clock && dp->dpu_id == 1) {
+		ret = regmap_update_bits(dp->apmu, SOC_DP_APMU_CLK_CTRL,
+					 BIT(18), BIT(18));
+		if (ret)
+			dev_err(dp->dev, "Failed to enable dpu1 DP/eDP pixel clock mux: %d\n", ret);
 	}
 
 	bpp = soc_dp_get_bpp(dp->color_format);
@@ -1678,6 +2046,12 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 	for (i = 0; i < ARRAY_SIZE(soc_dp_link_priority_table); i++) {
 		uint32_t capacity;
+
+		if (soc_dp_hw_detect_hpd(dp) == connector_status_disconnected) {
+			mutex_unlock(&dp->mode_lock);
+			dev_warn(dp->dev, "DP: Training failed for the connector is disconnected\n");
+			return;
+		}
 
 		cfg = &soc_dp_link_priority_table[i];
 
@@ -1693,7 +2067,7 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 		dev_info(dp->dev, "DP: Attempting Config: R=%d, L=%d (Cap: %d > Req: %d)\n",
 			cfg->rate, cfg->lanes, capacity, req_bw);
 
-		soc_dp_phy_disable_lanes(dp);
+		soc_dp_phy_power_off(dp);
 
 		/* Apply Hardware Settings */
 		if (dp->use_ext_pixel_clock) {
@@ -1704,30 +2078,22 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 				continue;
 		}
 
-		soc_dp_phy_config_lane_count(dp, cfg->lanes);
-		soc_dp_hw_config_phy_rate(dp, cfg->rate);
-
-		soc_dp_reg_write_range(dp, SOC_DPTX_PHY_POWERDOWN, 0x0);
-		mdelay(2);
-
-		soc_dp_phy_enable_lanes(dp, cfg->lanes);
-
 		if (soc_dp_check_pll_lock(dp))
 			continue;
+
+		soc_dp_phy_config_lanes(dp, cfg->lanes);
+		soc_dp_phy_config_rate(dp, cfg->rate);
+
+		soc_dp_phy_power_on(dp);
 
 		if (dp->edp_mode) {
 			soc_dp_reg_write_range(dp, SOC_DPTX_ENABLE_EDP, 0x1);
 			soc_dp_reg_write_range(dp, SOC_DPTX_STREAM_ENC_EN, 0x1);
 			update_edp_config(dp, true);
-		} else {
-			soc_dp_reg_write_range(dp, SOC_DPTX_ENABLE_EDP, 0x0);
-			soc_dp_reg_write_range(dp, SOC_DPTX_STREAM_ENC_EN, 0x0);
-			update_edp_config(dp, false);
 		}
 
 		/* Execute Link Training */
 		if (soc_dp_link_train(dp, cfg->rate, cfg->lanes) == 0) {
-			config_success = true;
 			dev_info(dp->dev, "DP: Training successful for R:%d L:%d.\n",
 					cfg->rate, cfg->lanes);
 			break;
@@ -1735,12 +2101,6 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 		dev_warn(dp->dev, "DP: Training failed for R:%d L:%d. Upgrading...\n",
 			cfg->rate, cfg->lanes);
-	}
-
-	if (!config_success) {
-		mutex_unlock(&dp->mode_lock);
-		dev_err(dp->dev, "DP: Critical Failure - No valid link config found.\n");
-		return;
 	}
 
 	soc_dp_hw_set_msa_and_enable_video(dp, adjusted_mode, cfg->rate, cfg->lanes);
@@ -1760,8 +2120,13 @@ static void soc_dp_encoder_disable(struct drm_encoder *encoder)
 	if (dp->backlight)
 		backlight_disable(dp->backlight);
 
+	mutex_lock(&dp->mode_lock);
+
 	/* Disable Video Stream */
 	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_STREAM_ENABLE, 0);
+	soc_dp_phy_power_off(dp);
+
+	mutex_unlock(&dp->mode_lock);
 }
 
 static int soc_dp_encoder_atomic_check(struct drm_encoder *encoder,
@@ -1785,12 +2150,13 @@ static void soc_dp_mode_set(struct drm_encoder *encoder,
 		struct drm_display_mode *mode,
 		struct drm_display_mode *adjusted_mode)
 {
-	struct soc_dp_dev *dp_dev = container_of(encoder, struct soc_dp_dev, encoder);
+	struct soc_dp_dev *dp = container_of(encoder, struct soc_dp_dev, encoder);
 
-	drm_mode_copy(&dp_dev->mode, adjusted_mode);
-	DRM_INFO("%s()\n", __func__);
-	dev_info(dp_dev->dev, "DP: Mode Set %dx%d (PCLK: %d kHz) flags 0x%x\n",
+	mutex_lock(&dp->mode_lock);
+	drm_mode_copy(&dp->mode, adjusted_mode);
+	dev_dbg(dp->dev, "DP: Mode Set %dx%d (PCLK: %d kHz) flags 0x%x\n",
 		adjusted_mode->hdisplay, adjusted_mode->vdisplay, adjusted_mode->clock, adjusted_mode->flags);
+	mutex_unlock(&dp->mode_lock);
 }
 
 static const struct drm_encoder_helper_funcs soc_dp_encoder_helper_funcs = {
@@ -1845,6 +2211,7 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 {
 	struct soc_dp_dev *dp = container_of(work, struct soc_dp_dev, hpd_work.work);
 	enum drm_connector_status old_status, new_status;
+	int interval_ms = HPD_POLL_INTERVAL_MS;
 
 	mutex_lock(&dp->mode_lock);
 
@@ -1854,15 +2221,20 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 		new_status = soc_dp_hw_detect_hpd(dp);
 		soc_dp_hw_clean_hpd(dp);
 	} else {
-		dp->connector_status = connector_status_disconnected;
+		mutex_unlock(&dp->mode_lock);
 		return;
 	}
 
 	if (new_status != old_status) {
 		dp->connector_status = new_status;
 
+		if (dp->connector_status == connector_status_connected)
+			soc_dp_hw_read_sink_caps(dp);
+		else
+			interval_ms = 3000;
+
 		mutex_unlock(&dp->mode_lock);
-		DRM_INFO("%s() dp hpd event\n", __func__);
+		DRM_INFO("%s() hot plug event\n", __func__);
 		drm_kms_helper_hotplug_event(dp->drm);
 
 #if IS_ENABLED(CONFIG_SND_SOC)
@@ -1897,7 +2269,7 @@ static void soc_dp_hpd_poll_work(struct work_struct *work)
 	}
 #endif
 
-	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
+	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(interval_ms));
 }
 #else
 static irqreturn_t soc_dp_irq_handler(int irq, void *data)
@@ -1941,9 +2313,7 @@ static int soc_dp_resource_init(struct soc_dp_dev *dp, struct platform_device *p
 {
 	struct device *dev = &pdev->dev;
 	uint32_t dp_id, edp_id;
-	void __iomem *pmu_addr = (void __iomem *)ioremap(0xd4282800, 0x400);
-	void __iomem *ciu_addr = (void __iomem *)ioremap(0xd4282c00, 0x200);
-	u32 value;
+	int ret;
 
 	if (of_property_read_u32(pdev->dev.of_node, "dp-id", &dp_id))
 		dp_id = -1;
@@ -1974,42 +2344,51 @@ static int soc_dp_resource_init(struct soc_dp_dev *dp, struct platform_device *p
 #endif
 
 	if (dp_id == 0 || edp_id == 0) {
-		// mux dp0
-		value = readl(ciu_addr + 0x12c);
-		value |= BIT(8);
-		writel(value, (ciu_addr + 0x12c));
+		dp->dpu_id = 0;
+		dp->qos = soc_dp_qos_init_regmap(dev, SOC_DP_QOS_BASE,
+						SOC_DP_QOS_SIZE,
+						&soc_dp_qos_regmap_config);
+		if (IS_ERR(dp->qos)) {
+			dev_err(dev, "Failed to regmap QoS\n");
+			return PTR_ERR(dp->qos);
+		}
+
+		ret = regmap_update_bits(dp->qos, SOC_DP_QOS_MUX_CTRL,
+					 BIT(8), BIT(8));
+		if (ret) {
+			dev_err(dev, "Failed to mux dp0/edp0 %d\n", ret);
+			return ret;
+		}
+	} else
+		dp->dpu_id = 1;
+
+	dp->apmu = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, "spacemit,apmu");
+	if (IS_ERR(dp->apmu)) {
+		dev_err(dev, "Failed to lookup APMU\n");
+		return PTR_ERR(dp->apmu);
 	}
 
 	/* use external pixel clock */
 	dp->use_ext_pixel_clock = true;
 
 	/* use DP pixel clock */
-	if (dp_id == 0 ) {
-		value = readl(pmu_addr + 0x23c);
-		value |= BIT(2);
-		writel(value, (pmu_addr + 0x23c));
+	if (dp->dpu_id == 0 ) {
+		ret = regmap_update_bits(dp->apmu, SOC_DP_APMU_CLK_CTRL,
+					 BIT(2), BIT(2));
+		if (ret) {
+			dev_err(dev, "Failed to select dp0 internal pixel clock mux: %d\n", ret);
+			return ret;
+		}
 		dp->use_ext_pixel_clock = false;
-	} else if (dp_id == 1) {
-		value = readl(pmu_addr + 0x23c);
-		value |= BIT(18);
-		writel(value, (pmu_addr + 0x23c));
-		dp->use_ext_pixel_clock = false;
-	}
-
-	if (edp_id == 0 ) {
-		value = readl(pmu_addr + 0x23c);
-		value |= BIT(2);
-		writel(value, (pmu_addr + 0x23c));
-		dp->use_ext_pixel_clock = false;
-	} else if (edp_id == 1) {
-		value = readl(pmu_addr + 0x23c);
-		value |= BIT(18);
-		writel(value, (pmu_addr + 0x23c));
+	} else if (dp->dpu_id == 1) {
+		ret = regmap_update_bits(dp->apmu, SOC_DP_APMU_CLK_CTRL,
+					 BIT(18), BIT(18));
+		if (ret) {
+			dev_err(dev, "Failed to select dp1 internal pixel clock mux: %d\n", ret);
+			return ret;
+		}
 		dp->use_ext_pixel_clock = false;
 	}
-
-	iounmap(ciu_addr);
-	iounmap(pmu_addr);
 
 #if HOT_PLUG_THREAD_ENABLED
 	INIT_DELAYED_WORK(&dp->hpd_work, soc_dp_hpd_poll_work);
@@ -2028,22 +2407,20 @@ static int soc_dp_resource_init(struct soc_dp_dev *dp, struct platform_device *p
 static int soc_dp_dev_init(struct soc_dp_dev *dp)
 {
 	int ret;
-	uint32_t m_isel = 0x5, m_mainsel = 0xb;
+	uint32_t m_isel = 0x5, m_mainsel = 0x19;
 	uint32_t m_pre = 0x0, m_post = 0x2;
 	uint32_t tx_mode = 0x1, tx_pre = 0x0;
 	uint32_t clk_div = 24 * 1000 / 100;
 
-	if (of_property_read_u32(dp->dev->of_node, "ref_clock", &dp->ref)) {
-		dev_err(dp->dev, "ref_clock attribute not found, default to use 24M.\n");
-		dp->ref = SOC_DP_REF_CLK_24M;
-	}
+	dp->ref_clk = SOC_DP_REF_CLK_24M;
+	dp->color_format = SOC_VIDEO_RGB_8BIT;
 
-	if (of_property_read_u32(dp->dev->of_node, "color_format", &dp->color_format)) {
-		dev_err(dp->dev, "color_format attribute not found, default to use rgb888.\n");
-		dp->color_format = SOC_VIDEO_RGB_8BIT;
-	}
+	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
+	mdelay(2);
 
-	dev_info(dp->dev, "ref_clock %d color_format %d\n", dp->ref, dp->color_format);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_MPLL_PD, 1);
+	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_PREPLL_PD, 1);
+	mdelay(2);
 
 	// Reset Controller and PHY
 	soc_dp_reg_write_range(dp, SOC_DPTX_CONTROLLER_RESET, 0x1);
@@ -2061,19 +2438,16 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_RESET, 0x0);
 	mdelay(2);
 
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_REPLY_EVENT_INT_STA, 1);
+
 	soc_dp_reg_write_range(dp, SOC_DPTX_DEFAULT_FAST_LINK_TRAIN_EN, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_SCRAMBLER_DISABLE, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_SCALE_DOWN_MODE, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
 
-	// Disable PHY SSC (Spread Spectrum Clocking)
-	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_SSC_DIS, 0x1);
-
-	// Bypass PHY busy state
-	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_BUSY_BYP, 0x1);
+	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_STREAM_ENABLE, 0);
 
 	// Unmask Interrupts
-	soc_dp_reg_write_range(dp, SOC_DPTX_HPD_INT_STA_MSK, 0x1);
 	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_REPLY_EVENT_INT_STA_MSK, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_HDCP_INT_STA_MSK, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_ILLEGAL_AUX_CMD_INT_STA_MSK, 0x0);
@@ -2089,14 +2463,25 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_FIFO_OVERFLOW_INT_STA_S0_MSK, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_SINK_IRQ_EVENT_MSK, 0x0);
 #if HPD_BYPASS || HOT_PLUG_THREAD_ENABLED
+	soc_dp_reg_write_range(dp, SOC_DPTX_HPD_INT_STA_MSK, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_HOT_PLUG_EVENT_MSK, 0x0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_HOT_UNPLUG_EVENT_MSK, 0x0);
 #else
+	soc_dp_reg_write_range(dp, SOC_DPTX_HPD_INT_STA_MSK, 0x1);
 	soc_dp_reg_write_range(dp, SOC_DPTX_HOT_PLUG_EVENT_MSK, 0x1);
 	soc_dp_reg_write_range(dp, SOC_DPTX_HOT_UNPLUG_EVENT_MSK, 0x1);
 #endif
 	soc_dp_reg_write_range(dp, SOC_DPTX_SINK_UNPLUG_ERROR_EVENT_MSK, 0x0);
 	mdelay(2);
+
+	// Disable PHY SSC (Spread Spectrum Clocking)
+	// soc_dp_reg_write_range(dp, SOC_DPTX_ANA_MPLL_DISABLE_SSCG, 0x1);
+
+	// Bypass PHY busy state
+	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_BUSY_BYP, 0x1);
+
+	// Enable Enhance Framing and Scale Down Mode
+	soc_dp_reg_write_range(dp, SOC_DPTX_ENHANCE_FRAMING_EN, 0x1);
 
 	// Configure PLL and Lanes
 	if (dp->use_ext_pixel_clock) {
@@ -2109,20 +2494,12 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 			return ret;
 	}
 
-	soc_dp_phy_config_lane_count(dp, SOC_DP_LANE_2);
-	soc_dp_hw_config_phy_rate(dp, SOC_DP_LINK_RATE_2_70);
-
-	soc_dp_reg_write_range(dp, SOC_DPTX_PHY_POWERDOWN, 0x0);
-	mdelay(2);
-
-	soc_dp_phy_enable_lanes(dp, SOC_DP_LANE_2);
-
 	ret = soc_dp_check_pll_lock(dp);
 	if (ret)
 		return ret;
 
-	// Enable Enhance Framing and Scale Down Mode
-	soc_dp_reg_write_range(dp, SOC_DPTX_ENHANCE_FRAMING_EN, 0x1);
+	soc_dp_phy_config_lanes(dp, SOC_DP_LANE_2);
+	soc_dp_phy_config_rate(dp, SOC_DP_LINK_RATE_2_70);
 
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_MODE_D0, 0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_MODE_D1, 0);
@@ -2200,17 +2577,6 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 		soc_dp_reg_write_range(dp, SOC_DPTX_AUDIO_RESET, 0);
 	}
 #endif
-
-	// Update connector status using hardware detection interface
-#if HPD_BYPASS
-	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
-	mdelay(5);
-#endif
-	dp->connector_status = soc_dp_hw_detect_hpd(dp);
-	soc_dp_hw_clean_hpd(dp);
-
-	// Notify DRM core about the initial hotplug event
-	drm_kms_helper_hotplug_event(dp->drm);
 
 	return 0;
 }
@@ -2365,6 +2731,28 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC)
+	if (!dp->edp_mode) {
+		ret = inno_dp_audio_register(dp->dev);
+		if (ret)
+			dev_err(dev, "failed to register dp audio component\n");
+		else
+			dp->aud_registered = true;
+	}
+#endif
+
+#if HPD_BYPASS
+	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
+	mdelay(5);
+#endif
+	dp->connector_status = soc_dp_hw_detect_hpd(dp);
+	soc_dp_hw_clean_hpd(dp);
+
+	if (dp->connector_status == connector_status_connected)
+		soc_dp_hw_read_sink_caps(dp);
+
+	drm_kms_helper_hotplug_event(dp->drm);
+
 #if HOT_PLUG_THREAD_ENABLED
 	dev_info(dp->dev, "Starting HPD Polling Thread...\n");
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
@@ -2374,16 +2762,6 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 	if (ret) {
 		dev_err(dp->dev, "Failure requesting irq %d: %d.\n", dp->irq, ret);
 		return ret;
-	}
-#endif
-
-#if IS_ENABLED(CONFIG_SND_SOC)
-	if (!dp->edp_mode) {
-		ret = inno_dp_audio_register(dp->dev);
-		if (ret)
-			dev_err(dev, "failed to register dp audio component\n");
-		else
-			dp->aud_registered = true;
 	}
 #endif
 
@@ -2398,8 +2776,6 @@ static void soc_dp_unbind(struct device *dev, struct device *master, void *data)
 
 	DRM_INFO("%s()\n", __func__);
 
-	soc_dp_hw_disable(dp);
-
 #if IS_ENABLED(CONFIG_SND_SOC)
 	if (!dp->edp_mode) {
 		inno_dp_audio_unregister(dp->dev);
@@ -2412,6 +2788,8 @@ static void soc_dp_unbind(struct device *dev, struct device *master, void *data)
 #endif
 
 	drm_dp_aux_unregister(&dp->aux);
+
+	soc_dp_hw_disable(dp);
 
 #ifdef CONFIG_SOC_DP_DRIVER_QEMU
 	soc_dp_proc_irq_debug_exit(dp);
@@ -2456,6 +2834,16 @@ static void inno_dp_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &soc_dp_ops);
 }
 
+static void inno_dp_shutdown(struct platform_device *pdev)
+{
+	struct soc_dp_dev *dp = platform_get_drvdata(pdev);
+
+#if HOT_PLUG_THREAD_ENABLED
+	cancel_delayed_work_sync(&dp->hpd_work);
+#endif
+	soc_dp_hw_disable(dp);
+}
+
 #ifdef CONFIG_PM_SLEEP
 
 static int inno_dp_drv_pm_suspend(struct device *dev)
@@ -2471,10 +2859,7 @@ static int inno_dp_drv_pm_suspend(struct device *dev)
 
 	mutex_lock(&dp->mode_lock);
 	dp->suspended = true;
-	dp->connector_status = connector_status_disconnected;
 	mutex_unlock(&dp->mode_lock);
-
-	drm_kms_helper_hotplug_event(dp->drm);
 
 	return 0;
 }
@@ -2489,6 +2874,18 @@ static int inno_dp_drv_pm_resume(struct device *dev)
 	mutex_lock(&dp->mode_lock);
 	dp->suspended = false;
 	mutex_unlock(&dp->mode_lock);
+
+#if HPD_BYPASS
+	soc_dp_reg_write_range(dp, SOC_DPTX_FORCE_HPD, 0x1);
+	mdelay(5);
+#endif
+	dp->connector_status = soc_dp_hw_detect_hpd(dp);
+	soc_dp_hw_clean_hpd(dp);
+
+	if (dp->connector_status == connector_status_connected)
+		soc_dp_hw_read_sink_caps(dp);
+
+	drm_kms_helper_hotplug_event(dp->drm);
 
 #if HOT_PLUG_THREAD_ENABLED
 	schedule_delayed_work(&dp->hpd_work, msecs_to_jiffies(HPD_POLL_INTERVAL_MS));
@@ -2541,9 +2938,9 @@ static int inno_dp_drv_pm_resume_early(struct device *dev)
 	if (dp->pxclk)
 		clk_prepare_enable(dp->pxclk);
 
-	mutex_unlock(&dp->mode_lock);
-
 	soc_dp_dev_init(dp);
+
+	mutex_unlock(&dp->mode_lock);
 
 	return 0;
 }
@@ -2569,6 +2966,7 @@ MODULE_DEVICE_TABLE(of, soc_dp_match);
 struct platform_driver inno_dp_driver = {
 	.probe = inno_dp_probe,
 	.remove = inno_dp_remove,
+	.shutdown = inno_dp_shutdown,
 	.driver = {
 		.name = "spacemit-inno-dp-drv",
 		.of_match_table = soc_dp_match,

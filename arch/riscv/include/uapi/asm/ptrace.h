@@ -120,6 +120,15 @@ struct __riscv_v_regset_state {
 	char vreg[];
 };
 
+struct __riscv_hwdebug_state {
+	__u64     dbg_info;
+	struct {
+		__u64 addr;
+		__u64 type;
+		__u64 len;
+	}       dbg_regs[16];
+};
+
 /*
  * According to spec: The number of bits in a single vector register,
  * VLEN >= ELEN, which must be a power of 2, and must be no greater than

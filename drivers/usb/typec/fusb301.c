@@ -1038,7 +1038,7 @@ static int fusb301_probe(struct i2c_client *client)
 	ret = fusb301_typec_port_probe(chip);
 	if (ret) {
 		dev_err(cdev, "fail to probe typec property.\n");
-		return -ENODEV;
+		return ret;
 	}
 
 	chip->type = FUSB301_TYPE_INVALID;

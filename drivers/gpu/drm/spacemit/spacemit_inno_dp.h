@@ -77,7 +77,12 @@
 
 // SOC_DPTX_MPLL_CTRL0: 0x0180
 #define SOC_DPTX_ANA_MPLL_FBDIV_LBIT                  0x0180,31,24 // ANA_MPLL_FBDIV_LBIT;reg_mpll_fbdiv[7:0],The integer part of CORE PLL feedback divide value
+#define SOC_DPTX_ANA_MPLL_SEL_EXTWAVE                 0x0180,22,22 // ANA_MPLL_SEL_EXTWAVE;MPLL SSC wave table maxaddr value.;0: default value,127;1: software configure,ANA_MPLL_SSC_EXT_MAXADDR.
+#define SOC_DPTX_ANA_MPLL_DISABLE_SSCG                0x0180,21,21 // ANA_MPLL_DISABLE_SSCG;0: enable SSC;1: disable SSC
+#define SOC_DPTX_ANA_MPLL_DOWNSPREAD                  0x0180,20,20 // ANA_MPLL_DOWNSPREAD;0: center spread;1: down spread
 #define SOC_DPTX_ANA_MPLL_FBDIV_HBIT                  0x0180,19,16 // ANA_MPLL_FBDIV_HBIT;reg_mpll_fbdiv[11:8],The integer part of CORE PLL feedback divide value
+#define SOC_DPTX_ANA_MPLL_OBSEN                       0x0180,15,15 // ANA_MPLL_OBSEN;TBD
+#define SOC_DPTX_ANA_MPLL_OBSSEL                      0x0180,14,14 // ANA_MPLL_OBSSEL;TBD
 #define SOC_DPTX_ANA_MPLL_PREDIV                      0x0180,13,8  // ANA_MPLL_PREDIV;CORE PLL reference divide value
 #define SOC_DPTX_AD_LOCK_COREPLL                      0x0180,7,7   // ad_lock_corepll;1: core pll is locked;0: core pll is not locked
 #define SOC_DPTX_ANA_MPLL_DACPD                       0x0180,5,5   // da_mpll_frac_pd[1];Fractional divider control register
@@ -130,10 +135,32 @@
 // SOC_DPTX_ANA_TX_ENABLE: 0x01a4
 #define SOC_DPTX_ANA_TX_ISEL_DRV_D3                   0x01a4,31,28 // da_tx_isel_drv_d3[3:0];Current bias control register of lane3.;Ibias = 160uA + 40uA * isel[3:0]
 #define SOC_DPTX_ANA_TX_ISEL_DRV_D2                   0x01a4,27,24 // da_tx_isel_drv_d2[3:0];Current bias control register of lane2.;Ibias = 160uA + 40uA * isel[3:0]
+#define SOC_DPTX_AD_TX_ESDSENSE_D3                    0x01a4,23,22 // AD_TX_ESDSENSE_D3
+#define SOC_DPTX_AD_TX_ESDSENSE_D2                    0x01a4,21,20 // AD_TX_ESDSENSE_D2
+#define SOC_DPTX_AD_TX_ESDSENSE_D1                    0x01a4,19,18 // AD_TX_ESDSENSE_D1
+#define SOC_DPTX_AD_TX_ESDSENSE_D0                    0x01a4,17,16 // AD_TX_ESDSENSE_D0
+#define SOC_DPTX_ANA_TX_EN_LDO_D3                     0x01a4,11,11 // reg_tx_en_ldo_d3;LDO enable control of data lane3;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_LDO_D2                     0x01a4,10,10 // reg_tx_en_ldo_d2;LDO enable control of data lane2;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_LDO_D1                     0x01a4,9,9   // reg_tx_en_ldo_d1;LDO enable control of data lane1;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_LDO_D0                     0x01a4,8,8   // reg_tx_en_ldo_d0;LDO enable control of data lane0;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_BYP_D3                     0x01a4,7,7   // ANA_TX_EN_BYP_D3
+#define SOC_DPTX_ANA_TX_EN_BYP_D2                     0x01a4,6,6   // ANA_TX_EN_BYP_D2
+#define SOC_DPTX_ANA_TX_EN_BYP_D1                     0x01a4,5,5   // ANA_TX_EN_BYP_D1
+#define SOC_DPTX_ANA_TX_EN_BYP_D0                     0x01a4,4,4   // ANA_TX_EN_BYP_D0
+#define SOC_DPTX_ANA_TX_EN_DRV_D3                     0x01a4,3,3   // reg_tx_en_drv_d3;Output driver enable control of data lane3;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_DRV_D2                     0x01a4,2,2   // reg_tx_en_drv_d2;Output driver enable control of data lane2;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_DRV_D1                     0x01a4,1,1   // reg_tx_en_drv_d1;Output driver enable control of data lane1;1’b0: disable;1’b1: enable
+#define SOC_DPTX_ANA_TX_EN_DRV_D0                     0x01a4,0,0   // reg_tx_en_drv_d0;Output driver enable control of data lane0;1’b0: disable;1’b1: enable
 
 // SOC_DPTX_ANA_TX_CTRL1: 0x01a8
+#define SOC_DPTX_ANA_TX_PHASE_D2                      0x01a8,31,30 //
 #define SOC_DPTX_ANA_TX_MAINSEL_D2                    0x01a8,28,24 // da_tx_mainsel_d2[4:0];Output voltage level control registers of lane2.;Imain = Ibias * mainsel[4:0]
+#define SOC_DPTX_ANA_TX_PHASE_D3                      0x01a8,23,22 //
 #define SOC_DPTX_ANA_TX_MAINSEL_D3                    0x01a8,20,16 // da_tx_mainsel_d3[4:0];Output voltage level control registers of lane3.;Imain = Ibias * mainsel[4:0]
+#define SOC_DPTX_ANA_TX_ISEL_LDO_D3                   0x01a8,11,11 //
+#define SOC_DPTX_ANA_TX_ISEL_LDO_D2                   0x01a8,10,10 //
+#define SOC_DPTX_ANA_TX_ISEL_LDO_D1                   0x01a8,9,9 //
+#define SOC_DPTX_ANA_TX_ISEL_LDO_D0                   0x01a8,8,8 //
 #define SOC_DPTX_ANA_TX_ISEL_DRV_D1                   0x01a8,7,4   // da_tx_isel_drv_d1[3:0];Current bias control register of lane1.;Ibias = 160uA + 40uA * isel[3:0]
 #define SOC_DPTX_ANA_TX_ISEL_DRV_D0                   0x01a8,3,0   // da_tx_isel_drv_d0[3:0];Current bias control register of lane0.;Ibias = 160uA + 40uA * isel[3:0]
 
@@ -142,7 +169,9 @@
 #define SOC_DPTX_ANA_TX_POSTSEL_D0                    0x01ac,27,24 // da_tx_postsel_d0[3:0];Post-cursor pre-emphasis level control registers of lane0.;Ipost = Ibias * postsel[3:0]
 #define SOC_DPTX_ANA_TX_POSTSEL_D3                    0x01ac,23,20 // da_tx_postsel_d3[3:0];Post-cursor pre-emphasis level control registers of lane3.;Ipost = Ibias * postsel[3:0]
 #define SOC_DPTX_ANA_TX_POSTSEL_D2                    0x01ac,19,16 // da_tx_postsel_d2[3:0];Post-cursor pre-emphasis level control registers of lane2.;Ipost = Ibias * postsel[3:0]
+#define SOC_DPTX_ANA_TX_PHASE_D0                      0x01ac,15,14 //
 #define SOC_DPTX_DA_TX_MAINSEL_D0_4_0                 0x01ac,12,8  // da_tx_mainsel_d0[4:0];Output voltage level control registers of lane0.;Imain = Ibias * mainsel[4:0]
+#define SOC_DPTX_ANA_TX_PHASE_D1                      0x01ac,7,6   //
 #define SOC_DPTX_ANA_TX_MAINSEL_D1                    0x01ac,4,0   // da_tx_mainsel_d1[4:0];Output voltage level control registers of lane1.;Imain = Ibias * mainsel[4:0]
 
 // SOC_DPTX_ANA_TX_CTRL3: 0x01b0

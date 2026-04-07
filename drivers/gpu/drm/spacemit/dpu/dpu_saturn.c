@@ -636,12 +636,6 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 
 	if (of_property_read_u32(np, "spacemit-dpu-aclk", &a_crtc->aclk))
 		a_crtc->aclk = DPU_AXICLK_DEFAULT;
-	if (a_crtc->dsipll_valid) {
-		r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		a_crtc->dsipll_base = devm_ioremap_resource(&pdev->dev, r);
-		if (IS_ERR(a_crtc->dsipll_base))
-			return PTR_ERR(a_crtc->dsipll_base);
-	}
 
 	if (of_property_read_u64(np, "spacemit-dpu-bw-margin", &a_crtc->bw_margin))
 		a_crtc->bw_margin = 0;
@@ -674,6 +668,21 @@ static int dpu_parse_dt(struct spacemit_crtc *a_crtc, struct device_node *np)
 	if (!a_crtc->is_offline_mode && !a_crtc->is_edp)
 		/* must be the last in parse process */
 		dpu_parse_panel_dt(a_crtc);
+
+	if (a_crtc->dsipll_valid) {
+		r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		a_crtc->dsipll_base = devm_ioremap_resource(&pdev->dev, r);
+		if (IS_ERR(a_crtc->dsipll_base))
+			return PTR_ERR(a_crtc->dsipll_base);
+
+		if (a_crtc->split_en) {
+			r = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+			a_crtc->dsi1pll_base = devm_ioremap_resource(&pdev->dev, r);
+			if (IS_ERR(a_crtc->dsi1pll_base))
+				return PTR_ERR(a_crtc->dsi1pll_base);
+
+		}
+	}
 
 	return 0;
 }
@@ -953,15 +962,11 @@ static int pll_get_rate_sel(uint32_t vco_freq)
 		return -1;
 }
 
-static int pll_get_range_index(uint32_t bitclock)
+static int pll_get_range_index(uint32_t vco_freq)
 {
-	uint32_t vco_freq = bitclock * 2;
-
 	for (int i = 0; i < 32; i++) {
-		if (vco_freq > pll_freq_table[i].low &&
-		vco_freq <= pll_freq_table[i].high) {
-		return i;
-		}
+		if (vco_freq > pll_freq_table[i].low && vco_freq <= pll_freq_table[i].high)
+			return i;
 	}
 	return -1;
 }
@@ -1008,44 +1013,90 @@ static u32 pll_make_ctrl_reg0(u32 vco_freq, int rate_sel)
 }
 
 /* ===================== ctrl_reg1 ===================== */
-static uint32_t pll_make_ctrl_reg1(uint32_t bitclock, int pllmode, int rate_sel)
+static uint32_t pll_make_ctrl_reg1(uint32_t vco_freq, int pllmode, int rate_sel)
 {
-	int range_idx = pll_get_range_index(bitclock);
+	uint8_t pll_reg4, pll_reg5, pll_reg6, pll_reg7;
+
+	int range_idx = pll_get_range_index(vco_freq);
 	if (range_idx < 0)
 		return 0xFFFFFFFF;
 
-	uint8_t pll_reg4 = (uint8_t)(3 + pllmode * 8);
-	uint8_t pll_reg5 = pll_make_range_reg(range_idx);
-	uint8_t pll_reg6 = pll_reg5;
-	uint8_t pll_reg7 = pll_make_rate_reg(rate_sel);
+	pll_reg4 = (uint8_t)(3 + pllmode * 8);
+	pll_reg5 = pll_make_range_reg(range_idx);
+	pll_reg6 = pll_reg5;
+	pll_reg7 = pll_make_rate_reg(rate_sel);
 
 	return (pll_reg7 << 24) | (pll_reg6 << 16) |
 		(pll_reg5 << 8) | pll_reg4;
 }
 
-static int spacemit_calc_pll_regs(uint32_t bitclock,
-			   uint32_t *pll_ctrl_reg0,
-			   uint32_t *pll_ctrl_reg1)
+/*
+ * PLL_CTRL_REG2[30:29] div_sel encoding:
+ *   0b00: pll_div2  → VCO / 2  (VCO = bitclock × 2)
+ *   0b01: pll_div2  → VCO / 2  (VCO = bitclock × 2, same as 0b00)
+ *   0b10: pll_div8  → VCO / 8  (VCO = bitclock × 8)
+ *   0b11: pll_divm  → VCO / m  (not used)
+ */
+static const struct {
+	uint32_t mult;     /* VCO = bitclock * mult */
+	uint32_t div_sel;  /* PLL_CTRL_REG2[30:29] */
+} pll_vco_candidates[] = {
+	{  2, 0 }, /* pll_div2 (0b00) */
+	{  2, 1 }, /* pll_div2 (0b01) */
+	{  8, 2 }, /* pll_div8 (0b10) */
+};
+
+static int spacemit_calc_pll_regs(uint32_t bitclock, uint32_t *pll_ctrl_reg0,
+					uint32_t *pll_ctrl_reg1, uint32_t *div_sel_out)
 {
 	const int pllmode = PLL_MODE_5G_PLL;
-	uint32_t vco_freq = bitclock * 2;
+	uint32_t vco_freq = 0;
+	uint32_t div_sel = 0;
 	int rate_sel;
 
-	rate_sel = pll_get_rate_sel(vco_freq);
-	if (rate_sel < 0)
+	/* If bitclock itself is already within the PLL VCO range,
+	 * use it directly without any post-divider multiplication.
+	 * NOTE: div_sel for "no division" case needs hardware clarification.
+	 */
+	if (pll_get_rate_sel(bitclock) >= 0 && pll_get_range_index(bitclock) >= 0) {
+		vco_freq = bitclock;
+		div_sel  = 0;
+		DRM_DEBUG("pll vco: bitclock=%u MHz already in range, no division needed\n",
+			 bitclock);
+	} else {
+		/* Try each multiplier in order until we find a VCO that falls in range */
+		for (int i = 0; i < ARRAY_SIZE(pll_vco_candidates); i++) {
+			uint32_t vco = bitclock * pll_vco_candidates[i].mult;
+
+			if (pll_get_rate_sel(vco) >= 0 && pll_get_range_index(vco) >= 0) {
+				vco_freq = vco;
+				div_sel  = pll_vco_candidates[i].div_sel;
+				DRM_INFO("pll vco selected: bitclock=%u MHz, mult=%u, vco=%u MHz, div_sel=%u\n",
+					 bitclock, pll_vco_candidates[i].mult, vco_freq, div_sel);
+				break;
+			}
+		}
+	}
+
+	if (!vco_freq) {
+		DRM_ERROR("no valid VCO config found for bitclock=%u MHz\n", bitclock);
 		return -EINVAL;
+	}
+
+	rate_sel = pll_get_rate_sel(vco_freq);
 
 	*pll_ctrl_reg0 = pll_make_ctrl_reg0(vco_freq, rate_sel);
-	*pll_ctrl_reg1 = pll_make_ctrl_reg1(bitclock, pllmode, rate_sel);
-
-	DRM_INFO("pll_ctrl_reg0 = 0x%08X\n", *pll_ctrl_reg0);
-	DRM_INFO("pll_ctrl_reg1 = 0x%08X\n", *pll_ctrl_reg1);
+	*pll_ctrl_reg1 = pll_make_ctrl_reg1(vco_freq, pllmode, rate_sel);
+	*div_sel_out = div_sel;
 
 	return 0;
 }
 
 static void dpu_disable_dsipll(struct spacemit_crtc *a_crtc)
 {
+	if (a_crtc->split_en)
+		return;
+
 	/* disable pu */
 	writel(0, a_crtc->dsipll_base + PLL_CTRL_REG2);
 }
@@ -1054,8 +1105,20 @@ static void dpu_enable_dsipll(struct spacemit_crtc *a_crtc)
 {
 	u32 pll_ctrl_reg0;
 	u32 pll_ctrl_reg1;
+	u32 div_sel;
 	u32 value;
 	unsigned int timeout = 100;
+
+	void __iomem *dsi1_base = NULL;
+
+	if (a_crtc->split_en) {
+		dsi1_base = ioremap(DSI1_BASE_ADDR, 0x200);
+		if (!dsi1_base) {
+			DRM_ERROR("%s: failed to ioremap dsi1 base\n", __func__);
+			return;
+		}
+	}
+
 	int ret;
 	u32 bitclock = a_crtc->bitclk/1000000; /* MHz */
 
@@ -1065,7 +1128,8 @@ static void dpu_enable_dsipll(struct spacemit_crtc *a_crtc)
 
 	ret = spacemit_calc_pll_regs(bitclock,
 				     &pll_ctrl_reg0,
-				     &pll_ctrl_reg1);
+				     &pll_ctrl_reg1,
+				     &div_sel);
 	if (ret) {
 		DRM_ERROR("DSI PLL calc failed, bitclock=%u\n", bitclock);
 		return;
@@ -1078,8 +1142,14 @@ static void dpu_enable_dsipll(struct spacemit_crtc *a_crtc)
 
 	writel(pll_ctrl_reg1, a_crtc->dsipll_base + PLL_CTRL_REG1);
 
-	value = a_crtc->dsipll_reg2;
+	/* Apply div_sel to bits[30:29], keep other bits from dsipll_reg2 */
+	value = (a_crtc->dsipll_reg2 & ~(3U << 29)) | (div_sel << 29);
 	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG2);
+	if (a_crtc->split_en) {
+		writel(pll_ctrl_reg0, a_crtc->dsi1pll_base + PLL_CTRL_REG0);
+		writel(pll_ctrl_reg1, a_crtc->dsi1pll_base + PLL_CTRL_REG1);
+		writel(value, a_crtc->dsi1pll_base + PLL_CTRL_REG2);
+	}
 
 	if ((a_crtc->dsipll_reg1 & (BIT(29) | BIT(30))) != 0)
 		dpu_set_bit(a_crtc->dsipll_base, DSI_PHY_ANA_CTRL1, BIT(28));
@@ -1089,6 +1159,8 @@ static void dpu_enable_dsipll(struct spacemit_crtc *a_crtc)
 	/* pu */
 	value |= PLL_UP;
 	writel(value, a_crtc->dsipll_base + PLL_CTRL_REG2);
+	if (a_crtc->split_en)
+		writel(value, a_crtc->dsi1pll_base + PLL_CTRL_REG2);
 
 	/* wait pll lock */
 	while (true) {

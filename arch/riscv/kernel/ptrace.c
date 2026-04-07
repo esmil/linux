@@ -19,6 +19,7 @@
 #include <linux/regset.h>
 #include <linux/sched.h>
 #include <linux/sched/task_stack.h>
+#include <linux/hw_breakpoint.h>
 
 enum riscv_regset {
 	REGSET_X,
@@ -30,6 +31,9 @@ enum riscv_regset {
 #endif
 #ifdef CONFIG_RISCV_ISA_SUPM
 	REGSET_TAGGED_ADDR_CTRL,
+#endif
+#ifdef CONFIG_HAVE_HW_BREAKPOINT
+	REGSET_HW_BREAK,
 #endif
 };
 
@@ -193,6 +197,261 @@ static int tagged_addr_ctrl_set(struct task_struct *target,
 }
 #endif
 
+#ifdef CONFIG_HAVE_HW_BREAKPOINT
+static void ptrace_hbptriggered(struct perf_event *bp,
+				struct perf_sample_data *data,
+				struct pt_regs *regs)
+{
+	int i;
+	struct arch_hw_breakpoint *bkpt = counter_arch_bp(bp);
+
+	for (i = 0; i < HW_BP_NUM_MAX; i++)
+		if (current->thread.ptrace_bps[i] == bp)
+			break;
+
+	force_sig_ptrace_errno_trap(i, (void __user *)bkpt->address);
+}
+
+static int ptrace_hbp_get_resource_info(unsigned int note_type, u64 *info)
+{
+	u8 num;
+	u64 reg = 0;
+
+	num = hw_breakpoint_slots(note_type);
+
+	*info = reg | num;
+	return 0;
+}
+
+static int ptrace_hbp_get_addr(unsigned int note_type,
+			       struct task_struct *tsk,
+			       unsigned long idx, u64 *addr)
+{
+	struct perf_event *bp;
+
+	if (idx >= HW_BP_NUM_MAX)
+		return -EINVAL;
+
+	bp = tsk->thread.ptrace_bps[idx];
+
+	*addr = bp ? counter_arch_bp(bp)->address : 0;
+
+	return 0;
+}
+
+static int ptrace_hbp_get_type(unsigned int note_type,
+			       struct task_struct *tsk,
+			       unsigned long idx, u64 *type)
+{
+	struct perf_event *bp;
+
+	if (idx >= HW_BP_NUM_MAX)
+		return -EINVAL;
+
+	bp = tsk->thread.ptrace_bps[idx];
+
+	*type = bp ? counter_arch_bp(bp)->type : 0;
+
+	return 0;
+}
+
+static int ptrace_hbp_get_len(unsigned int note_type,
+			      struct task_struct *tsk,
+			      unsigned long idx, u64 *len)
+{
+	struct perf_event *bp;
+
+	if (idx >= HW_BP_NUM_MAX)
+		return -EINVAL;
+
+	bp = tsk->thread.ptrace_bps[idx];
+
+	*len = bp ? counter_arch_bp(bp)->len : 0;
+
+	return 0;
+}
+
+#define PTRACE_HBP_ADDR_SZ	sizeof(u64)
+#define PTRACE_HBP_TYPE_SZ	sizeof(u64)
+#define PTRACE_HBP_SIZE_SZ	sizeof(u64)
+
+static int hw_break_get(struct task_struct *target,
+			const struct user_regset *regset,
+			struct membuf to)
+{
+	u64 info;
+	u64 addr, type, len;
+	int ret, idx = 0;
+	unsigned int note_type = regset->core_note_type;
+
+	/* Resource info */
+	ret = ptrace_hbp_get_resource_info(note_type, &info);
+	if (ret)
+		return ret;
+
+	membuf_write(&to, &info, sizeof(info));
+	/* (addr, type, len) registers */
+	while (to.left) {
+		ret = ptrace_hbp_get_addr(note_type, target, idx, &addr);
+		if (ret)
+			return ret;
+
+		ret = ptrace_hbp_get_type(note_type, target, idx, &type);
+		if (ret)
+			return ret;
+
+		ret = ptrace_hbp_get_len(note_type, target, idx, &len);
+		if (ret)
+			return ret;
+
+		membuf_store(&to, addr);
+		membuf_store(&to, type);
+		membuf_store(&to, len);
+		idx++;
+	}
+
+	return 0;
+}
+
+static inline int hw_break_empty(u64 addr, u64 type, u64 size)
+{
+	/* TODO: for now adjusted to current riscv-gdb behavior */
+	return (!addr && !size);
+}
+
+static int ptrace_hbp_set(struct task_struct *target, u64 addr,
+			  u64 type, u64 size, int idx)
+{
+	struct perf_event *bp;
+	struct perf_event_attr attr;
+	u32 bp_type;
+	u64 bp_len;
+
+	if (!hw_break_empty(addr, type, size)) {
+		/* bp size: gdb to kernel */
+		switch (size) {
+		case 1:
+			bp_len = HW_BREAKPOINT_LEN_1;
+			break;
+		case 2:
+			bp_len = HW_BREAKPOINT_LEN_2;
+			break;
+		case 4:
+			bp_len = HW_BREAKPOINT_LEN_4;
+			break;
+		case 8:
+			bp_len = HW_BREAKPOINT_LEN_8;
+			break;
+		default:
+			pr_warn("%s: unsupported size: %llu\n", __func__, size);
+			return -EINVAL;
+		}
+
+		/* bp type: gdb to kernel */
+		switch (type) {
+		case 0:
+			bp_type = HW_BREAKPOINT_X;
+			break;
+		case 1:
+			bp_type = HW_BREAKPOINT_R;
+			break;
+		case 2:
+			bp_type = HW_BREAKPOINT_W;
+			break;
+		case 3:
+			bp_type = HW_BREAKPOINT_RW;
+			break;
+		default:
+			pr_warn("%s: unsupported type: %llu\n", __func__, type);
+			return -EINVAL;
+		}
+	}
+
+	bp = target->thread.ptrace_bps[idx];
+	if (bp) {
+		attr = bp->attr;
+
+		if (hw_break_empty(addr, type, size)) {
+			attr.disabled = 1;
+		} else {
+			attr.bp_addr = addr;
+			attr.bp_type = bp_type;
+			attr.bp_len = bp_len;
+			attr.disabled = 0;
+		}
+
+		return modify_user_hw_breakpoint(bp, &attr);
+	}
+
+	if (hw_break_empty(addr, type, size))
+		return 0;
+
+	ptrace_breakpoint_init(&attr);
+	attr.bp_addr = addr;
+	attr.bp_type = bp_type;
+	attr.bp_len = bp_len;
+
+	bp = register_user_hw_breakpoint(&attr, ptrace_hbptriggered,
+					 NULL, target);
+	if (IS_ERR(bp))
+		return PTR_ERR(bp);
+
+	target->thread.ptrace_bps[idx] = bp;
+	return 0;
+}
+
+static int hw_break_set(struct task_struct *target,
+			const struct user_regset *regset,
+			unsigned int pos, unsigned int count,
+			const void *kbuf, const void __user *ubuf)
+{
+	int ret, idx = 0, offset, limit;
+	u64 addr;
+	u64 type;
+	u64 size;
+
+	/* Resource info */
+	offset = offsetof(struct __riscv_hwdebug_state, dbg_regs);
+	user_regset_copyin_ignore(&pos, &count, &kbuf, &ubuf, 0, offset);
+
+	/* (addr, type, len) registers */
+	limit = regset->n * regset->size;
+	while (count && offset < limit) {
+		if (count < PTRACE_HBP_ADDR_SZ)
+			return -EINVAL;
+		ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &addr,
+					 offset, offset + PTRACE_HBP_ADDR_SZ);
+		if (ret)
+			return ret;
+
+		offset += PTRACE_HBP_ADDR_SZ;
+
+		if (!count)
+			break;
+		ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &type,
+					 offset, offset + PTRACE_HBP_TYPE_SZ);
+		if (ret)
+			return ret;
+
+		offset += PTRACE_HBP_TYPE_SZ;
+
+		ret = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &size,
+					 offset, offset + PTRACE_HBP_SIZE_SZ);
+		if (ret)
+			return ret;
+
+		offset += PTRACE_HBP_SIZE_SZ;
+
+		ret = ptrace_hbp_set(target, addr, type, size, idx);
+		if (ret)
+			return ret;
+
+		idx++;
+	}
+
+	return 0;
+}
+#endif
 static const struct user_regset riscv_user_regset[] = {
 	[REGSET_X] = {
 		USER_REGSET_NOTE_TYPE(PRSTATUS),
@@ -231,6 +490,16 @@ static const struct user_regset riscv_user_regset[] = {
 		.align = sizeof(long),
 		.regset_get = tagged_addr_ctrl_get,
 		.set = tagged_addr_ctrl_set,
+	},
+#endif
+#ifdef CONFIG_HAVE_HW_BREAKPOINT
+	[REGSET_HW_BREAK] = {
+		USER_REGSET_NOTE_TYPE(RISCV_HW_BREAK),
+		.n = sizeof(struct __riscv_hwdebug_state) / sizeof(u32),
+		.size = sizeof(u32),
+		.align = sizeof(u32),
+		.regset_get = hw_break_get,
+		.set = hw_break_set,
 	},
 #endif
 };
