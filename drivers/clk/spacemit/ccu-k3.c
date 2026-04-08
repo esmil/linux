@@ -1160,12 +1160,17 @@ CCU_GATE_DEFINE(c3_tcm_pipe_clk, CCU_PARENT_HW(axi_clk), DCIU_C3_TCM_PIPE_CLK, B
 /* DCIU clocks end */
 
 /* RPMU clocks start */
-CCU_DIV_FC_DEFINE(rcpu_axi_clk,  CCU_PARENT_HW(rcpu_clk), RCPU5_RCPU_BUS_CLK_CTRL, BIT(8), 3, 3, 0);
-CCU_DIV_FC_DEFINE(rcpu_apb_clk,  CCU_PARENT_HW(rcpu_axi_clk), RCPU5_RCPU_BUS_CLK_CTRL, BIT(8), 0, 3, 0);
+CCU_DIV_FC_DEFINE(rcpu_axi_clk,  CCU_PARENT_HW(rcpu_clk), RCPU5_RCPU_BUS_CLK_CTRL,
+		  BIT(8), 3, 3, CLK_IGNORE_UNUSED);
+CCU_DIV_FC_DEFINE(rcpu_apb_clk,  CCU_PARENT_HW(rcpu_axi_clk), RCPU5_RCPU_BUS_CLK_CTRL,
+		  BIT(8), 0, 3, CLK_IGNORE_UNUSED);
 
-CCU_GATE_DEFINE(ripc2msa_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL, BIT(5), 0);
-CCU_GATE_DEFINE(ripc2cp_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL, BIT(3), 0);
-CCU_GATE_DEFINE(ripc2ap_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL, BIT(1), 0);
+CCU_GATE_DEFINE(ripc2msa_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL,
+		BIT(5), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ripc2cp_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL,
+		BIT(3), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ripc2ap_clk, CCU_PARENT_HW(rcpu_clk), RCPU5_AON_PER_CLK_RST_CTRL,
+		BIT(1), CLK_IGNORE_UNUSED);
 
 static const struct clk_parent_data rtimer_parents[] = {
 	CCU_PARENT_HW(pll1_d96_25p6),
@@ -1173,17 +1178,21 @@ static const struct clk_parent_data rtimer_parents[] = {
 	CCU_PARENT_HW(pll1_d768_3p2),
 };
 CCU_MUX_DIV_GATE_DEFINE(rtimer1_clk, rtimer_parents, RCPU5_TIMER1_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(rtimer1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER1_CLK_RST, BIT(2), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rtimer1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER1_CLK_RST,
+			BIT(2), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rtimer2_clk, rtimer_parents, RCPU5_TIMER2_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(rtimer2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER2_CLK_RST, BIT(2), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rtimer2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER2_CLK_RST,
+			BIT(2), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rtimer3_clk, rtimer_parents, RCPU5_TIMER3_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(rtimer3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER3_CLK_RST, BIT(2), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rtimer3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER3_CLK_RST,
+			BIT(2), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rtimer4_clk, rtimer_parents, RCPU5_TIMER4_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(rtimer4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER4_CLK_RST, BIT(2), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rtimer4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_TIMER4_CLK_RST,
+			BIT(2), CLK_IGNORE_UNUSED);
 
 static const struct clk_parent_data rt24_core_parents[] = {
 	CCU_PARENT_HW(rcpu_clk),
@@ -1191,14 +1200,16 @@ static const struct clk_parent_data rt24_core_parents[] = {
 	CCU_PARENT_HW(pll1_d5_491p52),
 };
 CCU_MUX_DIV_FC_DEFINE(rt24_core0_clk, rt24_core_parents, RCPU5_RT24_CORE0_CLK_CTRL,
-		      0, 2, BIT(8), 4, 2, 0);
+		      0, 2, BIT(8), 4, 2, CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_FC_DEFINE(rt24_core1_clk, rt24_core_parents, RCPU5_RT24_CORE1_CLK_CTRL,
-		      0, 2, BIT(8), 4, 2, 0);
+		      0, 2, BIT(8), 4, 2, CLK_IGNORE_UNUSED);
 
-CCU_GATE_DEFINE(rgpio_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_GPIO_AND_EDGE_CLK_RST, BIT(1), 0);
-CCU_GATE_DEFINE(rgpio_edge_clk, CCU_PARENT_HW(rcpu_apb_clk),
-		RCPU5_GPIO_AND_EDGE_CLK_RST, BIT(3), 0);
-CCU_GATE_DEFINE(rgpio_lp_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_GPIO_AND_EDGE_CLK_RST, BIT(4), 0);
+CCU_GATE_DEFINE(rgpio_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_GPIO_AND_EDGE_CLK_RST,
+		BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rgpio_edge_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_GPIO_AND_EDGE_CLK_RST,
+		BIT(3), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rgpio_lp_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU5_GPIO_AND_EDGE_CLK_RST,
+		BIT(4), CLK_IGNORE_UNUSED);
 /* RPMU clocks end */
 
 /* RCPU SYSCTRL clocks start */
@@ -1207,29 +1218,41 @@ static const struct clk_parent_data rcan_parents[] = {
 	CCU_PARENT_HW(pll6_40),
 	CCU_PARENT_HW(pll6_80),
 };
-CCU_MUX_GATE_DEFINE(rcan0_clk, rcan_parents, RCPU_CAN_CLK_RST, 4, 2, BIT(1), 0);
-CCU_MUX_GATE_DEFINE(rcan1_clk, rcan_parents, RCPU_CAN1_CLK_RST, 4, 2, BIT(1), 0);
-CCU_MUX_GATE_DEFINE(rcan2_clk, rcan_parents, RCPU_CAN2_CLK_RST, 4, 2, BIT(1), 0);
-CCU_MUX_GATE_DEFINE(rcan3_clk, rcan_parents, RCPU_CAN3_CLK_RST, 4, 2, BIT(1), 0);
-CCU_MUX_GATE_DEFINE(rcan4_clk, rcan_parents, RCPU_CAN4_CLK_RST, 4, 2, BIT(1), 0);
+CCU_MUX_GATE_DEFINE(rcan0_clk, rcan_parents, RCPU_CAN_CLK_RST, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_MUX_GATE_DEFINE(rcan1_clk, rcan_parents, RCPU_CAN1_CLK_RST, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_MUX_GATE_DEFINE(rcan2_clk, rcan_parents, RCPU_CAN2_CLK_RST, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_MUX_GATE_DEFINE(rcan3_clk, rcan_parents, RCPU_CAN3_CLK_RST, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_MUX_GATE_DEFINE(rcan4_clk, rcan_parents, RCPU_CAN4_CLK_RST, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
 
-CCU_GATE_DEFINE(rcan0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN_CLK_RST, BIT(2), 0);
-CCU_GATE_DEFINE(rcan1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN1_CLK_RST, BIT(2), 0);
-CCU_GATE_DEFINE(rcan2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN2_CLK_RST, BIT(2), 0);
-CCU_GATE_DEFINE(rcan3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN3_CLK_RST, BIT(2), 0);
-CCU_GATE_DEFINE(rcan4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN4_CLK_RST, BIT(2), 0);
+CCU_GATE_DEFINE(rcan0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rcan1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN1_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rcan2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN2_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rcan3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN3_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rcan4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_CAN4_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
 
-CCU_GATE_DEFINE(rirc0_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_IRC_CLK_RST, BIT(2), 0);
-CCU_GATE_DEFINE(rirc1_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_IRC1_CLK_RST, BIT(2), 0);
+CCU_GATE_DEFINE(rirc0_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_IRC_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rirc1_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU_IRC1_CLK_RST,
+		BIT(2), CLK_IGNORE_UNUSED);
 
-CCU_MUX_DEFINE(respi_sclk_src, espi_sclk_src_parents, RCPU_ESPI_CLK_RST, 4, 3, 0);
-CCU_MUX_GATE_DEFINE(respi_sclk, espi_sclk_parents, RCPU_ESPI_CLK_RST, 8, 1, BIT(1), 0);
+CCU_MUX_DEFINE(respi_sclk_src, espi_sclk_src_parents, RCPU_ESPI_CLK_RST,
+		4, 3, CLK_IGNORE_UNUSED);
+CCU_MUX_GATE_DEFINE(respi_sclk, espi_sclk_parents, RCPU_ESPI_CLK_RST,
+		8, 1, BIT(1), CLK_IGNORE_UNUSED);
 
-CCU_GATE_DEFINE(remac_bus_clk, CCU_PARENT_HW(rcpu_axi_clk), RCPU_GMAC_CLK_RST, BIT(0), 0);
+CCU_GATE_DEFINE(remac_bus_clk, CCU_PARENT_HW(rcpu_axi_clk), RCPU_GMAC_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
 CCU_GATE_FLAGS_DEFINE(remac_ref_clk, CCU_PARENT_HW(pll2_d120_25), RCPU_GMAC_CLK_RST,
-		      BIT(14), CCU_GATE_INVERT_FLAG);
-CCU_MUX_DEFINE(remac_1588_clk, emac_1588_parents, RCPU_GMAC_CLK_RST, 15, 1, 0);
-CCU_GATE_DEFINE(remac_rgmii_tx_clk, CCU_PARENT_HW(pll2_d24_125), RCPU_GMAC_CLK_RST, BIT(8), 0);
+		BIT(14), CCU_GATE_INVERT_FLAG | CLK_IGNORE_UNUSED);
+CCU_MUX_DEFINE(remac_1588_clk, emac_1588_parents, RCPU_GMAC_CLK_RST,
+		15, 1, CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(remac_rgmii_tx_clk, CCU_PARENT_HW(pll2_d24_125), RCPU_GMAC_CLK_RST,
+		BIT(8), CLK_IGNORE_UNUSED);
 
 static const struct clk_parent_data ri2s01_sysclk_parents[] = {
 	CCU_PARENT_HW(pll1_aud_24p5),
@@ -1237,15 +1260,19 @@ static const struct clk_parent_data ri2s01_sysclk_parents[] = {
 	CCU_PARENT_HW(pll1_d96_25p6),
 	CCU_PARENT_HW(pll1_d768_3p2),
 };
-CCU_MUX_DIV_GATE_DEFINE(ri2s0_sysclk, ri2s01_sysclk_parents, RCPU_AUDIO_I2S0_SYS_CLK_CTRL, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_MUX_DIV_GATE_DEFINE(ri2s1_sysclk, ri2s01_sysclk_parents, RCPU_AUDIO_I2S1_SYS_CLK_CTRL, 8, 11,
-			4, 2, BIT(1), 0);
+CCU_MUX_DIV_GATE_DEFINE(ri2s0_sysclk, ri2s01_sysclk_parents, RCPU_AUDIO_I2S0_SYS_CLK_CTRL,
+			8, 11, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_MUX_DIV_GATE_DEFINE(ri2s1_sysclk, ri2s01_sysclk_parents, RCPU_AUDIO_I2S1_SYS_CLK_CTRL,
+			8, 11, 4, 2, BIT(1), CLK_IGNORE_UNUSED);
 
-CCU_GATE_DEFINE(ruart_14_src, CCU_PARENT_HW(pll1_d5_491p52), RCPU_UART_NM_CLK_14M_CTRL, BIT(31), 0);
-CCU_DDN_DEFINE(ruart_14, ruart_14_src, RCPU_UART_NM_CLK_14M_CTRL, 0, 13, 16, 13, 2, 0);
-CCU_GATE_DEFINE(ruart_58_src, CCU_PARENT_HW(pll1_d5_491p52), RCPU_UART_NM_CLK_58M_CTRL, BIT(31), 0);
-CCU_DDN_DEFINE(ruart_58, ruart_58_src, RCPU_UART_NM_CLK_58M_CTRL, 0, 13, 16, 13, 2, 0);
+CCU_GATE_DEFINE(ruart_14_src, CCU_PARENT_HW(pll1_d5_491p52), RCPU_UART_NM_CLK_14M_CTRL,
+		BIT(31), CLK_IGNORE_UNUSED);
+CCU_DDN_DEFINE(ruart_14, ruart_14_src, RCPU_UART_NM_CLK_14M_CTRL,
+		0, 13, 16, 13, 2, CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart_58_src, CCU_PARENT_HW(pll1_d5_491p52), RCPU_UART_NM_CLK_58M_CTRL,
+		BIT(31), CLK_IGNORE_UNUSED);
+CCU_DDN_DEFINE(ruart_58, ruart_58_src, RCPU_UART_NM_CLK_58M_CTRL,
+		0, 13, 16, 13, 2, CLK_IGNORE_UNUSED);
 /* RCPU SYSCTRL clocks end */
 
 /* RCPU UARTCTRL clocks start */
@@ -1256,23 +1283,29 @@ static const struct clk_parent_data ruart_clk_parents[] = {
 	CCU_PARENT_HW(ruart_58),
 };
 CCU_MUX_DIV_GATE_DEFINE(ruart0_clk, ruart_clk_parents, RCPU1_UART0_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ruart1_clk, ruart_clk_parents, RCPU1_UART1_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ruart2_clk, ruart_clk_parents, RCPU1_UART2_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ruart3_clk, ruart_clk_parents, RCPU1_UART3_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ruart4_clk, ruart_clk_parents, RCPU1_UART4_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ruart5_clk, ruart_clk_parents, RCPU1_UART5_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(ruart0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART0_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ruart1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART1_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ruart2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART2_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ruart3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART3_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ruart4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART4_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ruart5_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART5_CLK_RST, BIT(0), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART0_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART1_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART2_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART3_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART4_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ruart5_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU1_UART5_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
 /* RCPU UARTCTRLclocks end */
 
 /* RCPU I2SCTRL clocks start */
@@ -1281,33 +1314,33 @@ static const struct clk_parent_data ri2s_clk_parents[] = {
 	CCU_PARENT_HW(pll1_aud_245p7),
 };
 CCU_MUX_DIV_GATE_DEFINE(ri2s0_clk, ri2s_clk_parents, RCPU2_AUDIO_I2S0_TX_RX_CLK_CTRL, 4, 11,
-			16, 2, BIT(2), 0);
+			16, 2, BIT(2), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ri2s1_clk, ri2s_clk_parents, RCPU2_AUDIO_I2S1_TX_RX_CLK_CTRL, 4, 11,
-			16, 2, BIT(2), 0);
+			16, 2, BIT(2), CLK_IGNORE_UNUSED);
 
 
 CCU_GATE_DEFINE(ri2s0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk),
-		RCPU2_AUDIO_I2S0_TX_RX_CLK_CTRL, BIT(1), 0);
+		RCPU2_AUDIO_I2S0_TX_RX_CLK_CTRL, BIT(1), CLK_IGNORE_UNUSED);
 CCU_GATE_DEFINE(ri2s1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk),
-		RCPU2_AUDIO_I2S1_TX_RX_CLK_CTRL, BIT(1), 0);
+		RCPU2_AUDIO_I2S1_TX_RX_CLK_CTRL, BIT(1), CLK_IGNORE_UNUSED);
 
 static const struct clk_parent_data ri2s23_sysclk_parents[] = {
 	CCU_PARENT_HW(pll1_aud_24p5),
 	CCU_PARENT_HW(pll1_aud_245p7),
 };
 CCU_MUX_DIV_GATE_DEFINE(ri2s2_sysclk, ri2s23_sysclk_parents, RCPU2_AUDIO_I2S2_SYS_CLK_CTRL,
-			4, 11, 16, 2, BIT(2), 0);
+			4, 11, 16, 2, BIT(2), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ri2s3_sysclk, ri2s23_sysclk_parents, RCPU2_AUDIO_I2S3_SYS_CLK_CTRL,
-			4, 11, 16, 2, BIT(2), 0);
+			4, 11, 16, 2, BIT(2), CLK_IGNORE_UNUSED);
 
 CCU_DIV_GATE_DEFINE(ri2s2_clk, CCU_PARENT_HW(ri2s2_sysclk), RCPU2_AUDIO_I2S2_TX_RX_CLK_CTRL,
-		    4, 11, BIT(2), 0);
+		    4, 11, BIT(2), CLK_IGNORE_UNUSED);
 CCU_DIV_GATE_DEFINE(ri2s3_clk, CCU_PARENT_HW(ri2s3_sysclk), RCPU2_AUDIO_I2S3_TX_RX_CLK_CTRL,
-		    4, 11, BIT(2), 0);
+		    4, 11, BIT(2), CLK_IGNORE_UNUSED);
 CCU_GATE_DEFINE(ri2s2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU2_AUDIO_I2S2_TX_RX_CLK_CTRL,
-		BIT(1), 0);
+		BIT(1), CLK_IGNORE_UNUSED);
 CCU_GATE_DEFINE(ri2s3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU2_AUDIO_I2S3_TX_RX_CLK_CTRL,
-		BIT(1), 0);
+		BIT(1), CLK_IGNORE_UNUSED);
 /* RCPU I2SCTRL clocks end */
 
 /* RCPU SPICTRL clocks start */
@@ -1317,14 +1350,17 @@ static const struct clk_parent_data rspi_parents[] = {
 	CCU_PARENT_HW(pll1_d96_25p6),
 };
 CCU_MUX_DIV_GATE_DEFINE(rspi0_clk, rspi_parents, RCPU3_SSP0_CLK_RST, 8, 11,
-			   4, 2, BIT(1), 0);
+		   4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rspi1_clk, rspi_parents, RCPU3_SSP1_CLK_RST, 8, 11,
-			   4, 2, BIT(1), 0);
+		   4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rspi2_clk, rspi_parents, RCPU3_PWR_SSP_CLK_RST, 8, 11,
-			   4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(rspi0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU3_SSP0_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rspi1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU3_SSP1_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rspi2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU3_PWR_SSP_CLK_RST, BIT(0), 0);
+		   4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rspi0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU3_SSP0_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rspi1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU3_SSP1_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rspi2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU3_PWR_SSP_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
 /* RCPU SPICTRL clocks end */
 
 /* RCPU I2CCTRL clocks start */
@@ -1334,14 +1370,17 @@ static const struct clk_parent_data ri2c_parents[] = {
 	CCU_PARENT_HW(pll1_d96_25p6),
 };
 CCU_MUX_DIV_GATE_DEFINE(ri2c0_clk, ri2c_parents, RCPU4_I2C0_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ri2c1_clk, ri2c_parents, RCPU4_I2C1_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(ri2c2_clk, ri2c_parents, RCPU4_PWR_I2C_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(ri2c0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU4_I2C0_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ri2c1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU4_I2C1_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(ri2c2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU4_PWR_I2C_CLK_RST, BIT(0), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ri2c0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU4_I2C0_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ri2c1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU4_I2C1_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(ri2c2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU4_PWR_I2C_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
 /* RCPU I2CCTRL clocks end */
 
 /* RCPU PWMCTRL clocks start */
@@ -1350,35 +1389,45 @@ static const struct clk_parent_data rpwm_parents[] = {
 	CCU_PARENT_HW(pll1_aud_24p5),
 };
 CCU_MUX_DIV_GATE_DEFINE(rpwm0_clk, rpwm_parents, RCPU6_PWM0_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm1_clk, rpwm_parents, RCPU6_PWM1_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm2_clk, rpwm_parents, RCPU6_PWM2_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm3_clk, rpwm_parents, RCPU6_PWM3_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm4_clk, rpwm_parents, RCPU6_PWM4_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm5_clk, rpwm_parents, RCPU6_PWM5_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm6_clk, rpwm_parents, RCPU6_PWM6_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm7_clk, rpwm_parents, RCPU6_PWM7_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm8_clk, rpwm_parents, RCPU6_PWM8_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
 CCU_MUX_DIV_GATE_DEFINE(rpwm9_clk, rpwm_parents, RCPU6_PWM9_CLK_RST, 8, 11,
-			4, 2, BIT(1), 0);
-CCU_GATE_DEFINE(rpwm0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM0_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM1_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM2_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM3_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM4_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm5_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM5_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm6_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM6_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm7_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM7_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm8_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM8_CLK_RST, BIT(0), 0);
-CCU_GATE_DEFINE(rpwm9_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM9_CLK_RST, BIT(0), 0);
+			4, 2, BIT(1), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm0_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM0_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm1_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM1_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm2_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM2_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm3_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM3_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm4_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM4_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm5_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM5_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm6_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM6_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm7_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM7_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm8_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM8_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
+CCU_GATE_DEFINE(rpwm9_bus_clk, CCU_PARENT_HW(rcpu_apb_clk), RCPU6_PWM9_CLK_RST,
+		BIT(0), CLK_IGNORE_UNUSED);
 /* RCPU PWMCTRL clocks end */
 
 /* APBC2 clocks start */

@@ -201,6 +201,7 @@ static int cm32181_reg_init(struct cm32181_chip *cm32181)
 		break;
 	case 0x81: /* CM32181 */
 	case 0x82: /* CM32182, fully compat. with CM32181 */
+	case 0x83: /* CM32183 */
 		cm32181->num_als_it = ARRAY_SIZE(cm32181_als_it_bits);
 		cm32181->als_it_bits = cm32181_als_it_bits;
 		cm32181->als_it_values = cm32181_als_it_values;
@@ -522,6 +523,7 @@ static DEFINE_SIMPLE_DEV_PM_OPS(cm32181_pm_ops, cm32181_suspend, cm32181_resume)
 static const struct of_device_id cm32181_of_match[] = {
 	{ .compatible = "capella,cm3218" },
 	{ .compatible = "capella,cm32181" },
+	{ .compatible = "capella,cm32183" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, cm32181_of_match);

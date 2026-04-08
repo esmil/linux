@@ -74,7 +74,7 @@
 	};
 */
 	chosen {
-                bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused loglevel=8 random.trust_bootloader=1";
+                bootargs = "earlycon=sbi console=ttyS0,115200 loglevel=8 random.trust_bootloader=1";
                 rng-seed = <0x25d69b2 0xff555073 0xd23238ea 0x57aa5455 0x792478ed 0xa744f28e 0x6ba4fc54 0xa2bf20fc>;
 		stdout-path = "serial0:115200";
 	};
@@ -1165,6 +1165,19 @@
 		interrupts = <0 26 IRQ_TYPE_EDGE_FALLING>;
 		status = "okay";
 	};
+
+	light_sensor: cm32183@29 {
+		compatible = "capella,cm32183";
+		reg = <0x29>;
+		status = "okay";
+	};
+
+        light_sensor2: cm32181@10 {
+		compatible = "capella,cm32181";
+		reg = <0x10>;
+		status = "okay";
+	};
+
 };
 
 /*
@@ -1357,6 +1370,29 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp1_1_cfg>;
 	status = "okay";
+};
+
+&adma3 {
+	status = "okay";
+};
+
+&ri2s3 {
+	status = "okay";
+};
+
+&sound_card_dp1 {
+	status = "okay";
+	simple-audio-card,name = "snd-dp1";
+	simple-audio-card,mclk-fs = <512>;
+	simple-audio-card,dai-link@0 {
+		format = "left_j";
+		frame-master = <&dp1_link_cpu>;
+		bitclock-master = <&dp1_link_cpu>;
+		dp1_link_codec: codec {
+			playback-only;
+			sound-dai = <&dp1>;
+		};
+	};
 };
 
 &i2s1 {
