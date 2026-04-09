@@ -13,4 +13,5 @@ void saturn_hee_conf_dpuctrl_pp_gamma(struct spacemit_crtc *a_crtc, struct drm_c
 void saturn_hee_conf_dpuctrl_color_matrix(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
 void saturn_hee_conf_dpuctrl_acad(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
 void saturn_hee_conf_dpuctrl_ee(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
+void saturn_hee_dpuctrl_color_temp(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
 #endif

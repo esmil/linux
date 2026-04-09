@@ -177,3 +177,52 @@ void saturn_hee_conf_dpuctrl_pp_gamma(struct spacemit_crtc *a_crtc, struct drm_c
 
 	dpu_write_reg(hwdev, USR_GMA_REG, gamma_base, usr_gma_cfg_done, 1);
 }
+
+void saturn_hee_dpuctrl_color_temp(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state)
+{
+	struct spacemit_drm_private *priv = a_crtc->crtc.dev->dev_private;
+	struct spacemit_hw_device *hwdev = priv->hwdev;
+	struct drm_crtc_state *state = a_crtc->crtc.state;
+	struct spacemit_crtc_state *spacemit_state = to_spacemit_crtc_state(state);
+	struct drm_property_blob *blob = spacemit_state->pp_color_temperature_blob_property;
+	int *color_temp;
+	struct cmdlist_regs *cmd_regs = NULL;
+
+	if (blob) {
+		color_temp = (int *)blob->data;
+
+		cmd_regs = alloc_cmdlist_regs(LTM_REG);
+
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_npost_proc_en, 1, cmd_regs, 0);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_nmatrix_en, 1, cmd_regs, 1);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_ngain_to_full_en, 0, cmd_regs, 2);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_nendmatrix_en, 0, cmd_regs, 3);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_nfront_tmootf_en, 1, cmd_regs, 4);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_nend_tmootf_en, 0, cmd_regs, 5);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_neotf_en, 0, cmd_regs, 6);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_noetf_en, 0, cmd_regs, 7);
+
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table0, color_temp[0] & 0xFFFF, cmd_regs, 65);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table1, color_temp[1] & 0xFFFF, cmd_regs, 66);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table2, color_temp[2] & 0xFFFF, cmd_regs, 67);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table3, color_temp[3] & 0xFFFF, cmd_regs, 68);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table4, color_temp[4] & 0xFFFF, cmd_regs, 69);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table5, color_temp[5] & 0xFFFF, cmd_regs, 70);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table6, color_temp[6] & 0xFFFF, cmd_regs, 71);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table7, color_temp[7] & 0xFFFF, cmd_regs, 72);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_table8, color_temp[8] & 0xFFFF, cmd_regs, 73);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_offset0, color_temp[9] & 0x1FFFFFF, cmd_regs, 74);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_offset1, color_temp[10] & 0x1FFFFFF, cmd_regs, 75);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pmatrix_offset2, color_temp[11] & 0x1FFFFFF, cmd_regs, 76);
+
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_tmootf_weightYr, color_temp[12] & 0xFFF, cmd_regs, 157);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_tmootf_weightYg, color_temp[13] & 0xFFF, cmd_regs, 157);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_tmootf_weightYb, color_temp[14] & 0xFFF, cmd_regs, 158);
+
+		cmdlist_regs_packing(crtc_to_cl(&a_crtc->crtc), CMDLIST_MOD_COMP, cmd_regs);
+
+		free_cmdlist_regs(cmd_regs);
+	}
+
+	return;
+}

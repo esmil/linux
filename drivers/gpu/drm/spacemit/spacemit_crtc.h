@@ -132,7 +132,7 @@ struct dpu_clk_context {
 	struct clk *dscclk;
 };
 
-#define DEFAULT_SLICE_WIDTH	256
+#define DEFAULT_SLICE_WIDTH	512
 #define MAX_WIDTH		4096
 #define MAX_SLICE	(MAX_WIDTH / DEFAULT_SLICE_WIDTH)
 #define DPU_NO_SLICE (0xFF)
@@ -251,6 +251,7 @@ struct spacemit_crtc {
 	unsigned int split_en;
 	struct drm_property *offline_mode_property;
 	struct drm_property *post_scaler_property;
+	struct drm_property *pp_color_temperature_property;
 	struct drm_property *acad_status_property;
 	struct drm_property *bl_save_status_property;
 
@@ -397,6 +398,7 @@ struct spacemit_crtc_state {
 	struct drm_property_blob *pp_acad_blob_prop;
 	struct drm_property_blob *end_tone_mapping_blob_prop;
 	struct drm_property_blob *ee_blob_prop;
+	struct drm_property_blob *pp_color_temperature_blob_property;
 };
 
 #define to_spacemit_crtc_state(x) container_of(x, struct spacemit_crtc_state, base)
@@ -448,6 +450,7 @@ struct spacemit_hw_device {
 	void (*conf_gamma_table)(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
 	int (*check_end_matrix)(struct drm_crtc_state *state);
 	void (*conf_end_tone_mapping)(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
+	void (*conf_matrix)(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
 	void (*update_hdr_matrix)(struct drm_plane *plane, struct spacemit_plane_state *spacemit_pstate);
 	void (*update_csc_matrix)(struct drm_plane *plane, struct drm_plane_state *old_state);
 	void (*conf_dpuctrl_acad)(struct spacemit_crtc *a_crtc, struct drm_crtc_state *old_state);
