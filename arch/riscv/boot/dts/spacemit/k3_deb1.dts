@@ -592,10 +592,6 @@
 	pinctrl-0 = <&gmac0_cfg>;
 
 	max-speed = <1000>;
-	tx-fifo-depth = <8192>;
-	rx-fifo-depth = <8192>;
-	snps,tso;
-	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac0_phy>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;

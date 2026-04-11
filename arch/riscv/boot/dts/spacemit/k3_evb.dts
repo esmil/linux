@@ -488,10 +488,6 @@
 	pinctrl-0 = <&gmac0_cfg>;
 
 	max-speed = <1000>;
-	tx-fifo-depth = <8192>;
-	rx-fifo-depth = <8192>;
-	snps,tso;
-	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac0_phy>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
@@ -544,10 +540,6 @@
 	pinctrl-0 = <&gmac1_cfg>;
 
 	max-speed = <1000>;
-	tx-fifo-depth = <8192>;
-	rx-fifo-depth = <8192>;
-	snps,tso;
-	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac1_phy>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
@@ -600,10 +592,6 @@
 	pinctrl-0 = <&gmac2_cfg>;
 
 	max-speed = <1000>;
-	tx-fifo-depth = <8192>;
-	rx-fifo-depth = <8192>;
-	snps,tso;
-	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac2_phy>;
 	snps,reset-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
@@ -656,10 +644,6 @@
 	pinctrl-0 = <&gmac3_cfg>;
 
 	max-speed = <1000>;
-	tx-fifo-depth = <4096>;
-	rx-fifo-depth = <4096>;
-	snps,tso;
-	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac3_phy>;
 	snps,reset-gpios = <&gpio 2 11 GPIO_ACTIVE_LOW>;
