@@ -18,7 +18,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
-#include <scsi/scsi_eh.h>
+#include <linux/suspend.h>
 #include <scsi/scsi_device.h>
 
 #include <ufs/ufshcd.h>
@@ -651,72 +651,6 @@ static int ufs_spacemit_k3_runtime_resume(struct device *dev)
 }
 #endif
 
-static int ufs_spacemit_k3_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
-				   enum ufs_notify_change_status status)
-{
-	struct scsi_target *starget, *found_starget = NULL;
-	struct Scsi_Host *shost = hba->host;
-	int ret = 0;
-
-	if (status == PRE_CHANGE)
-		return 0;
-
-	/* TODO: Handle link off/inactive states */
-	if (ufs_spacemit_k3_is_link_off(hba) || !ufs_spacemit_k3_is_link_active(hba)) {
-		dev_dbg(hba->dev, "Link not active during suspend\n");
-	}
-
-	if (pm_op == UFS_RUNTIME_PM)
-		return 0;
-
-	pm_runtime_put_sync(hba->dev);
-
-	if (shost) {
-		list_for_each_entry(starget, &shost->__targets, siblings) {
-			if (starget->id == 0 && starget->channel == 0) {
-				found_starget = starget;
-				break;
-			}
-		}
-	}
-	if (found_starget) {
-		pm_runtime_put_sync(&starget->dev);
-	}
-
-	return ret;
-}
-
-static int ufs_spacemit_k3_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
-{
-	struct scsi_target *starget, *found_starget = NULL;
-	struct Scsi_Host *shost = hba->host;
-
-	/* TODO: Handle link off/inactive states */
-	if (ufs_spacemit_k3_is_link_off(hba) || !ufs_spacemit_k3_is_link_active(hba)) {
-		dev_dbg(hba->dev, "Link not active during resume\n");
-	}
-
-	if (pm_op == UFS_RUNTIME_PM)
-		return 0;
-
-	pm_runtime_get_sync(hba->dev);
-
-	if (shost) {
-		list_for_each_entry(starget, &shost->__targets, siblings) {
-			if (starget->id == 0 && starget->channel == 0) {
-				found_starget = starget;
-				break;
-			}
-		}
-	}
-
-	if (found_starget) {
-		pm_runtime_get_sync(&starget->dev);
-	}
-
-	return 0;
-}
-
 static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 					     enum ufs_notify_change_status status,
 					     const struct ufs_pa_layer_attr *dev_max_params,
@@ -924,7 +858,7 @@ static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
 	/* hba->caps |= UFSHCD_CAP_WB_EN; */
 
 	/* support runtime autosuspend */
-	hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
+	/* hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND; */
 }
 
 static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
@@ -1116,9 +1050,17 @@ static int ufs_spacemit_k3_init(struct ufs_hba *hba)
 
 	/* Make a two way bind between the spacemit k3 host and the hba */
 	host->hba = hba;
+	host->saved_spm_lvl = -1;
 	ufshcd_set_variant(hba, host);
 	ufs_spacemit_k3_set_caps(hba);
 	ufs_spacemit_k3_advertise_quirks(hba);
+
+	/*
+	 * Keep the link active by default. Standby, where the UFS power is lost
+	 * externally, overrides system PM to UFS_PM_LVL_5 in prepare().
+	 */
+	hba->rpm_lvl = UFS_PM_LVL_2;
+	hba->spm_lvl = UFS_PM_LVL_2;
 
 	/* Initialize workqueue for deferred FSM state dump */
 	INIT_WORK(&host->fsm_dump_work, ufs_spacemit_k3_fsm_dump_work);
@@ -1485,8 +1427,6 @@ static const struct ufs_hba_variant_ops ufs_hba_spacemit_k3_vops = {
 	.apply_dev_quirks = ufs_spacemit_k3_apply_dev_quirks,
 	.hibern8_notify = ufs_spacemit_k3_hibern8_notify,
 	.hce_enable_notify = ufs_spacemit_k3_hce_enable_notify,
-	.suspend = ufs_spacemit_k3_suspend,
-	.resume = ufs_spacemit_k3_resume,
 };
 
 static const struct of_device_id ufs_spacemit_k3_of_match[] = {
@@ -1540,11 +1480,49 @@ static void ufs_spacemit_k3_remove(struct platform_device *pdev)
 	pm_runtime_put(&(pdev)->dev);
 }
 
+static bool ufs_spacemit_k3_standby_loses_power(void)
+{
+	return pm_suspend_target_state == PM_SUSPEND_STANDBY;
+}
+
+static int ufs_spacemit_k3_suspend_prepare(struct device *dev)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	int ret;
+
+	if (ufs_spacemit_k3_standby_loses_power() && hba->spm_lvl < UFS_PM_LVL_5) {
+		host->saved_spm_lvl = hba->spm_lvl;
+		hba->spm_lvl = UFS_PM_LVL_5;
+	}
+
+	ret = ufshcd_suspend_prepare(dev);
+	if (ret < 0 && host->saved_spm_lvl != -1) {
+		hba->spm_lvl = host->saved_spm_lvl;
+		host->saved_spm_lvl = -1;
+	}
+
+	return ret;
+}
+
+static void ufs_spacemit_k3_resume_complete(struct device *dev)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+
+	ufshcd_resume_complete(dev);
+
+	if (host->saved_spm_lvl != -1) {
+		hba->spm_lvl = host->saved_spm_lvl;
+		host->saved_spm_lvl = -1;
+	}
+}
+
 static const struct dev_pm_ops ufs_spacemit_k3_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(ufshcd_system_suspend, ufshcd_system_resume) SET_RUNTIME_PM_OPS(
-		ufs_spacemit_k3_runtime_suspend, ufs_spacemit_k3_runtime_resume, NULL)
-		.prepare = ufshcd_suspend_prepare,
-	.complete = ufshcd_resume_complete,
+	SET_SYSTEM_SLEEP_PM_OPS(ufshcd_system_suspend, ufshcd_system_resume)
+	SET_RUNTIME_PM_OPS(ufs_spacemit_k3_runtime_suspend, ufs_spacemit_k3_runtime_resume, NULL)
+	.prepare = ufs_spacemit_k3_suspend_prepare,
+	.complete = ufs_spacemit_k3_resume_complete,
 };
 
 static struct platform_driver ufs_spacemit_k3_pltform = {
