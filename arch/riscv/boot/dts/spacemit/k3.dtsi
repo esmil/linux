@@ -1769,6 +1769,10 @@
 			interrupts = <131 IRQ_TYPE_LEVEL_HIGH>, <276 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
+			tx-fifo-depth = <8192>;
+			rx-fifo-depth = <8192>;
+			snps,tso;
+			snps,force_sf_dma_mode;
 			snps,axi-config = <&gmac_axi_setup>;
 			snps,mtl-rx-config = <&gmac_default_rxq_setup>;
 			snps,mtl-tx-config = <&gmac_default_txq_setup>;
@@ -1790,6 +1794,10 @@
 			interrupts = <133 IRQ_TYPE_LEVEL_HIGH>, <277 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
+			tx-fifo-depth = <8192>;
+			rx-fifo-depth = <8192>;
+			snps,tso;
+			snps,force_sf_dma_mode;
 			snps,axi-config = <&gmac_axi_setup>;
 			snps,mtl-rx-config = <&gmac_default_rxq_setup>;
 			snps,mtl-tx-config = <&gmac_default_txq_setup>;
@@ -1811,6 +1819,10 @@
 			interrupts = <130 IRQ_TYPE_LEVEL_HIGH>, <278 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
+			tx-fifo-depth = <8192>;
+			rx-fifo-depth = <8192>;
+			snps,tso;
+			snps,force_sf_dma_mode;
 			snps,axi-config = <&gmac_axi_setup>;
 			snps,mtl-rx-config = <&gmac_default_rxq_setup>;
 			snps,mtl-tx-config = <&gmac_default_txq_setup>;
@@ -1832,6 +1844,10 @@
 			interrupts = <237 IRQ_TYPE_LEVEL_HIGH>, <236 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "macirq", "eth_wake_irq";
 			mac-address = [00 00 00 00 00 00];
+			tx-fifo-depth = <4096>;
+			rx-fifo-depth = <4096>;
+			snps,tso;
+			snps,force_sf_dma_mode;
 			snps,axi-config = <&gmac_axi_setup>;
 			status = "disabled";
 		};

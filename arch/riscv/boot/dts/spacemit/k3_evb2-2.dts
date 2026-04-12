@@ -12,8 +12,8 @@
 #include "k3-camera.dtsi"
 
 / {
-	model = "SpacemiT K3 EVB";
-	compatible = "spacemit,k3-evb";
+	model = "SpacemiT K3 EVB2-2";
+	compatible = "spacemit,k3-evb2-2";
 	cpus: cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -76,7 +76,7 @@
 	};
 */
 	chosen {
-		bootargs = "earlycon=sbi console=ttyS0,115200 loglevel=8 random.trust_bootloader=1 unaligned_scalar_speed=fast unaligned_vector_speed=fast";
+		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused loglevel=8 random.trust_bootloader=1 unaligned_scalar_speed=fast unaligned_vector_speed=fast";
 		rng-seed = <0x25d69b2 0xff555073 0xd23238ea 0x57aa5455 0x792478ed 0xa744f28e 0x6ba4fc54 0xa2bf20fc>;
 		stdout-path = "serial0:115200";
 	};
@@ -488,6 +488,10 @@
 	pinctrl-0 = <&gmac0_cfg>;
 
 	max-speed = <1000>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac0_phy>;
 	snps,reset-gpios = <&gpio 0 15 GPIO_ACTIVE_LOW>;
@@ -540,6 +544,10 @@
 	pinctrl-0 = <&gmac1_cfg>;
 
 	max-speed = <1000>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac1_phy>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
@@ -592,6 +600,10 @@
 	pinctrl-0 = <&gmac2_cfg>;
 
 	max-speed = <1000>;
+	tx-fifo-depth = <8192>;
+	rx-fifo-depth = <8192>;
+	snps,tso;
+	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac2_phy>;
 	snps,reset-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
@@ -644,6 +656,10 @@
 	pinctrl-0 = <&gmac3_cfg>;
 
 	max-speed = <1000>;
+	tx-fifo-depth = <4096>;
+	rx-fifo-depth = <4096>;
+	snps,tso;
+	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
 	phy-handle = <&gmac3_phy>;
 	snps,reset-gpios = <&gpio 2 11 GPIO_ACTIVE_LOW>;
@@ -986,15 +1002,15 @@
 	};
 
 	edcdc2: edcdc2 {
-		regulator-min-microvolt = <800000>;
-		regulator-max-microvolt = <800000>;
+		regulator-min-microvolt = <534000>;
+		regulator-max-microvolt = <1005000>;
 		regulator-always-on;
 		regulator-boot-on;
 	};
 
 	edcdc1: edcdc1 {
 		regulator-min-microvolt = <534000>;
-		regulator-max-microvolt = <10000000>;
+		regulator-max-microvolt = <1005000>;
 		regulator-always-on;
 		regulator-boot-on;
 	};
