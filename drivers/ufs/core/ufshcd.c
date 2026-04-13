@@ -4516,13 +4516,6 @@ int ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 
 	ufshcd_vops_hibern8_notify(hba, UIC_CMD_DME_HIBER_ENTER, PRE_CHANGE);
 
-#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
-	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
-		ufshcd_disable_intr(hba, UIC_ERROR);
-		wmb();
-	}
-#endif
-
 	ret = ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
 	trace_ufshcd_profile_hibern8(hba, "enter",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
@@ -4533,13 +4526,6 @@ int ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 	else
 		ufshcd_vops_hibern8_notify(hba, UIC_CMD_DME_HIBER_ENTER,
 							POST_CHANGE);
-
-#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
-	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
-		ufshcd_enable_intr(hba, UIC_ERROR);
-		wmb();
-	}
-#endif
 
 	return ret;
 }
@@ -4555,13 +4541,6 @@ int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 
 	ufshcd_vops_hibern8_notify(hba, UIC_CMD_DME_HIBER_EXIT, PRE_CHANGE);
 
-#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
-	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
-		ufshcd_disable_intr(hba, UIC_ERROR);
-		wmb();
-	}
-#endif
-
 	ret = ufshcd_uic_pwr_ctrl(hba, &uic_cmd);
 	trace_ufshcd_profile_hibern8(hba, "exit",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
@@ -4575,13 +4554,6 @@ int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 		hba->ufs_stats.last_hibern8_exit_tstamp = local_clock();
 		hba->ufs_stats.hibern8_exit_cnt++;
 	}
-
-#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
-	if (ufshcd_readl(hba, REG_INTERRUPT_ENABLE) & UIC_ERROR) {
-		ufshcd_enable_intr(hba, UIC_ERROR);
-		wmb();
-	}
-#endif
 
 	return ret;
 }
@@ -4778,9 +4750,16 @@ static int ufshcd_change_power_mode(struct ufs_hba *hba,
 				DL_AFC0ReqTimeOutVal_Default);
 	}
 
+#if defined(CONFIG_SCSI_UFS_SPACEMIT_K3)
+	ret = ufshcd_uic_change_pwr_mode(hba, FASTAUTO_MODE << 4 |
+					 FASTAUTO_MODE);
+	mdelay(100);
+	ret = ufshcd_uic_change_pwr_mode(hba, FAST_MODE << 4 |
+					 FAST_MODE);
+#else
 	ret = ufshcd_uic_change_pwr_mode(hba, pwr_mode->pwr_rx << 4
 			| pwr_mode->pwr_tx);
-
+#endif
 	if (ret) {
 		dev_err(hba->dev,
 			"%s: power mode change failed %d\n", __func__, ret);
@@ -5691,7 +5670,9 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 					unsigned long completed_reqs)
 {
 	int tag;
-
+#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
+	dma_rmb();
+#endif
 	for_each_set_bit(tag, &completed_reqs, hba->nutrs)
 		ufshcd_compl_one_cqe(hba, tag, NULL);
 }
@@ -7003,12 +6984,6 @@ static irqreturn_t ufshcd_check_errors(struct ufs_hba *hba, u32 intr_status)
 		retval = ufshcd_update_uic_error(hba);
 		if (hba->uic_error)
 			queue_eh_work = true;
-#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
-		if (hba->pm_op_in_progress) {
-			queue_eh_work = false;
-			retval |= IRQ_HANDLED;
-		}
-#endif
 	}
 
 	if (hba->errors & UFSHCD_UIC_HIBERN8_MASK) {
@@ -10793,17 +10768,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 	/* Get Interrupt bit mask per version */
 	hba->intr_mask = ufshcd_get_intr_mask(hba);
-
-#ifdef CONFIG_SCSI_UFS_SPACEMIT_K3
-	if (hba->vops && hba->vops->name && !strcmp(hba->vops->name, "lark_ufs")) {
-		if (hba->nutrs > 16) {
-			dev_warn(hba->dev, "limiting nutrs from %d to 16 for K3 stability\n",
-				 hba->nutrs);
-			hba->nutrs = 16;
-			hba->reserved_slot = hba->nutrs - 1;
-		}
-	}
-#endif
 
 	err = ufshcd_set_dma_mask(hba);
 	if (err) {
