@@ -2498,7 +2498,8 @@
 			clock-names = "ufs-aclk";
 			resets = <&syscon_apmu RESET_APMU_UFS_ACLK>;
 			reset-names = "ufs-aclk-rst";
-			freq-table-hz = <491000000 491000000>;
+			clock-freq = <491520000>;
+			freq-table-hz = <491520000 491520000>;
 			lanes-per-direction = <2>;
 			ref-clk-freq = <19200000>;
 			status = "disabled";
