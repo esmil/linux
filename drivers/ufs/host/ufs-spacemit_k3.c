@@ -539,67 +539,6 @@ static int ufs_spacemit_k3_uniprov1p6_init(struct ufs_hba *hba)
 	return 0;
 }
 
-#ifdef CONFIG_SPACEMIT_K3_UFS_CRYPTO_DEBUG
-static const u32 ufs_spacemit_k3_test_key128[] = {
-	0x87563412,
-	0x88573513,
-	0x89583614,
-	0x8a593715,
-};
-
-static const u32 ufs_spacemit_k3_test_key256[] = {
-	0x87563412,
-	0x88573513,
-	0x89583614,
-	0x8a593715,
-	0x8b5a3816,
-	0x8c5b3917,
-	0x8d5c3a18,
-	0x8e5d3b19,
-};
-
-static void ufs_spacemit_k3_program_key_slot(struct ufs_hba *hba, int key_slot,
-					    const u32 *key_vals, int key_count,
-					    u32 cfg16, u32 cfg17)
-{
-	int i;
-	u32 slot_offset;
-	union ufs_crypto_cfg_entry cfg;
-
-	memset(&cfg, 0, sizeof(cfg));
-	for (i = 0; i < key_count && i < 16; i++)
-		cfg.reg_val[i] = key_vals[i];
-	cfg.reg_val[16] = cfg16;
-	cfg.reg_val[17] = cfg17;
-
-	slot_offset = hba->crypto_cfg_register +
-		     key_slot * sizeof(union ufs_crypto_cfg_entry);
-
-	ufshcd_writel(hba, 0, slot_offset + 16 * sizeof(cfg.reg_val[0]));
-	for (i = 0; i < 16; i++)
-		ufshcd_writel(hba, cfg.reg_val[i],
-			     slot_offset + i * sizeof(cfg.reg_val[0]));
-	ufshcd_writel(hba, cfg.reg_val[17],
-		     slot_offset + 17 * sizeof(cfg.reg_val[0]));
-	ufshcd_writel(hba, cfg.reg_val[16],
-		     slot_offset + 16 * sizeof(cfg.reg_val[0]));
-}
-
-static int ufs_spacemit_k3_program_key_test(struct ufs_hba *hba)
-{
-	dev_info(hba->dev, "Crypto key test start\n");
-
-	ufs_spacemit_k3_program_key_slot(hba, 0, ufs_spacemit_k3_test_key128,
-				       ARRAY_SIZE(ufs_spacemit_k3_test_key128),
-				       0x80000003, 0x0);
-	ufs_spacemit_k3_program_key_slot(hba, 1, ufs_spacemit_k3_test_key256,
-				       ARRAY_SIZE(ufs_spacemit_k3_test_key256),
-				       0x80000103, 0x0);
-
-	return 0;
-}
-#endif
-
 static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_cap, u32 pwr_hs)
 {
 	if (!ufs_spacemit_k3_cap)
@@ -648,25 +587,6 @@ static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 	dev_dbg(hba->dev, "REG_UFS_SYS1CLK_1US: 0x%x\n", ufshcd_readl(hba, UFS_SYS1CLK_1US));
 	dev_dbg(hba->dev, "REG_UFS_TX_SYMBOL_CLK_NS_US: 0x%x\n",
 		ufshcd_readl(hba, UFS_TX_SYMBOL_CLK_NS_US));
-
-#ifdef CONFIG_SCSI_UFS_CRYPTO
-	if (hba->caps & UFSHCD_CAP_CRYPTO) {
-		reg_val = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
-		dev_dbg(hba->dev, "REG_INTERRUPT_ENABLE before: 0x%x\n", reg_val);
-
-		/* Enable crypto interrupts */
-		reg_val |= BIT(26) | BIT(27);
-		ufshcd_writel(hba, reg_val, REG_INTERRUPT_ENABLE);
-
-		dev_dbg(hba->dev, "REG_INTERRUPT_ENABLE after: 0x%x\n",
-			ufshcd_readl(hba, REG_INTERRUPT_ENABLE));
-	}
-#ifdef CONFIG_SPACEMIT_K3_UFS_CRYPTO_DEBUG
-	/* crypto base test */
-	ufs_spacemit_k3_program_key_test(hba);
-#endif
-
-#endif
 
 	return 0;
 }
@@ -1025,39 +945,6 @@ static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
  */
 static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is_scsi_cmd)
 {
-#ifdef CONFIG_SCSI_UFS_CRYPTO
-	u32 doorbell = 0;
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
-	struct ufshcd_lrb *lrbp = &hba->lrb[tag];
-	bool curr_request_crypto;
-
-	if (!(hba->caps & UFSHCD_CAP_CRYPTO))
-		return;
-
-	if (is_scsi_cmd && (lrbp->crypto_key_slot >= 0))
-		curr_request_crypto = true;
-	else
-		curr_request_crypto = false;
-
-	/* crypto request need to wait for the clean doorbell to avoid data corruption */
-	if (host->prev_request_crypto) {
-		int timeout = 10000; /* 10ms timeout */
-
-		while (timeout > 0) {
-			doorbell = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
-			if (!doorbell)
-				break;
-			udelay(1);
-			timeout--;
-		}
-
-		if (timeout <= 0)
-			dev_warn(hba->dev, "Doorbell wait timeout in crypto path\n");
-	}
-
-	host->prev_request_crypto = curr_request_crypto;
-#endif
-
 	/*
 	 * Ensure UTRD/UPIU writes are visible before the core rings doorbell.
 	 * This mitigates command loss under high-concurrency random IO.
