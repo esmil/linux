@@ -205,6 +205,12 @@
 			no-map;
 		};
 
+		/* reserve 3M for rcpu's dtb space */
+		rcpu_dtb_table: rcpu_dtb_table@100e04000 {
+			reg = <0x1 0xe04000 0x0 0x300000>;
+			no-map;
+		};
+
 		/* reserved 5M for dpu, including mmu table and cmdlist */
 		dpu_resv0: dpu_reserved@101b00000 {
 			compatible = "shared-dma-pool";
