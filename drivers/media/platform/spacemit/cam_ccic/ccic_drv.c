@@ -77,7 +77,6 @@ static void ccic_irqmask(struct ccic_ctrl *ctrl, int on)
 static int ccic_config_csi2(struct ccic_dev *ccic_dev, struct mipi_csi2 *csi,
 			    int enable)
 {
-	unsigned int dphy5_val = 0;
 	unsigned int ctrl0_val = 0;
 	int lanes = csi->dphy_desc.nr_lane;
 
@@ -85,15 +84,12 @@ static int ccic_config_csi2(struct ccic_dev *ccic_dev, struct mipi_csi2 *csi,
 		return -EINVAL;
 	if (enable) {
 		csiphy_start(ccic_dev->csiphy, csi);
-		dphy5_val = CSI2_DPHY5_LANE_ENA(lanes);
-		dphy5_val = dphy5_val | (dphy5_val << CSI2_DPHY5_LANE_RESC_ENA_SHIFT);
 		ctrl0_val = ccic_reg_read(ccic_dev, REG_CSI2_CTRL0);
 		ctrl0_val &= ~(CSI2_C0_LANE_NUM_MASK);
 		ctrl0_val |= CSI2_C0_LANE_NUM(lanes);
 		ctrl0_val |= CSI2_C0_ENABLE;
 		ctrl0_val &= ~(CSI2_C0_VLEN_MASK);
 		ctrl0_val |= CSI2_C0_VLEN;
-		ccic_reg_write(ccic_dev, REG_CSI2_DPHY5, dphy5_val);
 		ccic_reg_write(ccic_dev, REG_CSI2_CTRL0, ctrl0_val);
 	} else {
 		csiphy_stop(ccic_dev->csiphy);
@@ -390,7 +386,7 @@ int ccic_dphy_hssettle_set(unsigned int ccic_id, unsigned int dphy_freq)
 		return -ENODEV;
 	}
 
-	ccic_reg_write(ccic_dev, REG_CSI2_DPHY3, reg_settle);
+	csiphy_timming_setting(ccic_dev->csiphy, reg_settle);
 	mutex_unlock(&list_lock);
 
 	return 0;

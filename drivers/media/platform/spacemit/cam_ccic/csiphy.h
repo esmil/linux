@@ -23,6 +23,8 @@ int csiphy_stop(struct csiphy_device *csiphy_dev);
 int csiphy_start(struct csiphy_device *csiphy_dev,
 			    struct mipi_csi2 *csi);
 
+void csiphy_timming_setting(struct csiphy_device *csiphy_dev, unsigned int settle);
+
 int ccic_csiphy_register(void);
 void ccic_csiphy_unregister(void);
 #endif /* ifndef __CSIPHY_H__ */

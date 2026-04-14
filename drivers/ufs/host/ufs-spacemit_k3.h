@@ -13,7 +13,6 @@
 #include <linux/reset.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_qos.h>
-#include <linux/workqueue.h>
 
 /* Spacemit K3 UFS host controller vendor specific registers */
 #define UFS_SYS1CLK_1US 0xC0
@@ -36,8 +35,6 @@
 #define UFS_ATOP_BASE 0x1C00
 #define UFS_SNPS_ATOP_BASE 0x0C00
 
-//#define UFS_SYSCLK			500
-#define UFS_SYSCLK 499
 #define UFS_TX_SYMBO_CLK 0x800
 #define UFS_MAX_LINKSTARTUP_TIMER 0xFFFFFFFF
 #define UFS_DL_AFC0REQTIMEOUTVAL_MAX 0xFFFF
@@ -97,12 +94,7 @@ struct ufs_spacemit_k3_host {
 	struct regulator *ufs_vccq; /* Optional Vccq supply 1.2V */
 	struct regulator *ufs_vccq2; /* Optional Vccq2 supply 1.8V*/
 	struct reset_control *rst; /* Reset control for UFS AXI */
-
-	bool first_init_done;
-	bool first_hce_done;
-
-	/* Workqueue for deferred FSM state dump */
-	struct work_struct fsm_dump_work;
+	int saved_spm_lvl;
 };
 
 #define ufs_spacemit_k3_is_link_off(hba) ufshcd_is_link_off(hba)

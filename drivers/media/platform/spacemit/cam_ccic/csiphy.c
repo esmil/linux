@@ -276,6 +276,11 @@ int csiphy_start(struct csiphy_device *csiphy_dev, struct mipi_csi2 *csi)
 	return 0;
 }
 
+void csiphy_timming_setting(struct csiphy_device *csiphy_dev, unsigned int settle)
+{
+	csiphy_writel(csiphy_dev, REG_CSI2_DPHY3, settle);
+}
+
 static DEFINE_MUTEX(csiphy_list_mutex);
 static LIST_HEAD(csiphy_list);
 struct csiphy_device *csiphy_lookup_by_phandle(struct device *dev,

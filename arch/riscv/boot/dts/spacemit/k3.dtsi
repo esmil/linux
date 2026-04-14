@@ -205,6 +205,12 @@
 			no-map;
 		};
 
+		/* reserve 3M for rcpu's dtb space */
+		rcpu_dtb_table: rcpu_dtb_table@100e04000 {
+			reg = <0x1 0xe04000 0x0 0x300000>;
+			no-map;
+		};
+
 		/* reserved 5M for dpu, including mmu table and cmdlist */
 		dpu_resv0: dpu_reserved@101b00000 {
 			compatible = "shared-dma-pool";
@@ -2492,7 +2498,8 @@
 			clock-names = "ufs-aclk";
 			resets = <&syscon_apmu RESET_APMU_UFS_ACLK>;
 			reset-names = "ufs-aclk-rst";
-			freq-table-hz = <491000000 491000000>;
+			clock-freq = <491520000>;
+			freq-table-hz = <491520000 491520000>;
 			lanes-per-direction = <2>;
 			ref-clk-freq = <19200000>;
 			status = "disabled";

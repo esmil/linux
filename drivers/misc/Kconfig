@@ -165,6 +165,14 @@ config ICS932S401
 	  This driver can also be built as a module. If so, the module
 	  will be called ics932s401.
 
+config RT7451_RETIMER
+	tristate "Enable RT7451 Retimer driver"
+	depends on I2C
+	help
+	  Enable support for RT7451 retimer device. The driver performs
+	  initialization sequence during probe to configure the retimer
+	  for proper operation.
+
 config ATMEL_SSC
 	tristate "Device driver for Atmel SSC peripheral"
 	depends on HAS_IOMEM && (ARCH_AT91 || COMPILE_TEST)

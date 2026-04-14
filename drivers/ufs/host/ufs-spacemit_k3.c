@@ -9,16 +9,13 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
-#include <linux/io.h>
-#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
-#include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
-#include <scsi/scsi_eh.h>
+#include <linux/suspend.h>
 #include <scsi/scsi_device.h>
 
 #include <ufs/ufshcd.h>
@@ -57,17 +54,6 @@
 #define ANA_EQ_CTRL_REG_ATTR 0x00CD
 #define ANA_HSGEAR_CTRL_ATTR 0x00C1
 
-/*
- * Keep UFS ACLK at a lower parent rate (409.6MHz) for stable init.
- * This mirrors the "ufs-low-aclk-freq" change from the other environment.
- */
-#define UFS_ACLK_LOW_FREQ_HZ		409600000UL
-
-/* APMU_UFS_CLK_RES_CTRL FC request bit */
-#define UFS_ACLK_FC_REQ		BIT(8)
-#define UFS_ACLK_FC_TIMEOUT_US	10000
-#define UFS_ACLK_FC_DELAY_US	10
-
 /* the delay between TX bursts */
 #define VS_TX_BURST_CLOSURE_DELAY 0xD084
 
@@ -78,6 +64,8 @@ static int spacemit_k3_regs[] = {
 	(UFS_PHY_MNG_BASE + UFS_DEVICE_IO_CTRL),
 	0xFFF,
 };
+
+static u32 spacemit_k3_clock_freq;
 
 /* PHY register magic values */
 #define MPHY_PU_ALL 0x87f
@@ -151,14 +139,8 @@ static void ufs_spacemit_k3_dump_host_regs(struct ufs_hba *hba)
 	kfree(buf);
 }
 
-/* M-PHY FSM states */
-#define MPHY_RX_FSM_STATE 0xC1
 #define MPHY_TX_FSM_STATE 0x41
-
-static bool is_fsm_state_valid(u32 state)
-{
-	return (state == FSM_STATE_ACTIVE || state == FSM_STATE_LS_BURST);
-}
+#define MPHY_RX_FSM_STATE 0xC1
 
 static int ufs_spacemit_k3_check_hibern8(struct ufs_hba *hba)
 {
@@ -208,46 +190,6 @@ static int ufs_spacemit_k3_check_hibern8(struct ufs_hba *hba)
 	return err;
 }
 
-static void ufs_spacemit_k3_dump_fsm_state(struct ufs_hba *hba)
-{
-	u32 tx0_fsm_val, tx1_fsm_val, rx0_fsm_val, rx1_fsm_val;
-	int err;
-
-	err = ufshcd_dme_get(hba,
-			     UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
-			     &tx0_fsm_val);
-	if (err)
-		return;
-	usleep_range(100, 200);
-
-	err = ufshcd_dme_get(hba,
-			     UIC_ARG_MIB_SEL(MPHY_TX_FSM_STATE, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(1)),
-			     &tx1_fsm_val);
-	if (err)
-		return;
-	usleep_range(100, 200);
-
-	err = ufshcd_dme_get(hba,
-			     UIC_ARG_MIB_SEL(MPHY_RX_FSM_STATE, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
-			     &rx0_fsm_val);
-	if (err)
-		return;
-	usleep_range(100, 200);
-
-	err = ufshcd_dme_get(hba,
-			     UIC_ARG_MIB_SEL(MPHY_RX_FSM_STATE, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
-			     &rx1_fsm_val);
-	if (err)
-		return;
-	usleep_range(100, 200);
-
-	if (!is_fsm_state_valid(tx0_fsm_val) || !is_fsm_state_valid(tx1_fsm_val) ||
-	    !is_fsm_state_valid(rx0_fsm_val) || !is_fsm_state_valid(rx1_fsm_val)) {
-		dev_warn(hba->dev, "FSM state invalid - TX:[0x%x, 0x%x], RX:[0x%x, 0x%x]\n",
-			 tx0_fsm_val, tx1_fsm_val, rx0_fsm_val, rx1_fsm_val);
-	}
-}
-
 static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_lanes)
 {
 	int err = 0;
@@ -257,35 +199,6 @@ static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_l
 		dev_err(hba->dev, "%s: couldn't read PA_CONNECTEDTXDATALANES %d\n", __func__, err);
 
 	return err;
-}
-
-static int ufs_spacemit_k3_set_aclk_low_freq(struct ufs_hba *hba)
-{
-	struct ufs_clk_info *clki, *ufs_aclk = NULL;
-	struct list_head *head = &hba->clk_list_head;
-	int ret;
-
-	if (list_empty(head))
-		return -ENOENT;
-
-	list_for_each_entry(clki, head, list) {
-		if (clki->name && !strcmp(clki->name, "ufs-aclk")) {
-			ufs_aclk = clki;
-			break;
-		}
-	}
-
-	if (!ufs_aclk || !ufs_aclk->clk)
-		return -ENOENT;
-
-	ret = clk_set_rate(ufs_aclk->clk, UFS_ACLK_LOW_FREQ_HZ);
-	if (ret)
-		dev_warn(hba->dev, "Failed to set ufs-aclk to %luHz: %d\n",
-			 UFS_ACLK_LOW_FREQ_HZ, ret);
-	else
-		dev_dbg(hba->dev, "ufs-aclk set to %luHz\n", clk_get_rate(ufs_aclk->clk));
-
-	return ret;
 }
 
 static u32 ufs_spacemit_k3_get_sys1clk_1us(struct ufs_hba *hba)
@@ -312,14 +225,26 @@ static u32 ufs_spacemit_k3_get_sys1clk_1us(struct ufs_hba *hba)
 	return DIV_ROUND_CLOSEST(rate_hz, 1000000);
 }
 
-/**
- * ufs_spacemit_k3_mphy_init
- * @hba: host controller instance
- */
+static int ufs_spacemit_k3_wait_mphy_pll_lock(struct ufs_hba *hba)
+{
+	u32 reg_val = 0;
+	int timeout = MPHY_PLL_LOCK_TIMEOUT_US;
+
+	while (timeout-- > 0) {
+		reg_val = ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL);
+		if (reg_val & MPHY_PLL_LOCK_BIT)
+			return 0;
+		udelay(1);
+	}
+
+	return -ETIMEDOUT;
+}
+
+static __maybe_unused void ufs_spacemit_k3_get_unipro_ver(struct ufs_hba *hba);
+
 static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 {
-	u32 reg_val;
-	int timeout;
+	int ret;
 
 	/* reset all mphy logical */
 	ufshcd_writel(hba, 0x003, UFS_PHY_MNG_BASE + 0x0);
@@ -338,48 +263,26 @@ static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 	mdelay(1);
 
 	/* deasserted ufs device reset & refer clk output enable */
-	ufshcd_writel(hba, 0x101, UFS_PHY_MNG_BASE + 0xC);
+	ufshcd_writel(hba, MPHY_DEVICE_RESET_DEASSERT,
+		      UFS_PHY_MNG_BASE + UFS_DEVICE_IO_CTRL);
 	mdelay(1);
 
-	/* note: refer clk 26MHz */
-
-	/* wait PLL_lock here, bit31 at 0x0104 */
-	timeout = MPHY_PLL_LOCK_TIMEOUT_US;
-	while (timeout > 0) {
-		reg_val = ufshcd_readl(hba, UFS_PHY_MNG_BASE + 0x4);
-		if (reg_val & MPHY_PLL_LOCK_BIT)
-			break;
-		udelay(1);
-		timeout--;
+	ret = ufs_spacemit_k3_wait_mphy_pll_lock(hba);
+	if (ret) {
+		dev_err(hba->dev, "%s: M-PHY PLL lock timeout, UFS_MPHY_PU_CTRL=0x%08x\n",
+			__func__, ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL));
+		return ret;
 	}
 
-	if (timeout <= 0) {
-		dev_err(hba->dev, "M-PHY PLL lock timeout in mphy_init\n");
-		return -ETIMEDOUT;
-	}
-
-	dev_info(hba->dev, "M-PHY PLL locked successfully\n");
-
-	/*
-	 * tx_gear switch
-	 *
-	 * TODO: Check if udelay(20) can be reduced or replaced with status
-	 * polling. Need to verify if MPHY_BKDR_CTRL or ATOP 0xC2 registers
-	 * have ready/done bits. The mdelay(5) may also be optimized.
-	 */
-	ufshcd_writel(hba, 0x1, UFS_PHY_MNG_BASE + 0x08);
+	ufshcd_writel(hba, 0x1, UFS_PHY_MNG_BASE + UFS_MPHY_BKDR_CTRL);
 	udelay(20);
 
-	ufshcd_writel(hba, 0x40, UFS_ATOP_BASE + (0xC2 << 2));
+	ufshcd_writel(hba, 0x00, UFS_ATOP_BASE + (0xC1 << 2));
+	ufshcd_writel(hba, 0x00, UFS_ATOP_BASE + (0xC2 << 2));
 	udelay(20);
 
-	ufshcd_writel(hba, 0x0, UFS_PHY_MNG_BASE + 0x08);
+	ufshcd_writel(hba, 0x0, UFS_PHY_MNG_BASE + UFS_MPHY_BKDR_CTRL);
 	udelay(20);
-
-	/* Extra settle time after MPHY tuning */
-	mdelay(5);
-
-	dev_dbg(hba->dev, "M-PHY init completed\n");
 
 	return 0;
 }
@@ -534,73 +437,17 @@ static int ufs_spacemit_k3_uniprov1p6_init(struct ufs_hba *hba)
 	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F2, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x9F);
 	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F2, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x9F);
 
+	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0xfc), 0xfc);
+	if (err) {
+		dev_err(hba->dev, "Writing 0xfc error \n");
+	}
+
 	dev_info(hba->dev, "UniPro v1.6 init completed\n");
 
 	return 0;
 }
 
-#ifdef CONFIG_SPACEMIT_K3_UFS_CRYPTO_DEBUG
-static const u32 ufs_spacemit_k3_test_key128[] = {
-	0x87563412,
-	0x88573513,
-	0x89583614,
-	0x8a593715,
-};
-
-static const u32 ufs_spacemit_k3_test_key256[] = {
-	0x87563412,
-	0x88573513,
-	0x89583614,
-	0x8a593715,
-	0x8b5a3816,
-	0x8c5b3917,
-	0x8d5c3a18,
-	0x8e5d3b19,
-};
-
-static void ufs_spacemit_k3_program_key_slot(struct ufs_hba *hba, int key_slot,
-					    const u32 *key_vals, int key_count,
-					    u32 cfg16, u32 cfg17)
-{
-	int i;
-	u32 slot_offset;
-	union ufs_crypto_cfg_entry cfg;
-
-	memset(&cfg, 0, sizeof(cfg));
-	for (i = 0; i < key_count && i < 16; i++)
-		cfg.reg_val[i] = key_vals[i];
-	cfg.reg_val[16] = cfg16;
-	cfg.reg_val[17] = cfg17;
-
-	slot_offset = hba->crypto_cfg_register +
-		     key_slot * sizeof(union ufs_crypto_cfg_entry);
-
-	ufshcd_writel(hba, 0, slot_offset + 16 * sizeof(cfg.reg_val[0]));
-	for (i = 0; i < 16; i++)
-		ufshcd_writel(hba, cfg.reg_val[i],
-			     slot_offset + i * sizeof(cfg.reg_val[0]));
-	ufshcd_writel(hba, cfg.reg_val[17],
-		     slot_offset + 17 * sizeof(cfg.reg_val[0]));
-	ufshcd_writel(hba, cfg.reg_val[16],
-		     slot_offset + 16 * sizeof(cfg.reg_val[0]));
-}
-
-static int ufs_spacemit_k3_program_key_test(struct ufs_hba *hba)
-{
-	dev_info(hba->dev, "Crypto key test start\n");
-
-	ufs_spacemit_k3_program_key_slot(hba, 0, ufs_spacemit_k3_test_key128,
-				       ARRAY_SIZE(ufs_spacemit_k3_test_key128),
-				       0x80000003, 0x0);
-	ufs_spacemit_k3_program_key_slot(hba, 1, ufs_spacemit_k3_test_key256,
-				       ARRAY_SIZE(ufs_spacemit_k3_test_key256),
-				       0x80000103, 0x0);
-
-	return 0;
-}
-#endif
-
-static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_cap, u32 pwr_hs)
+static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_cap)
 {
 	if (!ufs_spacemit_k3_cap)
 		return;
@@ -614,8 +461,8 @@ static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_
 	ufs_spacemit_k3_cap->pwm_tx_gear = UFS_SPACEMIT_K3_LIMIT_PWMGEAR_TX;
 	ufs_spacemit_k3_cap->rx_pwr_pwm = UFS_SPACEMIT_K3_LIMIT_RX_PWR_PWM;
 	ufs_spacemit_k3_cap->tx_pwr_pwm = UFS_SPACEMIT_K3_LIMIT_TX_PWR_PWM;
-	ufs_spacemit_k3_cap->rx_pwr_hs = pwr_hs;
-	ufs_spacemit_k3_cap->tx_pwr_hs = pwr_hs;
+	ufs_spacemit_k3_cap->rx_pwr_hs = UFS_SPACEMIT_K3_LIMIT_RX_PWR_HS;
+	ufs_spacemit_k3_cap->tx_pwr_hs = UFS_SPACEMIT_K3_LIMIT_TX_PWR_HS;
 	ufs_spacemit_k3_cap->hs_rate = UFS_SPACEMIT_K3_LIMIT_HS_RATE;
 	ufs_spacemit_k3_cap->desired_working_mode = UFS_HS_MODE;
 }
@@ -623,50 +470,38 @@ static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_
 static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 {
 	uint32_t reg_val;
-	u32 sys1clk_1us;
+	u32 real_sysclk;
+	int err;
 
 	/*mphy_init*/
-	ufs_spacemit_k3_mphy_init(hba);
+	err = ufs_spacemit_k3_mphy_init(hba);
+	if (err)
+		return err;
 
 	/* unipro v1p6 init */
-	ufs_spacemit_k3_uniprov1p6_init(hba);
+	err = ufs_spacemit_k3_uniprov1p6_init(hba);
+	if (err)
+		return err;
 
-	/* config sysclk and tx symbol clk before link startup */
-	reg_val = UFS_MAX_LINKSTARTUP_TIMER;
-
-	/* clear bit0~bit3, select b0 design */
-	reg_val &= ~0xf;
-
-	ufshcd_writel(hba, reg_val, UFS_PA_LINK_STARTUP_TIMER);
-
-	sys1clk_1us = ufs_spacemit_k3_get_sys1clk_1us(hba);
-	if (!sys1clk_1us)
-		sys1clk_1us = DIV_ROUND_CLOSEST(UFS_ACLK_LOW_FREQ_HZ, 1000000);
-	ufshcd_writel(hba, sys1clk_1us, UFS_SYS1CLK_1US);
-	ufshcd_writel(hba, UFS_TX_SYMBO_CLK, UFS_TX_SYMBOL_CLK_NS_US);
-
-	dev_dbg(hba->dev, "REG_UFS_SYS1CLK_1US: 0x%x\n", ufshcd_readl(hba, UFS_SYS1CLK_1US));
-	dev_dbg(hba->dev, "REG_UFS_TX_SYMBOL_CLK_NS_US: 0x%x\n",
-		ufshcd_readl(hba, UFS_TX_SYMBOL_CLK_NS_US));
-
-#ifdef CONFIG_SCSI_UFS_CRYPTO
-	if (hba->caps & UFSHCD_CAP_CRYPTO) {
-		reg_val = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
-		dev_dbg(hba->dev, "REG_INTERRUPT_ENABLE before: 0x%x\n", reg_val);
-
-		/* Enable crypto interrupts */
-		reg_val |= BIT(26) | BIT(27);
-		ufshcd_writel(hba, reg_val, REG_INTERRUPT_ENABLE);
-
-		dev_dbg(hba->dev, "REG_INTERRUPT_ENABLE after: 0x%x\n",
-			ufshcd_readl(hba, REG_INTERRUPT_ENABLE));
+	real_sysclk = spacemit_k3_clock_freq > 0 ?
+		      spacemit_k3_clock_freq / 1000000 :
+		      ufs_spacemit_k3_get_sys1clk_1us(hba);
+	if (!real_sysclk) {
+		dev_err(hba->dev, "%s: invalid sysclk\n", __func__);
+		return -EINVAL;
 	}
-#ifdef CONFIG_SPACEMIT_K3_UFS_CRYPTO_DEBUG
-	/* crypto base test */
-	ufs_spacemit_k3_program_key_test(hba);
-#endif
 
-#endif
+	ufshcd_writel(hba, real_sysclk, UFS_SYS1CLK_1US);
+
+	reg_val = 1000 / real_sysclk;
+	if ((1000 % real_sysclk) > (real_sysclk / 2))
+		reg_val += 1;
+	reg_val <<= 10;
+	ufshcd_writel(hba, reg_val, UFS_TX_SYMBOL_CLK_NS_US);
+
+	reg_val = real_sysclk * 100000;
+	reg_val &= ~0xf;
+	ufshcd_writel(hba, reg_val, UFS_PA_LINK_STARTUP_TIMER);
 
 	return 0;
 }
@@ -674,13 +509,32 @@ static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 static int ufs_spacemit_k3_link_startup_post_change(struct ufs_hba *hba)
 {
 	u32 tx_lanes;
-	/* add 0xe8 make UFS2.1 run GEAR3+2Lane@409M */
-	mdelay(5);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0xe8, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0x97);
-	mdelay(1);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0xe8, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0xd7);
-	mdelay(1);
-	ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0xe8, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0x17);
+	u32 rx1_fsm_status;
+	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+
+	ufs_spacemit_k3_get_unipro_ver(hba);
+	ufshcd_dme_get(hba,
+		       UIC_ARG_MIB_SEL(0xC1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
+		       &rx1_fsm_status);
+
+	if (rx1_fsm_status == 0xe &&
+	    host->remote_unipro_ver < UFS_UNIPRO_VER_1_8) {
+		ufshcd_dme_set(hba,
+			       UIC_ARG_MIB_SEL(0xe8, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
+			       0x97);
+		ufshcd_dme_set(hba,
+			       UIC_ARG_MIB_SEL(0xe8, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
+			       0xd7);
+		ufshcd_dme_set(hba,
+			       UIC_ARG_MIB_SEL(0xe8, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)),
+			       0x17);
+
+		ufshcd_dme_get(hba,
+			       UIC_ARG_MIB_SEL(0xC1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
+			       &rx1_fsm_status);
+		dev_err(hba->dev, "ufs: send dummy frame, rx1_fsm_status:0x%x\n",
+			rx1_fsm_status);
+	}
 
 	/* DL_AFC0REQTIMEOUTVAL_MAX */
 	ufshcd_dme_set(hba, UIC_ARG_MIB(DL_AFC0REQTIMEOUTVAL), UFS_DL_AFC0REQTIMEOUTVAL_MAX);
@@ -695,14 +549,17 @@ static int ufs_spacemit_k3_link_startup_notify(struct ufs_hba *hba,
 
 	switch (status) {
 	case PRE_CHANGE:
-		ufs_spacemit_k3_link_startup_pre_change(hba);
+		err = ufs_spacemit_k3_link_startup_pre_change(hba);
 		break;
 	case POST_CHANGE:
-		ufs_spacemit_k3_link_startup_post_change(hba);
+		err = ufs_spacemit_k3_link_startup_post_change(hba);
 		break;
 	default:
 		break;
 	}
+
+	if (err)
+		dev_err(hba->dev, "%s: status=%d failed: %d\n", __func__, status, err);
 
 	return err;
 }
@@ -731,72 +588,6 @@ static int ufs_spacemit_k3_runtime_resume(struct device *dev)
 }
 #endif
 
-static int ufs_spacemit_k3_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
-				   enum ufs_notify_change_status status)
-{
-	struct scsi_target *starget, *found_starget = NULL;
-	struct Scsi_Host *shost = hba->host;
-	int ret = 0;
-
-	if (status == PRE_CHANGE)
-		return 0;
-
-	/* TODO: Handle link off/inactive states */
-	if (ufs_spacemit_k3_is_link_off(hba) || !ufs_spacemit_k3_is_link_active(hba)) {
-		dev_dbg(hba->dev, "Link not active during suspend\n");
-	}
-
-	if (pm_op == UFS_RUNTIME_PM)
-		return 0;
-
-	pm_runtime_put_sync(hba->dev);
-
-	if (shost) {
-		list_for_each_entry(starget, &shost->__targets, siblings) {
-			if (starget->id == 0 && starget->channel == 0) {
-				found_starget = starget;
-				break;
-			}
-		}
-	}
-	if (found_starget) {
-		pm_runtime_put_sync(&starget->dev);
-	}
-
-	return ret;
-}
-
-static int ufs_spacemit_k3_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
-{
-	struct scsi_target *starget, *found_starget = NULL;
-	struct Scsi_Host *shost = hba->host;
-
-	/* TODO: Handle link off/inactive states */
-	if (ufs_spacemit_k3_is_link_off(hba) || !ufs_spacemit_k3_is_link_active(hba)) {
-		dev_dbg(hba->dev, "Link not active during resume\n");
-	}
-
-	if (pm_op == UFS_RUNTIME_PM)
-		return 0;
-
-	pm_runtime_get_sync(hba->dev);
-
-	if (shost) {
-		list_for_each_entry(starget, &shost->__targets, siblings) {
-			if (starget->id == 0 && starget->channel == 0) {
-				found_starget = starget;
-				break;
-			}
-		}
-	}
-
-	if (found_starget) {
-		pm_runtime_get_sync(&starget->dev);
-	}
-
-	return 0;
-}
-
 static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 					     enum ufs_notify_change_status status,
 					     const struct ufs_pa_layer_attr *dev_max_params,
@@ -805,8 +596,6 @@ static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
 	struct ufs_host_params ufs_spacemit_k3_cap;
 	int ret = 0;
-	u32 reg_val;
-	int timeout;
 
 	if (!dev_req_params) {
 		dev_err(hba->dev, "dev_req_params is NULL\n");
@@ -815,7 +604,7 @@ static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 
 	switch (status) {
 	case PRE_CHANGE:
-		ufs_spacemit_k3_set_dev_cap(&ufs_spacemit_k3_cap, FAST_MODE);
+		ufs_spacemit_k3_set_dev_cap(&ufs_spacemit_k3_cap);
 		ret = ufshcd_negotiate_pwr_params(&ufs_spacemit_k3_cap, dev_max_params,
 						  dev_req_params);
 		if (ret) {
@@ -833,24 +622,13 @@ static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 		/* cache the power mode parameters to use internally */
 		memcpy(&host->dev_req_params, dev_req_params, sizeof(*dev_req_params));
 
-		/* wait PLL_lock here, bit31 at UFS_MPHY_PU_CTRL */
-		timeout = MPHY_PLL_LOCK_TIMEOUT_US;
-		while (timeout > 0) {
-			reg_val = ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL);
-			if (reg_val & MPHY_PLL_LOCK_BIT)
-				break;
-			udelay(1);
-			timeout--;
+		ret = ufs_spacemit_k3_wait_mphy_pll_lock(hba);
+		if (ret) {
+			dev_err(hba->dev,
+				"%s: M-PHY PLL lock timeout after power mode change, UFS_MPHY_PU_CTRL=0x%08x\n",
+				__func__, ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL));
+			return ret;
 		}
-
-		if (timeout <= 0) {
-			dev_err(hba->dev, "PLL lock timeout after power mode change\n");
-			return -ETIMEDOUT;
-		}
-
-		dev_info(hba->dev, "M-PHY PLL locked after power mode change\n");
-		/*set ANA_HSGEAR_CTRL_ATTR back to default value*/
-		ufshcd_dme_set(hba, UIC_ARG_MIB(ANA_HSGEAR_CTRL_ATTR), 0x00);
 		break;
 	default:
 		return -EINVAL;
@@ -876,8 +654,6 @@ static int ufs_spacemit_k3_quirk_host_pa_saveconfigtime(struct ufs_hba *hba)
 static int ufs_spacemit_k3_apply_dev_quirks(struct ufs_hba *hba)
 {
 	int err = 0;
-	u32 reg_val;
-	int timeout;
 
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_HOST_PA_SAVECONFIGTIME)
 		err = ufs_spacemit_k3_quirk_host_pa_saveconfigtime(hba);
@@ -900,25 +676,12 @@ static int ufs_spacemit_k3_apply_dev_quirks(struct ufs_hba *hba)
 		       0x0);
 	mdelay(1);
 
-	mdelay(10);
-
-	/*use backdoor reg to pre-set TX RATE/GEAR to let PLL lock before set_power_mode switch*/
-	ufshcd_dme_set(hba, UIC_ARG_MIB(ANA_HSGEAR_CTRL_ATTR), 0x25);
-	mdelay(10);
-
-	/* wait PLL_lock here, bit31 at UFS_MPHY_PU_CTRL */
-	timeout = MPHY_PLL_LOCK_TIMEOUT_US;
-	while (timeout > 0) {
-		reg_val = ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL);
-		if (reg_val & MPHY_PLL_LOCK_BIT)
-			break;
-		udelay(1);
-		timeout--;
-	}
-
-	if (timeout <= 0) {
-		dev_err(hba->dev, "PLL lock timeout in apply_dev_quirks\n");
-		return -ETIMEDOUT;
+	err = ufs_spacemit_k3_wait_mphy_pll_lock(hba);
+	if (err) {
+		dev_err(hba->dev,
+			"%s: M-PHY PLL lock timeout after applying device quirks, UFS_MPHY_PU_CTRL=0x%08x\n",
+			__func__, ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL));
+		return err;
 	}
 
 	return err;
@@ -964,11 +727,10 @@ static void ufs_spacemit_k3_advertise_quirks(struct ufs_hba *hba)
 {
 	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
 
-	/* TODO: hw_ver is not currently initialized; version-based quirks
-	 * selection is effectively dead code. Either add proper hardware
-	 * version detection and populate host->hw_ver, or remove/adjust
-	 * these conditions based on real hardware behavior.
-	 */
+	if (!host->hw_ver.major)
+		dev_warn_once(hba->dev,
+			      "hw_ver is unset, ASR version-gated quirks are currently inactive\n");
+
 	if (host->hw_ver.major == 0x01) {
 		hba->quirks |= UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS |
 			       UFSHCD_QUIRK_BROKEN_PA_RXHSUNTERMCAP |
@@ -981,12 +743,6 @@ static void ufs_spacemit_k3_advertise_quirks(struct ufs_hba *hba)
 	if (host->hw_ver.major == 0x2) {
 		hba->quirks |= UFSHCD_QUIRK_BROKEN_UFS_HCI_VERSION;
 	}
-
-	/*
-	 * hw_ver isn't initialized yet (see TODO above). Force-disable
-	 * interrupt aggregation to avoid completion loss under stress.
-	 */
-	hba->quirks |= UFSHCD_QUIRK_BROKEN_INTR_AGGR;
 
 	/* break auto hibern8 */
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8;
@@ -1004,7 +760,7 @@ static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
 	/* hba->caps |= UFSHCD_CAP_WB_EN; */
 
 	/* support runtime autosuspend */
-	hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
+	/* hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND; */
 }
 
 static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
@@ -1025,39 +781,6 @@ static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
  */
 static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is_scsi_cmd)
 {
-#ifdef CONFIG_SCSI_UFS_CRYPTO
-	u32 doorbell = 0;
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
-	struct ufshcd_lrb *lrbp = &hba->lrb[tag];
-	bool curr_request_crypto;
-
-	if (!(hba->caps & UFSHCD_CAP_CRYPTO))
-		return;
-
-	if (is_scsi_cmd && (lrbp->crypto_key_slot >= 0))
-		curr_request_crypto = true;
-	else
-		curr_request_crypto = false;
-
-	/* crypto request need to wait for the clean doorbell to avoid data corruption */
-	if (host->prev_request_crypto) {
-		int timeout = 10000; /* 10ms timeout */
-
-		while (timeout > 0) {
-			doorbell = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_DOOR_BELL);
-			if (!doorbell)
-				break;
-			udelay(1);
-			timeout--;
-		}
-
-		if (timeout <= 0)
-			dev_warn(hba->dev, "Doorbell wait timeout in crypto path\n");
-	}
-
-	host->prev_request_crypto = curr_request_crypto;
-#endif
-
 	/*
 	 * Ensure UTRD/UPIU writes are visible before the core rings doorbell.
 	 * This mitigates command loss under high-concurrency random IO.
@@ -1076,123 +799,116 @@ static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is
 static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
 					enum ufs_notify_change_status status)
 {
+	struct ufs_clk_info *clki;
+	struct ufs_clk_info *iter;
 	int ret = 0;
+	unsigned long rate;
 
 	switch (status) {
 	case PRE_CHANGE:
-		if (on) {
-		} else {
-		}
 		break;
 
 	case POST_CHANGE:
 		if (on) {
-			ufs_spacemit_k3_set_aclk_low_freq(hba);
-		} else {
+			clki = NULL;
+			list_for_each_entry(iter, &hba->clk_list_head, list) {
+				if (iter->name && !strcmp(iter->name, "ufs-aclk")) {
+					clki = iter;
+					break;
+				}
+			}
+			if (!clki || !clki->clk)
+				break;
+
+			rate = spacemit_k3_clock_freq ?: clki->curr_freq ?:
+			       clki->max_freq ?: clk_get_rate(clki->clk);
+			if (rate) {
+				ret = clk_set_rate(clki->clk, rate);
+				if (ret)
+					break;
+				clki->curr_freq = rate;
+			}
 		}
 		break;
 	}
-
-	dev_dbg(hba->dev, "ufs clocks %s, status=%s\n", on ? "on" : "off",
-		status == PRE_CHANGE ? "PRE_CHANGE" : "POST_CHANGE");
 
 	return ret;
 }
 
 /**
  * ufs_spacemit_k3_platform_init
- * @dev: device pointer
+ * @pdev: platform device pointer
  *
  * Prepare the clk source and reset ufs_aclk
  */
-static void ufs_spacemit_k3_platform_init(struct device *dev)
+static int ufs_spacemit_k3_platform_init(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct clk *ufs_aclk;
 	struct reset_control *rst;
-	unsigned long rate;
 	u32 freq_table[2];
+	u32 clock_freq = 0;
+	unsigned long rate;
 	int ret;
 
-	/*
-	 * Replace direct MPMU/APMU register pokes with the clock framework:
-	 * - parent selection/divider/FC handshake are handled by the CCU
-	 *   clock driver (CCU_MUX_DIV_GATE_FC_DEFINE for ufs_aclk).
-	 * - the 491.52MHz parent gate (MPMU_ACGR BIT(21)) is managed by the
-	 *   common clock tree.
-	 */
 	ufs_aclk = devm_clk_get_optional(dev, "ufs-aclk");
 	if (IS_ERR(ufs_aclk)) {
-		dev_err(dev, "Failed to get ufs-aclk: %ld\n", PTR_ERR(ufs_aclk));
-		return;
-	}
-	if (!ufs_aclk) {
-		dev_dbg(dev, "No ufs-aclk clock, skipping platform clock init\n");
-		return;
+		dev_err(dev, "Failed to get %s: %ld\n",
+			"ufs-aclk", PTR_ERR(ufs_aclk));
+		return PTR_ERR(ufs_aclk);
 	}
 
-	rate = clk_get_rate(ufs_aclk);
+	rst = reset_control_get_exclusive(dev, "ufs-aclk-rst");
+	if (IS_ERR(rst)) {
+		dev_err_probe(dev, PTR_ERR(rst),
+			      "Failed to get required reset control\n");
+		return PTR_ERR(rst);
+	}
+
+	ret = reset_control_assert(rst);
+	if (ret) {
+		dev_err(dev, "Reset assert failed: %d\n", ret);
+		goto out_put_reset;
+	}
+	udelay(1);
+	ret = reset_control_deassert(rst);
+	if (ret) {
+		dev_err(dev, "Reset deassert failed: %d\n", ret);
+		goto out_put_reset;
+	}
+	reset_control_put(rst);
+
+	if (!ufs_aclk)
+		return 0;
+
+	rate = 0;
 	if (dev->of_node &&
-	    !of_property_read_u32_array(dev->of_node, "freq-table-hz",
-					freq_table, ARRAY_SIZE(freq_table)) &&
-	    freq_table[0])
+	    !of_property_read_u32(dev->of_node, "clock-freq", &clock_freq) &&
+	    clock_freq)
+		rate = clock_freq;
+	else if (dev->of_node &&
+		 !of_property_read_u32_array(dev->of_node, "freq-table-hz",
+					     freq_table, ARRAY_SIZE(freq_table)) &&
+		 freq_table[0])
 		rate = freq_table[0];
 
-	if (!rate || rate > UFS_ACLK_LOW_FREQ_HZ)
-		rate = UFS_ACLK_LOW_FREQ_HZ;
+	if (!rate)
+		rate = clk_get_rate(ufs_aclk);
 
-	/*
-	 * Reset UFS ACLK domain via reset framework. Use non-devm get/put so
-	 * the later variant init can safely request the same reset line
-	 * exclusively.
-	 */
-	rst = reset_control_get_optional_exclusive(dev, "ufs-aclk-rst");
-	if (IS_ERR(rst)) {
-		dev_warn(dev, "Failed to get reset control: %ld\n", PTR_ERR(rst));
-		rst = NULL;
-	}
-	if (rst) {
-		ret = reset_control_assert(rst);
-		if (ret)
-			dev_warn(dev, "Reset assert failed: %d\n", ret);
-		udelay(1);
-		ret = reset_control_deassert(rst);
-		if (ret)
-			dev_warn(dev, "Reset deassert failed: %d\n", ret);
-		reset_control_put(rst);
-	}
-
-	/*
-	 * Apply the configured rate to force the clock driver to perform the
-	 * FC handshake, matching the flow previously implemented via PMUAP.
-	 */
-	if (!rate) {
-		dev_warn(dev, "ufs-aclk rate is 0, skipping clk_set_rate\n");
-		return;
-	}
+	spacemit_k3_clock_freq = rate;
 
 	ret = clk_set_rate(ufs_aclk, rate);
-	if (ret)
-		dev_err(dev, "Failed to set ufs-aclk rate to %luHz: %d\n", rate, ret);
-	else
-		dev_dbg(dev, "ufs-aclk configured: %luHz\n", clk_get_rate(ufs_aclk));
-}
+	if (ret) {
+		dev_err(dev, "Failed to set %s rate to %luHz: %d\n",
+			"ufs-aclk", rate, ret);
+		return ret;
+	}
 
-/**
- * ufs_spacemit_k3_fsm_dump_work - Deferred work to dump FSM state
- * @work: work structure
- *
- * This function is called from a workqueue context (not interrupt context),
- * allowing safe execution of blocking operations like ufshcd_dme_get().
- */
-static void ufs_spacemit_k3_fsm_dump_work(struct work_struct *work)
-{
-	struct ufs_spacemit_k3_host *host = container_of(work, struct ufs_spacemit_k3_host,
-							  fsm_dump_work);
-	struct ufs_hba *hba = host->hba;
+	return 0;
 
-	/* Safe to call blocking functions in workqueue context */
-	if (ufshcd_is_link_active(hba))
-		ufs_spacemit_k3_dump_fsm_state(hba);
+out_put_reset:
+	reset_control_put(rst);
+	return ret;
 }
 
 /**
@@ -1212,43 +928,42 @@ static int ufs_spacemit_k3_init(struct ufs_hba *hba)
 		goto out;
 	}
 
-	/* Get reset control from device tree */
-	host->rst = devm_reset_control_get_optional_exclusive(dev, "ufs-aclk-rst");
+	host->rst = devm_reset_control_get_exclusive(dev, "ufs-aclk-rst");
 	if (IS_ERR(host->rst)) {
 		err = PTR_ERR(host->rst);
-		dev_err(dev, "Failed to get reset control: %d\n", err);
-		host->rst = NULL;
-		/* Continue without reset control - will use manual PMUAP method */
-	} else if (host->rst) {
-		/* Perform initial reset cycle */
-		reset_control_assert(host->rst);
-		udelay(1);
-		reset_control_deassert(host->rst);
-		dev_info(dev, "Reset control initialized successfully\n");
+		dev_err_probe(dev, err, "Failed to get required reset control\n");
+		goto out;
 	}
 
 	/* Make a two way bind between the spacemit k3 host and the hba */
 	host->hba = hba;
+	host->saved_spm_lvl = -1;
 	ufshcd_set_variant(hba, host);
 	ufs_spacemit_k3_set_caps(hba);
 	ufs_spacemit_k3_advertise_quirks(hba);
 
-	/* Initialize workqueue for deferred FSM state dump */
-	INIT_WORK(&host->fsm_dump_work, ufs_spacemit_k3_fsm_dump_work);
+	/*
+	 * Keep the link active by default. Standby, where the UFS power is lost
+	 * externally, overrides system PM to UFS_PM_LVL_5 in prepare().
+	 */
+	hba->rpm_lvl = UFS_PM_LVL_2;
+	hba->spm_lvl = UFS_PM_LVL_2;
 
 	err = ufshcd_vops_phy_initialization(host->hba);
 out:
 	return err;
 }
 
-static int ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
+static int __maybe_unused ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 {
 	int ret = 0;
 	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
 	struct ufs_reg_snapshot save_regs;
-	struct ufs_clk_info *clki = NULL;
+	struct ufs_clk_info *clki;
+	struct ufs_clk_info *iter;
 	struct device *dev = hba->dev;
-	struct list_head *head = &hba->clk_list_head;
+	bool clk_was_enabled = false;
+	unsigned long rate = 0;
 
 	/* save host registers */
 	save_regs.reg_utrlba = ufshcd_readl(hba, REG_UTP_TRANSFER_REQ_LIST_BASE_L);
@@ -1262,61 +977,61 @@ static int ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 	save_regs.reg_pa_link = ufshcd_readl(hba, UFS_PA_LINK_STARTUP_TIMER);
 	save_regs.reg_cfg1 = ufshcd_readl(hba, UFS_CFG1);
 
-	/* get ufs aclk from clock list (already parsed from DTS) */
-	if (!list_empty(head)) {
-		list_for_each_entry(clki, head, list) {
-			if (clki->name && !strcmp(clki->name, "ufs-aclk"))
-				break;
+	clki = NULL;
+	list_for_each_entry(iter, &hba->clk_list_head, list) {
+		if (iter->name && !strcmp(iter->name, "ufs-aclk")) {
+			clki = iter;
+			break;
 		}
 	}
 	if (!clki || !clki->clk) {
-		dev_err(dev, "Failed to find ufs-aclk in clock list\n");
+		dev_err(dev, "Failed to find %s in clock list\n",
+			"ufs-aclk");
 		ret = -ENOENT;
 		goto out;
 	}
 
 	/* Disable clock before reset */
-	if (__clk_is_enabled(clki->clk)) {
+	clk_was_enabled = clki->enabled || __clk_is_enabled(clki->clk);
+	if (clk_was_enabled) {
 		clk_disable_unprepare(clki->clk);
+		clki->enabled = false;
 	}
 
-	/* Perform AXI reset using Reset Framework */
-	if (host->rst) {
-		dev_dbg(dev, "Asserting UFS AXI reset via reset framework\n");
-		ret = reset_control_assert(host->rst);
-		if (ret) {
-			dev_err(dev, "Reset assert failed: %d\n", ret);
-			goto out;
-		}
-		usleep_range(10, 20);
+	dev_dbg(dev, "%s: assert ufs-aclk-rst\n", __func__);
+	ret = reset_control_assert(host->rst);
+	if (ret) {
+		dev_err(dev, "%s: reset assert failed: %d\n", __func__, ret);
+		goto out;
+	}
+	usleep_range(10, 20);
 
-		ret = reset_control_deassert(host->rst);
+	ret = reset_control_deassert(host->rst);
+	if (ret) {
+		dev_err(dev, "%s: reset deassert failed: %d\n", __func__, ret);
+		goto out;
+	}
+	dev_dbg(dev, "%s: deassert ufs-aclk-rst done\n", __func__);
+
+	rate = spacemit_k3_clock_freq ?: clki->curr_freq ?:
+	       clki->max_freq ?: clk_get_rate(clki->clk);
+	if (rate) {
+		ret = clk_set_rate(clki->clk, rate);
 		if (ret) {
-			dev_err(dev, "Reset deassert failed: %d\n", ret);
+			dev_err(dev, "%s: %s clk set rate(%uHz) failed, %d\n",
+				__func__, clki->name, (u32)rate, ret);
 			goto out;
 		}
-		dev_info(dev, "UFS AXI reset completed via reset framework\n");
+		clki->curr_freq = rate;
 	}
 
-	/* Re-enable ufs aclk */
-	if (clki->max_freq) {
-		ret = clk_set_rate(clki->clk, clki->max_freq);
-		if (ret) {
-			dev_err(hba->dev, "%s: %s clk set rate(%dHz) failed, %d\n", __func__,
-				clki->name, clki->max_freq, ret);
-			goto out;
-		}
-		clki->curr_freq = clki->max_freq;
-		dev_dbg(dev, "%s: clk: %s, rate: %lu\n", __func__, clki->name,
-			clk_get_rate(clki->clk));
-	}
 	ret = clk_prepare_enable(clki->clk);
 	if (ret) {
 		dev_err(hba->dev, "%s: %s prepare enable failed, %d\n", __func__, clki->name, ret);
 		goto out;
 	}
 	clki->enabled = 1;
-	dev_dbg(hba->dev, "Clock %s re-enabled\n", clki->name);
+	dev_dbg(dev, "%s: restore host regs\n", __func__);
 
 	/* restore host registers */
 	ufshcd_writel(hba, save_regs.reg_utrlba, REG_UTP_TRANSFER_REQ_LIST_BASE_L);
@@ -1329,8 +1044,23 @@ static int ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 	ufshcd_writel(hba, save_regs.reg_retry_timer, UFS_RETRY_TIMER_REG);
 	ufshcd_writel(hba, save_regs.reg_pa_link, UFS_PA_LINK_STARTUP_TIMER);
 	ufshcd_writel(hba, save_regs.reg_cfg1, UFS_CFG1);
+	dev_dbg(dev, "%s: done\n", __func__);
 
 out:
+	if (ret && clk_was_enabled && clki && clki->clk) {
+		int restore_ret;
+
+		restore_ret = clk_prepare_enable(clki->clk);
+		if (restore_ret) {
+			dev_err(dev, "%s: failed to restore %s clock, %d\n", __func__,
+				clki->name, restore_ret);
+		} else {
+			clki->enabled = true;
+			dev_dbg(dev, "%s: restored clock %s after reset failure\n", __func__,
+				clki->name);
+		}
+	}
+
 	return ret;
 }
 
@@ -1345,32 +1075,23 @@ out:
  */
 static int ufs_spacemit_k3_device_reset(struct ufs_hba *hba)
 {
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	static bool is_first_init = true;
 
-	if (!host->first_init_done) {
-		host->first_init_done = true;
-		dev_dbg(hba->dev, "First init, skipping device reset\n");
-		return 0;
-	}
-
-	{
+	if (is_first_init) {
+		is_first_init = false;
+	} else {
 		ufshcd_set_link_off(hba);
 
-		/* ufs axi reset */
-		ufs_spacemit_k3_axi_reset(hba);
-
-		/* stop device ref_clk & asserted ufs device reset */
 		ufshcd_writel(hba, 0x000, UFS_PHY_MNG_BASE + UFS_DEVICE_IO_CTRL);
 		mdelay(5);
 
-		/*power off analog PHY, reset all host MPHY digital logic*/
 		ufshcd_writel(hba, 0x000, UFS_PHY_MNG_BASE + UFS_MPHY_RST_CTRL);
 		mdelay(5);
 
 		ufshcd_writel(hba, 0x000, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL);
 		mdelay(5);
 
-		dev_info(hba->dev, "Device reset completed\n");
+		dev_dbg(hba->dev, "ufs: ufs_spacemit_k3_device_reset done\n");
 	}
 
 	return 0;
@@ -1382,48 +1103,29 @@ static int ufs_spacemit_k3_device_reset(struct ufs_hba *hba)
  * @evt: event type
  * @data: event-specific data
  *
- * Handles error events from UFS core, dumps registers immediately
- * and schedules FSM state dump for later execution in workqueue context.
+ * Observes UFS core error events without changing recovery flow.
  */
 static void ufs_spacemit_k3_event_notify(struct ufs_hba *hba, enum ufs_event_type evt, void *data)
 {
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
-	bool dump_regs = false;
+	u32 val = data ? *(u32 *)data : 0;
 
-	switch (evt) {
-	case UFS_EVT_PA_ERR:
-		if (data) {
-			u32 pa_err = *(u32 *)data;
-			dev_warn(hba->dev, "PA error event, INT errors:0x%x, PA_ERR_CODE:0x%x\n",
-				 hba->errors, pa_err);
-		}
-		dump_regs = true;
-		break;
-
-	case UFS_EVT_DL_ERR:
-		if (data) {
-			u32 dl_err = *(u32 *)data;
-			dev_warn(hba->dev, "DL error event, INT errors:0x%x, DL_ERR:0x%x\n",
-				 hba->errors, dl_err);
-		}
-		dump_regs = true;
-		break;
-
-	case UFS_EVT_ABORT:
-		dev_warn(hba->dev, "Abort event, INT errors:0x%x\n", hba->errors);
-		break;
-
-	default:
-		break;
+	if (evt == UFS_EVT_PA_ERR) {
+		dev_dbg_ratelimited(hba->dev,
+				    "ufs: event_notify, evt:%d, INT errors:0x%x, PA 0x38:0x%x\n",
+				    evt, hba->errors, val);
+		return;
 	}
-
-	/* Dump registers if error occurred (safe in interrupt context) */
-	if (hba->errors || dump_regs)
-		ufs_spacemit_k3_dump_host_regs(hba);
-
-	/* Schedule FSM state dump in workqueue context (not in interrupt context) */
-	if (ufshcd_is_link_active(hba) && host)
-		queue_work(system_wq, &host->fsm_dump_work);
+	if (evt == UFS_EVT_DL_ERR) {
+		dev_dbg_ratelimited(hba->dev,
+				    "ufs: event_notify, evt:%d, INT errors:0x%x, DL 0x3C:0x%x\n",
+				    evt, hba->errors, val);
+		return;
+	}
+	if (evt == UFS_EVT_ABORT) {
+		dev_dbg_ratelimited(hba->dev,
+				    "ufs: event_notify, evt:%d, INT errors:0x%x\n",
+				    evt, hba->errors);
+	}
 }
 
 /**
@@ -1538,6 +1240,7 @@ static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme
 	}
 }
 
+
 /**
  * ufs_spacemit_k3_hce_enable_notify - Configure HCE enable sequence
  * @hba: host controller instance
@@ -1551,7 +1254,7 @@ static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme
 static int ufs_spacemit_k3_hce_enable_notify(struct ufs_hba *hba,
 					     enum ufs_notify_change_status status)
 {
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	static bool is_first_hce = true;
 	u32 enable_val, val;
 
 	if (status == PRE_CHANGE) {
@@ -1560,15 +1263,14 @@ static int ufs_spacemit_k3_hce_enable_notify(struct ufs_hba *hba,
 		if (hba->caps & UFSHCD_CAP_CRYPTO)
 			enable_val = CRYPTO_GENERAL_ENABLE | CONTROLLER_ENABLE;
 
-		if (!host->first_hce_done) {
-			host->first_hce_done = true;
-			dev_dbg(hba->dev, "First HCE enable\n");
+		if (is_first_hce) {
+			is_first_hce = false;
 		} else {
 			val = ufshcd_readl(hba, REG_CONTROLLER_ENABLE);
 			if (val == enable_val) {
-				ufshcd_writel(hba, enable_val & (1 << CONTROLLER_ENABLE),
+				ufshcd_writel(hba,
+					      enable_val & (1 << CONTROLLER_ENABLE),
 					      REG_CONTROLLER_ENABLE);
-
 				while (ufshcd_readl(hba, REG_CONTROLLER_ENABLE) ==
 				       (enable_val & (1 << CONTROLLER_ENABLE)))
 					;
@@ -1598,8 +1300,7 @@ static const struct ufs_hba_variant_ops ufs_hba_spacemit_k3_vops = {
 	.apply_dev_quirks = ufs_spacemit_k3_apply_dev_quirks,
 	.hibern8_notify = ufs_spacemit_k3_hibern8_notify,
 	.hce_enable_notify = ufs_spacemit_k3_hce_enable_notify,
-	.suspend = ufs_spacemit_k3_suspend,
-	.resume = ufs_spacemit_k3_resume,
+	.dbg_register_dump = ufs_spacemit_k3_dump_host_regs,
 };
 
 static const struct of_device_id ufs_spacemit_k3_of_match[] = {
@@ -1627,7 +1328,9 @@ static int ufs_spacemit_k3_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	ufs_spacemit_k3_platform_init(dev);
+	err = ufs_spacemit_k3_platform_init(pdev);
+	if (err)
+		return err;
 
 	vops = (struct ufs_hba_variant_ops *)of_id->data;
 	err = ufshcd_pltfrm_init(pdev, vops);
@@ -1653,11 +1356,49 @@ static void ufs_spacemit_k3_remove(struct platform_device *pdev)
 	pm_runtime_put(&(pdev)->dev);
 }
 
+static bool ufs_spacemit_k3_standby_loses_power(void)
+{
+	return pm_suspend_target_state == PM_SUSPEND_STANDBY;
+}
+
+static int ufs_spacemit_k3_suspend_prepare(struct device *dev)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	int ret;
+
+	if (ufs_spacemit_k3_standby_loses_power() && hba->spm_lvl < UFS_PM_LVL_5) {
+		host->saved_spm_lvl = hba->spm_lvl;
+		hba->spm_lvl = UFS_PM_LVL_5;
+	}
+
+	ret = ufshcd_suspend_prepare(dev);
+	if (ret < 0 && host->saved_spm_lvl != -1) {
+		hba->spm_lvl = host->saved_spm_lvl;
+		host->saved_spm_lvl = -1;
+	}
+
+	return ret;
+}
+
+static void ufs_spacemit_k3_resume_complete(struct device *dev)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+
+	ufshcd_resume_complete(dev);
+
+	if (host->saved_spm_lvl != -1) {
+		hba->spm_lvl = host->saved_spm_lvl;
+		host->saved_spm_lvl = -1;
+	}
+}
+
 static const struct dev_pm_ops ufs_spacemit_k3_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(ufshcd_system_suspend, ufshcd_system_resume) SET_RUNTIME_PM_OPS(
-		ufs_spacemit_k3_runtime_suspend, ufs_spacemit_k3_runtime_resume, NULL)
-		.prepare = ufshcd_suspend_prepare,
-	.complete = ufshcd_resume_complete,
+	SET_SYSTEM_SLEEP_PM_OPS(ufshcd_system_suspend, ufshcd_system_resume)
+	SET_RUNTIME_PM_OPS(ufs_spacemit_k3_runtime_suspend, ufs_spacemit_k3_runtime_resume, NULL)
+	.prepare = ufs_spacemit_k3_suspend_prepare,
+	.complete = ufs_spacemit_k3_resume_complete,
 };
 
 static struct platform_driver ufs_spacemit_k3_pltform = {
