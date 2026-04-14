@@ -5,6 +5,7 @@
  */
 
 #include <linux/of.h>
+#include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
@@ -2856,9 +2857,39 @@ static const struct component_ops soc_dp_ops = {
 	.unbind = soc_dp_unbind,
 };
 
+static int inno_dp_wait_retimer(struct device *dev)
+{
+	struct device_node *np;
+	struct i2c_client *client;
+	int ret = 0;
+
+	np = of_parse_phandle(dev->of_node, "spacemit,retimer", 0);
+	if (!np)
+		return 0;
+
+	client = of_find_i2c_device_by_node(np);
+	of_node_put(np);
+	if (!client)
+		return -EPROBE_DEFER;
+
+	if (!device_is_bound(&client->dev))
+		ret = -EPROBE_DEFER;
+
+	put_device(&client->dev);
+
+	return ret;
+}
+
 static int inno_dp_probe(struct platform_device *pdev)
 {
+	int ret;
+
 	DRM_INFO("%s()\n", __func__);
+
+	ret = inno_dp_wait_retimer(&pdev->dev);
+	if (ret)
+		return ret;
+
 	return component_add(&pdev->dev, &soc_dp_ops);
 }
 
