@@ -111,6 +111,19 @@
 
 #define SPACEMIT_BUS_RESET_CLK_CNT_MAX		9
 
+/* slave-related registers */
+#define SPACEMIT_SAR				0x8	   /* Slave Address Register */
+
+#define SPACEMIT_CR_SADIE			BIT(23)	   /* slave address detected int enable */
+#define SPACEMIT_CR_SSDIE			BIT(24)	   /* slave STOP detected int enable */
+
+#define SPACEMIT_SR_RWM				BIT(13)	   /* read/write mode */
+
+#define SPACEMIT_I2C_SLAVE_CRINIT		(SPACEMIT_CR_IUE | SPACEMIT_CR_ALDIE | \
+						 SPACEMIT_CR_DTEIE | SPACEMIT_CR_DRFIE | \
+						 SPACEMIT_CR_GCD | SPACEMIT_CR_BEIE | \
+						 SPACEMIT_CR_SADIE | SPACEMIT_CR_SSDIE)
+
 enum spacemit_i2c_state {
 	SPACEMIT_STATE_IDLE,
 	SPACEMIT_STATE_START,
@@ -156,6 +169,11 @@ struct spacemit_i2c_dev {
 
 	/* Controls whether to bypass the controller's SDA glitch fix logic. */
 	bool sda_glitch_nofix;
+
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	struct i2c_client *slave;
+	bool is_slave_xfer;
+#endif
 };
 
 static int spacemit_i2c_prepare_enable_clks(struct spacemit_i2c_dev *i2c)
@@ -316,11 +334,23 @@ static struct clk *spacemit_i2c_register_scl_clk(struct spacemit_i2c_dev *i2c,
 
 static void spacemit_i2c_reset(struct spacemit_i2c_dev *i2c)
 {
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	u32 slave_value;
+#endif
 	writel(SPACEMIT_CR_UR, i2c->base + SPACEMIT_ICR);
 	udelay(5);
 	writel(0, i2c->base + SPACEMIT_ICR);
 
 	writel(0x0000142A, i2c->base + SPACEMIT_IWCR);
+
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	if (i2c->slave) {
+		slave_value = SPACEMIT_I2C_SLAVE_CRINIT;
+		if (i2c->mode == SPACEMIT_MODE_FAST)
+			slave_value |= SPACEMIT_CR_MODE_FAST;
+		writel(slave_value, i2c->base + SPACEMIT_ICR);
+	}
+#endif
 }
 
 static int spacemit_i2c_handle_err(struct spacemit_i2c_dev *i2c)
@@ -519,6 +549,19 @@ static bool spacemit_i2c_is_last_msg(struct spacemit_i2c_dev *i2c)
 
 static void spacemit_i2c_handle_write(struct spacemit_i2c_dev *i2c)
 {
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	u8 slave_value;
+	if (i2c->is_slave_xfer) {
+		/* to confirm its not NACK */
+		if (i2c->status & SPACEMIT_SR_ACKNAK)
+			return;
+
+		i2c_slave_event(i2c->slave, I2C_SLAVE_READ_PROCESSED, &slave_value);
+		writel(slave_value, i2c->base + SPACEMIT_IDBR);
+		return;
+	}
+#endif
+
 	/* if transfer completes, SPACEMIT_ISR will handle it */
 	if (i2c->status & SPACEMIT_SR_MSD)
 		return;
@@ -536,6 +579,18 @@ static void spacemit_i2c_handle_write(struct spacemit_i2c_dev *i2c)
 
 static void spacemit_i2c_handle_read(struct spacemit_i2c_dev *i2c)
 {
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	u8 slave_value;
+	if (i2c->is_slave_xfer) {
+		/* to confirm that it's triggered by IRF */
+		if (i2c->status & SPACEMIT_SR_IRF) {
+			slave_value = readl(i2c->base + SPACEMIT_IDBR);
+			i2c_slave_event(i2c->slave, I2C_SLAVE_WRITE_RECEIVED, &slave_value);
+		}
+		return;
+	}
+#endif
+
 	if (i2c->unprocessed) {
 		*i2c->msg_buf++ = readl(i2c->base + SPACEMIT_IDBR);
 		i2c->unprocessed--;
@@ -556,6 +611,20 @@ static void spacemit_i2c_handle_read(struct spacemit_i2c_dev *i2c)
 
 static void spacemit_i2c_handle_start(struct spacemit_i2c_dev *i2c)
 {
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	u8 value;
+	if (i2c->is_slave_xfer) {
+		if (i2c->status & SPACEMIT_SR_RWM) {
+			i2c->state = SPACEMIT_STATE_WRITE;
+			i2c_slave_event(i2c->slave, I2C_SLAVE_READ_REQUESTED, &value);
+			writel(value, i2c->base + SPACEMIT_IDBR);
+		} else {
+			i2c->state = SPACEMIT_STATE_READ;
+			i2c_slave_event(i2c->slave, I2C_SLAVE_WRITE_REQUESTED, &value);
+		}
+		return;
+	}
+#endif
 	i2c->state = i2c->read ? SPACEMIT_STATE_READ : SPACEMIT_STATE_WRITE;
 	if (i2c->state == SPACEMIT_STATE_WRITE)
 		spacemit_i2c_handle_write(i2c);
@@ -586,13 +655,69 @@ static void spacemit_i2c_err_check(struct spacemit_i2c_dev *i2c)
 	spacemit_i2c_clear_int_status(i2c, SPACEMIT_I2C_INT_STATUS_MASK);
 
 	i2c->state = SPACEMIT_STATE_IDLE;
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	i2c->is_slave_xfer = false;
+#endif
 	complete(&i2c->complete);
 }
+
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+static int spacemit_i2c_reg_slave(struct i2c_client *slave)
+{
+	struct spacemit_i2c_dev *i2c = i2c_get_adapdata(slave->adapter);
+	u32 val;
+	int ret;
+
+	if (i2c->slave)
+		return -EBUSY;
+
+	if (slave->flags & I2C_CLIENT_TEN)
+		return -EAFNOSUPPORT;
+
+	ret = pm_runtime_resume_and_get(i2c->dev);
+	if (ret < 0)
+		return ret;
+
+	i2c->slave = slave;
+
+	writel(slave->addr, i2c->base + SPACEMIT_SAR);
+
+	val = SPACEMIT_I2C_SLAVE_CRINIT;
+	if (i2c->mode == SPACEMIT_MODE_FAST)
+		val |= SPACEMIT_CR_MODE_FAST;
+
+	writel(val, i2c->base + SPACEMIT_ICR);
+
+	return 0;
+}
+
+static int spacemit_i2c_unreg_slave(struct i2c_client *slave)
+{
+	struct spacemit_i2c_dev *i2c = i2c_get_adapdata(slave->adapter);
+	int ret = 0;
+
+	if (!i2c->slave) {
+		dev_err(i2c->dev, "no slave registered\n");
+		ret = -EINVAL;
+	}
+
+	writel(0, i2c->base + SPACEMIT_ICR);
+	writel(0, i2c->base + SPACEMIT_SAR);
+
+	i2c->slave = NULL;
+	pm_runtime_put_autosuspend(i2c->dev);
+
+	return ret;
+}
+#endif
 
 static irqreturn_t spacemit_i2c_irq_handler(int irq, void *devid)
 {
 	struct spacemit_i2c_dev *i2c = devid;
 	u32 status, val;
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	u8 slave_value;
+#endif
 
 	status = readl(i2c->base + SPACEMIT_ISR);
 	if (!status)
@@ -608,6 +733,14 @@ static irqreturn_t spacemit_i2c_irq_handler(int irq, void *devid)
 	val = readl(i2c->base + SPACEMIT_ICR);
 	val &= ~(SPACEMIT_CR_TB | SPACEMIT_CR_ACKNAK | SPACEMIT_CR_STOP | SPACEMIT_CR_START);
 
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	if (i2c->slave && (status & SPACEMIT_SR_SAD)) {
+		/* slave address detected */
+		i2c->is_slave_xfer = true;
+		i2c->state = SPACEMIT_STATE_START;
+	}
+#endif
+
 	switch (i2c->state) {
 	case SPACEMIT_STATE_START:
 		spacemit_i2c_handle_start(i2c);
@@ -622,10 +755,23 @@ static irqreturn_t spacemit_i2c_irq_handler(int irq, void *devid)
 		break;
 	}
 
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	if (i2c->slave && (status & SPACEMIT_SR_SSD)) {
+		i2c_slave_event(i2c->slave, I2C_SLAVE_STOP, &slave_value);
+		i2c->state = SPACEMIT_STATE_IDLE;
+		i2c->is_slave_xfer = false;
+	}
+#endif
+
 	if (i2c->state != SPACEMIT_STATE_IDLE) {
 		val |= SPACEMIT_CR_TB | SPACEMIT_CR_ALDIE;
 
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+		/* Do not trigger master STOP generation if we are in a slave transfer */
+		if (!i2c->is_slave_xfer && spacemit_i2c_is_last_msg(i2c)) {
+#else
 		if (spacemit_i2c_is_last_msg(i2c)) {
+#endif
 			/* trigger next byte with stop */
 			val |= SPACEMIT_CR_STOP;
 
@@ -662,6 +808,13 @@ static int spacemit_i2c_xfer(struct i2c_adapter *adapt, struct i2c_msg *msgs, in
 	struct spacemit_i2c_dev *i2c = i2c_get_adapdata(adapt);
 	bool clk_directly = false;
 	int ret;
+
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	if (i2c->slave) {
+		dev_err(i2c->dev, "working as slave mode here\n");
+		return -EBUSY;
+	}
+#endif
 
 	ret = pm_runtime_get_sync(i2c->dev);
 	if (ret < 0) {
@@ -737,12 +890,21 @@ static int spacemit_i2c_xfer(struct i2c_adapter *adapt, struct i2c_msg *msgs, in
 
 static u32 spacemit_i2c_func(struct i2c_adapter *adap)
 {
-	return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK);
+	u32 flags = I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK);
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	flags |= I2C_FUNC_SLAVE;
+#endif
+	return flags;
 }
 
 static const struct i2c_algorithm spacemit_i2c_algo = {
 	.xfer = spacemit_i2c_xfer,
 	.functionality = spacemit_i2c_func,
+
+#if IS_ENABLED(CONFIG_I2C_SLAVE)
+	.reg_slave = spacemit_i2c_reg_slave,
+	.unreg_slave = spacemit_i2c_unreg_slave,
+#endif
 };
 
 static int spacemit_i2c_probe(struct platform_device *pdev)
