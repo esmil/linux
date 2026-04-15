@@ -12,8 +12,8 @@
 #include <dt-bindings/input/cros-ec-keyboard.h>
 
 / {
-	model = "SpacemiT K3 Deb1";
-	compatible = "spacemit,k3-deb1";
+	model = "SpacemiT K3 Pico ITX";
+	compatible = "spacemit,k3-pico-itx";
 	cpus: cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -556,14 +556,6 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			google,remote-bus = <1>;
-
-			rt7451: retimer@13 {
-				compatible = "retimer,rt7451";
-				reg = <0x13>;
-				primary-addr = <0x13>;
-				secondary-addr = <0x29>;
-				status = "okay";
-			};
 		};
 
 		i2c_tunnel4: i2c-tunnel@4 {
@@ -978,15 +970,15 @@
 		regulator-boot-on;
 	};
 
-	edcdc2: edcdc2 {
-		regulator-min-microvolt = <800000>;
-		regulator-max-microvolt = <800000>;
+	adcdc2: adcdc2 {
+		regulator-min-microvolt = <540000>;
+		regulator-max-microvolt = <1000000>;
 		regulator-always-on;
 		regulator-boot-on;
 	};
 
-	edcdc1: edcdc1 {
-		regulator-min-microvolt = <534000>;
+	adcdc1: adcdc1 {
+		regulator-min-microvolt = <540000>;
 		regulator-max-microvolt = <1000000>;
 		regulator-always-on;
 		regulator-boot-on;
@@ -1214,6 +1206,11 @@
 		status = "okay";
 	};
 };
+
+&i2c8 {
+	status = "okay";
+};
+
 /*
 &i2c8 {
 	pinctrl-names = "default";
@@ -1403,7 +1400,6 @@
 &dp1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp1_1_cfg>;
-	retimer-supply = <&rt7451>;
 	status = "okay";
 };
 
@@ -1453,4 +1449,36 @@
 			sound-dai = <&es8326>;
 		};
 	};
+};
+
+&cpu_0 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_1 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_2 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_3 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_4 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_5 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_6 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_7 {
+	clst-supply = <&adcdc1>;
 };
