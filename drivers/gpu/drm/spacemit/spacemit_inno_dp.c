@@ -919,7 +919,7 @@ static int soc_dp_hw_read_sink_caps(struct soc_dp_dev *dp)
 	default:
 		dev_warn(dp->dev, "Unknown DPCD Max Rate: 0x%x, defaulting to 2.70G\n", max_bw);
 		dp->link.revision = 0x14;
-		dp->link.max_rate = SOC_DP_LINK_RATE_2_70;
+		dp->link.max_rate = SOC_DP_LINK_RATE_5_40;
 		dp->link.max_num_lanes = SOC_DP_LANE_2;
 		dp->link.enhanced_framing = 1;
 		return -1;
@@ -2048,7 +2048,7 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 	mutex_lock(&dp->mode_lock);
 
-	if (dp->pxclk) {
+	if (dp->use_ext_pixel_clock && dp->pxclk) {
 		set_clk_val = adjusted_mode->clock * 1000;
 		if (set_clk_val) {
 			set_clk_val = clk_round_rate(dp->pxclk, set_clk_val);
@@ -2142,7 +2142,6 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 	mutex_unlock(&dp->mode_lock);
 	if (dp->backlight)
 		backlight_enable(dp->backlight);
-	dev_info(dp->dev, "DP: Stream Active\n");
 }
 
 static void soc_dp_encoder_disable(struct drm_encoder *encoder)
