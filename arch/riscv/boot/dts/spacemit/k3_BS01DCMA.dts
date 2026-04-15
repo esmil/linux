@@ -1,0 +1,941 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2025 Spacemit, Inc */
+
+#include "k3.dtsi"
+#include "k3-rdomain.dtsi"
+#include "k3-pinctrl.dtsi"
+#include "k3_opp_table.dtsi"
+#include "k3-edp0.dtsi"
+
+/ {
+	model = "SpacemiT K3 BS01DCMA";
+	compatible = "spacemit,k3-bs01dcma";
+	cpus: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <24000000>;
+	};
+
+/*
+	p12v: p12v {
+		compatible = "regulator-fixed";
+		regulator-name = "p12v";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <12000000>;
+		regulator-max-microvolt = <12000000>;
+		status = "disabled";
+	};
+
+	p5v: p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "p5v";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&p12v>;
+		status = "disabled";
+	};
+
+	p4v: p4v {
+		compatible = "regulator-fixed";
+		regulator-name = "p4v";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <4000000>;
+		regulator-max-microvolt = <4000000>;
+		vin-supply = <&p12v>;
+		status = "disabled";
+	};
+
+	p1v8: p1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "p1v8";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&p12v>;
+		status = "disabled";
+	};
+
+	p3v3: p3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "p3v3";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&p12v>;
+		status = "disabled";
+	};
+*/
+	chosen {
+		bootargs = "earlycon=sbi console=ttyS0,115200 clk_ignore_unused loglevel=8 random.trust_bootloader=1 unaligned_scalar_speed=fast unaligned_vector_speed=fast";
+		rng-seed = <0x25d69b2 0xff555073 0xd23238ea 0x57aa5455 0x792478ed 0xa744f28e 0x6ba4fc54 0xa2bf20fc>;
+		stdout-path = "serial0:115200";
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm18 0 20000 0>;
+		brightness-levels = <
+			0   1   2   3   4   5   6   7
+			8   9  10  11  12  13  14  15
+			16  17  18  19  20  21  22  23
+			24  25  26  27  28  29  30  31
+			32  33  34  35  36  37  38  39
+			40  41  42  43  44  45  46  47
+			48  49  50  51  52  53  54  55
+			56  57  58  59  60  61  62  63
+			64  65  66  67  68  69  70  71
+			72  73  74  75  76  77  78  79
+			80  81  82  83  84  85  86  87
+			88  89  90  91  92  93  94  95
+			96  97  98  99 100 101 102 103
+			104 105 106 107 108 109 110 111
+			112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127
+			128 129 130 131 132 133 134 135
+			136 137 138 139 140 141 142 143
+			144 145 146 147 148 149 150 151
+			152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167
+			168 169 170 171 172 173 174 175
+			176 177 178 179 180 181 182 183
+			184 185 186 187 188 189 190 191
+			192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207
+			208 209 210 211 212 213 214 215
+			216 217 218 219 220 221 222 223
+			224 225 226 227 228 229 230 231
+			232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247
+			248 249 250 251 252 253 254 255>;
+		default-brightness-level = <128>;
+		status = "okay";
+	};
+};
+
+&resmem {
+	/* global autoconfigured region for contiguous allocations */
+	cmamem: linux,cma {
+		compatible = "shared-dma-pool";
+		reusable;
+		size = <0 0x20000000>;
+		alloc-ranges = <1 0x40000000 0 0x20000000>;
+		linux,cma-default;
+	};
+};
+
+&pinctrl {
+	i2c0-2-cfg {
+		i2c0-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	i2c1-1-cfg {
+		i2c1-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	i2c2-1-cfg {
+		i2c2-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	i2c3-3-cfg {
+		i2c3-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	i2c6-0-cfg {
+		i2c6-0-pins {
+			power-source = <1800>;
+		};
+	};
+
+	pcie0-1-cfg {
+		pcie0-0-pins {
+			bias-pull-up = <1>;		/* pull up */
+			drive-strength = <38>;		/* DS15 */
+			power-source = <3300>;
+		};
+	};
+
+	pcie1-1-cfg {
+		pcie1-0-pins {
+			bias-pull-up;			/* pull up */
+			drive-strength = <38>;		/* DS15 */
+			power-source = <3300>;
+		};
+	};
+
+	pcie2-1-cfg {
+		pcie2-0-pins {
+			bias-pull-up;			/* pull up  */
+			drive-strength = <38>;		/* DS15 */
+			power-source = <3300>;
+		};
+	};
+
+	pcie4-1-cfg {
+		pcie4-0-pins {
+			bias-pull-up;			/* pull up */
+			drive-strength = <38>;		/* DS15 */
+			power-source = <3300>;
+		};
+	};
+
+	pwm18_2_cfg: pwm18-2-cfg {
+		pwm18-0-pins {
+			pinmux = <K3_PADCONF(106, 6)>;	/* pwm18 */
+
+			bias-pull-up;			/* normal pull-up */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+
+	dp0_1_cfg: dp0-1-cfg {
+		dp0-0-pins {
+			pinmux = <K3_PADCONF(23, 6)>;	/* dp0 hpd */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <3300>;
+		};
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_0_cfg>;
+	status = "okay";
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_0_cfg>;
+	status = "disabled";
+
+	bluetooth {
+		compatible = "realtek,rtl8852bs-bt";
+		device-wake-gpios = <&gpio 2 30 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&gpio 2 29 GPIO_ACTIVE_HIGH>;
+		host-wake-gpios = <&gpio 2 28 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&qspi {
+	status = "disabled";
+};
+
+&usb3_porta_u2phy {
+	status = "okay";
+};
+
+&usb3_porta_u3phy {
+	status = "okay";
+};
+
+&usb3_porta {
+	dr_mode = "otg";
+	/* Bringup stage, only enable USB2 phy */
+	maximum-speed = "high-speed";
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+	status = "okay";
+};
+
+&phy0{
+	status = "okay";
+};
+
+&phy1{
+	status = "okay";
+};
+
+&phy2{
+	status = "okay";
+};
+
+&phy3{
+	status = "okay";
+};
+
+&phy4{
+	status = "okay";
+};
+
+&phy5{
+	status = "okay";
+};
+
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_1_cfg>;
+	phys = <&phy0>, <&phy1>;
+	phy-names = "phy0", "phy1";
+
+	num-lanes = <4>;
+	status = "okay";
+};
+
+&pcie2_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie2_1_cfg>;
+	phys = <&phy2>, <&phy3>;
+	phy-names = "phy2", "phy3";
+
+	status = "okay";
+};
+
+&pcie3_rc {
+	phys = <&phy4>;
+	phy-names = "phy4";
+
+	status = "okay";
+};
+
+&pcie4_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie4_1_cfg>;
+	phys = <&phy5>;
+	phy-names = "phy5";
+
+	status = "okay";
+};
+
+&thermal_zones {
+	thermal_top {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 0>;
+
+		trips {
+			thermal_top_trip0: thermal_top-trip0 {
+				temperature = <40000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+
+	thermal_vpu {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 2>;
+
+		trips {
+			thermal_vpu_trip0: thermal_vpu-trip0 {
+				temperature = <40000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+
+	thermal_gpu {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 3>;
+
+		trips {
+			thermal_gpu_trip0: thermal_gpu-trip0 {
+				temperature = <40000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+
+	thermal_cluster0 {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 4>;
+
+		trips {
+			thermal_cluster0_trip0: thermal_cluster0-trip0 {
+				temperature = <35000>;
+				hysteresis = <5000>;
+				type = "active";
+			};
+		};
+	};
+
+	thermal_cluster1 {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 5>;
+
+		trips {
+			thermal_cluster1_trip0: thermal_cluster1-trip0 {
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster1_trip1: thermal_cluster1-trip1 {
+				temperature = <95000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster1_trip2: thermal_cluster1-trip2 {
+				temperature = <105000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster1_trip3: thermal_cluster1-trip3 {
+				temperature = <115000>;
+				hysteresis = <2000>;
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&thermal_cluster1_trip0>;
+				cooling-device = <&cpu_0 2 2>,
+						<&cpu_1 2 2>,
+						<&cpu_2 2 2>,
+						<&cpu_3 2 2>,
+						<&cpu_4 2 2>,
+						<&cpu_5 2 2>,
+						<&cpu_6 2 2>,
+						<&cpu_7 2 2>;
+			};
+
+			map1 {
+				trip = <&thermal_cluster1_trip1>;
+				cooling-device = <&cpu_0 3 5>,
+						<&cpu_1 3 5>,
+						<&cpu_2 3 5>,
+						<&cpu_3 3 5>,
+						<&cpu_4 3 5>,
+						<&cpu_5 3 5>,
+						<&cpu_6 3 5>,
+						<&cpu_7 3 5>;
+			};
+
+			map2 {
+				trip = <&thermal_cluster1_trip2>;
+				cooling-device = <&cpu_0 6 8>,
+						<&cpu_1 6 8>,
+						<&cpu_2 6 8>,
+						<&cpu_3 6 8>,
+						<&cpu_4 6 8>,
+						<&cpu_5 6 8>,
+						<&cpu_6 6 8>,
+						<&cpu_7 6 8>;
+			};
+		};
+	};
+
+	thermal_cluster2 {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 6>;
+
+		trips {
+			thermal_cluster2_trip0: thermal_cluster2-trip0 {
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "active";
+			};
+
+			thermal_cluster2_trip1: thermal_cluster2-trip1 {
+				temperature = <95000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster2_trip2: thermal_cluster2-trip2 {
+				temperature = <105000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster2_trip3: thermal_cluster2-trip3 {
+				temperature = <115000>;
+				hysteresis = <2000>;
+				type = "critical";
+			};
+		};
+
+		cooling-maps {
+			map0 {
+				trip = <&thermal_cluster2_trip0>;
+				cooling-device = <&cpu_8 3 3>,
+						<&cpu_9 3 3>,
+						<&cpu_10 3 3>,
+						<&cpu_11 3 3>,
+						<&cpu_12 3 3>,
+						<&cpu_13 3 3>,
+						<&cpu_14 3 3>,
+						<&cpu_15 3 3>;
+			};
+
+			map1 {
+				trip = <&thermal_cluster2_trip1>;
+				cooling-device = <&cpu_8 4 5>,
+						<&cpu_9 4 5>,
+						<&cpu_10 4 5>,
+						<&cpu_11 4 5>,
+						<&cpu_12 4 5>,
+						<&cpu_13 4 5>,
+						<&cpu_14 4 5>,
+						<&cpu_15 4 5>;
+			};
+
+			map2 {
+				trip = <&thermal_cluster2_trip2>;
+				cooling-device = <&cpu_8 6 8>,
+						<&cpu_9 6 8>,
+						<&cpu_10 6 8>,
+						<&cpu_11 6 8>,
+						<&cpu_12 6 8>,
+						<&cpu_13 6 8>,
+						<&cpu_14 6 8>,
+						<&cpu_15 6 8>;
+			};
+		};
+	};
+
+	thermal_cluster3 {
+		polling-delay = <1000>;
+		polling-delay-passive = <250>;
+		thermal-sensors = <&thermal 7>;
+
+		trips {
+			thermal_cluster7_trip0: thermal_cluster7-trip0 {
+				temperature = <40000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
+&rpmi_regulator {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c8_cfg_rcpu>;
+
+	pvin: pvin {
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	adcdc2: adcdc2 {
+		regulator-min-microvolt = <540000>;
+		regulator-max-microvolt = <1000000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	adcdc1: adcdc1 {
+		regulator-min-microvolt = <540000>;
+		regulator-max-microvolt = <1000000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	p3v3: p3v3 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	p1v8: p1v8 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dcdc1: dcdc1 {
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1050000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dcdc3: dcdc3 {
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dcdc4: dcdc4 {
+		regulator-min-microvolt = <2100000>;
+		regulator-max-microvolt = <2100000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dcdc5: dcdc5 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dcdc6: dcdc6 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <600000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	aldo1: aldo1 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	aldo2: aldo2 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	aldo3: aldo3 {
+		regulator-min-microvolt = <500000>;
+		regulator-max-microvolt = <3400000>;
+	};
+
+	aldo4: aldo4 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo1: dldo1 {
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo2: dldo2 {
+		regulator-min-microvolt = <900000>;
+		regulator-max-microvolt = <900000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo3: dldo3 {
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo4: dldo4 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo5: dldo5 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo6: dldo6 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	dldo7: dldo7 {
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	pwr_x100: pwr_x100 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	pwr_a100: pwr_a100 {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	pwr_ext: pwr_ext {
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_1_cfg>;
+	status = "okay";
+
+	eeprom@50 {
+		compatible = "atmel,24c02";
+		reg = <0x50>;
+		read-only;
+		status = "okay";
+
+		nvmem-layout {
+			compatible = "onie,tlv-layout";
+
+			product_name: product-name {
+			};
+		};
+	};
+};
+
+&i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3_3_cfg>;
+	status = "okay";
+};
+
+&i2c6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c6_0_cfg>;
+	status = "okay";
+};
+
+/*
+&i2c8 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c8_cfg>;
+	status = "disabled";
+
+	p1@41 {
+		compatible = "spacemit,p1";
+		reg = <0x41>;
+		status = "disabled";
+
+		vcc-supply = <&p4v>;
+
+		regulators {
+			compatible = "spacemit-p1-regulator";
+
+			buck1: buck1 {
+				regulator-min-microvolt = <1050000>;
+				regulator-max-microvolt = <1050000>;
+				regulator-ramp-delay = <5000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			buck2: buck2 {
+				regulator-min-microvolt = <1050000>;
+				regulator-max-microvolt = <1050000>;
+				regulator-ramp-delay = <5000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			buck3: buck3 {
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <800000>;
+				regulator-ramp-delay = <5000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			buck4: buck4 {
+				regulator-min-microvolt = <2100000>;
+				regulator-max-microvolt = <2100000>;
+				regulator-ramp-delay = <5000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			buck5: buck5 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-ramp-delay = <5000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			buck6: buck6 {
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <500000>;
+				regulator-ramp-delay = <5000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			aldo1: aldo1 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			aldo2: aldo2 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			aldo3: aldo3 {
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <3400000>;
+			};
+
+			aldo4: aldo4 {
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo1: dldo1 {
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo2: dldo2 {
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo3: dldo3 {
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo4: dldo4 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo5: dldo5 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo6: dldo6 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+
+			dldo7: dldo7 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	};
+
+	mpq8655: mpq8655@30 {
+		compatible = "spacemit,mpq8655";
+		reg = <0x30>;
+
+		vcc-supply = <&p12v>;
+
+		regulators {
+			compatible = "spacemit,regulator,mpq8655";
+
+			edcdc1: edcdc1 {
+				regulator-min-microvolt = <534000>;
+				regulator-max-microvolt = <1000000>;
+				regulator-ramp-delay = <10>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	};
+};
+*/
+
+&pwm18 {
+	status = "okay";
+};
+
+&dpu0_crtc0 {
+	memory-region = <&dpu_resv0>;
+	status = "okay";
+};
+
+&edp0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp0_1_cfg>;
+	backlight = <&backlight>;
+	gpios-power = <101>;
+	gpios-enable = <118>;
+	status = "okay";
+};
+
+&cpu_0 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_1 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_2 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_3 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_4 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_5 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_6 {
+	clst-supply = <&adcdc1>;
+};
+
+&cpu_7 {
+	clst-supply = <&adcdc1>;
+};
