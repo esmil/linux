@@ -556,6 +556,14 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			google,remote-bus = <1>;
+
+			rt7451: retimer@13 {
+				compatible = "retimer,rt7451";
+				reg = <0x13>;
+				primary-addr = <0x13>;
+				secondary-addr = <0x29>;
+				status = "okay";
+			};
 		};
 
 		i2c_tunnel4: i2c-tunnel@4 {
@@ -1395,6 +1403,7 @@
 &dp1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp1_1_cfg>;
+	retimer-supply = <&rt7451>;
 	status = "okay";
 };
 
