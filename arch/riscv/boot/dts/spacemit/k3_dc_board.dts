@@ -492,6 +492,8 @@
 };
 
 &espi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&espi0_2_cfg>;
 	status = "okay";
 	ec@0 {
 		status = "okay";

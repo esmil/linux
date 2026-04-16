@@ -2526,6 +2526,8 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0x0 0x0 0x84000000 0x1000>;
+			pr-mem-base0 = <0x84000000>;
+			pr-mem-base1 = <0xcac8c000>;
 			clocks = <&syscon_apmu CLK_APMU_ESPI_SCLK_SRC>,
 				 <&syscon_apmu CLK_APMU_ESPI_SCLK>,
 				 <&syscon_apmu CLK_APMU_ESPI_MCLK>;
@@ -2534,6 +2536,17 @@
 				 <&syscon_apmu RESET_APMU_ESPI_SCLK>;
 			assigned-clocks = <&syscon_apmu CLK_APMU_ESPI_SCLK>;
 			assigned-clock-parents = <&syscon_apmu CLK_APMU_ESPI_SCLK_SRC>;
+			operating-frequency = <20>;
+			io-mode = "single";
+			alert-mode = "io1";
+			alert-type = "open-drain";
+			watchdog-timeout = <0xffff>;
+			crc-enable;
+			auto-gating-enable;
+			peripheral-channel-enable;
+			vwire-channel-enable;
+			oob-channel-enable;
+			flash-channel-enable;
 			status = "disabled";
 
 			ec: ec@0 {
