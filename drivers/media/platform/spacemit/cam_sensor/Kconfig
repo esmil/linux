@@ -44,3 +44,13 @@ config SPACEMIT_K3_CAM_OV2735
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called OV2735.
+
+config SPACEMIT_K3_CAM_OV5640_MAX96724_MAX9295
+	tristate "OV5640 over MAX96724/MAX9295 GMSL module support"
+	depends on SPACEMIT_K3_CCIC && I2C
+	help
+	  This is a simplified I2C/ioctl sensor driver for the OV5640 sensor
+	  connected through a MAX96724 deserializer and MAX9295 serializer.
+
+	  It provides power, register initialization, stream control and
+	  GMSL bring-up logic for the Spacemit K3 camera pipeline.
