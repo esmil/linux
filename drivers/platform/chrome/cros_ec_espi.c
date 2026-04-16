@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/reboot.h>
+#include <linux/spacemit-k3-espi.h>
 #include <linux/suspend.h>
 
 #include "cros_ec.h"
@@ -256,8 +257,33 @@ static int ec_response_timed_out(void)
 	return 1;
 }
 
-static int cros_ec_pkt_xfer_espi(struct cros_ec_device *ec,
-				 struct cros_ec_command *msg)
+static bool cros_ec_espi_valid_id(const u8 *buf)
+{
+	return buf[0] == 'E' && buf[1] == 'C';
+}
+
+static int cros_ec_espi_read_id(u8 *buf)
+{
+	return cros_ec_espi_ops.read(EC_LPC_ADDR_MEMMAP + EC_MEMMAP_ID, 2, buf);
+}
+
+static int cros_ec_espi_recover_controller(struct device *dev, const char *reason)
+{
+	int ret;
+
+	if (!dev->parent)
+		return -ENODEV;
+
+	dev_warn(dev, "attempting eSPI controller recovery after %s\n", reason);
+	ret = spacemit_k3_espi_recover(dev->parent);
+	if (ret)
+		dev_err(dev, "eSPI controller recovery failed: %d\n", ret);
+
+	return ret;
+}
+
+static int cros_ec_pkt_xfer_espi_once(struct cros_ec_device *ec,
+				      struct cros_ec_command *msg)
 {
 	struct ec_host_response response;
 	u8 sum;
@@ -298,7 +324,7 @@ static int cros_ec_pkt_xfer_espi(struct cros_ec_device *ec,
 	}
 	if (ret) {
 		dev_warn(ec->dev, "EC response timed out\n");
-		ret = -EIO;
+		ret = -ETIMEDOUT;
 		goto done;
 	}
 
@@ -357,8 +383,34 @@ done:
 	return ret;
 }
 
-static int cros_ec_cmd_xfer_espi(struct cros_ec_device *ec,
+static int cros_ec_espi_xfer_retry(struct cros_ec_device *ec,
+				   struct cros_ec_command *msg,
+				   int (*xfer_once)(struct cros_ec_device *ec,
+						    struct cros_ec_command *msg),
+				   const char *name)
+{
+	int ret;
+
+	ret = xfer_once(ec, msg);
+	if (ret != -ETIMEDOUT)
+		return ret;
+
+	if (cros_ec_espi_recover_controller(ec->dev, name))
+		return ret;
+
+	dev_warn(ec->dev, "retrying %s after controller recovery\n", name);
+	return xfer_once(ec, msg);
+}
+
+static int cros_ec_pkt_xfer_espi(struct cros_ec_device *ec,
 				 struct cros_ec_command *msg)
+{
+	return cros_ec_espi_xfer_retry(ec, msg, cros_ec_pkt_xfer_espi_once,
+				       "packet transfer timeout");
+}
+
+static int cros_ec_cmd_xfer_espi_once(struct cros_ec_device *ec,
+				      struct cros_ec_command *msg)
 {
 	struct ec_lpc_host_args args;
 	u8 sum;
@@ -418,7 +470,7 @@ static int cros_ec_cmd_xfer_espi(struct cros_ec_device *ec,
 	}
 	if (ret) {
 		dev_warn(ec->dev, "EC response timed out\n");
-		ret = -EIO;
+		ret = -ETIMEDOUT;
 		goto done;
 	}
 
@@ -476,6 +528,13 @@ static int cros_ec_cmd_xfer_espi(struct cros_ec_device *ec,
 	ret = args.data_size;
 done:
 	return ret;
+}
+
+static int cros_ec_cmd_xfer_espi(struct cros_ec_device *ec,
+				 struct cros_ec_command *msg)
+{
+	return cros_ec_espi_xfer_retry(ec, msg, cros_ec_cmd_xfer_espi_once,
+				       "command transfer timeout");
 }
 
 /* Returns num bytes read, or negative on error. Doesn't need locking. */
@@ -572,14 +631,19 @@ static int cros_ec_espi_probe(struct platform_device *pdev)
 
 	/* Try to detect EC by reading ID */
 	dev_dbg(dev, "Attempting to read EC ID...\n");
-	ret = cros_ec_espi_ops.read(EC_LPC_ADDR_MEMMAP + EC_MEMMAP_ID, 2, buf);
+	ret = cros_ec_espi_read_id(buf);
+	if (ret < 0 || !cros_ec_espi_valid_id(buf)) {
+		if (!cros_ec_espi_recover_controller(dev, "probe-time EC detection"))
+			ret = cros_ec_espi_read_id(buf);
+	}
 	if (ret < 0) {
 		dev_err(dev, "Failed to read EC ID: %d\n", ret);
 		goto err_cleanup;
 	}
-	dev_dbg(dev, "EC ID read successfully, ret=%d, buf[0]=0x%02x, buf[1]=0x%02x\n", ret, buf[0], buf[1]);
+	dev_dbg(dev, "EC ID read successfully, ret=%d, buf[0]=0x%02x, buf[1]=0x%02x\n",
+		ret, buf[0], buf[1]);
 
-	if (buf[0] != 'E' || buf[1] != 'C') {
+	if (!cros_ec_espi_valid_id(buf)) {
 		dev_err(dev, "EC ID not detected (got: 0x%02x 0x%02x)\n",
 			buf[0], buf[1]);
 		ret = -ENODEV;
