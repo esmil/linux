@@ -567,6 +567,10 @@ static void k3_eqos_config_caps(struct spacemit_ethqos *eqos)
 	if (phy_interface_mode_is_rgmii(eqos->phy_iface) && !eqos->tx_clk_from_soc)
 		plat_dat->flags |= STMMAC_FLAG_RX_CLK_RUNS_IN_LPI;
 
+	/* Fall back to PHY WOL when GMAC WOL IRQ is not enabled */
+	if (!eqos->wol_irq_enable)
+		plat_dat->flags |= STMMAC_FLAG_USE_PHY_WOL;
+
 	/* Enable TSO on queue0 and enable TBS on rest of the queues */
 	for (i = 1; i < plat_dat->tx_queues_to_use; i++)
 		plat_dat->tx_queues_cfg[i].tbs_en = 1;
