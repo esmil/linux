@@ -139,6 +139,8 @@ struct fusb301_chip {
 	struct typec_capability cap;
 	struct typec_partner *partner;
 	struct usb_role_switch *role_sw;
+
+	bool suspend_vbus_off;
 };
 
 enum fusb301_state {
@@ -281,6 +283,7 @@ static int fusb301_set_chip_state(struct fusb301_chip *chip, enum fusb301_state 
 		break;
 	default:
 		dev_err(chip->dev, "unexpected state: 0x%02x\n", state);
+		manual = FUSB301_MANUAL_ERR_RECOVERY;
 		break;
 	}
 	ret = regmap_write_bits(chip->regmap, FUSB301_REG_MANUAL,
@@ -1040,6 +1043,7 @@ static int fusb301_probe(struct i2c_client *client)
 		dev_err(cdev, "fail to probe typec property.\n");
 		return ret;
 	}
+	chip->suspend_vbus_off = device_property_read_bool(cdev, "suspend-vbus-off");
 
 	chip->type = FUSB301_TYPE_INVALID;
 	chip->state = FUSB_STATE_ERROR_RECOVERY;
@@ -1116,6 +1120,9 @@ static int __maybe_unused fusb301_pm_suspend(struct device *dev)
 	flush_work(&chip->dwork);
 	flush_delayed_work(&chip->twork);
 
+	if (chip->suspend_vbus_off)
+		fusb301_set_chip_state(chip, FUSB_STATE_DISABLED);
+
 	return 0;
 }
 
@@ -1123,13 +1130,16 @@ static int __maybe_unused fusb301_pm_resume(struct device *dev)
 {
 	struct fusb301_chip *chip = dev_get_drvdata(dev);
 
+	if (chip->suspend_vbus_off)
+		fusb301_set_chip_state(chip, FUSB_STATE_ERROR_RECOVERY);
+
 	schedule_work(&chip->dwork);
 
 	return 0;
 }
 
 static const struct dev_pm_ops fusb301_dev_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(fusb301_pm_suspend, fusb301_pm_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(fusb301_pm_suspend, fusb301_pm_resume)
 };
 
 static const struct of_device_id fusb301_match_table[] = {
