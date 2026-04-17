@@ -16,6 +16,7 @@ void saturn_hee_conf_dpuctrl_color_matrix(struct spacemit_crtc *a_crtc, struct d
 	struct spacemit_crtc_state *spacemit_state = to_spacemit_crtc_state(state);
 	struct drm_property_blob *blob = spacemit_state->color_matrix_blob_prop;
 	int *color_matrix;
+	struct cmdlist_regs *cmd_regs = NULL;
 
 	/*
 	 * For color matrix, if no update from user space,
@@ -23,6 +24,12 @@ void saturn_hee_conf_dpuctrl_color_matrix(struct spacemit_crtc *a_crtc, struct d
 	 */
 	if (blob) {
 		color_matrix = (int *)blob->data;
+
+		cmd_regs = alloc_cmdlist_regs(LTM_REG);
+		if (!cmd_regs) {
+			DRM_ERROR("cmd_regs for color matrix failed\n");
+			return;
+		}
 
 		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_npost_proc_en, 1);
 		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_nendmatrix_en, 1);
@@ -32,18 +39,21 @@ void saturn_hee_conf_dpuctrl_color_matrix(struct spacemit_crtc *a_crtc, struct d
 		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_nend_tmootf_en, 0);
 		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_neotf_en, 0);
 		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_noetf_en, 0);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table0, color_matrix[0]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table1, color_matrix[1]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table2, color_matrix[2]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table3, color_matrix[3]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table4, color_matrix[4]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table5, color_matrix[5]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table6, color_matrix[6]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table7, color_matrix[7]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table8, color_matrix[8]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_offset0, color_matrix[9]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_offset1, color_matrix[10]);
-		dpu_write_reg(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_offset2, color_matrix[11]);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table0, color_matrix[0] & 0xFFFF, cmd_regs, 78);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table1, color_matrix[1] & 0xFFFF, cmd_regs, 78);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table2, color_matrix[2] & 0xFFFF, cmd_regs, 79);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table3, color_matrix[3] & 0xFFFF, cmd_regs, 79);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table4, color_matrix[4] & 0xFFFF, cmd_regs, 80);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table5, color_matrix[5] & 0xFFFF, cmd_regs, 80);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table6, color_matrix[6] & 0xFFFF, cmd_regs, 81);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table7, color_matrix[7] & 0xFFFF, cmd_regs, 81);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_table8, color_matrix[8] & 0xFFFF, cmd_regs, 82);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_offset0, color_matrix[9] & 0xFFFF, cmd_regs, 83);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_offset1, color_matrix[10] & 0xFFFF, cmd_regs, 84);
+		dpu_write(hwdev, LTM_REG, LTM_BASE_ADDR, m_pendmatrix_offset2, color_matrix[11] & 0xFFFF, cmd_regs, 85);
+
+		cmdlist_regs_packing(crtc_to_cl(&a_crtc->crtc), CMDLIST_MOD_COMP, cmd_regs);
+		free_cmdlist_regs(cmd_regs);
 	}
 
 }
