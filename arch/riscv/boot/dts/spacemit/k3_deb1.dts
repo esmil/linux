@@ -422,6 +422,7 @@
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
 	monitor-vbus;
+	reset-on-resume;
 	status = "okay";
 
 	ports {
@@ -445,9 +446,9 @@
 	/delete-property/ phys;
 	/delete-property/ phy-names;
 	maximum-speed = "high-speed";
+	reset-on-resume;
 	phys = <&usb3_portb_u2phy>;
 	phy-names = "usb2-phy";
-	status = "disabled";
 	status = "okay";
 };
 
@@ -464,6 +465,7 @@
 	/delete-property/ phys;
 	/delete-property/ phy-names;
 	maximum-speed = "high-speed";
+	reset-on-resume;
 	phys = <&usb3_portc_u2phy>;
 	phy-names = "usb2-phy";
 	status = "okay";
@@ -1149,6 +1151,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb301_cfg>;
 		irq-gpios = <&gpio 2 21 GPIO_ACTIVE_LOW>;
+		suspend-vbus-off;
 		wakeup-source;
 		status = "okay";
 
