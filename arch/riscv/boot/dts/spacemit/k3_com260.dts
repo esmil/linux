@@ -248,6 +248,12 @@
 		};
 	};
 
+	cam0_2_cfg: cam0-2-cfg {
+               cam1-0-pins {
+                        power-source = <1800>;
+                };
+        };
+
 	cam_mux_cfg: cam-mux-cfg {
 		cam-mux-pins {
 			pinmux = <K3_PADCONF(103, 0)>;
@@ -1052,6 +1058,21 @@
 		pinctrl-0 = <&cam_mux_cfg>;
 		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	ov5640@3c {
+		compatible = "spacemit,ov5640-max96724-max9295";
+		reg = <0x3c>;
+		csi-id = <0>;
+		vdd-supply = <&aldo3>;
+		clock-names = "xclk";
+		clocks = <&syscon_apmu CLK_APMU_ISIM_VCLK0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam0_2_cfg>;
+		pwdn-gpios = <&gpio 1 12 GPIO_ACTIVE_HIGH>;
+		deserializer-addr = <0x27>;
+		serializer-base-addr = <0x41>;
 		status = "okay";
 	};
 
