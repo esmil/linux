@@ -210,8 +210,6 @@ static int spacemit_framebuffer_dump(struct drm_plane *plane)
 			for (j = 0; j < buffer_size; j++) {
 				dpu_buffer_paddr = *(volatile u32 __force *)mmu_tbl_vaddr;
 				dpu_buffer_paddr = dpu_buffer_paddr << PAGE_SHIFT;
-				if (dpu_buffer_paddr >= 0x80000000UL)
-					dpu_buffer_paddr += 0x80000000UL;
 				dpu_buffer_vaddr = phys_to_virt((unsigned long)dpu_buffer_paddr);
 				mmu_tbl_vaddr += 4;
 				kernel_write(filep, (void *)dpu_buffer_vaddr, PAGE_SIZE, &pos);
