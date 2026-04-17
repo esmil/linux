@@ -46,6 +46,11 @@
 #define SOC_DP_PREEMP_MAX 2
 #define SOC_DP_AUX_MAX_RETRIES 3
 
+#define SOC_DP_EDID_CHUNK_SIZE 16
+#define SOC_DP_DDC_SEGMENT_ADDR 0x30
+#define SOC_DP_SINK_READY_DELAY_MS 120
+#define SOC_DP_SINK_READY_RETRIES 3
+
 #define SOC_DP_APMU_CLK_CTRL	0x23c
 #define SOC_DP_QOS_BASE		0xd4282c00
 #define SOC_DP_QOS_SIZE		0x200
@@ -578,6 +583,7 @@ static uint32_t soc_dp_aux_get_cmd(struct drm_dp_aux_msg *msg)
 	switch (msg->request & ~DP_AUX_I2C_MOT) {
 	case DP_AUX_NATIVE_WRITE:
 	case DP_AUX_I2C_WRITE:
+	case DP_AUX_I2C_WRITE_STATUS_UPDATE:
 		return msg->request;
 	case DP_AUX_NATIVE_READ:
 	case DP_AUX_I2C_READ:
@@ -587,6 +593,36 @@ static uint32_t soc_dp_aux_get_cmd(struct drm_dp_aux_msg *msg)
 	}
 
 	return 0;
+}
+
+static void soc_dp_aux_hw_reset(struct soc_dp_dev *dp)
+{
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_RESET, 0x1);
+	usleep_range(2000, 2500);
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_RESET, 0x0);
+	usleep_range(2000, 2500);
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_REPLY_EVENT_INT_STA, 1);
+}
+
+static bool soc_dp_dpcd_caps_valid(const u8 *dpcd)
+{
+	u8 max_bw = dpcd[DP_MAX_LINK_RATE];
+	u8 max_lanes = dpcd[DP_MAX_LANE_COUNT] & DP_MAX_LANE_COUNT_MASK;
+
+	if (!dpcd[DP_DPCD_REV])
+		return false;
+
+	switch (max_bw) {
+	case DP_LINK_BW_1_62:
+	case DP_LINK_BW_2_7:
+	case DP_LINK_BW_5_4:
+	case DP_LINK_BW_8_1:
+		break;
+	default:
+		return false;
+	}
+
+	return max_lanes == 1 || max_lanes == 2 || max_lanes == 4;
 }
 
 static ssize_t soc_dp_aux_transfer(struct drm_dp_aux *aux,
@@ -651,7 +687,18 @@ retry_eio:
 	}
 
 	if (ret) {
-		dev_err(dp->dev, "AUX transfer timeout\n");
+		if (retries < SOC_DP_AUX_MAX_RETRIES) {
+			retries++;
+			soc_dp_aux_hw_reset(dp);
+			dev_dbg(dp->dev,
+				"AUX timeout retry, cmd: 0x%x, addr: 0x%x, size %zu, retries %d/%d\n",
+				cmd, msg->address, msg->size, retries, SOC_DP_AUX_MAX_RETRIES);
+			goto retry_eio;
+		}
+
+		dev_err(dp->dev,
+			"AUX transfer timeout, req: 0x%x, cmd: 0x%x, addr: 0x%x, size %zu\n",
+			msg->request, cmd, msg->address, msg->size);
 		return ret;
 	}
 
@@ -677,12 +724,13 @@ retry_eio:
 		soc_dp_reg_read_range(dp, SOC_DPTX_AUX_REPLY_ERR_CODE, &val);
 		if (retries < SOC_DP_AUX_MAX_RETRIES) {
 			retries++;
-			dev_dbg(dp->dev, "AUX retry, cmd: 0x%x, address: 0x%x status: 0x%x retries %d/%d\n",
-				 cmd, msg->address, status, retries, SOC_DP_AUX_MAX_RETRIES);
+			dev_dbg(dp->dev,
+				"AUX status retry, cmd: 0x%x, addr: 0x%x, size %zu, retries %d/%d\n",
+				cmd, msg->address, msg->size, retries, SOC_DP_AUX_MAX_RETRIES);
 			usleep_range(1000, 1100);
 			goto retry_eio;
 		}
-		dev_err(dp->dev, "AUX error, cmd: 0x%x, address: 0x%x, size %ld, status: 0x%x, code: 0x%x\n",
+		dev_err(dp->dev, "AUX status error, cmd: 0x%x, address: 0x%x, size %zu, status: 0x%x, code: 0x%x\n",
 			cmd, msg->address, msg->size, status, val);
 		return -EIO;
 	}
@@ -711,6 +759,7 @@ static void soc_dp_aux_init(struct soc_dp_dev *dp)
 	dp->aux.dev = dp->dev;
 	dp->aux.drm_dev = dp->drm;
 	dp->aux.transfer = soc_dp_aux_transfer;
+	dp->aux.no_zero_sized = true;
 
 	drm_dp_aux_register(&dp->aux);
 }
@@ -722,7 +771,7 @@ static uint64_t soc_dp_abs_diff(uint64_t a, uint64_t b)
 
 static uint32_t soc_dp_div64(uint64_t *n, uint32_t base)
 {
-#ifdef ACTIVATE_DO_DIV
+#if ACTIVATE_DO_DIV
 	return do_div(*n, base);
 #else
 	uint32_t rem = *n % base;
@@ -886,11 +935,38 @@ static int soc_dp_hw_read_sink_caps(struct soc_dp_dev *dp)
 #else
 	ssize_t ret;
 	uint8_t max_bw;
+	int retry;
 
-	/* 1. Read DPCD Receiver Capability fields (0x00000 - 0x0000F) */
-	ret = drm_dp_dpcd_read(&dp->aux, DP_DPCD_REV, dp->dpcd, DP_RECEIVER_CAP_SIZE);
+	for (retry = 0; retry < SOC_DP_SINK_READY_RETRIES; retry++) {
+		if (retry) {
+			soc_dp_aux_hw_reset(dp);
+			msleep(SOC_DP_SINK_READY_DELAY_MS);
+		}
+
+		/* Read DPCD Receiver Capability fields (0x00000 - 0x0000F) */
+		ret = drm_dp_dpcd_read(&dp->aux, DP_DPCD_REV, dp->dpcd,
+				       DP_RECEIVER_CAP_SIZE);
+		if (ret < 0)
+			continue;
+
+		if (ret != DP_RECEIVER_CAP_SIZE || !soc_dp_dpcd_caps_valid(dp->dpcd)) {
+			dev_dbg(dp->dev,
+				"DPCD caps not ready: rev=0x%02x bw=0x%02x lanes=0x%02x\n",
+				dp->dpcd[DP_DPCD_REV], dp->dpcd[DP_MAX_LINK_RATE], dp->dpcd[DP_MAX_LANE_COUNT]);
+			ret = -EAGAIN;
+			continue;
+		}
+
+		break;
+	}
+
 	if (ret < 0) {
-		dev_err(dp->dev, "Failed to read DPCD: %zd\n", ret);
+		dev_err(dp->dev, "Failed to read DPCD after %d retries: %zd\n",
+			SOC_DP_SINK_READY_RETRIES, ret);
+		dp->link.revision = 0x14;
+		dp->link.max_rate = SOC_DP_LINK_RATE_5_40;
+		dp->link.max_num_lanes = SOC_DP_LANE_2;
+		dp->link.enhanced_framing = 1;
 		return ret;
 	}
 
@@ -917,9 +993,9 @@ static int soc_dp_hw_read_sink_caps(struct soc_dp_dev *dp)
 		dp->link.max_rate = SOC_DP_LINK_RATE_8_10;
 		break;
 	default:
-		dev_warn(dp->dev, "Unknown DPCD Max Rate: 0x%x, defaulting to 2.70G\n", max_bw);
+		dev_warn(dp->dev, "Unknown DPCD Max Rate: 0x%x, defaulting to 5.40G\n", max_bw);
 		dp->link.revision = 0x14;
-		dp->link.max_rate = SOC_DP_LINK_RATE_2_70;
+		dp->link.max_rate = SOC_DP_LINK_RATE_5_40;
 		dp->link.max_num_lanes = SOC_DP_LANE_2;
 		dp->link.enhanced_framing = 1;
 		return -1;
@@ -1360,7 +1436,7 @@ static void soc_dp_hw_clean_hpd(struct soc_dp_dev *dp)
 
 static int soc_dp_phy_power_on(struct soc_dp_dev *dp)
 {
-	int ret;
+	int ret, retry;
 	uint32_t lane_en;
 
 	switch (dp->lane_count) {
@@ -1383,19 +1459,29 @@ static int soc_dp_phy_power_on(struct soc_dp_dev *dp)
 	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, lane_en);
 	mdelay(2);
 
-	ret = soc_dp_check_pll_lock(dp);
-	if (ret)
-		return ret;
+	for (retry = 0; retry < 3; retry++) {
+		ret = soc_dp_check_pll_lock(dp);
+		if (!ret)
+			break;
+		mdelay(2);
+	}
 
-	return 0;
+	return ret;
 }
 
 static int soc_dp_phy_power_off(struct soc_dp_dev *dp)
 {
+	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_STREAM_ENABLE, 0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_XMIT_ENABLE, 0);
 	mdelay(2);
 
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_PREPLL_PD, 1);
+	mdelay(2);
+
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_RESET, 0x1);
+	mdelay(5);
+
+	soc_dp_reg_write_range(dp, SOC_DPTX_AUX_RESET, 0x0);
 	mdelay(2);
 
 	return 0;
@@ -1890,48 +1976,86 @@ static const struct drm_connector_funcs soc_dp_connector_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
 };
 
-static int soc_dp_conn_get_edid_block(void *data, uint8_t *buf, unsigned int block, size_t len)
+static int soc_dp_aux_i2c_write(struct soc_dp_dev *dp, u32 address,
+				const u8 *buf, size_t len)
+{
+	struct drm_dp_aux_msg msg = {
+		.address = address,
+		.request = DP_AUX_I2C_WRITE,
+		.buffer = (u8 *)buf,
+		.size = len,
+	};
+	int ret;
+
+	ret = soc_dp_aux_transfer(&dp->aux, &msg);
+	if (ret < 0)
+		return ret;
+
+	return ret == len ? 0 : -EIO;
+}
+
+static int soc_dp_aux_i2c_read(struct soc_dp_dev *dp, u32 address,
+			       u8 *buf, size_t len)
+{
+	struct drm_dp_aux_msg msg = {
+		.address = address,
+		.request = DP_AUX_I2C_READ,
+		.buffer = buf,
+		.size = len,
+	};
+	int ret;
+
+	ret = soc_dp_aux_transfer(&dp->aux, &msg);
+	if (ret < 0)
+		return ret;
+
+	return ret == len ? 0 : -EIO;
+}
+
+static int soc_dp_conn_get_edid_block(void *data, u8 *buf,
+				      unsigned int block, size_t len)
 {
 	struct soc_dp_dev *dp = data;
-	struct drm_dp_aux_msg msg;
-	int ret, i, retry;
-	uint8_t offset;
+	unsigned int start = block * EDID_LENGTH;
+	u8 segment = block >> 1;
+	int ret, retry;
+	size_t offset;
 
-	offset = (block * EDID_LENGTH) & 0xFF;
-
-	for (retry = 0; retry < 3; retry++) {
-		msg.address = 0x50;
-		msg.request = DP_AUX_I2C_WRITE;
-		msg.buffer = &offset;
-		msg.size = 1;
-		msg.reply = 0;
-
-		ret = soc_dp_aux_transfer(&dp->aux, &msg);
-		if (ret >= 0)
-			break;
-	}
-
-	if (ret < 0) {
-		dev_err(dp->dev, "[EDID] AUX write offset failed: %d\n", ret);
-		return -EIO;
-	}
-
-	for (i = 0; i < len; i += 16) {
+	if (segment) {
 		for (retry = 0; retry < 3; retry++) {
-			msg.address = 0x50;
-			msg.request = DP_AUX_I2C_READ;
-			msg.buffer = buf + i;
-			msg.size = min_t(size_t, 16, len - i);
-			msg.reply = 0;
-
-			ret = soc_dp_aux_transfer(&dp->aux, &msg);
-			if (ret >= 0)
+			ret = soc_dp_aux_i2c_write(dp, SOC_DP_DDC_SEGMENT_ADDR,
+						   &segment, 1);
+			if (!ret)
 				break;
 		}
 
-		if (ret < 0) {
-			dev_err(dp->dev, "[EDID] AUX read data failed at offset %d: %d\n", i, ret);
-			return -EIO;
+		if (ret) {
+			dev_err(dp->dev,
+				"[EDID] segment write failed, block %u segment %u ret %d\n",
+				block, segment, ret);
+			return ret;
+		}
+	}
+
+	for (offset = 0; offset < len; offset += SOC_DP_EDID_CHUNK_SIZE) {
+		u8 edid_offset = (start + offset) & 0xff;
+		size_t chunk = min_t(size_t, SOC_DP_EDID_CHUNK_SIZE, len - offset);
+
+		for (retry = 0; retry < 3; retry++) {
+			ret = soc_dp_aux_i2c_write(dp, DDC_ADDR, &edid_offset, 1);
+			if (ret)
+				continue;
+
+			ret = soc_dp_aux_i2c_read(dp, DDC_ADDR, buf + offset, chunk);
+			if (!ret)
+				break;
+		}
+
+		if (ret) {
+			dev_err(dp->dev,
+				"[EDID] read failed, block %u offset 0x%02x len %zu ret %d\n",
+				block, edid_offset, chunk, ret);
+			return ret;
 		}
 	}
 
@@ -1946,15 +2070,27 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 	struct drm_device *dev = connector->dev;
 	struct soc_dp_dev *dp = container_of(connector, struct soc_dp_dev, connector);
 	struct drm_display_mode *preferred_mode = NULL;
+	int retry;
 
 	mutex_lock(&dp->mode_lock);
 
-	edid = drm_edid_read_custom(connector, soc_dp_conn_get_edid_block, dp);
+	for (retry = 0; retry < SOC_DP_SINK_READY_RETRIES; retry++) {
+		if (retry) {
+			soc_dp_aux_hw_reset(dp);
+			msleep(SOC_DP_SINK_READY_DELAY_MS);
+		}
+
+		edid = drm_edid_read_custom(connector, soc_dp_conn_get_edid_block, dp);
+		if (edid)
+			break;
+	}
+
 	if (!edid) {
 		mutex_unlock(&dp->mode_lock);
 		dev_err(dp->dev, "Failed to read EDID\n");
 		return drm_add_modes_noedid(connector, 1920, 1080);
 	}
+
 	drm_edid_connector_update(connector, edid);
 	count = drm_edid_connector_add_modes(connector);
 
@@ -2048,7 +2184,7 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 	mutex_lock(&dp->mode_lock);
 
-	if (dp->pxclk) {
+	if (dp->use_ext_pixel_clock && dp->pxclk) {
 		set_clk_val = adjusted_mode->clock * 1000;
 		if (set_clk_val) {
 			set_clk_val = clk_round_rate(dp->pxclk, set_clk_val);
@@ -2112,13 +2248,11 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 				continue;
 		}
 
-		if (soc_dp_check_pll_lock(dp))
-			continue;
-
 		soc_dp_phy_config_lanes(dp, cfg->lanes);
 		soc_dp_phy_config_rate(dp, cfg->rate);
 
-		soc_dp_phy_power_on(dp);
+		if (soc_dp_phy_power_on(dp))
+			continue;
 
 		if (dp->edp_mode) {
 			soc_dp_reg_write_range(dp, SOC_DPTX_ENABLE_EDP, 0x1);
@@ -2142,7 +2276,6 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 	mutex_unlock(&dp->mode_lock);
 	if (dp->backlight)
 		backlight_enable(dp->backlight);
-	dev_info(dp->dev, "DP: Stream Active\n");
 }
 
 static void soc_dp_encoder_disable(struct drm_encoder *encoder)
@@ -2157,7 +2290,6 @@ static void soc_dp_encoder_disable(struct drm_encoder *encoder)
 	mutex_lock(&dp->mode_lock);
 
 	/* Disable Video Stream */
-	soc_dp_reg_write_range(dp, SOC_DPTX_VIDEO_STREAM_ENABLE, 0);
 	soc_dp_phy_power_off(dp);
 
 	mutex_unlock(&dp->mode_lock);
@@ -2528,12 +2660,12 @@ static int soc_dp_dev_init(struct soc_dp_dev *dp)
 			return ret;
 	}
 
-	ret = soc_dp_check_pll_lock(dp);
-	if (ret)
-		return ret;
-
 	soc_dp_phy_config_lanes(dp, SOC_DP_LANE_2);
 	soc_dp_phy_config_rate(dp, SOC_DP_LINK_RATE_2_70);
+
+	ret = soc_dp_phy_power_on(dp);
+	if (ret)
+		return ret;
 
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_MODE_D0, 0);
 	soc_dp_reg_write_range(dp, SOC_DPTX_ANA_TX_MODE_D1, 0);
@@ -2752,6 +2884,7 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 #endif
 
 	soc_dp_aux_init(dp);
+	dp->connector.ddc = &dp->aux.ddc;
 
 	ret = soc_dp_resource_init(dp, pdev);
 	if (ret) {
@@ -2764,6 +2897,8 @@ static int soc_dp_bind(struct device *dev, struct device *master, void *data)
 		drm_connector_cleanup(&dp->connector);
 		return ret;
 	}
+
+	soc_dp_phy_power_off(dp);
 
 #if IS_ENABLED(CONFIG_SND_SOC)
 	if (!dp->edp_mode) {
