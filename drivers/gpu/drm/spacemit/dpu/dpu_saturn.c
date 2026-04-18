@@ -1744,9 +1744,9 @@ static void dpu_run(struct drm_crtc *crtc,
 	saturn_ctrl_cmd_update(a_crtc, true);
 
 	if (unlikely(a_crtc->is_1st_f)) {
-		DRM_INFO("DPU %d Start!\n", a_crtc->dev_id);
 		a_crtc->is_1st_f = false;
 		saturn_ctrl_sw_start(a_crtc, true);
+		DRM_INFO("DPU %d Start!\n", a_crtc->dpu_id);
 	}
 #ifdef CONFIG_ARM64
 	__iomb();
