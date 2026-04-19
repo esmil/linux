@@ -476,16 +476,17 @@ static void ccic_dma_bh_handler(struct ccic_dma_work_struct *ccic_dma_work)
 	//unsigned int irq_status = ccic_dma_work->irq_status;
 	LIST_HEAD(export_list);
 	unsigned long flags = 0;
+	unsigned long wq_flags = 0;
 
-	spin_lock(&vnode->waitq_head.lock);
+	spin_lock_irqsave(&vnode->waitq_head.lock, wq_flags);
 	vnode->in_tasklet = 1;
 	if (vnode->in_streamoff || !vnode->is_streaming) {
 		wake_up_locked(&vnode->waitq_head);
-		spin_unlock(&vnode->waitq_head.lock);
+		spin_unlock_irqrestore(&vnode->waitq_head.lock, wq_flags);
 		goto dma_tasklet_finish;
 	}
 	wake_up_locked(&vnode->waitq_head);
-	spin_unlock(&vnode->waitq_head.lock);
+	spin_unlock_irqrestore(&vnode->waitq_head.lock, wq_flags);
 	spin_lock_irqsave(&vnode->slock, flags);
 	list_for_each_entry_safe(pos, n, &vnode->busy_list, list_entry) {
 		if (pos->flags &
@@ -529,10 +530,10 @@ static void ccic_dma_bh_handler(struct ccic_dma_work_struct *ccic_dma_work)
 	}
 dma_tasklet_finish:
 	if (vnode) {
-		spin_lock(&vnode->waitq_head.lock);
+		spin_lock_irqsave(&vnode->waitq_head.lock, wq_flags);
 		vnode->in_tasklet = 0;
 		wake_up_locked(&vnode->waitq_head);
-		spin_unlock(&vnode->waitq_head.lock);
+		spin_unlock_irqrestore(&vnode->waitq_head.lock, wq_flags);
 	}
 	ccic_put_dma_work(dma_ctx, ccic_dma_work);
 }
@@ -579,6 +580,7 @@ irqreturn_t ccic_dma_irq_handler(int irq, void *data)
 	struct ccic_vbuffer *pos = NULL, *vb = NULL;
 	struct ccic_dma_work_struct *ccic_dma_work = NULL;
 	struct ccic_dma_context *dma_ctx = NULL;
+	unsigned long wq_flags = 0;
 	unsigned int irq0 = 0, irq1 = 0, dma_ch = 0, irq_status = 0;
 	unsigned int tmp = 0;
 	int i = 0, ret = 0;
@@ -613,15 +615,15 @@ irqreturn_t ccic_dma_irq_handler(int irq, void *data)
 			if (dma_ch >= MAX_CCIC_DMA_CNT) {
 				continue;
 			}
-			spin_lock(&vnode->waitq_head.lock);
+			spin_lock_irqsave(&vnode->waitq_head.lock, wq_flags);
 			vnode->in_irq = 1;
 			if (vnode->in_streamoff) {
 				vnode->in_irq = 0;
 				wake_up_locked(&vnode->waitq_head);
-				spin_unlock(&vnode->waitq_head.lock);
+				spin_unlock_irqrestore(&vnode->waitq_head.lock, wq_flags);
 				continue;
 			}
-			spin_unlock(&vnode->waitq_head.lock);
+			spin_unlock_irqrestore(&vnode->waitq_head.lock, wq_flags);
 			do {
 				irq_status = ccic_dma_ch_irq_analyze(dma_ch, irq0, irq1);
 				if (!irq_status) {
@@ -743,10 +745,10 @@ irqreturn_t ccic_dma_irq_handler(int irq, void *data)
 					}
 				}
 			} while (0);
-			spin_lock(&vnode->waitq_head.lock);
+			spin_lock_irqsave(&vnode->waitq_head.lock, wq_flags);
 			vnode->in_irq = 0;
 			wake_up_locked(&vnode->waitq_head);
-			spin_unlock(&vnode->waitq_head.lock);
+			spin_unlock_irqrestore(&vnode->waitq_head.lock, wq_flags);
 		}
 	}
 
