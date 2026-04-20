@@ -1057,7 +1057,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&cam_mux_cfg>;
 		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
-		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio 1 12 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
@@ -1084,7 +1084,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&cam_mux_cfg>;
 		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
-		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio 1 12 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 };
