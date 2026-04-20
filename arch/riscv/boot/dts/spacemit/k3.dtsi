@@ -2490,7 +2490,7 @@
 		ufshc: ufshc@0xc0e00000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
-			compatible = "spacemit,k3-ufshcd", "jedec,ufs-2.1";
+			compatible = "spacemit,k3-ufshcd";
 			reg = <0x0 0xc0e00000 0x0 0x40000>;
 			interrupt-parent = <&saplic>;
 			interrupts = <135 0x4>;
