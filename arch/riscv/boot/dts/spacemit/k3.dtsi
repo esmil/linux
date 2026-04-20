@@ -2288,8 +2288,8 @@
 				<0x43000000 0x18 0x00000000 0x18 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <141 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pcie_irq";
+			interrupts = <141 IRQ_TYPE_LEVEL_HIGH>, <219 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pcie_irq", "wakeup";
 				clocks = <&syscon_apmu CLK_APMU_PCIE_PORTA_BUS>,
 					<&syscon_apmu CLK_APMU_PCIE_PORTA_MSTR>,
 					<&syscon_apmu CLK_APMU_PCIE_PORTA_SLV>;
@@ -2327,8 +2327,8 @@
 				<0x43000000 0x16 0x00000000 0x16 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <142 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pcie_irq";
+			interrupts = <142 IRQ_TYPE_LEVEL_HIGH>, <220 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pcie_irq", "wakeup";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTB_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTB_MSTR>,
@@ -2369,8 +2369,8 @@
 				<0x43000000 0x15 0x00000000 0x15 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pcie_irq";
+			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>, <221 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pcie_irq", "wakeup";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTC_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTC_MSTR>,
@@ -2411,8 +2411,8 @@
 				<0x43000000 0x14 0x00000000 0x14 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <145 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pcie_irq";
+			interrupts = <145 IRQ_TYPE_LEVEL_HIGH>, <222 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pcie_irq", "wakeup";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTD_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTD_MSTR>,
@@ -2450,8 +2450,8 @@
 				<0x43000000 0x13 0x00000000 0x13 0x00000000 0x1 0x00000000>;
 
 			interrupt-parent = <&saplic>;
-			interrupts = <146 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pcie_irq";
+			interrupts = <146 IRQ_TYPE_LEVEL_HIGH>, <223 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pcie_irq", "wakeup";
 
 			clocks = <&syscon_apmu CLK_APMU_PCIE_PORTE_BUS>,
 				<&syscon_apmu CLK_APMU_PCIE_PORTE_MSTR>,
