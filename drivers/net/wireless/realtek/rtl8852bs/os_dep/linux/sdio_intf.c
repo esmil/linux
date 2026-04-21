@@ -185,13 +185,9 @@ static u8 gpio_hostwakeup_alloc_irq(_adapter *padapter)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32))
 	status = IRQF_NO_SUSPEND;
 #endif
+	status |= IRQF_ONESHOT;
 
-	if (HIGH_ACTIVE_DEV2HST)
-		status |= IRQF_TRIGGER_RISING;
-	else
-		status |= IRQF_TRIGGER_FALLING;
-
-	err = request_threaded_irq(oob_irq, gpio_hostwakeup_irq_thread, NULL,
+	err = request_threaded_irq(oob_irq, NULL, gpio_hostwakeup_irq_thread,
 		status, "rtw_wifi_gpio_wakeup", padapter);
 
 	if (err < 0) {
