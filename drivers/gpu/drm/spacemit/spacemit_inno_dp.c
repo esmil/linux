@@ -2065,11 +2065,13 @@ static int soc_dp_conn_get_edid_block(void *data, u8 *buf,
 static int soc_dp_conn_get_modes(struct drm_connector *connector)
 {
 	int count;
+	uint32_t max_mode_pixels = 0;
 	const struct drm_edid *edid;
 	struct drm_display_mode *mode, *tmp;
 	struct drm_device *dev = connector->dev;
 	struct soc_dp_dev *dp = container_of(connector, struct soc_dp_dev, connector);
 	struct drm_display_mode *preferred_mode = NULL;
+	struct drm_display_mode *edid_preferred_mode = NULL;
 	int retry;
 
 	mutex_lock(&dp->mode_lock);
@@ -2127,21 +2129,40 @@ static int soc_dp_conn_get_modes(struct drm_connector *connector)
 	}
 
 	if (count > 1) {
-		list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
-			mode->type &= ~DRM_MODE_TYPE_PREFERRED;
+		list_for_each_entry(mode, &connector->probed_modes, head) {
+			u32 mode_pixels = mode->hdisplay * mode->vdisplay;
 
-			if (!preferred_mode && mode->hdisplay == 1920 && mode->vdisplay == 1080 &&
-			    drm_mode_vrefresh(mode) == 60) {
-				preferred_mode = mode;
+			if (mode_pixels > max_mode_pixels)
+				max_mode_pixels = mode_pixels;
+
+			if (!edid_preferred_mode &&
+			    (mode->type & DRM_MODE_TYPE_PREFERRED)) {
+				edid_preferred_mode = mode;
 			}
 		}
 
-		if (preferred_mode) {
-			preferred_mode->type |= DRM_MODE_TYPE_PREFERRED;
-			list_move(&preferred_mode->head, &connector->probed_modes);
-		} else {
-			mode = list_first_entry(&connector->probed_modes, struct drm_display_mode, head);
-			mode->type |= DRM_MODE_TYPE_PREFERRED;
+		if (!dp->edp_mode && max_mode_pixels > 1920 * 1080 &&
+		    (!edid_preferred_mode ||
+		     edid_preferred_mode->hdisplay != 1920 ||
+		     edid_preferred_mode->vdisplay != 1080)) {
+			list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
+				mode->type &= ~DRM_MODE_TYPE_PREFERRED;
+
+				if (!preferred_mode && mode->hdisplay == 1920 &&
+				    mode->vdisplay == 1080 &&
+				    drm_mode_vrefresh(mode) == 60) {
+					preferred_mode = mode;
+				}
+			}
+
+			if (preferred_mode) {
+				preferred_mode->type |= DRM_MODE_TYPE_PREFERRED;
+				list_move(&preferred_mode->head, &connector->probed_modes);
+			} else {
+				mode = list_first_entry(&connector->probed_modes,
+							struct drm_display_mode, head);
+				mode->type |= DRM_MODE_TYPE_PREFERRED;
+			}
 		}
 	}
 

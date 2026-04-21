@@ -198,36 +198,35 @@ static bool is_per_cpu_kthread(struct task_struct *p)
 
  static inline void _set_cpumask(struct task_struct *p, const struct cpumask *allowed_mask)
 {
-    struct cpumask mask;
+	struct cpumask mask;
 
-    cpumask_and(&mask, allowed_mask, &p->cpus_mask);
-    if (WARN_ON(cpumask_empty(&mask)))
-        return;
+	cpumask_and(&mask, allowed_mask, &p->cpus_mask);
+	if (WARN_ON(cpumask_empty(&mask)))
+		return;
 
-    cpumask_copy(&p->cpus_mask, &mask);
-    p->nr_cpus_allowed = cpumask_weight(&p->cpus_mask);
-    p->cpus_ptr = &p->cpus_mask;
+	cpumask_copy(&p->cpus_mask, &mask);
+	p->nr_cpus_allowed = cpumask_weight(&p->cpus_mask);
+	p->cpus_ptr = &p->cpus_mask;
 }
 
 bool hmp_set_default_cpumask(struct task_struct *p)
 {
+	/* check if called from set ai task */
+	if (p->thread_type == HMP_AI) {
+		_set_cpumask(p, &ai_cpu_mask);
+		return !cpumask_empty(&p->cpus_mask);
+	}
 
-    /* check if called from set ai task */
-    if (p->thread_type == HMP_AI) {
-        _set_cpumask(p, &ai_cpu_mask);
-        return !cpumask_empty(&p->cpus_mask);
-    }
+	/* Check if this is a per-CPU kernel thread that should keep its binding */
+	if ((p->flags & PF_KTHREAD) && is_per_cpu_kthread(p))
+		return true;
 
-    /* Check if this is a per-CPU kernel thread that should keep its binding */
-    if ((p->flags & PF_KTHREAD) && is_per_cpu_kthread(p))
-        return true;
-
-    /* All new threads default to regular cores unless it's a per-CPU kthread
+	/* All new threads default to regular cores unless it's a per-CPU kthread
 	 * AI thread property will be set explicitly via /proc/ai_threads
 	 */
-    p->thread_type = HMP_REGULAR;
-    _set_cpumask(p, &regular_cpu_mask);
-    return !cpumask_empty(&p->cpus_mask);
+	p->thread_type = HMP_REGULAR;
+	_set_cpumask(p, &regular_cpu_mask);
+	return !cpumask_empty(&p->cpus_mask);
 }
 
 static int pm_callback(struct notifier_block *nb, unsigned long action, void *data)

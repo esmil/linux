@@ -85,6 +85,16 @@
 		radio-type = "bluetooth";
 		shutdown-gpios = <&gpio 1 25 GPIO_ACTIVE_LOW>;
 	};
+
+	hub_reset: hub-reset {
+		compatible = "regulator-fixed";
+		regulator-name = "hub-reset";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-boot-on;
+		gpio = <&gpio 1 21 0>;
+	};
 };
 
 &resmem {
@@ -341,6 +351,7 @@
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
 	monitor-vbus;
+	reset-on-resume;
 	status = "okay";
 
 	ports {
@@ -367,14 +378,15 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	reset-on-resume;
+	/* wakeup-source; */
 
 	/* VL817 USB2.0 hub (4 ports) */
 	hub_2_0: hub@1 {
 		compatible = "usb2109,2817";
 		reg = <1>;
 		peer-hub = <&hub_3_0>;
-		/* GPIO53(MIPI_CSI3_PWDN) reserved for HUB 3V3 RST,
-		 * now reset will be done by HW */
+		vdd-supply = <&hub_reset>;
 	};
 
 	/* VL817 USB3.0 hub (4 ports) */
@@ -382,8 +394,6 @@
 		compatible = "usb2109,817";
 		reg = <2>;
 		peer-hub = <&hub_2_0>;
-		/* GPIO53(MIPI_CSI3_PWDN) reserved for HUB 3V3 RST,
-		 * now reset will be done by HW */
 	};
 };
 
@@ -975,7 +985,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb301_cfg>;
 		irq-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
-		wakeup-source;
+		suspend-vbus-off;
 		status = "okay";
 
 		typec_0: connector@0 {

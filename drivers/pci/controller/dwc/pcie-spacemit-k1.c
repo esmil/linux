@@ -61,6 +61,13 @@
 #define PCIE_SOFT_RESET			BIT(0)
 
 #ifdef CONFIG_SOC_SPACEMIT_K3
+#define PCIE_WAKEUP_MASK		GENMASK(3, 1)
+#define PCIE_RC_WAKEN_MASK		BIT(3)
+#define PCIE_WAKEUP_INT_CLR		GENMASK(6, 4)
+#define PCIE_WAKEUP_INT_STATUS		GENMASK(13, 11)
+#define PCIE_WAKEUP_EN			BIT(14)
+#define PCIE_WAKEUP_INT_EN		BIT(15)
+#define PCIE_RC_WAKEN_OFFSET		BIT(2)
 #define PCIE_PERSTN_OE			BIT(24)
 #define PCIE_PERSTN_OUT			BIT(25)
 #define PCIE_IGNORE_PERSTN		BIT(31)
@@ -121,6 +128,7 @@ struct k1_pcie {
 	int			num_lanes;
 	int			port_id;
 	bool			link_up;
+	int 			wakeup_irq;
 #else
 	struct phy *phy;
 #endif
@@ -284,6 +292,13 @@ static void k1_pcie_clear_irq_status(struct k1_pcie *k1)
 	u32 status0;
 	u32 status1;
 	u32 status2;
+	u32 logic_ctrl = k1->pmu_off + PCIE_CONTROL_LOGIC;
+	u32 logic_val, wakeup_status;
+
+	regmap_read(k1->pmu, logic_ctrl, &logic_val);
+	wakeup_status = FIELD_GET(PCIE_WAKEUP_INT_STATUS, logic_val);
+	regmap_update_bits(k1->pmu, logic_ctrl, PCIE_WAKEUP_INT_CLR,
+			   FIELD_PREP(PCIE_WAKEUP_INT_CLR, wakeup_status));
 
 	status0 = readl_relaxed(k1->link + SPACEMIT_PHY_AHB_IRQSTATUS_INTX);
 	status1 = readl_relaxed(k1->link + INTR_STATUS);
@@ -423,6 +438,30 @@ static irqreturn_t spacemit_pcie_irq_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t spacemit_pcie_wakeup_irq_thread(int irq, void *data)
+{
+	struct k1_pcie *k1 = data;
+	struct dw_pcie *pci = &k1->pci;
+	struct device *dev = pci->dev;
+	u32 logic_ctrl = k1->pmu_off + PCIE_CONTROL_LOGIC;
+	u32 logic_val, mask, status;
+
+	/* get int status */
+	regmap_read(k1->pmu, logic_ctrl, &logic_val);
+	mask = FIELD_GET(PCIE_WAKEUP_MASK, logic_val);
+	status = FIELD_GET(PCIE_WAKEUP_INT_STATUS, logic_val);
+
+	/* rc wakeup int */
+	if (FIELD_GET(PCIE_RC_WAKEN_OFFSET, (mask & status))) {
+		dev_info(dev, "pcie wakeup interrupt received from RC\n");
+	}
+
+	/* clear int status */
+	regmap_update_bits(k1->pmu, logic_ctrl, PCIE_WAKEUP_INT_CLR,
+			   FIELD_PREP(PCIE_WAKEUP_INT_CLR, status));
+	return IRQ_HANDLED;
+}
+
 static int k1_pcie_init(struct dw_pcie_rp *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -552,6 +591,21 @@ static void spacemit_pcie_pme_turn_off(struct dw_pcie_rp *pp)
 	val = readl_relaxed(k1->link + K1_PHY_AHB_IRQ_EN);
 	val &= ~PME_TURN_OFF;
 	writel_relaxed(val, k1->link + K1_PHY_AHB_IRQ_EN);
+}
+
+static void spacemit_pcie_wait_for_l2(struct k1_pcie *k1)
+{
+	u32 val;
+	int ret;
+
+	spacemit_pcie_pme_turn_off(&k1->pci.pp);
+	ret = readl_poll_timeout(k1->link + K1_PHY_AHB_LINK_STS,
+				 val, PCIE_LINK_IS_L2(val), PCIE_PME_TO_L2_TIMEOUT_US/10,
+				 PCIE_PME_TO_L2_TIMEOUT_US);
+	if (ret) {
+		/* Only log message when LTSSM isn't in DETECT or POLL */
+		dev_warn(k1->pci.dev, "Timeout waiting for L2 entry! LTSSM: 0x%x\n", val);
+	}
 }
 
 static const struct dw_pcie_host_ops k1_pcie_host_ops = {
@@ -763,13 +817,39 @@ static void pcie_iommu_bypass_setup(struct k1_pcie *k1)
 	}
 }
 
+static int k1_pcie_enable_wakeup_irq(struct k1_pcie *k1)
+{
+	u32 logic_ctrl = k1->pmu_off + PCIE_CONTROL_LOGIC;
+
+	/* enable rc wakeup int */
+	if (k1->wakeup_irq > 0) {
+		regmap_update_bits(k1->pmu, logic_ctrl,
+				   PCIE_WAKEUP_EN | PCIE_WAKEUP_INT_EN | PCIE_RC_WAKEN_MASK,
+				   PCIE_WAKEUP_EN | PCIE_WAKEUP_INT_EN | PCIE_RC_WAKEN_MASK);
+		enable_irq(k1->wakeup_irq);
+	}
+
+	return 0;
+}
+
+static int k1_pcie_disable_wakeup_irq(struct k1_pcie *k1)
+{
+	u32 logic_ctrl = k1->pmu_off + PCIE_CONTROL_LOGIC;
+
+	if (k1->wakeup_irq > 0) {
+		disable_irq(k1->wakeup_irq);
+		regmap_update_bits(k1->pmu, logic_ctrl,
+				   PCIE_WAKEUP_EN | PCIE_WAKEUP_INT_EN | PCIE_RC_WAKEN_MASK, 0);
+	}
+
+	return 0;
+}
+
 static int k1_pcie_suspend_noirq(struct device *dev)
 {
 	struct k1_pcie *k1 = dev_get_drvdata(dev);
 	struct dw_pcie *pci = &k1->pci;
 	u8 offset = dw_pcie_find_capability(pci, PCI_CAP_ID_EXP);
-	u32 val;
-	int ret;
 
 	/*
 	 * If L1SS is supported, then do not put the link into L2 as some
@@ -783,15 +863,7 @@ static int k1_pcie_suspend_noirq(struct device *dev)
 	k1->link_up = k1_pcie_link_up(pci);
 	/* Put the link into L2 to save power */
 	if (k1->link_up) {
-		spacemit_pcie_pme_turn_off(&k1->pci.pp);
-		ret = readl_poll_timeout(k1->link + K1_PHY_AHB_LINK_STS,
-				 val, PCIE_LINK_IS_L2(val), PCIE_PME_TO_L2_TIMEOUT_US/10,
-				 PCIE_PME_TO_L2_TIMEOUT_US);
-		if (ret) {
-			/* Only log message when LTSSM isn't in DETECT or POLL */
-			dev_err(pci->dev, "Timeout waiting for L2 entry! LTSSM: 0x%x\n", val);
-			return ret;
-		}
+		spacemit_pcie_wait_for_l2(k1);
 	}
 
 	udelay(1);
@@ -806,9 +878,11 @@ static int k1_pcie_suspend_noirq(struct device *dev)
 
 	clk_bulk_disable_unprepare(ARRAY_SIZE(pci->app_clks), pci->app_clks);
 
+	k1_pcie_enable_wakeup_irq(k1);
+
 	pci->suspended = true;
 
-	return ret;
+	return 0;
 }
 
 static int k1_pcie_resume_noirq(struct device *dev)
@@ -820,6 +894,8 @@ static int k1_pcie_resume_noirq(struct device *dev)
 
 	if (!pci->suspended)
 		return 0;
+
+	k1_pcie_disable_wakeup_irq(k1);
 
 	pci->suspended = false;
 
@@ -979,6 +1055,8 @@ static int k1_pcie_probe(struct platform_device *pdev)
 	if (irq > 0)
 		pp->use_linkup_irq = true;
 
+	k1->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
+
 	k1_pcie_clear_irq_status(k1);
 
 	ret = dw_pcie_host_init(&k1->pci.pp);
@@ -1005,6 +1083,28 @@ static int k1_pcie_probe(struct platform_device *pdev)
 		}
 	}
 
+	name = devm_kasprintf(dev, GFP_KERNEL, "spacemit_pcie_rc_wakeup%d",
+			      pci_domain_nr(pp->bridge->bus));
+	if (!name) {
+		ret = -ENOMEM;
+		goto err_disable_pcie_irq;
+	}
+
+	if (k1->wakeup_irq > 0) {
+		irq_set_status_flags(k1->wakeup_irq, IRQ_NOAUTOEN);
+		ret = devm_request_threaded_irq(&pdev->dev, k1->wakeup_irq, NULL,
+						spacemit_pcie_wakeup_irq_thread,
+						IRQF_ONESHOT | IRQF_NO_SUSPEND,
+						name, k1);
+		if (ret) {
+			dev_err_probe(&pdev->dev, ret,
+				      "Failed to request wakeup IRQ\n");
+			goto err_disable_pcie_irq;
+		}
+
+		device_init_wakeup(&pdev->dev, true);
+	}
+
 #ifdef CONFIG_SOC_SPACEMIT_K3
 	if (dw_pcie_link_up(&k1->pci))
 		dev_info(dev, "spacemit-pcie: link is up after host_init\n");
@@ -1012,6 +1112,10 @@ static int k1_pcie_probe(struct platform_device *pdev)
 		dev_info(dev, "spacemit-pcie: link is down after host_init\n");
 #endif
 	return 0;
+
+err_disable_pcie_irq:
+	if (irq > 0)
+		disable_irq(irq);
 
 err_host_deinit:
 	dw_pcie_host_deinit(pp);
@@ -1025,6 +1129,10 @@ err_pm_runtime_put:
 static void k1_pcie_remove(struct platform_device *pdev)
 {
 	struct k1_pcie *k1 = platform_get_drvdata(pdev);
+
+	if (k1->wakeup_irq > 0) {
+		device_init_wakeup(&pdev->dev, false);
+	}
 
 	dw_pcie_host_deinit(&k1->pci.pp);
 }
@@ -1040,6 +1148,7 @@ static struct platform_driver k1_pcie_driver = {
 	.driver = {
 		.name			= "spacemit-k1-pcie",
 		.of_match_table		= k1_pcie_of_match_table,
+		.pm			= &k1_pcie_pm_ops,
 		.probe_type		= PROBE_PREFER_ASYNCHRONOUS,
 	},
 };

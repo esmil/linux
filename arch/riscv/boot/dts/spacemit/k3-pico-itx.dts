@@ -162,6 +162,16 @@
 		status = "okay";
 	};
 
+	hub_vbus: hub-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "hub-vbus";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-boot-on;
+		gpio = <&ec 8 GPIO_ACTIVE_HIGH>;
+	};
+
 };
 
 &resmem {
@@ -397,12 +407,16 @@
 &usb2_host {
 	#address-cells = <1>;
 	#size-cells = <0>;
+	reset-on-resume;
 	status = "okay";
+	/* Ensure no defered probe cause USB disconnect */
+	function-supply = <&hub_vbus>;
 
 	hub@1 {
 		/* FE1.1S USB2.0 hub (4 ports) */
 		compatible = "usb1a40,101";
 		reg = <1>;
+		vdd-supply = <&hub_vbus>;
 	};
 };
 
@@ -422,6 +436,7 @@
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
 	monitor-vbus;
+	reset-on-resume;
 	status = "okay";
 
 	ports {
@@ -445,9 +460,9 @@
 	/delete-property/ phys;
 	/delete-property/ phy-names;
 	maximum-speed = "high-speed";
+	reset-on-resume;
 	phys = <&usb3_portb_u2phy>;
 	phy-names = "usb2-phy";
-	status = "disabled";
 	status = "okay";
 };
 
@@ -464,6 +479,7 @@
 	/delete-property/ phys;
 	/delete-property/ phy-names;
 	maximum-speed = "high-speed";
+	reset-on-resume;
 	phys = <&usb3_portc_u2phy>;
 	phy-names = "usb2-phy";
 	status = "okay";
@@ -546,10 +562,12 @@
 
 &espi0 {
 	status = "okay";
-	ec@0 {
+	ec: ec@0 {
 		status = "okay";
 		interrupt-parent = <&gpio>;
 		interrupts = <1 11 IRQ_TYPE_EDGE_RISING>;
+		gpio-controller;
+		#gpio-cells = <2>;
 
 		i2c_tunnel1: i2c-tunnel@1 {
 			compatible = "google,cros-ec-i2c-tunnel";
@@ -1141,6 +1159,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb301_cfg>;
 		irq-gpios = <&gpio 2 21 GPIO_ACTIVE_LOW>;
+		suspend-vbus-off;
 		wakeup-source;
 		status = "okay";
 

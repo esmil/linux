@@ -19,12 +19,11 @@
 #include <scsi/scsi_device.h>
 
 #include <ufs/ufshcd.h>
-#include <ufs/ufshci.h>
 #include <ufs/ufs_quirks.h>
 #include <ufs/unipro.h>
 
 #include "ufshcd-pltfrm.h"
-#include "ufs-spacemit_k3.h"
+#include "ufs-spacemit.h"
 
 /* PA Layer Gettable and settable M-PHY Specific Attributes */
 #define PA_TXHSG1SYNCLENGTH 0x1552
@@ -37,16 +36,23 @@
 #define PA_PEERSCRAMBLING 0x155B
 #define PA_TXSKIP 0x155C
 #define PA_TXSKIPPERIOD 0x155D
+#define PA_LOCAL_TX_LCC_ENABLE 0x155E
 #define PA_PEER_TX_LCC_ENABLE 0x155F
 
 #define PA_SCRAMBLING 0x1585
+#define PA_STALLNOCONFIGTIME 0x15A3
+#define PA_TACTIVATE 0x15A8
+#define PA_GRANULARITY 0x15AA
 #define PA_MK2EXTENSIONGUARDBAND 0x15AB
+#define PA_TXTRAILINGCLOCKS 0x1564
 
 /*special TX/RX Configuration Attributes*/
 #define RX_LS_PRE_LEN_CAP 0x008D
 #define RX_LANE_HB8_BKDOOR_ATTR 0x00F4
 #define RX_PWRM_CLOSURE_LEN_CAP 0x008E
 #define RX_MIN_STALL_CAP 0x0088
+#define TX_HIBERN8TIME_CAP 0x000F
+#define RX_HIBERN8TIME_CAP 0x0092
 #define RX_LANE_SOF_BKDOOR_ATT 0x00F2
 #define RX_GARBAGE_COUNT_OFFSET 0x00F2
 
@@ -58,14 +64,14 @@
 #define VS_TX_BURST_CLOSURE_DELAY 0xD084
 
 /* host registers for lark */
-static int spacemit_k3_regs[] = {
+static int spacemit_regs[] = {
 	(UFS_PHY_MNG_BASE + UFS_MPHY_RST_CTRL),
 	(UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL),
 	(UFS_PHY_MNG_BASE + UFS_DEVICE_IO_CTRL),
 	0xFFF,
 };
 
-static u32 spacemit_k3_clock_freq;
+static u32 spacemit_clock_freq;
 
 /* PHY register magic values */
 #define MPHY_PU_ALL 0x87f
@@ -96,14 +102,14 @@ struct ufs_reg_snapshot {
 #define VENDOR_DUMP_BUF_SIZE 2048
 #define VENDOR_MAX_OFFSET 0xE0
 
-static void ufs_spacemit_k3_dump_host_regs(struct ufs_hba *hba)
+static void ufs_spacemit_dump_host_regs(struct ufs_hba *hba)
 {
 	u8 *buf;
 	u32 val;
 	int offset;
 	int i;
 	size_t len;
-	int *host_reg = spacemit_k3_regs;
+	int *host_reg = spacemit_regs;
 
 	/* Use dynamic allocation to avoid large stack frame */
 	buf = kzalloc(VENDOR_DUMP_BUF_SIZE, GFP_KERNEL);
@@ -142,7 +148,7 @@ static void ufs_spacemit_k3_dump_host_regs(struct ufs_hba *hba)
 #define MPHY_TX_FSM_STATE 0x41
 #define MPHY_RX_FSM_STATE 0xC1
 
-static int ufs_spacemit_k3_check_hibern8(struct ufs_hba *hba)
+static int ufs_spacemit_check_hibern8(struct ufs_hba *hba)
 {
 	u32 tx_fsm_val_0 = 0;
 	u32 tx_fsm_val_1 = 0;
@@ -190,7 +196,7 @@ static int ufs_spacemit_k3_check_hibern8(struct ufs_hba *hba)
 	return err;
 }
 
-static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_lanes)
+static int ufs_spacemit_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_lanes)
 {
 	int err = 0;
 
@@ -201,7 +207,7 @@ static int ufs_spacemit_k3_get_connected_tx_lanes(struct ufs_hba *hba, u32 *tx_l
 	return err;
 }
 
-static u32 ufs_spacemit_k3_get_sys1clk_1us(struct ufs_hba *hba)
+static u32 ufs_spacemit_get_sys1clk_1us(struct ufs_hba *hba)
 {
 	struct ufs_clk_info *clki, *ufs_aclk = NULL;
 	struct list_head *head = &hba->clk_list_head;
@@ -225,7 +231,7 @@ static u32 ufs_spacemit_k3_get_sys1clk_1us(struct ufs_hba *hba)
 	return DIV_ROUND_CLOSEST(rate_hz, 1000000);
 }
 
-static int ufs_spacemit_k3_wait_mphy_pll_lock(struct ufs_hba *hba)
+static int ufs_spacemit_wait_mphy_pll_lock(struct ufs_hba *hba)
 {
 	u32 reg_val = 0;
 	int timeout = MPHY_PLL_LOCK_TIMEOUT_US;
@@ -240,9 +246,28 @@ static int ufs_spacemit_k3_wait_mphy_pll_lock(struct ufs_hba *hba)
 	return -ETIMEDOUT;
 }
 
-static __maybe_unused void ufs_spacemit_k3_get_unipro_ver(struct ufs_hba *hba);
+static __maybe_unused void ufs_spacemit_get_unipro_ver(struct ufs_hba *hba);
 
-static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
+struct ufs_spacemit_dme_setting {
+	const char *name;
+	u32 attr_sel;
+	u32 value;
+};
+
+static int ufs_spacemit_dme_set_checked(struct ufs_hba *hba, u32 attr_sel,
+					     u32 value, const char *name)
+{
+	int err;
+
+	err = ufshcd_dme_set(hba, attr_sel, value);
+	if (err)
+		dev_err(hba->dev, "failed to set %s (0x%x) to 0x%x: %d\n",
+			name, attr_sel, value, err);
+
+	return err;
+}
+
+static int ufs_spacemit_mphy_init(struct ufs_hba *hba)
 {
 	int ret;
 
@@ -267,7 +292,7 @@ static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 		      UFS_PHY_MNG_BASE + UFS_DEVICE_IO_CTRL);
 	mdelay(1);
 
-	ret = ufs_spacemit_k3_wait_mphy_pll_lock(hba);
+	ret = ufs_spacemit_wait_mphy_pll_lock(hba);
 	if (ret) {
 		dev_err(hba->dev, "%s: M-PHY PLL lock timeout, UFS_MPHY_PU_CTRL=0x%08x\n",
 			__func__, ufshcd_readl(hba, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL));
@@ -287,159 +312,68 @@ static int ufs_spacemit_k3_mphy_init(struct ufs_hba *hba)
 	return 0;
 }
 
-static int ufs_spacemit_k3_uniprov1p6_init(struct ufs_hba *hba)
+static int ufs_spacemit_uniprov1p6_init(struct ufs_hba *hba)
 {
-	int err = 0;
+	static const struct ufs_spacemit_dme_setting init_seq[] = {
+		{ "PA_TXHSG1SYNCLENGTH", UIC_ARG_MIB(PA_TXHSG1SYNCLENGTH), 0x4f },
+		{ "PA_TXHSG1PREPARELENGTH", UIC_ARG_MIB(PA_TXHSG1PREPARELENGTH), 0x0f },
+		{ "PA_TXHSG2SYNCLENGTH", UIC_ARG_MIB(PA_TXHSG2SYNCLENGTH), 0x4f },
+		{ "PA_TXHSG2PREPARELENGTH", UIC_ARG_MIB(PA_TXHSG2PREPARELENGTH), 0x0f },
+		{ "PA_TXHSG3SYNCLENGTH", UIC_ARG_MIB(PA_TXHSG3SYNCLENGTH), 0x4f },
+		{ "PA_TXHSG3PREPARELENGTH", UIC_ARG_MIB(PA_TXHSG3PREPARELENGTH), 0x0f },
+		{ "PA_TXMK2EXTENSION", UIC_ARG_MIB(PA_TXMK2EXTENSION), 0x0 },
+		{ "PA_PEERSCRAMBLING", UIC_ARG_MIB(PA_PEERSCRAMBLING), 0x1 },
+		{ "PA_TXSKIP", UIC_ARG_MIB(PA_TXSKIP), 0x1 },
+		{ "PA_TXSKIPPERIOD", UIC_ARG_MIB(PA_TXSKIPPERIOD), 250 },
+		{ "PA_LOCAL_TX_LCC_ENABLE", UIC_ARG_MIB(PA_LOCAL_TX_LCC_ENABLE), 0x0 },
+		{ "PA_PEER_TX_LCC_ENABLE", UIC_ARG_MIB(PA_PEER_TX_LCC_ENABLE), 0x0 },
+		{ "PA_SCRAMBLING", UIC_ARG_MIB(PA_SCRAMBLING), 0x1 },
+		{ "PA_GRANULARITY", UIC_ARG_MIB(PA_GRANULARITY), 0x1 },
+		{ "PA_MK2EXTENSIONGUARDBAND", UIC_ARG_MIB(PA_MK2EXTENSIONGUARDBAND), 0x0 },
+		{ "PA_STALLNOCONFIGTIME", UIC_ARG_MIB(PA_STALLNOCONFIGTIME), 15 },
+		{ "PA_TACTIVATE", UIC_ARG_MIB(PA_TACTIVATE), 0x64 },
+		{ "PA_TXTRAILINGCLOCKS", UIC_ARG_MIB(PA_TXTRAILINGCLOCKS), 0x64 },
+		{ "RX_LS_PREPARELEN_TIME RX0",
+		  UIC_ARG_MIB_SEL(RX_LS_PRE_LEN_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x0b },
+		{ "RX_LS_PREPARELEN_TIME RX1",
+		  UIC_ARG_MIB_SEL(RX_LS_PRE_LEN_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x0b },
+		{ "RX_HIBERNATE_BKEN RX0",
+		  UIC_ARG_MIB_SEL(RX_LANE_HB8_BKDOOR_ATTR, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x9f },
+		{ "RX_HIBERNATE_BKEN RX1",
+		  UIC_ARG_MIB_SEL(RX_LANE_HB8_BKDOOR_ATTR, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x9f },
+		{ "PWM_BURST_closure_length RX0",
+		  UIC_ARG_MIB_SEL(RX_PWRM_CLOSURE_LEN_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 15 },
+		{ "PWM_BURST_closure_length RX1",
+		  UIC_ARG_MIB_SEL(RX_PWRM_CLOSURE_LEN_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 15 },
+		{ "min_stall_not_config_time RX0",
+		  UIC_ARG_MIB_SEL(RX_MIN_STALL_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0xff },
+		{ "min_stall_not_config_time RX1",
+		  UIC_ARG_MIB_SEL(RX_MIN_STALL_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0xff },
+		{ "TX HB8_TIME CAP TX0",
+		  UIC_ARG_MIB_SEL(TX_HIBERN8TIME_CAP, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0x64 },
+		{ "TX HB8_TIME CAP TX1",
+		  UIC_ARG_MIB_SEL(TX_HIBERN8TIME_CAP, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(1)), 0x64 },
+		{ "RX HB8_TIME CAP RX0",
+		  UIC_ARG_MIB_SEL(RX_HIBERN8TIME_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x64 },
+		{ "RX HB8_TIME CAP RX1",
+		  UIC_ARG_MIB_SEL(RX_HIBERN8TIME_CAP, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x64 },
+		{ "TX EQ 3DB",
+		  UIC_ARG_MIB_SEL(ANA_EQ_CTRL_REG_ATTR, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0x5 },
+		{ "RX garbage cnt RX0",
+		  UIC_ARG_MIB_SEL(RX_GARBAGE_COUNT_OFFSET, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x9f },
+		{ "RX garbage cnt RX1",
+		  UIC_ARG_MIB_SEL(RX_GARBAGE_COUNT_OFFSET, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x9f },
+		{ "UFS_HCLKDIV_REG", UIC_ARG_MIB(UFS_HCLKDIV_REG), 0xfc },
+	};
+	int i;
+	int err;
 
-	/* PA_TXHSG1SYNCLENGTH */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1552), 0x4f);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXHSG1SYNCLENGTH error \n");
-	}
-	/* PA_TXHSG1PREPARELENGTH */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1553), 0xf);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXHSG1PREPARELENGTH error \n");
-	}
-
-	/* PA_TXHSG2SYNCLENGTH */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1554), 0x4f);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXHSG2SYNCLENGTH error \n");
-	}
-	/* PA_TXHSG2PREPARELENGTH */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1555), 0xf);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXHSG2PREPARELENGTH error \n");
-	}
-
-	/* PA_TXHSG3SYNCLENGTH */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1556), 0x4f);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXHSG3SYNCLENGTH error \n");
-	}
-	/* PA_TXHSG3PREPARELENGTH */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1557), 0xf);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXHSG3PREPARELENGTH error \n");
-	}
-
-	/* PA_TXMK2EXTENSION */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x155A), 0x0);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXMK2EXTENSION error \n");
-	}
-	/* PA_PEERSCRAMBLING */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x155B), 0x1);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_PEERSCRAMBLING error \n");
-	}
-	/* PA_TXSKIP */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x155C), 0x1);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXSKIP error \n");
-	}
-	/* PA_TXSKIPPERIOD */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x155D), 250);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXSKIPPERIOD error \n");
-	}
-
-	/* PA_LOCAL_TX_LCC_ENABLE */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x155E), 0x0);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_LOCAL_TX_LCC_ENABLE error \n");
-	}
-	/* PA_PEER_TX_LCC_ENABLE */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x155F), 0x0);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_PEER_TX_LCC_ENABLE error \n");
-	}
-
-	/* PA_SCRAMBLING */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1585), 0x1);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_SCRAMBLING error \n");
-	}
-	/* PA_GRANULARITY */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x15AA), 0x1);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_GRANULARITY error \n");
-	}
-
-	/* PA_MK2EXTENSIONGUARDBAND */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x15AB), 0x0);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_MK2EXTENSIONGUARDBAND error \n");
-	}
-
-	/* PA_STALLNOCONFIGTIME */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x15A3), 15);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_STALLNOCONFIGTIME error \n");
-	}
-
-	/* PA_TACTIVATE */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x15A8), 0x64);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TACTIVATE error \n");
-	}
-	/* PA_TXTRAILINGCLOCKS */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0x1564), 0x64);
-	if (err) {
-		dev_err(hba->dev, "Writing PA_TXTRAILINGCLOCKS error \n");
-	}
-
-	/* RX_LS_PREPARELEN_TIME RX0 */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x008D, 4), 0x0B);
-	if (err) {
-		dev_err(hba->dev, "Writing RX_LS_PREPARELEN_TIME RX0 error \n");
-	}
-
-	/* RX_LS_PREPARELEN_TIME RX1 */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x008D, 5), 0X0B);
-	if (err) {
-		dev_err(hba->dev, "Writing RX_LS_PREPARELEN_TIME RX1 error \n");
-	}
-
-	/* RX_HIBERNATE_BKEN RX0 */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F4, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x9F);
-	if (err) {
-		dev_err(hba->dev, "Writing RX_HIBERNATE_BKEN RX0 error \n");
-	}
-
-	/* RX_HIBERNATE_BKEN RX1 */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F4, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x9F);
-	if (err) {
-		dev_err(hba->dev, "Writing RX_HIBERNATE_BKEN RX1 error \n");
-	}
-
-	/* PWM_BURST_closure_length */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x008E, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 15);
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x008E, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 15);
-
-	/* min_stall_not_config_time*/
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0088, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0xFF);
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0088, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0xFF);
-
-	/* TX HB8_TIME CAP */
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x000F, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0x64);
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x000F, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(1)), 0x64);
-
-	/*RX HB8_TIME CAP*/
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0092, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x64);
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x0092, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x64);
-
-	/*TX EQ 3DB*/
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00CD, UIC_ARG_MPHY_TX_GEN_SEL_INDEX(0)), 0x5);
-
-	/*RX garbage cnt = 32 SI*/
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F2, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)), 0x9F);
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB_SEL(0x00F2, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)), 0x9F);
-
-	err = ufshcd_dme_set(hba, UIC_ARG_MIB(0xfc), 0xfc);
-	if (err) {
-		dev_err(hba->dev, "Writing 0xfc error \n");
+	for (i = 0; i < ARRAY_SIZE(init_seq); i++) {
+		err = ufs_spacemit_dme_set_checked(hba, init_seq[i].attr_sel,
+						   init_seq[i].value,
+						   init_seq[i].name);
+		if (err)
+			return err;
 	}
 
 	dev_info(hba->dev, "UniPro v1.6 init completed\n");
@@ -447,45 +381,45 @@ static int ufs_spacemit_k3_uniprov1p6_init(struct ufs_hba *hba)
 	return 0;
 }
 
-static void ufs_spacemit_k3_set_dev_cap(struct ufs_host_params *ufs_spacemit_k3_cap)
+static void ufs_spacemit_set_dev_cap(struct ufs_host_params *ufs_spacemit_cap)
 {
-	if (!ufs_spacemit_k3_cap)
+	if (!ufs_spacemit_cap)
 		return;
 
-	memset(ufs_spacemit_k3_cap, 0, sizeof(struct ufs_host_params));
-	ufs_spacemit_k3_cap->tx_lanes = UFS_SPACEMIT_K3_LIMIT_NUM_LANES_TX;
-	ufs_spacemit_k3_cap->rx_lanes = UFS_SPACEMIT_K3_LIMIT_NUM_LANES_RX;
-	ufs_spacemit_k3_cap->hs_rx_gear = UFS_SPACEMIT_K3_LIMIT_HSGEAR_RX;
-	ufs_spacemit_k3_cap->hs_tx_gear = UFS_SPACEMIT_K3_LIMIT_HSGEAR_TX;
-	ufs_spacemit_k3_cap->pwm_rx_gear = UFS_SPACEMIT_K3_LIMIT_PWMGEAR_RX;
-	ufs_spacemit_k3_cap->pwm_tx_gear = UFS_SPACEMIT_K3_LIMIT_PWMGEAR_TX;
-	ufs_spacemit_k3_cap->rx_pwr_pwm = UFS_SPACEMIT_K3_LIMIT_RX_PWR_PWM;
-	ufs_spacemit_k3_cap->tx_pwr_pwm = UFS_SPACEMIT_K3_LIMIT_TX_PWR_PWM;
-	ufs_spacemit_k3_cap->rx_pwr_hs = UFS_SPACEMIT_K3_LIMIT_RX_PWR_HS;
-	ufs_spacemit_k3_cap->tx_pwr_hs = UFS_SPACEMIT_K3_LIMIT_TX_PWR_HS;
-	ufs_spacemit_k3_cap->hs_rate = UFS_SPACEMIT_K3_LIMIT_HS_RATE;
-	ufs_spacemit_k3_cap->desired_working_mode = UFS_HS_MODE;
+	memset(ufs_spacemit_cap, 0, sizeof(struct ufs_host_params));
+	ufs_spacemit_cap->tx_lanes = UFS_SPACEMIT_LIMIT_NUM_LANES_TX;
+	ufs_spacemit_cap->rx_lanes = UFS_SPACEMIT_LIMIT_NUM_LANES_RX;
+	ufs_spacemit_cap->hs_rx_gear = UFS_SPACEMIT_LIMIT_HSGEAR_RX;
+	ufs_spacemit_cap->hs_tx_gear = UFS_SPACEMIT_LIMIT_HSGEAR_TX;
+	ufs_spacemit_cap->pwm_rx_gear = UFS_SPACEMIT_LIMIT_PWMGEAR_RX;
+	ufs_spacemit_cap->pwm_tx_gear = UFS_SPACEMIT_LIMIT_PWMGEAR_TX;
+	ufs_spacemit_cap->rx_pwr_pwm = UFS_SPACEMIT_LIMIT_RX_PWR_PWM;
+	ufs_spacemit_cap->tx_pwr_pwm = UFS_SPACEMIT_LIMIT_TX_PWR_PWM;
+	ufs_spacemit_cap->rx_pwr_hs = UFS_SPACEMIT_LIMIT_RX_PWR_HS;
+	ufs_spacemit_cap->tx_pwr_hs = UFS_SPACEMIT_LIMIT_TX_PWR_HS;
+	ufs_spacemit_cap->hs_rate = UFS_SPACEMIT_LIMIT_HS_RATE;
+	ufs_spacemit_cap->desired_working_mode = UFS_HS_MODE;
 }
 
-static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
+static int ufs_spacemit_link_startup_pre_change(struct ufs_hba *hba)
 {
 	uint32_t reg_val;
 	u32 real_sysclk;
 	int err;
 
 	/*mphy_init*/
-	err = ufs_spacemit_k3_mphy_init(hba);
+	err = ufs_spacemit_mphy_init(hba);
 	if (err)
 		return err;
 
 	/* unipro v1p6 init */
-	err = ufs_spacemit_k3_uniprov1p6_init(hba);
+	err = ufs_spacemit_uniprov1p6_init(hba);
 	if (err)
 		return err;
 
-	real_sysclk = spacemit_k3_clock_freq > 0 ?
-		      spacemit_k3_clock_freq / 1000000 :
-		      ufs_spacemit_k3_get_sys1clk_1us(hba);
+	real_sysclk = spacemit_clock_freq > 0 ?
+		      spacemit_clock_freq / 1000000 :
+		      ufs_spacemit_get_sys1clk_1us(hba);
 	if (!real_sysclk) {
 		dev_err(hba->dev, "%s: invalid sysclk\n", __func__);
 		return -EINVAL;
@@ -506,13 +440,13 @@ static int ufs_spacemit_k3_link_startup_pre_change(struct ufs_hba *hba)
 	return 0;
 }
 
-static int ufs_spacemit_k3_link_startup_post_change(struct ufs_hba *hba)
+static int ufs_spacemit_link_startup_post_change(struct ufs_hba *hba)
 {
 	u32 tx_lanes;
 	u32 rx1_fsm_status;
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	struct ufs_spacemit_host *host = ufshcd_get_variant(hba);
 
-	ufs_spacemit_k3_get_unipro_ver(hba);
+	ufs_spacemit_get_unipro_ver(hba);
 	ufshcd_dme_get(hba,
 		       UIC_ARG_MIB_SEL(0xC1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(1)),
 		       &rx1_fsm_status);
@@ -539,20 +473,20 @@ static int ufs_spacemit_k3_link_startup_post_change(struct ufs_hba *hba)
 	/* DL_AFC0REQTIMEOUTVAL_MAX */
 	ufshcd_dme_set(hba, UIC_ARG_MIB(DL_AFC0REQTIMEOUTVAL), UFS_DL_AFC0REQTIMEOUTVAL_MAX);
 
-	return ufs_spacemit_k3_get_connected_tx_lanes(hba, &tx_lanes);
+	return ufs_spacemit_get_connected_tx_lanes(hba, &tx_lanes);
 }
 
-static int ufs_spacemit_k3_link_startup_notify(struct ufs_hba *hba,
+static int ufs_spacemit_link_startup_notify(struct ufs_hba *hba,
 					       enum ufs_notify_change_status status)
 {
 	int err = 0;
 
 	switch (status) {
 	case PRE_CHANGE:
-		err = ufs_spacemit_k3_link_startup_pre_change(hba);
+		err = ufs_spacemit_link_startup_pre_change(hba);
 		break;
 	case POST_CHANGE:
-		err = ufs_spacemit_k3_link_startup_post_change(hba);
+		err = ufs_spacemit_link_startup_post_change(hba);
 		break;
 	default:
 		break;
@@ -565,7 +499,7 @@ static int ufs_spacemit_k3_link_startup_notify(struct ufs_hba *hba,
 }
 
 #ifdef CONFIG_PM
-static int ufs_spacemit_k3_runtime_suspend(struct device *dev)
+static int ufs_spacemit_runtime_suspend(struct device *dev)
 {
 	int ret;
 
@@ -576,7 +510,7 @@ static int ufs_spacemit_k3_runtime_suspend(struct device *dev)
 	return ret;
 }
 
-static int ufs_spacemit_k3_runtime_resume(struct device *dev)
+static int ufs_spacemit_runtime_resume(struct device *dev)
 {
 	int ret;
 
@@ -588,13 +522,13 @@ static int ufs_spacemit_k3_runtime_resume(struct device *dev)
 }
 #endif
 
-static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
+static int ufs_spacemit_pwr_change_notify(struct ufs_hba *hba,
 					     enum ufs_notify_change_status status,
 					     const struct ufs_pa_layer_attr *dev_max_params,
 					     struct ufs_pa_layer_attr *dev_req_params)
 {
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
-	struct ufs_host_params ufs_spacemit_k3_cap;
+	struct ufs_spacemit_host *host = ufshcd_get_variant(hba);
+	struct ufs_host_params ufs_spacemit_cap;
 	int ret = 0;
 
 	if (!dev_req_params) {
@@ -604,8 +538,8 @@ static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 
 	switch (status) {
 	case PRE_CHANGE:
-		ufs_spacemit_k3_set_dev_cap(&ufs_spacemit_k3_cap);
-		ret = ufshcd_negotiate_pwr_params(&ufs_spacemit_k3_cap, dev_max_params,
+		ufs_spacemit_set_dev_cap(&ufs_spacemit_cap);
+		ret = ufshcd_negotiate_pwr_params(&ufs_spacemit_cap, dev_max_params,
 						  dev_req_params);
 		if (ret) {
 			dev_err(hba->dev, "Failed to negotiate power params: %d\n", ret);
@@ -622,7 +556,7 @@ static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 		/* cache the power mode parameters to use internally */
 		memcpy(&host->dev_req_params, dev_req_params, sizeof(*dev_req_params));
 
-		ret = ufs_spacemit_k3_wait_mphy_pll_lock(hba);
+		ret = ufs_spacemit_wait_mphy_pll_lock(hba);
 		if (ret) {
 			dev_err(hba->dev,
 				"%s: M-PHY PLL lock timeout after power mode change, UFS_MPHY_PU_CTRL=0x%08x\n",
@@ -637,7 +571,7 @@ static int ufs_spacemit_k3_pwr_change_notify(struct ufs_hba *hba,
 	return ret;
 }
 
-static int ufs_spacemit_k3_quirk_host_pa_saveconfigtime(struct ufs_hba *hba)
+static int ufs_spacemit_quirk_host_pa_saveconfigtime(struct ufs_hba *hba)
 {
 	int err;
 	u32 pa_vs_config_reg1;
@@ -651,12 +585,12 @@ static int ufs_spacemit_k3_quirk_host_pa_saveconfigtime(struct ufs_hba *hba)
 			      (pa_vs_config_reg1 | (1 << 12)));
 }
 
-static int ufs_spacemit_k3_apply_dev_quirks(struct ufs_hba *hba)
+static int ufs_spacemit_apply_dev_quirks(struct ufs_hba *hba)
 {
 	int err = 0;
 
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_HOST_PA_SAVECONFIGTIME)
-		err = ufs_spacemit_k3_quirk_host_pa_saveconfigtime(hba);
+		err = ufs_spacemit_quirk_host_pa_saveconfigtime(hba);
 
 	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_WDC)
 		hba->dev_quirks |= UFS_DEVICE_QUIRK_HOST_PA_TACTIVATE;
@@ -676,7 +610,7 @@ static int ufs_spacemit_k3_apply_dev_quirks(struct ufs_hba *hba)
 		       0x0);
 	mdelay(1);
 
-	err = ufs_spacemit_k3_wait_mphy_pll_lock(hba);
+	err = ufs_spacemit_wait_mphy_pll_lock(hba);
 	if (err) {
 		dev_err(hba->dev,
 			"%s: M-PHY PLL lock timeout after applying device quirks, UFS_MPHY_PU_CTRL=0x%08x\n",
@@ -687,26 +621,9 @@ static int ufs_spacemit_k3_apply_dev_quirks(struct ufs_hba *hba)
 	return err;
 }
 
-/*
- * Select UFS HCI version reported to the core based on hardware major
- * revision: hw_ver.major == 1 -> HCI 1.1, otherwise -> HCI 2.0.
- *
- * TODO: hw_ver is not currently populated from hardware, so this mapping
- * effectively always returns HCI 2.0 until proper version detection is added.
- */
-static u32 ufs_spacemit_k3_get_ufs_hci_version(struct ufs_hba *hba)
+static __maybe_unused void ufs_spacemit_get_unipro_ver(struct ufs_hba *hba)
 {
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
-
-	if (host->hw_ver.major == 0x1)
-		return ufshci_version(1, 1);
-	else
-		return ufshci_version(2, 0);
-}
-
-static __maybe_unused void ufs_spacemit_k3_get_unipro_ver(struct ufs_hba *hba)
-{
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	struct ufs_spacemit_host *host = ufshcd_get_variant(hba);
 
 	if (ufshcd_dme_get(hba, UIC_ARG_MIB(PA_LOCALVERINFO), &host->unipro_ver))
 		host->unipro_ver = 0;
@@ -715,7 +632,7 @@ static __maybe_unused void ufs_spacemit_k3_get_unipro_ver(struct ufs_hba *hba)
 }
 
 /**
- * ufs_spacemit_k3_advertise_quirks - advertise the known Spacemit K3 UFS controller quirks
+ * ufs_spacemit_advertise_quirks - advertise the known Spacemit K3 UFS controller quirks
  * @hba: host controller instance
  *
  * Spacemit K3 UFS host controller might have some non standard behaviours (quirks)
@@ -723,32 +640,13 @@ static __maybe_unused void ufs_spacemit_k3_get_unipro_ver(struct ufs_hba *hba)
  * quirks to standard UFS host controller driver so standard takes them into
  * account.
  */
-static void ufs_spacemit_k3_advertise_quirks(struct ufs_hba *hba)
+static void ufs_spacemit_advertise_quirks(struct ufs_hba *hba)
 {
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
-
-	if (!host->hw_ver.major)
-		dev_warn_once(hba->dev,
-			      "hw_ver is unset, ASR version-gated quirks are currently inactive\n");
-
-	if (host->hw_ver.major == 0x01) {
-		hba->quirks |= UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS |
-			       UFSHCD_QUIRK_BROKEN_PA_RXHSUNTERMCAP |
-			       UFSHCD_QUIRK_DME_PEER_ACCESS_AUTO_MODE;
-
-		if (host->hw_ver.minor == 0x0001 && host->hw_ver.step == 0x0001)
-			hba->quirks |= UFSHCD_QUIRK_BROKEN_INTR_AGGR;
-	}
-
-	if (host->hw_ver.major == 0x2) {
-		hba->quirks |= UFSHCD_QUIRK_BROKEN_UFS_HCI_VERSION;
-	}
-
 	/* break auto hibern8 */
 	hba->quirks |= UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8;
 }
 
-static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
+static void ufs_spacemit_set_caps(struct ufs_hba *hba)
 {
 	/* support clock-gating */
 	/* hba->caps |= UFSHCD_CAP_CLK_GATING; */
@@ -763,7 +661,7 @@ static void ufs_spacemit_k3_set_caps(struct ufs_hba *hba)
 	/* hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND; */
 }
 
-static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
+static void ufs_spacemit_config_scsi_dev(struct scsi_device *sdev)
 {
 	struct ufs_hba *hba = shost_priv(sdev->host);
 
@@ -774,12 +672,12 @@ static void ufs_spacemit_k3_config_scsi_dev(struct scsi_device *sdev)
 }
 
 /**
- * ufs_spacemit_k3_setup_xfer_req
+ * ufs_spacemit_setup_xfer_req
  * @hba: host controller instance
  * tag: current task slot index
  * is_scsi_cmd: scsi command or not
  */
-static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is_scsi_cmd)
+static void ufs_spacemit_setup_xfer_req(struct ufs_hba *hba, int tag, bool is_scsi_cmd)
 {
 	/*
 	 * Ensure UTRD/UPIU writes are visible before the core rings doorbell.
@@ -789,59 +687,57 @@ static void ufs_spacemit_k3_setup_xfer_req(struct ufs_hba *hba, int tag, bool is
 }
 
 /**
- * ufs_spacemit_k3_setup_clocks - enables/disable clocks
+ * ufs_spacemit_setup_clocks - restore ufs-aclk rate after clocks turn on
  * @hba: host controller instance
  * @on: If true, enable clocks else disable them.
  * @status: PRE_CHANGE or POST_CHANGE notify
  *
  * Returns 0 on success, non-zero on failure.
  */
-static int ufs_spacemit_k3_setup_clocks(struct ufs_hba *hba, bool on,
+static int ufs_spacemit_setup_clocks(struct ufs_hba *hba, bool on,
 					enum ufs_notify_change_status status)
 {
-	struct ufs_clk_info *clki;
+	struct ufs_clk_info *clki = NULL;
 	struct ufs_clk_info *iter;
-	int ret = 0;
 	unsigned long rate;
+	int ret;
 
-	switch (status) {
-	case PRE_CHANGE:
-		break;
+	if (status != POST_CHANGE || !on)
+		return 0;
 
-	case POST_CHANGE:
-		if (on) {
-			clki = NULL;
-			list_for_each_entry(iter, &hba->clk_list_head, list) {
-				if (iter->name && !strcmp(iter->name, "ufs-aclk")) {
-					clki = iter;
-					break;
-				}
-			}
-			if (!clki || !clki->clk)
-				break;
-
-			rate = spacemit_k3_clock_freq ?: clki->curr_freq ?:
-			       clki->max_freq ?: clk_get_rate(clki->clk);
-			if (rate) {
-				ret = clk_set_rate(clki->clk, rate);
-				if (ret)
-					break;
-				clki->curr_freq = rate;
-			}
+	list_for_each_entry(iter, &hba->clk_list_head, list) {
+		if (iter->name && !strcmp(iter->name, "ufs-aclk")) {
+			clki = iter;
+			break;
 		}
-		break;
+	}
+	if (!clki || !clki->clk)
+		return 0;
+
+	rate = spacemit_clock_freq ?: clki->curr_freq ?:
+	       clki->max_freq ?: clk_get_rate(clki->clk);
+	if (!rate)
+		return 0;
+
+	ret = clk_set_rate(clki->clk, rate);
+	if (ret) {
+		dev_err(hba->dev, "failed to set ufs-aclk to %luHz: %d\n",
+			rate, ret);
+		return ret;
 	}
 
-	return ret;
+	clki->curr_freq = rate;
+
+	return 0;
 }
 
 /**
- * ufs_spacemit_k3_platform_init
+ * ufs_spacemit_platform_init
  * @pdev: platform device pointer
  *
  * Prepare the clk source and reset ufs_aclk
  */
-static int ufs_spacemit_k3_platform_init(struct platform_device *pdev)
+static int ufs_spacemit_platform_init(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct clk *ufs_aclk;
@@ -895,7 +791,7 @@ static int ufs_spacemit_k3_platform_init(struct platform_device *pdev)
 	if (!rate)
 		rate = clk_get_rate(ufs_aclk);
 
-	spacemit_k3_clock_freq = rate;
+	spacemit_clock_freq = rate;
 
 	ret = clk_set_rate(ufs_aclk, rate);
 	if (ret) {
@@ -912,14 +808,14 @@ out_put_reset:
 }
 
 /**
- * ufs_spacemit_k3_init - init phy and prepare clk
+ * ufs_spacemit_init - init phy and prepare clk
  * @hba: host controller instance
  */
-static int ufs_spacemit_k3_init(struct ufs_hba *hba)
+static int ufs_spacemit_init(struct ufs_hba *hba)
 {
 	int err = 0;
 	struct device *dev = hba->dev;
-	struct ufs_spacemit_k3_host *host;
+	struct ufs_spacemit_host *host;
 
 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
 	if (!host) {
@@ -939,8 +835,8 @@ static int ufs_spacemit_k3_init(struct ufs_hba *hba)
 	host->hba = hba;
 	host->saved_spm_lvl = -1;
 	ufshcd_set_variant(hba, host);
-	ufs_spacemit_k3_set_caps(hba);
-	ufs_spacemit_k3_advertise_quirks(hba);
+	ufs_spacemit_set_caps(hba);
+	ufs_spacemit_advertise_quirks(hba);
 
 	/*
 	 * Keep the link active by default. Standby, where the UFS power is lost
@@ -954,10 +850,10 @@ out:
 	return err;
 }
 
-static int __maybe_unused ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
+static int __maybe_unused ufs_spacemit_axi_reset(struct ufs_hba *hba)
 {
 	int ret = 0;
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	struct ufs_spacemit_host *host = ufshcd_get_variant(hba);
 	struct ufs_reg_snapshot save_regs;
 	struct ufs_clk_info *clki;
 	struct ufs_clk_info *iter;
@@ -1013,7 +909,7 @@ static int __maybe_unused ufs_spacemit_k3_axi_reset(struct ufs_hba *hba)
 	}
 	dev_dbg(dev, "%s: deassert ufs-aclk-rst done\n", __func__);
 
-	rate = spacemit_k3_clock_freq ?: clki->curr_freq ?:
+	rate = spacemit_clock_freq ?: clki->curr_freq ?:
 	       clki->max_freq ?: clk_get_rate(clki->clk);
 	if (rate) {
 		ret = clk_set_rate(clki->clk, rate);
@@ -1065,7 +961,7 @@ out:
 }
 
 /**
- * ufs_spacemit_k3_device_reset - Toggle device reset line
+ * ufs_spacemit_device_reset - Toggle device reset line
  * @hba: per-adapter instance
  *
  * Toggles the reset line to reset the attached UFS device.
@@ -1073,7 +969,7 @@ out:
  *
  * Returns: 0 on success
  */
-static int ufs_spacemit_k3_device_reset(struct ufs_hba *hba)
+static int ufs_spacemit_device_reset(struct ufs_hba *hba)
 {
 	static bool is_first_init = true;
 
@@ -1091,21 +987,21 @@ static int ufs_spacemit_k3_device_reset(struct ufs_hba *hba)
 		ufshcd_writel(hba, 0x000, UFS_PHY_MNG_BASE + UFS_MPHY_PU_CTRL);
 		mdelay(5);
 
-		dev_dbg(hba->dev, "ufs: ufs_spacemit_k3_device_reset done\n");
+		dev_dbg(hba->dev, "ufs: ufs_spacemit_device_reset done\n");
 	}
 
 	return 0;
 }
 
 /**
- * ufs_spacemit_k3_event_notify - Handle UFS error events
+ * ufs_spacemit_event_notify - Handle UFS error events
  * @hba: host controller instance
  * @evt: event type
  * @data: event-specific data
  *
  * Observes UFS core error events without changing recovery flow.
  */
-static void ufs_spacemit_k3_event_notify(struct ufs_hba *hba, enum ufs_event_type evt, void *data)
+static void ufs_spacemit_event_notify(struct ufs_hba *hba, enum ufs_event_type evt, void *data)
 {
 	u32 val = data ? *(u32 *)data : 0;
 
@@ -1129,14 +1025,14 @@ static void ufs_spacemit_k3_event_notify(struct ufs_hba *hba, enum ufs_event_typ
 }
 
 /**
- * ufs_spacemit_k3_hibern8_notify - Handle hibernate enter/exit
+ * ufs_spacemit_hibern8_notify - Handle hibernate enter/exit
  * @hba: host controller instance
  * @cmd: UIC command (HIBER_ENTER or HIBER_EXIT)
  * @status: notification status
  *
  * Manages M-PHY power state during hibernate transitions.
  */
-static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
+static void ufs_spacemit_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 					   enum ufs_notify_change_status status)
 {
 	u32 reg_val;
@@ -1205,7 +1101,7 @@ static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme
 
 	if (status == POST_CHANGE) {
 		if (cmd == UIC_CMD_DME_HIBER_ENTER) {
-			ufs_spacemit_k3_check_hibern8(hba);
+			ufs_spacemit_check_hibern8(hba);
 			ufshcd_dme_set(hba,
 				       UIC_ARG_MIB_SEL(0xf1, UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
 				       0x84);
@@ -1242,7 +1138,7 @@ static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme
 
 
 /**
- * ufs_spacemit_k3_hce_enable_notify - Configure HCE enable sequence
+ * ufs_spacemit_hce_enable_notify - Configure HCE enable sequence
  * @hba: host controller instance
  * @status: notification status (PRE_CHANGE or POST_CHANGE)
  *
@@ -1251,7 +1147,7 @@ static void ufs_spacemit_k3_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme
  *
  * Returns: 0 on success
  */
-static int ufs_spacemit_k3_hce_enable_notify(struct ufs_hba *hba,
+static int ufs_spacemit_hce_enable_notify(struct ufs_hba *hba,
 					     enum ufs_notify_change_status status)
 {
 	static bool is_first_hce = true;
@@ -1281,54 +1177,53 @@ static int ufs_spacemit_k3_hce_enable_notify(struct ufs_hba *hba,
 }
 
 /**
- * struct ufs_hba_spacemit_k3_vops - UFS Spacemit K3 specific variant operations
+ * struct ufs_hba_spacemit_vops - UFS Spacemit specific variant operations
  *
  * The variant operations configure the necessary controller and PHY
  * handshake during initialization.
  */
-static const struct ufs_hba_variant_ops ufs_hba_spacemit_k3_vops = {
+static const struct ufs_hba_variant_ops ufs_hba_spacemit_vops = {
 	.name = "lark_ufs",
-	.init = ufs_spacemit_k3_init,
-	.get_ufs_hci_version = ufs_spacemit_k3_get_ufs_hci_version,
-	.link_startup_notify = ufs_spacemit_k3_link_startup_notify,
-	.pwr_change_notify = ufs_spacemit_k3_pwr_change_notify,
-	.setup_clocks = ufs_spacemit_k3_setup_clocks,
-	.setup_xfer_req = ufs_spacemit_k3_setup_xfer_req,
-	.config_scsi_dev = ufs_spacemit_k3_config_scsi_dev,
-	.device_reset = ufs_spacemit_k3_device_reset,
-	.event_notify = ufs_spacemit_k3_event_notify,
-	.apply_dev_quirks = ufs_spacemit_k3_apply_dev_quirks,
-	.hibern8_notify = ufs_spacemit_k3_hibern8_notify,
-	.hce_enable_notify = ufs_spacemit_k3_hce_enable_notify,
-	.dbg_register_dump = ufs_spacemit_k3_dump_host_regs,
+	.init = ufs_spacemit_init,
+	.link_startup_notify = ufs_spacemit_link_startup_notify,
+	.pwr_change_notify = ufs_spacemit_pwr_change_notify,
+	.setup_clocks = ufs_spacemit_setup_clocks,
+	.setup_xfer_req = ufs_spacemit_setup_xfer_req,
+	.config_scsi_dev = ufs_spacemit_config_scsi_dev,
+	.device_reset = ufs_spacemit_device_reset,
+	.event_notify = ufs_spacemit_event_notify,
+	.apply_dev_quirks = ufs_spacemit_apply_dev_quirks,
+	.hibern8_notify = ufs_spacemit_hibern8_notify,
+	.hce_enable_notify = ufs_spacemit_hce_enable_notify,
+	.dbg_register_dump = ufs_spacemit_dump_host_regs,
 };
 
-static const struct of_device_id ufs_spacemit_k3_of_match[] = {
-	{ .compatible = "spacemit,k3-ufshcd", .data = &ufs_hba_spacemit_k3_vops },
+static const struct of_device_id ufs_spacemit_of_match[] = {
+	{ .compatible = "spacemit,k3-ufshcd", .data = &ufs_hba_spacemit_vops },
 	{},
 };
-MODULE_DEVICE_TABLE(of, ufs_spacemit_k3_of_match);
+MODULE_DEVICE_TABLE(of, ufs_spacemit_of_match);
 
 /**
- * ufs_spacemit_k3_probe - probe routine of the driver
+ * ufs_spacemit_probe - probe routine of the driver
  * @pdev: pointer to Platform device handle
  *
  * Return zero for success and non-zero for failure
  */
-static int ufs_spacemit_k3_probe(struct platform_device *pdev)
+static int ufs_spacemit_probe(struct platform_device *pdev)
 {
 	int err;
 	const struct of_device_id *of_id;
 	struct ufs_hba_variant_ops *vops;
 	struct device *dev = &pdev->dev;
 
-	of_id = of_match_node(ufs_spacemit_k3_of_match, dev->of_node);
+	of_id = of_match_node(ufs_spacemit_of_match, dev->of_node);
 	if (!of_id) {
 		dev_err(dev, "ufs: no matching of_node found\n");
 		return -ENODEV;
 	}
 
-	err = ufs_spacemit_k3_platform_init(pdev);
+	err = ufs_spacemit_platform_init(pdev);
 	if (err)
 		return err;
 
@@ -1342,12 +1237,12 @@ static int ufs_spacemit_k3_probe(struct platform_device *pdev)
 }
 
 /**
- * ufs_spacemit_k3_remove - set driver_data of the device to NULL
+ * ufs_spacemit_remove - set driver_data of the device to NULL
  * @pdev: pointer to platform device handle
  *
  * Always returns 0
  */
-static void ufs_spacemit_k3_remove(struct platform_device *pdev)
+static void ufs_spacemit_remove(struct platform_device *pdev)
 {
 	struct ufs_hba *hba = platform_get_drvdata(pdev);
 
@@ -1356,18 +1251,18 @@ static void ufs_spacemit_k3_remove(struct platform_device *pdev)
 	pm_runtime_put(&(pdev)->dev);
 }
 
-static bool ufs_spacemit_k3_standby_loses_power(void)
+static bool ufs_spacemit_standby_loses_power(void)
 {
 	return pm_suspend_target_state == PM_SUSPEND_STANDBY;
 }
 
-static int ufs_spacemit_k3_suspend_prepare(struct device *dev)
+static int ufs_spacemit_suspend_prepare(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	struct ufs_spacemit_host *host = ufshcd_get_variant(hba);
 	int ret;
 
-	if (ufs_spacemit_k3_standby_loses_power() && hba->spm_lvl < UFS_PM_LVL_5) {
+	if (ufs_spacemit_standby_loses_power() && hba->spm_lvl < UFS_PM_LVL_5) {
 		host->saved_spm_lvl = hba->spm_lvl;
 		hba->spm_lvl = UFS_PM_LVL_5;
 	}
@@ -1381,10 +1276,10 @@ static int ufs_spacemit_k3_suspend_prepare(struct device *dev)
 	return ret;
 }
 
-static void ufs_spacemit_k3_resume_complete(struct device *dev)
+static void ufs_spacemit_resume_complete(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_spacemit_k3_host *host = ufshcd_get_variant(hba);
+	struct ufs_spacemit_host *host = ufshcd_get_variant(hba);
 
 	ufshcd_resume_complete(dev);
 
@@ -1394,22 +1289,22 @@ static void ufs_spacemit_k3_resume_complete(struct device *dev)
 	}
 }
 
-static const struct dev_pm_ops ufs_spacemit_k3_pm_ops = {
+static const struct dev_pm_ops ufs_spacemit_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(ufshcd_system_suspend, ufshcd_system_resume)
-	SET_RUNTIME_PM_OPS(ufs_spacemit_k3_runtime_suspend, ufs_spacemit_k3_runtime_resume, NULL)
-	.prepare = ufs_spacemit_k3_suspend_prepare,
-	.complete = ufs_spacemit_k3_resume_complete,
+	SET_RUNTIME_PM_OPS(ufs_spacemit_runtime_suspend, ufs_spacemit_runtime_resume, NULL)
+	.prepare = ufs_spacemit_suspend_prepare,
+	.complete = ufs_spacemit_resume_complete,
 };
 
-static struct platform_driver ufs_spacemit_k3_pltform = {
-	.probe	= ufs_spacemit_k3_probe,
-	.remove	= ufs_spacemit_k3_remove,
+static struct platform_driver ufs_spacemit_platform_driver = {
+	.probe	= ufs_spacemit_probe,
+	.remove	= ufs_spacemit_remove,
 	.driver	= {
-		.name	= "ufshcd-spacemit-k3",
-		.pm	= &ufs_spacemit_k3_pm_ops,
-		.of_match_table = of_match_ptr(ufs_spacemit_k3_of_match),
+		.name	= "ufshcd-spacemit",
+		.pm	= &ufs_spacemit_pm_ops,
+		.of_match_table = of_match_ptr(ufs_spacemit_of_match),
 	},
 };
-module_platform_driver(ufs_spacemit_k3_pltform);
+module_platform_driver(ufs_spacemit_platform_driver);
 
 MODULE_LICENSE("GPL v2");
