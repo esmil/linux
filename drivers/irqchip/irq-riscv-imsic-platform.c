@@ -13,6 +13,7 @@
 #include <linux/irq.h>
 #include <linux/irqchip.h>
 #include <linux/irqdomain.h>
+#include <linux/log2.h>
 #include <linux/module.h>
 #include <linux/msi.h>
 #include <linux/pci.h>
@@ -229,7 +230,8 @@ static int imsic_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
 				  unsigned int nr_irqs, void *args)
 {
 	struct imsic_vector *vec;
-        struct cpumask cpu_mask;
+	struct cpumask cpu_mask;
+	unsigned int i;
 
 #ifdef CONFIG_SPACEMIT_HMP
 	/* try allocate irq domain from online regular cpus as default */
@@ -241,19 +243,45 @@ static int imsic_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
 	cpumask_copy(&cpu_mask, cpu_online_mask);
 #endif
 
-	/* Multi-MSI is not supported yet. */
-	if (nr_irqs > 1)
-		return -EOPNOTSUPP;
+	if (nr_irqs > 1) {
+		unsigned int align_order = ilog2(nr_irqs);
 
-	vec = imsic_vector_alloc(virq, &cpu_mask);
-	if (!vec)
-		return -ENOSPC;
+		/*
+		 * Multi-MSI requires consecutive, naturally aligned
+		 * interrupt IDs (PCIe spec requirement).
+		 */
+		if (!is_power_of_2(nr_irqs))
+			align_order++;
 
-	irq_domain_set_info(domain, virq, virq, &imsic_irq_base_chip, vec,
-			    handle_edge_irq, NULL, NULL);
-	irq_set_noprobe(virq);
-	irq_set_affinity(virq, &cpu_mask);
-	irq_data_update_effective_affinity(irq_get_irq_data(virq), cpumask_of(vec->cpu));
+		vec = imsic_vector_alloc_range(virq, nr_irqs, align_order,
+					       &cpu_mask);
+		if (!vec)
+			return -ENOSPC;
+
+		for (i = 0; i < nr_irqs; i++) {
+			struct imsic_vector *v = vec + i;
+
+			irq_domain_set_info(domain, virq + i, virq + i,
+					    &imsic_irq_base_chip, v,
+					    handle_edge_irq, NULL, NULL);
+			irq_set_noprobe(virq + i);
+			irq_set_affinity(virq + i, &cpu_mask);
+			irq_data_update_effective_affinity(
+				irq_get_irq_data(virq + i),
+				cpumask_of(v->cpu));
+		}
+	} else {
+		vec = imsic_vector_alloc(virq, &cpu_mask);
+		if (!vec)
+			return -ENOSPC;
+
+		irq_domain_set_info(domain, virq, virq, &imsic_irq_base_chip,
+				    vec, handle_edge_irq, NULL, NULL);
+		irq_set_noprobe(virq);
+		irq_set_affinity(virq, &cpu_mask);
+		irq_data_update_effective_affinity(
+			irq_get_irq_data(virq), cpumask_of(vec->cpu));
+	}
 
 	return 0;
 }
@@ -261,9 +289,14 @@ static int imsic_irq_domain_alloc(struct irq_domain *domain, unsigned int virq,
 static void imsic_irq_domain_free(struct irq_domain *domain, unsigned int virq,
 				  unsigned int nr_irqs)
 {
-	struct irq_data *d = irq_domain_get_irq_data(domain, virq);
+	unsigned int i;
 
-	imsic_vector_free(irq_data_get_irq_chip_data(d));
+	for (i = 0; i < nr_irqs; i++) {
+		struct irq_data *d = irq_domain_get_irq_data(domain, virq + i);
+
+		if (d)
+			imsic_vector_free(irq_data_get_irq_chip_data(d));
+	}
 	irq_domain_free_irqs_parent(domain, virq, nr_irqs);
 }
 
@@ -309,7 +342,8 @@ static bool imsic_init_dev_msi_info(struct device *dev, struct irq_domain *domai
 
 static const struct msi_parent_ops imsic_msi_parent_ops = {
 	.supported_flags	= MSI_GENERIC_FLAGS_MASK |
-				  MSI_FLAG_PCI_MSIX,
+				  MSI_FLAG_PCI_MSIX |
+				  MSI_FLAG_MULTI_PCI_MSI,
 	.required_flags		= MSI_FLAG_USE_DEF_DOM_OPS |
 				  MSI_FLAG_USE_DEF_CHIP_OPS |
 				  MSI_FLAG_PCI_MSI_MASK_PARENT,

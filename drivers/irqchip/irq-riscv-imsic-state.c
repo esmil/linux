@@ -468,6 +468,46 @@ struct imsic_vector *imsic_vector_alloc(unsigned int irq, const struct cpumask *
 	return vec;
 }
 
+/**
+ * imsic_vector_alloc_range - Allocate a range of consecutive aligned vectors
+ * @base_irq:	Base Linux IRQ number
+ * @nr_irqs:	Number of consecutive vectors to allocate
+ * @align_order: Alignment order (2^align_order)
+ * @mask:	CPU mask to allocate from
+ *
+ * Returns pointer to the first vector on success, NULL on failure.
+ * All vectors in the range are on the same CPU with consecutive local_ids.
+ */
+struct imsic_vector *imsic_vector_alloc_range(unsigned int base_irq,
+					      unsigned int nr_irqs,
+					      unsigned int align_order,
+					      const struct cpumask *mask)
+{
+	struct imsic_local_priv *lpriv;
+	struct imsic_vector *vec;
+	unsigned long flags;
+	unsigned int cpu, i;
+	int local_id;
+
+	raw_spin_lock_irqsave(&imsic->matrix_lock, flags);
+	local_id = irq_matrix_alloc_range(imsic->matrix, mask, false,
+					  nr_irqs, align_order, &cpu);
+	raw_spin_unlock_irqrestore(&imsic->matrix_lock, flags);
+	if (local_id < 0)
+		return NULL;
+
+	lpriv = per_cpu_ptr(imsic->lpriv, cpu);
+	for (i = 0; i < nr_irqs; i++) {
+		vec = &lpriv->vectors[local_id + i];
+		vec->irq = base_irq + i;
+		vec->enable = false;
+		vec->move_next = NULL;
+		vec->move_prev = NULL;
+	}
+
+	return &lpriv->vectors[local_id];
+}
+
 void imsic_vector_free(struct imsic_vector *vec)
 {
 	unsigned long flags;

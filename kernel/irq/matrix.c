@@ -113,15 +113,18 @@ void irq_matrix_offline(struct irq_matrix *m)
 	trace_irq_matrix_offline(m);
 }
 
-static unsigned int matrix_alloc_area(struct irq_matrix *m, struct cpumap *cm,
-				      unsigned int num, bool managed)
+static unsigned int matrix_alloc_area_aligned(struct irq_matrix *m,
+					      struct cpumap *cm,
+					      unsigned int num, bool managed,
+					      unsigned int align_mask)
 {
 	unsigned int area, start = m->alloc_start;
 	unsigned int end = m->alloc_end;
 
 	bitmap_or(m->scratch_map, cm->managed_map, m->system_map, end);
 	bitmap_or(m->scratch_map, m->scratch_map, cm->alloc_map, end);
-	area = bitmap_find_next_zero_area(m->scratch_map, end, start, num, 0);
+	area = bitmap_find_next_zero_area(m->scratch_map, end, start, num,
+					  align_mask);
 	if (area >= end)
 		return area;
 	if (managed)
@@ -129,6 +132,12 @@ static unsigned int matrix_alloc_area(struct irq_matrix *m, struct cpumap *cm,
 	else
 		bitmap_set(cm->alloc_map, area, num);
 	return area;
+}
+
+static unsigned int matrix_alloc_area(struct irq_matrix *m, struct cpumap *cm,
+				      unsigned int num, bool managed)
+{
+	return matrix_alloc_area_aligned(m, cm, num, managed, 0);
 }
 
 /* Find the best CPU which has the lowest vector allocation count */
@@ -411,6 +420,49 @@ int irq_matrix_alloc(struct irq_matrix *m, const struct cpumask *msk,
 	trace_irq_matrix_alloc(bit, cpu, m, cm);
 	return bit;
 
+}
+
+/**
+ * irq_matrix_alloc_range - Allocate a range of consecutive aligned interrupts
+ * @m:		Matrix pointer
+ * @msk:	Which CPUs to search in
+ * @reserved:	Allocate previously reserved interrupts
+ * @nr_irqs:	Number of consecutive interrupts to allocate
+ * @align_order: Alignment order (allocations aligned to 2^align_order)
+ * @mapped_cpu: Pointer to store the CPU for which the irqs were allocated
+ *
+ * Returns the first bit number on success, negative error code on failure.
+ */
+int irq_matrix_alloc_range(struct irq_matrix *m, const struct cpumask *msk,
+			   bool reserved, unsigned int nr_irqs,
+			   unsigned int align_order,
+			   unsigned int *mapped_cpu)
+{
+	unsigned int cpu, bit, align_mask;
+	struct cpumap *cm;
+
+	if (cpumask_empty(msk) || !nr_irqs)
+		return -EINVAL;
+
+	align_mask = (1 << align_order) - 1;
+
+	cpu = matrix_find_best_cpu(m, msk);
+	if (cpu == UINT_MAX)
+		return -ENOSPC;
+
+	cm = per_cpu_ptr(m->maps, cpu);
+	bit = matrix_alloc_area_aligned(m, cm, nr_irqs, false, align_mask);
+	if (bit >= m->alloc_end)
+		return -ENOSPC;
+	cm->allocated += nr_irqs;
+	cm->available -= nr_irqs;
+	m->total_allocated += nr_irqs;
+	m->global_available -= nr_irqs;
+	if (reserved)
+		m->global_reserved -= nr_irqs;
+	*mapped_cpu = cpu;
+	trace_irq_matrix_alloc(bit, cpu, m, cm);
+	return bit;
 }
 
 /**
