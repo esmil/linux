@@ -322,6 +322,23 @@ config VGA_ARB_MAX_GPUS
 	  Reserves space in the kernel to maintain resource locking for
 	  multiple GPUS.  The overhead for each GPU is very small.
 
+config PCI_MSI_TEST
+	tristate "PCI Multi-MSI allocation test driver"
+	depends on PCI_MSI
+	help
+	  A test driver that exercises Multi-MSI interrupt allocation.
+	  It finds an MSI-capable PCI device and attempts to allocate
+	  multiple MSI vectors to verify the interrupt controller's
+	  multi-MSI support (MSI_FLAG_MULTI_PCI_MSI).
+
+	  Use module parameter num_vectors=N (1,2,4,8,16,32) to control
+	  how many vectors to request.
+
+	  To compile this driver as a module, choose M here. The module
+	  will be called msi_test.
+
+	  If unsure, say N.
+
 source "drivers/pci/hotplug/Kconfig"
 source "drivers/pci/controller/Kconfig"
 source "drivers/pci/endpoint/Kconfig"
