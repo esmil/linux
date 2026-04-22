@@ -1,851 +1,327 @@
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/io.h>
+#include <linux/miscdevice.h>
+#include <linux/mm.h>
+#include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/fs.h>
-#include <linux/mm.h>
-#include <linux/miscdevice.h>
-#include <linux/uaccess.h>
-#include <linux/of.h>
 #include <linux/slab.h>
-#include <linux/mutex.h>
-#include <linux/list_sort.h>
-#include <linux/poll.h>
-#include <linux/compat.h>
-#include <linux/random.h>
-#include <linux/soc/spacemit/spacemit-hmp.h>
+#include <linux/uaccess.h>
+#include <linux/version.h>
 
 #define TCM_NAME		"tcm"
 
 #define IOC_MAGIC		'c'
-#define TCM_MEM_SHOW		_IOR(IOC_MAGIC, 2, int)
-#define TCM_VA_TO_PA		_IOR(IOC_MAGIC, 4, int)
-#define TCM_REQUEST_MEM		_IOR(IOC_MAGIC, 5, int)
-#define TCM_RELEASE_MEM		_IOR(IOC_MAGIC, 6, int)
 #define TCM_INFO_GET		_IOR(IOC_MAGIC, 7, int)
-#define TCM_AICORE_BIND		_IOR(IOC_MAGIC, 8, int)
-#define TCM_ALLOC_BY_CPUMASK	_IOR(IOC_MAGIC, 10, int)
-
-#define MM_MIN_SHIFT		(PAGE_SHIFT)  /* 16 bytes */
-#define MM_MIN_CHUNK		(1 << MM_MIN_SHIFT)
-#define MM_GRAN_MASK		(MM_MIN_CHUNK-1)
-#define MM_ALIGN_UP(a)		(((a) + MM_GRAN_MASK) & ~MM_GRAN_MASK)
-#define MM_ALIGN_DOWN(a)	((a) & ~MM_GRAN_MASK)
-#define MM_ALLOC_BIT		(0x80000000)
+#define TCM_BLOCK_INFO_GET	_IOWR(IOC_MAGIC, 9, int)
 
 typedef struct {
-	size_t			vaddr;
-	size_t			size;
-} block_t;
-
-typedef struct {
-	size_t			addr_base;
-	int			block_num;
-	block_t			*block;
-	struct device		*dev;
-	struct mutex 		mutex;
-	wait_queue_head_t 	wait;
-	struct list_head	req_head;
-} tcm_t;
-
-typedef struct {
-	struct list_head 	list;
-	uintptr_t		paddr;		/* Phy addr of memory */
-	size_t			size;		/* Size of this chunk */
-	uintptr_t		next_paddr;
-	int			block_id;
-	void			*caller;
-} mm_node_t;
-
-typedef struct {
-	struct list_head	head;
-	size_t			max_size;
-} list_manager_t;
-
-typedef struct {
-	struct list_head	*head;
-	refcount_t refcnt;
-} tcm_private;
-
-typedef struct {
-	size_t			mm_heapsize;
-	size_t 			free_size;
-	uintptr_t		start;
-	uintptr_t		end;
-	list_manager_t		free;
-	list_manager_t		alloc;
-        struct cpumask  	cpu_mask;
-} mm_heap_t;
-
-typedef struct {
-	struct list_head 	list;
-	phys_addr_t		paddr;
-	size_t			size;
-} mm_alloc_node_t;
-
-typedef struct {
-	struct list_head 	list;
-	int			pid;
-	uint32_t		rand_id;
-	size_t			req_size;
-	int			timeout;
-} request_mem_t;
-
-typedef struct {
-	void 			*vaddr;
-	void 			*paddr;
-} va_to_pa_msg_t;
-
-typedef struct {
-	void 			*base;
-	size_t 			block_size;
-	size_t 			block_num;
+	void *base;
+	size_t block_size;
+	size_t block_num;
 } tcm_info_t;
 
 typedef struct {
-	void 			*vaddr;
-	size_t			size;
-} aicore_bind_t;
-
-static tcm_t			tcm;
-static mm_heap_t		*g_mmheap;
-static int			g_block_num;
-
-static void add_node(mm_heap_t *heap, list_manager_t *list, mm_node_t *node, char *tip)
-{
-	mm_node_t *cur;
-
-	node->next_paddr = node->paddr + node->size;
-	if (list_empty(&list->head)) {
-		list_add(&node->list, &list->head);
-		dev_dbg(tcm.dev, "[%s] add first node:%lx addr:%lx len:%lx\n", tip, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-		return;
-	}
-
-	list_for_each_entry(cur, &list->head, list) {
-		if ((size_t)cur->paddr > (size_t)node->paddr ) {
-			list_add_tail(&node->list, &cur->list);
-			dev_dbg(tcm.dev, "[%s] add node:%lx addr:%lx len:%lx\n", tip, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-			return;
-		}
-	}
-
-	dev_dbg(tcm.dev, "[%s] add tail node:%lx addr:%lx len:%lx\n", tip, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-
-	list_add_tail(&node->list, &list->head);
-}
-
-static void add_free_node(mm_heap_t *heap, mm_node_t *node)
-{
-	heap->free_size += node->size;
-	add_node(heap, &heap->free, node, "free");
-}
-
-static void del_free_node(mm_heap_t *heap, mm_node_t *node)
-{
-	heap->free_size -= node->size;
-	list_del(&node->list);
-}
-
-static void add_alloc_node(mm_heap_t *heap, mm_node_t *node)
-{
-	add_node(heap, &heap->alloc, node, "alloc");
-}
-
-static void del_alloc_node(mm_heap_t *heap, mm_node_t *node)
-{
-	list_del(&node->list);
-}
-
-static void mm_addregion(mm_heap_t *heap, void *heapstart, size_t heapsize)
-{
-	mm_node_t 		 *node;
-	uintptr_t 		 heapbase;
-	uintptr_t 		 heapend;
-
-	heapbase 		 = MM_ALIGN_UP((uintptr_t)heapstart);
-	heapend  		 = MM_ALIGN_DOWN((uintptr_t)heapstart + (uintptr_t)heapsize);
-	heapsize 		 = heapend - heapbase;
-
-	heap->mm_heapsize	+= heapsize;
-	heap->start		 = heapbase;
-	heap->end		 = heapend;
-
-	node			 = (mm_node_t *)(kmalloc(sizeof(mm_node_t), GFP_KERNEL));
-	node->paddr		 = heapbase;
-	node->size		 = heapsize;
-
-	add_free_node(heap, node);
-	dev_dbg(tcm.dev, "mm init(start:0x%lx)(len:0x%lx)\n", heapbase, heapsize);
-}
-
-static mm_node_t *get_free_max_node(mm_heap_t *heap, size_t size)
-{
-	mm_node_t *node, *max_node;
-
-	max_node = list_first_entry(&heap->free.head, mm_node_t, list);
-	list_for_each_entry(node, &heap->free.head, list) {
-		if (node->size >= size) {
-			max_node = node;
-			break;
-		}
-		if (node->size >= max_node->size) {
-			max_node = node;
-		}
-	}
-
-	return max_node;
-}
-
-static int node_fission(mm_heap_t *heap, mm_node_t *node, size_t size)
-{
-	size_t remaining = node->size - size;
-
-	dev_dbg(tcm.dev, "remaining size:%lx\n", remaining);
-	if (remaining > 0) {
-		mm_node_t *remainder = (mm_node_t *)(kmalloc(sizeof(mm_node_t), GFP_KERNEL));
-		if (!remainder) {
-			return -1;
-		}
-
-		remainder->size		= remaining;
-		remainder->paddr	= node->paddr + size;
-		node->size		= size;
-
-		add_free_node(heap, remainder);
-	}
-
-	del_free_node(heap, node);
-	add_alloc_node(heap, node);
-
-	return 0;
-}
-
-static void *mm_max_mallc(mm_heap_t *heap, size_t size, size_t *valid_size)
-{
-	mm_node_t *node;
-
-	size = MM_ALIGN_UP(size);
-
-	node = get_free_max_node(heap, size);
-
-	dev_dbg(tcm.dev, "\n%s node:(%lx)(%lx)(%lx)\n", __func__, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-
-	if (size <= node->size) {
-		node_fission(heap, node, size);
-		*valid_size = size;
-	} else {
-		node_fission(heap, node, node->size);
-		*valid_size = node->size;
-	}
-
-	return (void *)node->paddr;
-}
-
-static mm_node_t *get_node_by_ptr(mm_heap_t *heap, void *mem)
-{
-	mm_node_t *node;
-
-	list_for_each_entry(node, &heap->alloc.head, list) {
-		if ((size_t)node->paddr == (size_t)mem) {
-			return node;
-		}
-	}
-
-	return NULL;
-}
-
-static void mm_free(mm_heap_t *heap, void *mem)
-{
-	mm_node_t *cur, *next, *node;
-	int gc_flag = 0;
-
-	node = get_node_by_ptr(heap, mem);
-	if (!node) return;
-
-	dev_dbg(tcm.dev, "%s  node:(%lx)(%lx)(%lx)\n", __func__, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-
-	del_alloc_node(heap, node);
-
-	list_for_each_entry_safe(cur, next, &heap->free.head, list) {
-		if (cur->next_paddr == (size_t)node->paddr) {
-			cur->size	+= node->size;
-			gc_flag		|= 1;
-
-			dev_dbg(tcm.dev, "gc prev succful(%lx)(%lx)(%lx)\n", (uintptr_t)cur, (uintptr_t)cur->paddr, cur->size);
-			if (!list_is_last(&cur->list, &heap->free.head)) {
-				if (cur->next_paddr == (size_t)next->paddr) {
-					cur->size	+= next->size;
-					gc_flag		|= 2;
-					dev_dbg(tcm.dev, "gc 2 next succful(%lx)(%lx)(%lx)\n", (uintptr_t)cur, (uintptr_t)cur->paddr, cur->size);
-					list_del(&next->list);
-					kfree(next);
-				}
-			}
-			break;
-		}
-
-		if (node->next_paddr == (size_t)cur->paddr) {
-			cur->paddr	 = node->paddr;
-			cur->size	+= node->size;
-			gc_flag		|= 2;
-			dev_dbg(tcm.dev, "gc next succful(%lx)(%lx)(%lx)\n", (uintptr_t)cur, (uintptr_t)cur->paddr, cur->size);
-			break;;
-		}
-	}
-
-	if (gc_flag == 0) {
-		add_free_node(heap, node);
-	} else {
-		kfree(node);
-	}
-}
-
-static void mm_show(mm_heap_t *heap)
-{
-	mm_node_t *node;
-	int i = 0;
-
-	printk("%s start\n", __func__);
-	list_for_each_entry(node, &heap->free.head, list) {
-		printk("mem free node[%d]: %lx paddr: %lx size:0x%lx\n",
-			i ++, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-	}
-
-	i = 0;
-	list_for_each_entry(node, &heap->alloc.head, list) {
-		printk("mem alloc node[%d]: %lx paddr: %lx size:0x%lx\n",
-			i ++, (uintptr_t)node, (uintptr_t)node->paddr, node->size);
-	}
-
-	printk("%s end\n", __func__);
-}
-
-static int get_id(uintptr_t ptr)
-{
-	int i;
-	for (i = 0; i < g_block_num; i++) {
-		if (ptr >= g_mmheap[i].start && ptr < g_mmheap[i].end){
-			return i;
-		}
-	}
-	return -1;
-}
-
-static void tcm_free(void *ptr)
-{
-	int id = get_id((uintptr_t)ptr);
-	if (id < 0) {
-		return;
-	}
-	mm_free(&g_mmheap[id], ptr);
-}
-
-static size_t total_free_size(void)
-{
-	int i;
-	size_t total = 0;
-
-	for (i = 0; i < g_block_num; i++) {
-		total += g_mmheap[i].free_size;
-	}
-
-	return total;
-}
-
-static struct list_head *tcm_discontinuous_malloc(size_t size)
-{
-	struct list_head *head;
-	int i, remain;
-	size_t total;
-
-	total = total_free_size();
-	if (total < size) return NULL;
-
-	head = kmalloc(sizeof(struct list_head), GFP_KERNEL);
-	if (!head) return NULL;
-
-	INIT_LIST_HEAD(head);
-	remain = size;
-
-	for (i = 0; i < g_block_num; i++) {
-		while (g_mmheap[i].free_size) {
-			mm_alloc_node_t *alloc = kmalloc(sizeof(mm_alloc_node_t), GFP_KERNEL);
-			alloc->paddr = (phys_addr_t)mm_max_mallc(&g_mmheap[i], remain, &alloc->size);
-			list_add(&alloc->list, head);
-			remain -= alloc->size;
-			if (remain <= 0) {
-				break;
-			}
-		}
-		if (remain <= 0) {
-			break;
-		}
-	}
-
-	return head;
-}
-
-static size_t total_cpumask_free_size(struct cpumask *cpu_mask)
-{
-	size_t size = 0;
-	int i = 0;
-
-	for (i = 0; i < g_block_num; i++) {
-		if (cpumask_subset(cpu_mask, &g_mmheap[i].cpu_mask)) {
-			size += g_mmheap[i].free_size;
-		}
-	}
-
-	return size;
-}
-
-static struct list_head *tcm_cpumask_malloc(struct cpumask *cpu_mask, size_t size)
-{
-	struct list_head *head;
-	int i, remain;
-	size_t total;
-
-	total = total_cpumask_free_size(cpu_mask);
-	if (total < size) return NULL;
-
-	head = kmalloc(sizeof(struct list_head), GFP_KERNEL);
-	if (!head) return NULL;
-
-	INIT_LIST_HEAD(head);
-	remain = size;
-
-	for (i = 0; i < g_block_num; i++) {
-		while (g_mmheap[i].free_size && cpumask_subset(cpu_mask, &g_mmheap[i].cpu_mask)) {
-			mm_alloc_node_t *alloc = kmalloc(sizeof(mm_alloc_node_t), GFP_KERNEL);
-			alloc->paddr = (phys_addr_t)mm_max_mallc(&g_mmheap[i], remain, &alloc->size);
-			list_add(&alloc->list, head);
-			remain -= alloc->size;
-			if (remain <= 0) {
-				break;
-			}
-		}
-		if (remain <= 0) {
-			break;
-		}
-	}
-
-	return head;
-}
-
-static int mm_init(mm_heap_t *heap, size_t start, size_t end)
-{
-	memset(heap, 0, sizeof(mm_heap_t));
-
-	INIT_LIST_HEAD(&heap->free.head);
-	INIT_LIST_HEAD(&heap->alloc.head);
-
-	mm_addregion(heap, (void *)start, end - start);
-
-	return 0;
-}
-
-static void *tcm_match_pa(unsigned long vaddr)
-{
-	// TODO
-	struct vm_area_struct *vma;
-	mm_alloc_node_t *node;
-	tcm_private *tcm_pri;
-	unsigned long offset;
-	void *paddr = NULL;
-
-	/* Acquire mmap lock before calling find_vma */
-	mmap_read_lock(current->mm);
-
-	vma = find_vma(current->mm, vaddr);
-	if (!vma) {
-		goto out_unlock;
-	}
-
-	tcm_pri = (tcm_private *)vma->vm_private_data;
-	if (!tcm_pri) {
-		goto out_unlock;
-	}
-
-	offset = vaddr - vma->vm_start;
-	node = list_first_entry(tcm_pri->head, mm_alloc_node_t, list);
-	if (!node) {
-		pr_err("can not switch tcm va to pa\n");
-		goto out_unlock;
-	}
-	paddr = (void *)((unsigned long)node->paddr + offset);
-
-out_unlock:
-	mmap_read_unlock(current->mm);
-	return paddr;
-}
-
-static request_mem_t *get_req_mem_node(int pid)
-{
-	request_mem_t *cur;
-
-	list_for_each_entry(cur, &tcm.req_head, list) {
-		if (pid == cur->pid) {
-			return cur;
-		}
-	}
-
-	return NULL;
-}
-
-static int del_req_mem_node(request_mem_t *node)
-{
-	mutex_lock(&tcm.mutex);
-	list_add_tail(&node->list, &tcm.req_head);
-	mutex_unlock(&tcm.mutex);
-
-	return 0;
-}
-
-static int add_req_mem_node(request_mem_t *node)
-{
-	mutex_lock(&tcm.mutex);
-	list_add_tail(&node->list, &tcm.req_head);
-	mutex_unlock(&tcm.mutex);
-
-	return 0;
-}
-
-static void tcm_vma_open(struct vm_area_struct *vma)
-{
-	tcm_private *tcm_pri = (tcm_private *)vma->vm_private_data;
-
-	refcount_inc(&tcm_pri->refcnt);
-}
-
-static void tcm_vma_close(struct vm_area_struct *vma)
-{
-	mm_alloc_node_t *cur, *next;
-	tcm_private *tcm_pri = (tcm_private *)vma->vm_private_data;
-	struct list_head *head = tcm_pri->head;
-
-	if (!refcount_dec_and_test(&tcm_pri->refcnt))
-		return;
-	list_for_each_entry_safe(cur, next, head, list) {
-		tcm_free((void *)cur->paddr);
-		list_del(&cur->list);
-		kfree(cur);
-	}
-	kfree(head);
-	kfree(tcm_pri);
-	dev_dbg(tcm.dev, "wake up block thread");
-	wake_up_all(&tcm.wait);
-}
-
-static const struct vm_operations_struct tcm_vm_ops = {
-	.open = tcm_vma_open,
-	.close = tcm_vma_close,
+	u32 block_id;
+	u32 reserved;
+	u64 phys;
+	u64 size;
+	u64 cpu_affinity_mask;
+} tcm_block_info_t;
+
+struct tcm_block {
+	phys_addr_t phys;
+	size_t size;
+	u64 cpu_affinity_mask;
 };
 
-static int mmap_compare(void* priv, const struct list_head* a, const struct list_head* b)
-{
-	mm_alloc_node_t* da = list_entry(a, mm_alloc_node_t, list);
-	mm_alloc_node_t* db = list_entry(b, mm_alloc_node_t, list);
-
-	return ((size_t)da->paddr > (size_t)db->paddr) ? 1 : (((size_t)da->paddr < (size_t)db->paddr) ? -1 : 0);
-}
-
-static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
-{
-	size_t size = vma->vm_end - vma->vm_start;
-	phys_addr_t offset = (phys_addr_t)(vma->vm_pgoff << PAGE_SHIFT);
-	struct page* page = NULL;
-	unsigned long pfn;
-	unsigned long addr;
-	tcm_private *tcm_pri;
-	struct list_head *head;
-	mm_alloc_node_t *node;
-	struct cpumask cpu_mask;
-
-	/* Does it even fit in phys_addr_t? */
-	if (offset >> PAGE_SHIFT != vma->vm_pgoff)
-		return -EINVAL;
-
-	if (vma->vm_pgoff) {
-		if (copy_from_user(&cpu_mask, (void *)offset, sizeof(cpu_mask))) {
-			return -EFAULT;
-		}
-	}
-
-	vma->vm_ops = &tcm_vm_ops;
-
-	mutex_lock(&tcm.mutex);
-	tcm_pri = kmalloc(sizeof(tcm_private), GFP_KERNEL);
-	if (!tcm_pri)
-		return -EINVAL;
-	if (offset) {
-		head = tcm_cpumask_malloc(&cpu_mask, size);
-	} else {
-		head = tcm_discontinuous_malloc(size);
-	}
-	tcm_pri->head = head;
-	mutex_unlock(&tcm.mutex);
-
-	if (!head) {
-		return -EINVAL;
-	}
-
-	list_sort(NULL, head, mmap_compare);
-	refcount_set(&tcm_pri->refcnt, 1);
-	vma->vm_private_data = tcm_pri;
-	addr = vma->vm_start;
-
-	list_for_each_entry(node, head, list) {
-		pfn = node->paddr >> PAGE_SHIFT;
-		page = phys_to_page(node->paddr);
-		if (!page) {
-			return -ENXIO;
-		}
-		if (remap_pfn_range(vma,
-				addr,
-				pfn,
-				node->size,
-				vma->vm_page_prot)) {
-			return -EAGAIN;
-		}
-		addr += node->size;
-	}
-
-	return 0;
-}
-
-static int tcm_aicore_bind(aicore_bind_t *bind)
-{
-	phys_addr_t paddr;
-	paddr = (phys_addr_t)tcm_match_pa((unsigned long)bind->vaddr);
-
-	for (int i = 0; i < g_block_num; i++) {
-		if ((paddr >= g_mmheap[i].start && paddr < g_mmheap[i].end) &&
-		    ((paddr + bind->size) >= g_mmheap[i].start && (paddr + bind->size) < g_mmheap[i].end)) {
-			if (!cpumask_empty(&g_mmheap[i].cpu_mask)) {
-				hmp_set_ai_thread(current->pid);
-				long ret = sched_setaffinity(current->pid, &g_mmheap[i].cpu_mask);
-				if (ret != 0) {
-					dev_err(tcm.dev, "CPU affinity setting failed, va: 0x%lx pa:%lx \n",
-						(size_t)bind->vaddr, (size_t)paddr);
-				}
-			} else {
-				// TODO
-			}
-			return 0;
-		}
-
-	}
-	return -1;
-}
-
-static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-{
-	if (cmd == TCM_MEM_SHOW) {
-		int i = 0;
-		for (; i < g_block_num; i++) {
-			printk("mem block id(%d):\n", i);
-			mm_show(&g_mmheap[i]);
-		}
-	}else if (cmd  == TCM_VA_TO_PA) {
-		va_to_pa_msg_t msg;
-
-		if(copy_from_user(&msg, (void *)arg, sizeof(va_to_pa_msg_t))) {
-			return -EFAULT;
-		}
-
-		msg.paddr = tcm_match_pa((unsigned long)msg.vaddr);
-
-		if(copy_to_user((void *)arg, &msg, sizeof(va_to_pa_msg_t))) {
-			return -EFAULT;
-		}
-	} else if (cmd == TCM_REQUEST_MEM) {
-		size_t size;
-		request_mem_t *node;
-
-		if(copy_from_user(&size, (void *)arg, sizeof(size_t))) {
-			return -EFAULT;
-		}
-
-		node = kmalloc(sizeof(request_mem_t), GFP_KERNEL);
-		if (!node) return -ENOMEM;
-
-		node->pid = task_pid_nr(current);
-		node->req_size = size;
-		add_req_mem_node(node);
-	} else if (cmd == TCM_RELEASE_MEM) {
-		size_t size;
-		request_mem_t *node;
-		if(copy_from_user(&size, (void *)arg, sizeof(size_t))) {
-			return -EFAULT;
-		}
-		node = get_req_mem_node(task_pid_nr(current));
-		if (node) del_req_mem_node(node);
-	} else if (cmd == TCM_INFO_GET) {
-		tcm_info_t tcm_info;
-		tcm_info.block_num = g_block_num;
-		tcm_info.block_size = g_mmheap[0].mm_heapsize;
-		tcm_info.base = (void *)g_mmheap[0].start;
-
-		if(copy_to_user((void *)arg, &tcm_info, sizeof(tcm_info_t))) {
-			return -EFAULT;
-		}
-	} else if (cmd == TCM_AICORE_BIND) {
-		aicore_bind_t aicore_bind;
-		if(copy_from_user(&aicore_bind, (void *)arg, sizeof(aicore_bind_t))) {
-			return -EFAULT;
-		}
-		if (tcm_aicore_bind(&aicore_bind) < 0) {
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
-
-static unsigned int tcm_poll(struct file *file, poll_table *wait)
-{
-	__poll_t mask = 0;
-
-	request_mem_t *node = get_req_mem_node(task_pid_nr(current));
-	dev_dbg(tcm.dev, "poll get node(%lx)\n", (size_t)node);
-
-	if (node == NULL) {
-		mask = EPOLLERR;
-	} else {
-		poll_wait(file, &tcm.wait, wait);
-		if (total_free_size() >= node->req_size) {
-			mask = EPOLLIN;
-		}
-	}
-
-	return mask;
-}
-
-static const struct file_operations tcm_fops = {
-	.owner		= THIS_MODULE,
-	.mmap		= tcm_mmap,
-	.unlocked_ioctl	= tcm_ioctl,
-	.poll		= tcm_poll,
+struct tcm_direct_dev {
+	struct miscdevice miscdev;
+	struct device *dev;
+	phys_addr_t phys;
+	size_t size;
+	size_t block_size;
+	size_t block_num;
+	struct tcm_block *blocks;
 };
 
-static struct miscdevice tcm_misc_device = {
-	.minor		= MISC_DYNAMIC_MINOR,
-	.name		= TCM_NAME,
-	.fops		= &tcm_fops,
-	.mode		= 0666,
-};
-
-static const struct of_device_id tcm_dt_ids[] = {
-	{ .compatible = "spacemit,k1-pro-tcm", .data = NULL },
-	{ .compatible = "spacemit,k1-tcm", .data = NULL },
-	{}
-};
-
-static int get_cpu_reg_from_tcm(struct device_node *tcm_node, struct cpumask *cpu_mask)
+static int tcm_parse_cpu_mask(struct device_node *tcm_node, u64 *mask)
 {
 	struct device_node *cpu_node;
-	unsigned long cpu_reg;
+	u64 cpu_mask = 0;
 	int i;
 
-	for (i = 0; ; i++) {
+	if (!mask)
+		return -EINVAL;
+
+	for (i = 0;; i++) {
+		u32 cpu_reg;
+
 		cpu_node = of_parse_phandle(tcm_node, "cpus", i);
 		if (!cpu_node)
 			break;
-		if (riscv_of_processor_hartid(cpu_node, &cpu_reg)) {
-			dev_err(tcm.dev, "Failed to read reg property for CPU node\n");
-			of_node_put(cpu_node);
-			return -EINVAL;
-		}
-		dev_dbg(tcm.dev, "CPU node %s has reg value: %ld\n", cpu_node->full_name, cpu_reg);
-		cpumask_set_cpu(cpu_reg, cpu_mask);
+
+		if (!of_property_read_u32(cpu_node, "reg", &cpu_reg) &&
+		    cpu_reg < 64)
+			cpu_mask |= BIT_ULL(cpu_reg);
+
 		of_node_put(cpu_node);
 	}
-	return i == 0 ? -1 : 0;
+
+	*mask = cpu_mask;
+	return i == 0 ? -ENOENT : 0;
 }
 
-static int tcm_probe(struct platform_device *pdev)
+static int tcm_parse_layout(struct platform_device *pdev,
+			    struct tcm_direct_dev *tcm)
 {
-	struct resource *res;
-	int ret, num;
-	struct device_node *np, *child;
+	struct resource *parent_res;
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *child;
+	size_t child_count;
+	size_t block_idx = 0;
+	int ret;
 
-	tcm.dev = &pdev->dev;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(tcm.dev, "found no memory resource\n");
+	parent_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!parent_res)
 		return -EINVAL;
+
+	tcm->phys = parent_res->start;
+	tcm->size = resource_size(parent_res);
+	tcm->block_size = tcm->size;
+	tcm->block_num = 1;
+	tcm->blocks = NULL;
+
+	child_count = np ? of_get_available_child_count(np) : 0;
+	if (!child_count) {
+		tcm->blocks = devm_kcalloc(&pdev->dev, 1,
+					   sizeof(*tcm->blocks),
+					   GFP_KERNEL);
+		if (!tcm->blocks)
+			return -ENOMEM;
+
+		tcm->blocks[0].phys = tcm->phys;
+		tcm->blocks[0].size = tcm->size;
+		return 0;
 	}
 
-	np = tcm.dev->of_node;
-	num = (np) ? of_get_available_child_count(np) + 1 : 1;
-
-	dev_dbg(tcm.dev, "-----------child num:%d\n", num);
-	g_mmheap = kmalloc(sizeof(mm_heap_t)*num, GFP_KERNEL);
-	if (!g_mmheap)
+	tcm->blocks = devm_kcalloc(&pdev->dev, child_count,
+				   sizeof(*tcm->blocks), GFP_KERNEL);
+	if (!tcm->blocks)
 		return -ENOMEM;
 
 	for_each_available_child_of_node(np, child) {
 		struct resource child_res;
-		struct cpumask  cpu_mask;
+		size_t child_size;
+		u64 cpu_affinity_mask = 0;
 
 		ret = of_address_to_resource(child, 0, &child_res);
-		if (ret < 0) {
-			dev_err(tcm.dev,
-				"could not get address for node %pOF\n",
-				child);
+		if (ret < 0)
+			return ret;
+
+		if (child_res.start < parent_res->start ||
+		    child_res.end > parent_res->end)
+			return -EINVAL;
+
+		child_size = resource_size(&child_res);
+		if (!block_idx) {
+			tcm->phys = child_res.start;
+			tcm->block_size = child_size;
+		} else if (child_size != tcm->block_size) {
+			dev_err(&pdev->dev,
+				"direct mmap layout requires equal-sized blocks, block%zu size=0x%zx expected=0x%zx\n",
+				block_idx, child_size, tcm->block_size);
 			return -EINVAL;
 		}
 
-		if (child_res.start < res->start || child_res.end > res->end) {
-			dev_err(tcm.dev,
-				"reserved block %pOF outside the tcm area\n",
-				child);
-			return -EINVAL;
-		}
-
-		mm_init(&g_mmheap[g_block_num], child_res.start , child_res.start + resource_size(&child_res));
-		cpumask_clear(&cpu_mask);
-		if (get_cpu_reg_from_tcm(child, &cpu_mask) == 0) {
-			cpumask_copy(&g_mmheap[g_block_num].cpu_mask, &cpu_mask);
-		}
-		g_block_num ++;
-
+		tcm->blocks[block_idx].phys = child_res.start;
+		tcm->blocks[block_idx].size = child_size;
+		if (tcm_parse_cpu_mask(child, &cpu_affinity_mask) == 0)
+			tcm->blocks[block_idx].cpu_affinity_mask =
+				cpu_affinity_mask;
+		block_idx++;
 	}
 
-	ret = misc_register(&tcm_misc_device);
-	if (ret) {
-		dev_err(tcm.dev, "failed to register misc device\n");
+	tcm->block_num = block_idx;
+	tcm->size = tcm->block_size * tcm->block_num;
+	return 0;
+}
+
+static int tcm_open(struct inode *inode, struct file *file)
+{
+	struct miscdevice *miscdev = file->private_data;
+	struct tcm_direct_dev *tcm;
+
+	tcm = container_of(miscdev, struct tcm_direct_dev, miscdev);
+	file->private_data = tcm;
+	return 0;
+}
+
+static int tcm_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	struct tcm_direct_dev *tcm = file->private_data;
+	unsigned long vma_size = vma->vm_end - vma->vm_start;
+	unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+	unsigned long mapped = 0;
+
+	if (!tcm)
+		return -ENODEV;
+
+	if (offset >= tcm->size)
+		return -EINVAL;
+	if (vma_size > tcm->size - offset)
+		return -EINVAL;
+
+	if (!tcm->block_size || !tcm->blocks)
+		return -ENODEV;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+	vm_flags_set(vma, VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP);
+#else
+	vma->vm_flags |= VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP;
+#endif
+
+	while (mapped < vma_size) {
+		unsigned long cur = offset + mapped;
+		size_t block_idx = cur / tcm->block_size;
+		unsigned long block_off = cur % tcm->block_size;
+		unsigned long chunk;
+		unsigned long long phys;
+
+		if (block_idx >= tcm->block_num)
+			return -EINVAL;
+		if (block_off >= tcm->blocks[block_idx].size)
+			return -EINVAL;
+
+		chunk = tcm->blocks[block_idx].size - block_off;
+		if (chunk > vma_size - mapped)
+			chunk = vma_size - mapped;
+
+		phys = tcm->blocks[block_idx].phys + block_off;
+		if (remap_pfn_range(vma, vma->vm_start + mapped,
+				    phys >> PAGE_SHIFT, chunk,
+				    vma->vm_page_prot))
+			return -EAGAIN;
+
+		mapped += chunk;
+	}
+
+	return 0;
+}
+
+static long tcm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	struct tcm_direct_dev *tcm = file->private_data;
+
+	if (!tcm)
+		return -ENODEV;
+
+	if (cmd == TCM_INFO_GET) {
+		tcm_info_t info;
+
+		info.base = (void *)(uintptr_t)tcm->phys;
+		info.block_size = tcm->block_size;
+		info.block_num = tcm->block_num;
+
+		if (copy_to_user((void __user *)arg, &info, sizeof(info)))
+			return -EFAULT;
+
+		return 0;
+	}
+
+	if (cmd == TCM_BLOCK_INFO_GET) {
+		tcm_block_info_t block_info;
+
+		if (copy_from_user(&block_info, (void __user *)arg,
+				   sizeof(block_info)))
+			return -EFAULT;
+
+		if (block_info.block_id >= tcm->block_num)
+			return -EINVAL;
+
+		block_info.phys = tcm->blocks[block_info.block_id].phys;
+		block_info.size = tcm->blocks[block_info.block_id].size;
+		block_info.cpu_affinity_mask =
+			tcm->blocks[block_info.block_id].cpu_affinity_mask;
+
+		if (copy_to_user((void __user *)arg, &block_info,
+				 sizeof(block_info)))
+			return -EFAULT;
+
+		return 0;
+	}
+
+	return -ENOTTY;
+}
+
+static const struct file_operations tcm_fops = {
+	.owner = THIS_MODULE,
+	.open = tcm_open,
+	.mmap = tcm_mmap,
+	.unlocked_ioctl = tcm_ioctl,
+};
+
+static const struct of_device_id tcm_dt_ids[] = {
+	{ .compatible = "spacemit,k1-pro-tcm" },
+	{ .compatible = "spacemit,k1-x-tcm" },
+	{ .compatible = "spacemit,k1-tcm" },
+	{}
+};
+MODULE_DEVICE_TABLE(of, tcm_dt_ids);
+
+static int tcm_probe(struct platform_device *pdev)
+{
+	struct tcm_direct_dev *tcm;
+	int ret;
+
+	tcm = devm_kzalloc(&pdev->dev, sizeof(*tcm), GFP_KERNEL);
+	if (!tcm)
+		return -ENOMEM;
+
+	tcm->dev = &pdev->dev;
+	ret = tcm_parse_layout(pdev, tcm);
+	if (ret < 0)
 		return ret;
-	}
-	mutex_init(&tcm.mutex);
-	init_waitqueue_head(&tcm.wait);
-	INIT_LIST_HEAD(&tcm.req_head);
-	dev_dbg(tcm.dev, "tcm register succfully\n");
+
+	tcm->miscdev.minor = MISC_DYNAMIC_MINOR;
+	tcm->miscdev.name = TCM_NAME;
+	tcm->miscdev.fops = &tcm_fops;
+	tcm->miscdev.mode = 0666;
+
+	ret = misc_register(&tcm->miscdev);
+	if (ret)
+		return ret;
+
+	platform_set_drvdata(pdev, tcm);
+
+	dev_info(&pdev->dev,
+		 "direct mmap phys 0x%llx size 0x%zx block_size 0x%zx block_num %zu via /dev/%s\n",
+		 (unsigned long long)tcm->phys, tcm->size,
+		 tcm->block_size, tcm->block_num, TCM_NAME);
+
 	return 0;
 }
 
 static void tcm_remove(struct platform_device *pdev)
 {
-	dev_dbg(tcm.dev, "tcm deregister succfully\n");
-	kfree(g_mmheap);
-	misc_deregister(&tcm_misc_device);
+	struct tcm_direct_dev *tcm = platform_get_drvdata(pdev);
+
+	if (!tcm)
+		return;
+
+	misc_deregister(&tcm->miscdev);
 }
 
 static struct platform_driver tcm_driver = {
 	.driver = {
-		.name		= TCM_NAME,
+		.name = TCM_NAME,
 		.of_match_table = tcm_dt_ids,
 	},
-	.probe	= tcm_probe,
+	.probe = tcm_probe,
 	.remove = tcm_remove,
 };
 
-static int __init tcm_init(void)
-{
-	return platform_driver_register(&tcm_driver);
-}
-
-module_init(tcm_init);
+module_platform_driver(tcm_driver);
