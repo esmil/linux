@@ -23,6 +23,8 @@
 #define read32(a) readl((volatile void __iomem *)(a))
 #define write32(a, v) writel((v), (volatile void __iomem *)(a))
 
+static void ccic_iommu_set_sva(struct ccic_iommu_device *mmu_dev);
+
 static inline uint32_t iommu_reg_read(struct ccic_iommu_device *mmu_dev,
 				      uint32_t reg)
 {
@@ -171,6 +173,7 @@ static int ccic_iommu_enable_channel(struct ccic_iommu_device *mmu_dev,
 	int tbu;
 	unsigned long flags;
 
+	ccic_iommu_set_sva(mmu_dev);
 	tbu = tid_to_tbu(mmu_dev, tid);
 	if (tbu < 0) {
 		pr_err("no such channel %x to enable\n", tid);
@@ -245,7 +248,7 @@ static int ccic_iommu_config_channel(struct ccic_iommu_device *mmu_dev,
 	return 0;
 }
 
-static const uint64_t IOMMU_VADDR_BASE = 0x80000000;
+static const uint64_t IOMMU_VADDR_BASE = 0x00000000;
 static uint64_t ccic_iommu_get_sva(struct ccic_iommu_device *mmu_dev,
 				  uint32_t tid, uint32_t offset)
 {
@@ -267,6 +270,12 @@ static uint64_t ccic_iommu_get_sva(struct ccic_iommu_device *mmu_dev,
 	svAddr = bva + 0x10000000 * (uint64_t)tbu + (offset & 0xfff);
 #endif
 	return svAddr;
+}
+
+static void ccic_iommu_set_sva(struct ccic_iommu_device *mmu_dev)
+{
+	iommu_reg_write(mmu_dev, REG_IOMMU_BVAL, IOMMU_VADDR_BASE);
+	iommu_reg_write(mmu_dev, REG_IOMMU_BVAH, 0x0);
 }
 
 static unsigned int ccic_iommu_irq_status(struct ccic_iommu_device *mmu_dev)
