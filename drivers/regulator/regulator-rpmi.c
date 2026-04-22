@@ -12,6 +12,7 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/platform_device.h>
 #include <linux/mailbox/riscv-rpmi-message.h>
+#include <linux/mutex.h>
 
 #define RPMI_REGULATOR_NAME_LEN			16
 #define RPMI_REGULATOR_DISCRETE_MAX_NUM		16
@@ -44,17 +45,22 @@ struct rpmi_regulator_context {
 	struct mbox_chan *chan;
 	struct mbox_client client;
 	u32 max_msg_data_size;
+	struct mutex msg_lock;
+	struct rpmi_mbox_message msg_buf;
 };
 
 struct rpmi_regulator {
+	struct regulator_desc desc;
 	struct rpmi_regulator_context *context;
 	u32 id;
 	u32 type;
 	u32 num_levels;
 	u32 trans_latency;
 	char name[RPMI_REGULATOR_NAME_LEN];
-	struct regulator_desc *desc;
 };
+
+#define desc_to_rpmi_reg(desc) \
+	container_of(desc, struct rpmi_regulator, desc)
 
 struct rpmi_get_num_domain_rx {
 	u32 status;
@@ -125,13 +131,19 @@ struct rpmi_volt_get_level_rx {
 
 static int regulator_rpmi_get_num(struct rpmi_regulator_context *context)
 {
-	struct rpmi_mbox_message msg;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_get_num_domain_rx rx;
 	int ret;
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_GET_NUM_DOMAINS,
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_GET_NUM_DOMAINS,
 					  NULL, 0, &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 	if (rx.status)
@@ -143,16 +155,22 @@ static int regulator_rpmi_get_num(struct rpmi_regulator_context *context)
 static int regulator_rpmi_get_attrs(u32 id, struct rpmi_regulator *reg)
 {
 	struct rpmi_regulator_context *context = reg->context;
-	struct rpmi_mbox_message msg;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_get_attr_tx tx;
 	struct rpmi_volt_get_attr_rx rx;
 	u8 format;
 	int ret;
 
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
 	tx.domain_id = cpu_to_le32(id);
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_GET_ATTRIBUTES,
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_GET_ATTRIBUTES,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 	if (rx.status)
@@ -173,10 +191,10 @@ static int regulator_rpmi_get_attrs(u32 id, struct rpmi_regulator *reg)
 static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg)
 {
 	struct rpmi_regulator_context *context = reg->context;
-	struct rpmi_mbox_message msg;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_get_sup_tx tx;
 	struct rpmi_volt_get_sup_rx *rx;
-	struct regulator_desc *desc = reg->desc;
+	struct regulator_desc *desc = &reg->desc;
 	struct linear_range *ranges;
 	unsigned int max, num_voltages = 0;
 	int ret;
@@ -192,20 +210,27 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 
 	tx.domain_id = cpu_to_le32(id);
 
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
 	for (int i = 0; i < reg->num_levels; ++i) {
 		tx.volt_level_index = i;
 
 		if (reg->type == RPMI_REGULATOR_LINEAR) {
-			rpmi_mbox_init_send_with_response(&msg,
+			rpmi_mbox_init_send_with_response(msg,
 							  RPMI_REGULATOR_SRV_GET_SUPPORTED_LEVELS,
 							  &tx, sizeof(tx), rx,
 							  context->max_msg_data_size);
-			ret = rpmi_mbox_send_message(context->chan, &msg);
-			if (ret)
+			ret = rpmi_mbox_send_message(context->chan, msg);
+			if (ret) {
+				mutex_unlock(&context->msg_lock);
 				return ret;
+			}
 
-			if (rx->status)
+			if (rx->status) {
+				mutex_unlock(&context->msg_lock);
 				return rpmi_to_linux_error(rx->status);
+			}
 
 			ranges[i].min = rx->volt_level[0];
 			max = rx->volt_level[1];
@@ -220,9 +245,13 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 						(max - ranges[i].min) / ranges[i].step;
 
 			num_voltages += ranges[i].max_sel - ranges[i].min_sel + 1;
-		} else
+		} else {
+			mutex_unlock(&context->msg_lock);
 			return -EINVAL;
+		}
 	}
+
+	mutex_unlock(&context->msg_lock);
 
 	desc->n_voltages = num_voltages;
 	desc->linear_ranges = ranges;
@@ -231,12 +260,12 @@ static int regulator_rpmi_get_supported_level(u32 id, struct rpmi_regulator *reg
 	return 0;
 }
 
-static int regulator_rpmi_get_voltage_sel(struct regulator_dev *reg)
+static int regulator_rpmi_get_voltage_sel(struct regulator_dev *rdev)
 {
-	struct device *dev = reg->dev.parent;
-	struct rpmi_regulator_context *context = dev_get_drvdata(dev);
-	const struct regulator_desc *desc = reg->desc;
-	struct rpmi_mbox_message msg;
+	const struct regulator_desc *desc = rdev->desc;
+	struct rpmi_regulator *reg = desc_to_rpmi_reg(desc);
+	struct rpmi_regulator_context *context = reg->context;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_get_level_tx tx;
 	struct rpmi_volt_get_level_rx rx;
 	int ret;
@@ -244,9 +273,15 @@ static int regulator_rpmi_get_voltage_sel(struct regulator_dev *reg)
 
 	tx.domain_id = cpu_to_le32(desc->id);
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_GET_LEVEL,
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_GET_LEVEL,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 
@@ -255,29 +290,35 @@ static int regulator_rpmi_get_voltage_sel(struct regulator_dev *reg)
 
 	uV = rx.volt_level;
 
-	ret = regulator_map_voltage_linear_range(reg, uV, uV);
+	ret = regulator_map_voltage_linear_range(rdev, uV, uV);
 
 	return ret;
 }
 
-static int regulator_rpmi_set_voltage_sel(struct regulator_dev *reg, unsigned sel)
+static int regulator_rpmi_set_voltage_sel(struct regulator_dev *rdev, unsigned sel)
 {
-	struct device *dev = reg->dev.parent;
-	struct rpmi_regulator_context *context = dev_get_drvdata(dev);
-	const struct regulator_desc *desc = reg->desc;
-	struct rpmi_mbox_message msg;
+	const struct regulator_desc *desc = rdev->desc;
+	struct rpmi_regulator *reg = desc_to_rpmi_reg(desc);
+	struct rpmi_regulator_context *context = reg->context;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_set_level_tx tx;
 	struct rpmi_volt_set_level_rx rx;
 	int ret;
 	unsigned int uV;
 
 	tx.domain_id = cpu_to_le32(desc->id);
-	uV = regulator_list_voltage_linear_range(reg, sel);
+	uV = regulator_list_voltage_linear_range(rdev, sel);
 	tx.volt_level = uV;
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_SET_LEVEL,
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_SET_LEVEL,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 
@@ -287,12 +328,12 @@ static int regulator_rpmi_set_voltage_sel(struct regulator_dev *reg, unsigned se
 	return 0;
 }
 
-static int regulator_rpmi_enable(struct regulator_dev *reg)
+static int regulator_rpmi_enable(struct regulator_dev *rdev)
 {
-	struct device *dev = reg->dev.parent;
-	struct rpmi_regulator_context *context = dev_get_drvdata(dev);
-	const struct regulator_desc *desc = reg->desc;
-	struct rpmi_mbox_message msg;
+	const struct regulator_desc *desc = rdev->desc;
+	struct rpmi_regulator *reg = desc_to_rpmi_reg(desc);
+	struct rpmi_regulator_context *context = reg->context;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_set_config_tx tx;
 	struct rpmi_volt_set_config_rx rx;
 	int ret;
@@ -300,9 +341,15 @@ static int regulator_rpmi_enable(struct regulator_dev *reg)
 	tx.config = cpu_to_le32(RPMI_REGULATOR_ENABLE);
 	tx.domain_id = cpu_to_le32(desc->id);
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_SET_CONFIG,
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_SET_CONFIG,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 	if (rx.status && (rx.status != RPMI_ERR_ALREADY))
@@ -311,12 +358,12 @@ static int regulator_rpmi_enable(struct regulator_dev *reg)
 	return 0;
 }
 
-static int regulator_rpmi_disable(struct regulator_dev *reg)
+static int regulator_rpmi_disable(struct regulator_dev *rdev)
 {
-	struct device *dev = reg->dev.parent;
-	struct rpmi_regulator_context *context = dev_get_drvdata(dev);
-	const struct regulator_desc *desc = reg->desc;
-	struct rpmi_mbox_message msg;
+	const struct regulator_desc *desc = rdev->desc;
+	struct rpmi_regulator *reg = desc_to_rpmi_reg(desc);
+	struct rpmi_regulator_context *context = reg->context;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_set_config_tx tx;
 	struct rpmi_volt_set_config_rx rx;
 	int ret;
@@ -324,9 +371,15 @@ static int regulator_rpmi_disable(struct regulator_dev *reg)
 	tx.config = cpu_to_le32(RPMI_REGULATOR_DISABLE);
 	tx.domain_id = cpu_to_le32(desc->id);
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_SET_CONFIG,
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_SET_CONFIG,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 	if (rx.status && (rx.status != RPMI_ERR_ALREADY))
@@ -335,21 +388,27 @@ static int regulator_rpmi_disable(struct regulator_dev *reg)
 	return 0;
 }
 
-static int regulator_rpmi_is_enabled(struct regulator_dev *reg)
+static int regulator_rpmi_is_enabled(struct regulator_dev *rdev)
 {
-	struct device *dev = reg->dev.parent;
-	struct rpmi_regulator_context *context = dev_get_drvdata(dev);
-	const struct regulator_desc *desc = reg->desc;
-	struct rpmi_mbox_message msg;
+	const struct regulator_desc *desc = rdev->desc;
+	struct rpmi_regulator *reg = desc_to_rpmi_reg(desc);
+	struct rpmi_regulator_context *context = reg->context;
+	struct rpmi_mbox_message *msg;
 	struct rpmi_volt_get_config_tx tx;
 	struct rpmi_volt_get_config_rx rx;
 	int ret;
 
 	tx.domain_id = cpu_to_le32(desc->id);
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_REGULATOR_SRV_GET_CONFIG,
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_send_with_response(msg, RPMI_REGULATOR_SRV_GET_CONFIG,
 					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	ret = rpmi_mbox_send_message(context->chan, msg);
+
+	mutex_unlock(&context->msg_lock);
+
 	if (ret)
 		return ret;
 	if (rx.status)
@@ -372,54 +431,43 @@ static struct regulator_desc *rpmi_regulator_enumerate(struct rpmi_regulator_con
 						       u32 id, struct rpmi_regulator **regptr)
 {
 	struct device *dev = context->dev;
-	struct regulator_desc *desc;
 	struct rpmi_regulator *reg;
 	int ret;
 
-	reg = kzalloc(sizeof(*reg), GFP_KERNEL);
+	/* Allocate rpmi_regulator with embedded regulator_desc */
+	reg = devm_kzalloc(dev, sizeof(*reg), GFP_KERNEL);
 	if (!reg)
 		return ERR_PTR(-ENOMEM);
 
 	reg->context = context;
 
-	reg->desc = kzalloc(sizeof(*desc), GFP_KERNEL);
-	if (!reg->desc) {
-		kfree(reg);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	desc = reg->desc;
-
 	ret = regulator_rpmi_get_attrs(id, reg);
 	if (ret) {
 		dev_err_probe(dev, ret, "Failed to get domain-%u attrs, %d\n", id, ret);
-		goto err;
+		return ERR_PTR(ret);
 	}
 
 	ret = regulator_rpmi_get_supported_level(id, reg);
 	if (ret) {
 		dev_err_probe(dev, ret, "Failed to get domain-%u supported levels, %d\n", id, ret);
-		goto err;
+		return ERR_PTR(ret);
 	}
 
-	desc->ops = &regulator_rpmi_ops;
-	desc->owner = THIS_MODULE;
-	desc->name = reg->name;
-	desc->id = reg->id;
+	/* Initialize embedded regulator_desc */
+	reg->desc.ops = &regulator_rpmi_ops;
+	reg->desc.owner = THIS_MODULE;
+	reg->desc.name = reg->name;
+	reg->desc.id = reg->id;
 
 	*regptr = reg;
-	return desc;
-err:
-	kfree(reg->desc);
-	kfree(reg);
-	return ERR_PTR(ret);
+	return &reg->desc;
 }
 
 static int regulator_rpmi_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct rpmi_regulator_context *context;
-	struct rpmi_mbox_message msg;
+	struct rpmi_mbox_message *msg;
 	struct regulator_dev *regulator_dev;
 	struct regulator_desc **desc;
 	struct rpmi_regulator **regptr;
@@ -433,6 +481,8 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 	context->dev = dev;
 	platform_set_drvdata(pdev, context);
 
+	mutex_init(&context->msg_lock);
+
 	context->client.dev		= context->dev;
 	context->client.rx_callback	= NULL;
 	context->client.tx_block	= false;
@@ -443,56 +493,68 @@ static int regulator_rpmi_probe(struct platform_device *pdev)
 	if (IS_ERR(context->chan))
 		return PTR_ERR(context->chan);
 
-	rpmi_mbox_init_get_attribute(&msg, RPMI_MBOX_ATTR_SPEC_VERSION);
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	mutex_lock(&context->msg_lock);
+	msg = &context->msg_buf;
+
+	rpmi_mbox_init_get_attribute(msg, RPMI_MBOX_ATTR_SPEC_VERSION);
+	ret = rpmi_mbox_send_message(context->chan, msg);
 	if (ret) {
+		mutex_unlock(&context->msg_lock);
 		dev_err_probe(dev, ret, "Failed to get spec version\n");
 		goto fail_free_channel;
 	}
 
-	if (msg.attr.value < RPMI_MKVER(1, 0)) {
+	if (msg->attr.value < RPMI_MKVER(1, 0)) {
+		mutex_unlock(&context->msg_lock);
 		ret = dev_err_probe(dev, -EINVAL,
 				    "msg protocol version mismatch, expected 0x%x, found 0x%x\n",
-				    RPMI_MKVER(1, 0), msg.attr.value);
+				    RPMI_MKVER(1, 0), msg->attr.value);
 		goto fail_free_channel;
 	}
 
-	rpmi_mbox_init_get_attribute(&msg, RPMI_MBOX_ATTR_SERVICEGROUP_ID);
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	rpmi_mbox_init_get_attribute(msg, RPMI_MBOX_ATTR_SERVICEGROUP_ID);
+	ret = rpmi_mbox_send_message(context->chan, msg);
 	if (ret) {
+		mutex_unlock(&context->msg_lock);
 		dev_err_probe(dev, ret, "Failed to get service group ID\n");
 		goto fail_free_channel;
 	}
 
-	if (msg.attr.value != RPMI_SRVGRP_REGULATOR) {
+	if (msg->attr.value != RPMI_SRVGRP_REGULATOR) {
+		mutex_unlock(&context->msg_lock);
 		ret = dev_err_probe(dev, EINVAL,
 				    "service group match failed, expected 0x%x, found 0x%x\n",
-				    RPMI_SRVGRP_REGULATOR, msg.attr.value);
+				    RPMI_SRVGRP_REGULATOR, msg->attr.value);
 		goto fail_free_channel;
 	}
 
-	rpmi_mbox_init_get_attribute(&msg, RPMI_MBOX_ATTR_SERVICEGROUP_VERSION);
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	rpmi_mbox_init_get_attribute(msg, RPMI_MBOX_ATTR_SERVICEGROUP_VERSION);
+	ret = rpmi_mbox_send_message(context->chan, msg);
 	if (ret) {
+		mutex_unlock(&context->msg_lock);
 		dev_err_probe(dev, ret, "Failed to get service group version\n");
 		goto fail_free_channel;
 	}
-	if (msg.attr.value < RPMI_MKVER(1, 0)) {
+	if (msg->attr.value < RPMI_MKVER(1, 0)) {
+		mutex_unlock(&context->msg_lock);
 		ret = dev_err_probe(dev, -EINVAL,
 				    "service group version failed, expected 0x%x, found 0x%x\n",
-				    RPMI_MKVER(1, 0), msg.attr.value);
+				    RPMI_MKVER(1, 0), msg->attr.value);
 		goto fail_free_channel;
 	}
 
 	/* Save the maximum message data size of mailbox channel */
-	rpmi_mbox_init_get_attribute(&msg, RPMI_MBOX_ATTR_MAX_MSG_DATA_SIZE);
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	rpmi_mbox_init_get_attribute(msg, RPMI_MBOX_ATTR_MAX_MSG_DATA_SIZE);
+	ret = rpmi_mbox_send_message(context->chan, msg);
 	if (ret) {
+		mutex_unlock(&context->msg_lock);
 		dev_err_probe(dev, ret, "Failed to get max message data size\n");
 		goto fail_free_channel;
 	}
 
-	context->max_msg_data_size = msg.attr.value;
+	context->max_msg_data_size = msg->attr.value;
+
+	mutex_unlock(&context->msg_lock);
 
 	num_domains = regulator_rpmi_get_num(context);
 	if (num_domains < 1) {
