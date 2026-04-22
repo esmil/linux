@@ -31,6 +31,17 @@
 
 /* eSPI shared memory access timeout */
 #define ESPI_CMD_TIMEOUT_MS 5000
+/*
+ * After an EC reboot the transport may recover well before the EC firmware
+ * finishes repopulating the shared memory window. Allow a longer grace period
+ * here so the first post-reboot command does not immediately fall into another
+ * full timeout cycle.
+ */
+#define ESPI_READY_TIMEOUT_MS 20000
+#define ESPI_READY_POLL_INTERVAL_US 20000
+#define ESPI_RECOVERY_RETRY_INTERVAL_MS 5000
+#define ESPI_INVALID_STATUS_VALUE 0xff
+#define ESPI_INVALID_STATUS_MAX_POLLS 5
 
 /*
  * eSPI Shared Memory Address Mapping for EC Communication
@@ -239,6 +250,7 @@ static int cros_ec_espi_write_bytes(unsigned int offset, unsigned int length,
 static int ec_response_timed_out(void)
 {
 	unsigned long timeout = jiffies + msecs_to_jiffies(ESPI_CMD_TIMEOUT_MS);
+	unsigned int invalid_status_polls = 0;
 	u8 data;
 	int ret;
 
@@ -250,6 +262,18 @@ static int ec_response_timed_out(void)
 
 		if (!(data & EC_LPC_STATUS_BUSY_MASK))
 			return 0;
+
+		/*
+		 * While the EC is rebooting the shared window reads back as 0xff.
+		 * Escalate to controller recovery quickly instead of burning the
+		 * whole command timeout on an absent endpoint.
+		 */
+		if (data == ESPI_INVALID_STATUS_VALUE) {
+			if (++invalid_status_polls >= ESPI_INVALID_STATUS_MAX_POLLS)
+				return 1;
+		} else {
+			invalid_status_polls = 0;
+		}
 
 		usleep_range(100, 200);
 	} while (time_before(jiffies, timeout));
@@ -267,6 +291,61 @@ static int cros_ec_espi_read_id(u8 *buf)
 	return cros_ec_espi_ops.read(EC_LPC_ADDR_MEMMAP + EC_MEMMAP_ID, 2, buf);
 }
 
+static int cros_ec_espi_recover_bus(struct device *dev)
+{
+	int ret;
+
+	ret = cros_ec_espi_lock();
+	if (ret)
+		return ret;
+
+	ret = spacemit_k3_espi_recover(dev->parent);
+	cros_ec_espi_unlock();
+
+	return ret;
+}
+
+static int cros_ec_espi_wait_ready(struct device *dev, const char *reason)
+{
+	unsigned long timeout = jiffies + msecs_to_jiffies(ESPI_READY_TIMEOUT_MS);
+	unsigned long next_recover =
+		jiffies + msecs_to_jiffies(ESPI_RECOVERY_RETRY_INTERVAL_MS);
+	u8 buf[2] = {};
+	int ret = 0;
+
+	do {
+		ret = cros_ec_espi_read_id(buf);
+		if (ret >= 0 && cros_ec_espi_valid_id(buf))
+			return 0;
+
+		/*
+		 * The first recover may happen while the EC is still updating and
+		 * leave the controller in a master-only state. Retry link recovery
+		 * periodically while waiting so we can renegotiate as soon as the
+		 * EC starts responding again.
+		 */
+		if (time_after_eq(jiffies, next_recover)) {
+			ret = cros_ec_espi_recover_bus(dev);
+			if (ret)
+				dev_dbg(dev, "background eSPI recovery failed: %d\n", ret);
+			next_recover = jiffies +
+				msecs_to_jiffies(ESPI_RECOVERY_RETRY_INTERVAL_MS);
+			continue;
+		}
+
+		usleep_range(ESPI_READY_POLL_INTERVAL_US,
+			     ESPI_READY_POLL_INTERVAL_US + 10000);
+	} while (time_before(jiffies, timeout));
+
+	if (ret < 0)
+		dev_warn(dev, "EC not ready after %s: %d\n", reason, ret);
+	else
+		dev_warn(dev, "EC not ready after %s (id: 0x%02x 0x%02x)\n",
+			 reason, buf[0], buf[1]);
+
+	return ret < 0 ? ret : -ETIMEDOUT;
+}
+
 static int cros_ec_espi_recover_controller(struct device *dev, const char *reason)
 {
 	int ret;
@@ -275,11 +354,14 @@ static int cros_ec_espi_recover_controller(struct device *dev, const char *reaso
 		return -ENODEV;
 
 	dev_warn(dev, "attempting eSPI controller recovery after %s\n", reason);
-	ret = spacemit_k3_espi_recover(dev->parent);
+	ret = cros_ec_espi_recover_bus(dev);
 	if (ret)
 		dev_err(dev, "eSPI controller recovery failed: %d\n", ret);
 
-	return ret;
+	if (ret)
+		return ret;
+
+	return cros_ec_espi_wait_ready(dev, reason);
 }
 
 static int cros_ec_pkt_xfer_espi_once(struct cros_ec_device *ec,
@@ -398,7 +480,7 @@ static int cros_ec_espi_xfer_retry(struct cros_ec_device *ec,
 	if (cros_ec_espi_recover_controller(ec->dev, name))
 		return ret;
 
-	dev_warn(ec->dev, "retrying %s after controller recovery\n", name);
+	dev_dbg(ec->dev, "eSPI controller recovered, retrying %s\n", name);
 	return xfer_once(ec, msg);
 }
 

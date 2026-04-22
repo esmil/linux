@@ -599,6 +599,13 @@ static int spacemit_espi_init_locked(struct spacemit_espi *espi)
 	u32 cfg;
 	int ret;
 
+	/*
+	 * Clear the cached link state before starting a new recovery cycle so
+	 * callers never observe a stale "ready" state after an early failure.
+	 */
+	espi->initialized = false;
+	espi->slave_ready = false;
+
 	ret = spacemit_espi_enable_clks(espi->dev, espi);
 	if (ret)
 		return ret;
