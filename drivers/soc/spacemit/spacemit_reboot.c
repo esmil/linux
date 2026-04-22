@@ -14,10 +14,11 @@
 #include <linux/delay.h>
 #include <asm/sbi.h>
 
-#define FLAG_FASTBOOT	BIT(0)
-#define FLAG_FINISH	BIT(1)
+#define FLAG_FASTBOOT	0x1
+#define FLAG_UPDATER	0x3
 
-static const char *rebootcmd = "fastboot";
+static const char *fastboot_cmd = "fastboot";
+static const char *updater_cmd = "updater";
 
 struct spacemit_reboot_ctrl {
 	void __iomem *base;
@@ -28,13 +29,22 @@ static int k3_reset_handler(struct notifier_block *this, unsigned long mode, voi
 {
 	struct spacemit_reboot_ctrl *info = container_of(this, struct spacemit_reboot_ctrl,
 							 reset_handler);
-	if (cmd == NULL || strcmp(cmd, rebootcmd)) {
-		pr_emerg("spacemit reboot: regular reboot\n");
+	if (cmd == NULL) {
+		pr_info("spacemit reboot: regular reboot\n");
 		return NOTIFY_DONE;
 	}
 
 	/* Inform RCPU to write related register in P1 */
-	writel(FLAG_FASTBOOT, info->base);
+	if (!strcmp(cmd, fastboot_cmd)) {
+		writel(FLAG_FASTBOOT, info->base);
+		pr_info("spacemit reboot: fastboot reboot\n");
+	} else if (!strcmp(cmd, updater_cmd)) {
+		writel(FLAG_UPDATER, info->base);
+		pr_info("spacemit reboot: updater reboot\n");
+	} else {
+		pr_info("spacemit reboot: regular reboot\n");
+		return NOTIFY_DONE;
+	}
 	sbi_ecall(SBI_EXT_SRST, SBI_EXT_SRST_RESET, SBI_SRST_RESET_TYPE_COLD_REBOOT,
 		  SBI_SRST_RESET_REASON_NONE, 0, 0, 0, 0);
 
