@@ -263,12 +263,9 @@ uvc_function_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 	return 0;
 }
 
-void uvc_function_setup_continue(struct uvc_device *uvc, int disable_ep)
+void uvc_function_setup_continue(struct uvc_device *uvc)
 {
 	struct usb_composite_dev *cdev = uvc->func.config->cdev;
-
-	if (disable_ep && uvc->video.ep)
-		usb_ep_disable(uvc->video.ep);
 
 	usb_composite_setup_continue(cdev);
 }
@@ -340,11 +337,15 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 		if (uvc->state != UVC_STATE_STREAMING)
 			return 0;
 
+		if (uvc->video.ep)
+			usb_ep_disable(uvc->video.ep);
+
 		memset(&v4l2_event, 0, sizeof(v4l2_event));
 		v4l2_event.type = UVC_EVENT_STREAMOFF;
 		v4l2_event_queue(&uvc->vdev, &v4l2_event);
 
-		return USB_GADGET_DELAYED_STATUS;
+		uvc->state = UVC_STATE_CONNECTED;
+		return 0;
 
 	case 1:
 		if (uvc->state != UVC_STATE_CONNECTED)
@@ -361,10 +362,6 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 		if (ret)
 			return ret;
 		usb_ep_enable(uvc->video.ep);
-
-		uvc->video.max_req_size = uvc->video.ep->maxpacket
-			* max_t(unsigned int, uvc->video.ep->maxburst, 1)
-			* (uvc->video.ep->mult);
 
 		memset(&v4l2_event, 0, sizeof(v4l2_event));
 		v4l2_event.type = UVC_EVENT_STREAMON;
@@ -469,7 +466,7 @@ uvc_register_video(struct uvc_device *uvc)
 		memcpy(mem, desc, (desc)->bLength); \
 		*(dst)++ = mem; \
 		mem += (desc)->bLength; \
-	} while (0)
+	} while (0);
 
 #define UVC_COPY_DESCRIPTORS(mem, dst, src) \
 	do { \
@@ -519,7 +516,6 @@ uvc_copy_descriptors(struct uvc_device *uvc, enum usb_device_speed speed)
 	void *mem;
 
 	switch (speed) {
-	case USB_SPEED_SUPER_PLUS:
 	case USB_SPEED_SUPER:
 		uvc_control_desc = uvc->desc.ss_control;
 		uvc_streaming_cls = uvc->desc.ss_streaming;
@@ -568,8 +564,7 @@ uvc_copy_descriptors(struct uvc_device *uvc, enum usb_device_speed speed)
 		bytes += uvc_interrupt_ep.bLength + uvc_interrupt_cs_ep.bLength;
 		n_desc += 2;
 
-		if (speed == USB_SPEED_SUPER ||
-		    speed == USB_SPEED_SUPER_PLUS) {
+		if (speed == USB_SPEED_SUPER) {
 			bytes += uvc_ss_interrupt_comp.bLength;
 			n_desc += 1;
 		}
@@ -624,8 +619,7 @@ uvc_copy_descriptors(struct uvc_device *uvc, enum usb_device_speed speed)
 
 	if (uvc->enable_interrupt_ep) {
 		UVC_COPY_DESCRIPTOR(mem, dst, &uvc_interrupt_ep);
-		if (speed == USB_SPEED_SUPER ||
-		    speed == USB_SPEED_SUPER_PLUS)
+		if (speed == USB_SPEED_SUPER)
 			UVC_COPY_DESCRIPTOR(mem, dst, &uvc_ss_interrupt_comp);
 
 		UVC_COPY_DESCRIPTOR(mem, dst, &uvc_interrupt_cs_ep);
@@ -817,13 +811,6 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 		goto error;
 	}
 
-	f->ssp_descriptors = uvc_copy_descriptors(uvc, USB_SPEED_SUPER_PLUS);
-	if (IS_ERR(f->ssp_descriptors)) {
-		ret = PTR_ERR(f->ssp_descriptors);
-		f->ssp_descriptors = NULL;
-		goto error;
-	}
-
 	/* Preallocate control endpoint request. */
 	uvc->control_req = usb_ep_alloc_request(cdev->gadget->ep0, GFP_KERNEL);
 	uvc->control_buf = kmalloc(UVC_MAX_REQUEST_SIZE, GFP_KERNEL);
@@ -995,8 +982,6 @@ static void uvc_function_unbind(struct usb_configuration *c,
 
 	uvcg_info(f, "%s()\n", __func__);
 
-	kthread_cancel_work_sync(&video->hw_submit);
-
 	if (video->async_wq)
 		destroy_workqueue(video->async_wq);
 
@@ -1124,6 +1109,5 @@ err_config:
 }
 
 DECLARE_USB_FUNCTION_INIT(uvc, uvc_alloc_inst, uvc_alloc);
-MODULE_DESCRIPTION("USB Video Class Gadget driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Laurent Pinchart");

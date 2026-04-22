@@ -71,11 +71,6 @@ extern unsigned int uvc_gadget_trace_param;
 
 #define UVCG_REQUEST_HEADER_LEN			12
 
-#define UVCG_REQ_MAX_INT_COUNT			16
-#define UVCG_REQ_MAX_ZERO_COUNT			(2 * UVCG_REQ_MAX_INT_COUNT)
-
-#define UVCG_STREAMING_MIN_BUFFERS		2
-
 /* ------------------------------------------------------------------------
  * Structures
  */
@@ -86,7 +81,6 @@ struct uvc_request {
 	struct sg_table sgt;
 	u8 header[UVCG_REQUEST_HEADER_LEN];
 	struct uvc_buffer *last_buf;
-	struct list_head list;
 };
 
 struct uvc_video {
@@ -96,38 +90,20 @@ struct uvc_video {
 	struct work_struct pump;
 	struct workqueue_struct *async_wq;
 
-	struct kthread_worker   *kworker;
-	struct kthread_work     hw_submit;
-
-	atomic_t queued;
-
 	/* Frame parameters */
 	u8 bpp;
 	u32 fcc;
 	unsigned int width;
 	unsigned int height;
 	unsigned int imagesize;
-	unsigned int interval;	/* in 100ns units */
 	struct mutex mutex;	/* protects frame parameters */
 
 	unsigned int uvc_num_requests;
 
-	unsigned int reqs_per_frame;
-
 	/* Requests */
-	bool is_enabled; /* tracks whether video stream is enabled */
 	unsigned int req_size;
-	unsigned int max_req_size;
-	struct list_head ureqs; /* all uvc_requests allocated by uvc_video */
-
-	/* USB requests that the video pump thread can encode into */
+	struct uvc_request *ureq;
 	struct list_head req_free;
-
-	/*
-	 * USB requests video pump thread has already encoded into. These are
-	 * ready to be queued to the endpoint.
-	 */
-	struct list_head req_ready;
 	spinlock_t req_lock;
 
 	unsigned int req_int_count;
@@ -197,16 +173,11 @@ struct uvc_file_handle {
 #define to_uvc_file_handle(handle) \
 	container_of(handle, struct uvc_file_handle, vfh)
 
-static inline struct uvc_file_handle *file_to_uvc_file_handle(struct file *filp)
-{
-	return container_of(file_to_v4l2_fh(filp), struct uvc_file_handle, vfh);
-}
-
 /* ------------------------------------------------------------------------
  * Functions
  */
 
-extern void uvc_function_setup_continue(struct uvc_device *uvc, int disable_ep);
+extern void uvc_function_setup_continue(struct uvc_device *uvc);
 extern void uvc_function_connect(struct uvc_device *uvc);
 extern void uvc_function_disconnect(struct uvc_device *uvc);
 

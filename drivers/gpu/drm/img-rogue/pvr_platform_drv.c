@@ -56,6 +56,7 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/reset.h>
 
 #include "module_common.h"
 #include "pvr_drv.h"
@@ -163,6 +164,8 @@ static void pvr_devices_unregister(void)
 #endif /* defined(MODULE) && !defined(PVR_LDM_PLATFORM_PRE_REGISTERED) */
 }
 
+static struct reset_control *resets;
+
 static int pvr_probe(struct platform_device *pdev)
 {
 	struct drm_device *ddev;
@@ -175,6 +178,13 @@ static int pvr_probe(struct platform_device *pdev)
 	if (IS_ERR(ddev))
 		return PTR_ERR(ddev);
 
+	resets = devm_reset_control_get_optional(&pdev->dev, NULL);
+	if (IS_ERR(resets)) {
+		pr_err("%s:%d\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	reset_control_deassert(resets);
 
 	/*
 	 * The load callback, called from drm_dev_register, is deprecated,
