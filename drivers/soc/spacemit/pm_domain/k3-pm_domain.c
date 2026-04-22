@@ -56,6 +56,9 @@ struct spacemit_pm_domain {
 	struct device *gdev;
 	int rgr_count;
 	struct regulator *rgr[MAX_REGULATOR_PER_DOMAIN];
+	struct rpmi_domain_set_state_rx rx;
+	struct rpmi_domain_set_state_tx tx;
+	struct rpmi_mbox_message msg;
 
 	/**
 	 * manageing the device-drivers power qos
@@ -110,25 +113,22 @@ static int rpmi_domain_get_attrs(struct spacemit_pm_domain *spd)
 static int rpmi_domain_handle_state(struct spacemit_pm_domain *spd, bool enable)
 {
 	struct rpmi_domain_context *context = spd->context;
-	struct rpmi_mbox_message msg;
-	struct rpmi_domain_set_state_rx rx;
-	struct rpmi_domain_set_state_tx tx;
 	int ret;
 
 	if (enable)
-		tx.state = cpu_to_le32(RPMI_DEVICE_POWER_STATE_ON);
+		spd->tx.state = cpu_to_le32(RPMI_DEVICE_POWER_STATE_ON);
 	else
-		tx.state = cpu_to_le32(RPMI_DEVICE_POWER_STATE_OFF);
-	tx.domain_id = cpu_to_le32(spd->pm_index);
+		spd->tx.state = cpu_to_le32(RPMI_DEVICE_POWER_STATE_OFF);
+	spd->tx.domain_id = cpu_to_le32(spd->pm_index);
 
-	rpmi_mbox_init_send_with_response(&msg, RPMI_DOMAIN_SRV_SET_STATE,
-					  &tx, sizeof(tx), &rx, sizeof(rx));
-	ret = rpmi_mbox_send_message(context->chan, &msg);
+	rpmi_mbox_init_send_with_response(&spd->msg, RPMI_DOMAIN_SRV_SET_STATE,
+					  &spd->tx, sizeof(spd->tx), &spd->rx, sizeof(spd->rx));
+	ret = rpmi_mbox_send_message(context->chan, &spd->msg);
 	if (ret)
 		return ret;
 
-	if (rx.status && (rx.status != RPMI_ERR_ALREADY))
-		return rpmi_to_linux_error(rx.status);
+	if (spd->rx.status && (spd->rx.status != RPMI_ERR_ALREADY))
+		return rpmi_to_linux_error(spd->rx.status);
 
 	return 0;
 }
@@ -158,7 +158,7 @@ static int spacemit_pd_power_off(struct generic_pm_domain *domain)
 
 	ret = rpmi_domain_handle_state(spd, false);
 	if (ret) {
-		pr_err("%s: domain handle state failed\n", __func__);
+		pr_err("%s: index:%d, domain handle state failed\n", __func__, spd->pm_index);
 		return ret;
 	}
 
@@ -209,13 +209,13 @@ static int spacemit_pd_power_on(struct generic_pm_domain *domain)
 	/* force to disable the power-switch */
 	ret = rpmi_domain_handle_state(spd, false);
 	if (ret) {
-		pr_err("%s: domain handle state failed\n", __func__);
+		pr_err("%s: index:%d, domain handle state failed\n", __func__, spd->pm_index);
 		return ret;
 	}
 
 	ret = rpmi_domain_handle_state(spd, true);
 	if (ret) {
-		pr_err("%s: domain handle state failed\n", __func__);
+		pr_err("%s: index:%d, domain handle state failed\n", __func__, spd->pm_index);
 		return ret;
 	}
 
