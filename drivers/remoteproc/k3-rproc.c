@@ -54,7 +54,6 @@ struct spacemit_mbox {
 struct spacemit_rproc {
 	struct device *dev;
 	struct spacemit_mbox mb[MAX_MBOX];
-	char *verid;
 	unsigned int size;
 };
 
@@ -124,73 +123,8 @@ static int spacemit_rproc_prepare(struct rproc *rproc)
 	return 0;
 }
 
-static const void *find_version_id_section(struct device *dev, const struct firmware *fw)
-{
-	const void *shdr, *name_table_shdr;
-	int i;
-	const char *name_table;
-	const u8 *elf_data = (void *)fw->data;
-	u8 class = fw_elf_get_class(fw);
-	const void *ehdr = elf_data;
-	u16 shnum = elf_hdr_get_e_shnum(class, ehdr);
-	u32 elf_shdr_get_size = elf_size_of_shdr(class);
-	u16 shstrndx = elf_hdr_get_e_shstrndx(class, ehdr);
-
-	/* First, get the section header according to the elf class */
-	shdr = elf_data + elf_hdr_get_e_shoff(class, ehdr);
-	/* Compute name table section header entry in shdr array */
-	name_table_shdr = shdr + (shstrndx * elf_shdr_get_size);
-	/* Finally, compute the name table section address in elf */
-	name_table = elf_data + elf_shdr_get_sh_offset(class, name_table_shdr);
-
-	for (i = 0; i < shnum; i++, shdr += elf_shdr_get_size) {
-		u32 name = elf_shdr_get_sh_name(class, shdr);
-
-		if (strcmp(name_table + name, ".version_id_table"))
-			continue;
-
-		/* make sure we have the entire table */
-		return shdr;
-	}
-
-	return NULL;
-}
-
-static char *rproc_elf_find_version_id_table(struct rproc *rproc,
-					     const struct firmware *fw,
-					     u64 *sh_size_p)
-{
-	const void *shdr;
-	u64 sh_addr, sh_size;
-	u8 class = fw_elf_get_class(fw);
-	struct device *dev = &rproc->dev;
-
-	shdr = find_version_id_section(&rproc->dev, fw);
-	if (!shdr)
-		return NULL;
-
-	sh_addr = elf_shdr_get_sh_addr(class, shdr);
-	sh_size = elf_shdr_get_sh_size(class, shdr);
-
-	if (!rproc_u64_fit_in_size_t(sh_size)) {
-		dev_err(dev, "size (%llx) does not fit in size_t type\n",
-			sh_size);
-		return NULL;
-	}
-
-	*sh_size_p = sh_size;
-
-	return (char *)sh_addr;
-}
-
 static int spacemit_rproc_start(struct rproc *rproc)
 {
-	struct spacemit_rproc *priv = rproc->priv;
-
-	if (priv->verid != NULL)
-		pr_notice("the firmare version id is:%s\n",
-			  (char *)rproc_da_to_va(rproc, (u64)priv->verid, priv->size, NULL));
-
 	/* Do nothing: has been latched from spl */
 	return 0;
 }
@@ -200,50 +134,6 @@ static int spacemit_rproc_stop(struct rproc *rproc)
 	/* TODO */
 
 	return 0;
-}
-
-static int spacemit_rproc_parse_fw(struct rproc *rproc, const struct firmware *fw)
-{
-	int ret;
-	u64 sh_size;
-	struct spacemit_rproc *ddata = rproc->priv;
-	char *version_id_table;
-
-	ddata->verid = NULL;
-	/* find the firmare id */
-	version_id_table = rproc_elf_find_version_id_table(rproc, fw, &sh_size);
-	if (!version_id_table) {
-		dev_info(&rproc->dev, "Can not find version id table\n");
-	} else {
-		ddata->verid = version_id_table;
-		ddata->size = sh_size;
-	}
-
-	ret = rproc_elf_load_rsc_table(rproc, fw);
-	if (ret)
-		dev_info(&rproc->dev, "No resource table in elf\n");
-
-	return 0;
-}
-
-static u64 spacemit_get_boot_addr(struct rproc *rproc, const struct firmware *fw)
-{
-#if 0
-	int err;
-	unsigned int entry_point;
-	struct device *dev = rproc->dev.parent;
-
-	/* get the entry point */
-	err = of_property_read_u32(dev->of_node, "esos-entry-point", &entry_point);
-	if (err) {
-		 dev_err(dev, "failed to get entry point\n");
-		 return 0;
-	}
-
-	return entry_point;
-#else
-	return 0;
-#endif
 }
 
 static void spacemit_rproc_kick(struct rproc *rproc, int vqid)
@@ -268,22 +158,58 @@ static void spacemit_rproc_kick(struct rproc *rproc, int vqid)
 	}
 }
 
-
-static int spacemit_rproc_elf_load(struct rproc *rproc, const struct firmware *fw)
+static int spacemit_rproc_attach(struct rproc *rproc)
 {
 	return 0;
+}
+
+static int spacemit_rproc_detach(struct rproc *rproc)
+{
+	return 0;
+}
+
+static struct resource_table* spacemit_get_loaded_rsc_table(
+				struct rproc *rproc, size_t *size)
+{
+	struct device *dev = rproc->dev.parent;
+	struct device_node *np = dev->of_node;
+	struct of_phandle_iterator it;
+	struct reserved_mem *rmem;
+
+	/* Register associated reserved memory regions */
+	of_phandle_iterator_init(&it, np, "memory-region", NULL, 0);
+	while (of_phandle_iterator_next(&it) == 0) {
+		rmem = of_reserved_mem_lookup(it.node);
+		if (!rmem) {
+			dev_err(&rproc->dev, "unable to acquire memory-region\n");
+			return NULL;
+		}
+
+		if (rmem->base > U64_MAX) {
+			dev_err(&rproc->dev, "the rmem base is overflow\n");
+			return NULL;
+		}
+
+		if (!strcmp(it.node->name, "rcpu0_rsc_table")) {
+			*size = rmem->size;
+			return (struct resource_table *)ioremap(rmem->base, rmem->size);
+		} else if (!strcmp(it.node->name, "rcpu1_rsc_table")) {
+			*size = rmem->size;
+			return (struct resource_table *)ioremap(rmem->base, rmem->size);
+		}
+	}
+
+	return NULL;
 }
 
 static struct rproc_ops spacemit_rproc_ops = {
 	.prepare	= spacemit_rproc_prepare,
 	.start		= spacemit_rproc_start,
 	.stop		= spacemit_rproc_stop,
-	.load		= spacemit_rproc_elf_load,
-	.parse_fw	= spacemit_rproc_parse_fw,
+	.attach		= spacemit_rproc_attach,
+	.detach		= spacemit_rproc_detach,
 	.kick		= spacemit_rproc_kick,
-	.find_loaded_rsc_table = rproc_elf_find_loaded_rsc_table,
-	.sanity_check	= rproc_elf_sanity_check,
-	.get_boot_addr	= spacemit_get_boot_addr,
+	.get_loaded_rsc_table	= spacemit_get_loaded_rsc_table,
 };
 
 static int __process_theread(void *arg)
@@ -377,6 +303,7 @@ static int spacemit_rproc_probe(struct platform_device *pdev)
 	}
 
 	rproc->auto_boot = true;
+	rproc->state = RPROC_DETACHED; 
 	ret = devm_rproc_add(dev, rproc);
 	if (ret) {
 		dev_err(dev, "rproc_add failed\n");
