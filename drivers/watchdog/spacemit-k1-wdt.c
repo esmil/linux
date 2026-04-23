@@ -44,7 +44,7 @@
 #define CONFIG_SPACEMIT_WATCHDOG_ATBOOT		(0)
 /* default timeout is 60s */
 #define CONFIG_SPACEMIT_WATCHDOG_DEFAULT_TIME	(60)
-#define SPACEMIT_WATCHDOG_MAX_TIMEOUT		(255)
+#define SPACEMIT_WATCHDOG_MAX_TIMEOUT		(SPACEMIT_WATCHDOG_MAX_TICK >> DEFAULT_SHIFT)
 #define SPACEMIT_WATCHDOG_EXPIRE_TIME		(100)
 /* touch watchdog every 30s */
 #define SPACEMIT_WATCHDOG_FEED_TIMEOUT	(30)
@@ -59,6 +59,8 @@
 #define MPMU_APRR			(0x1020)
 #define MPMU_APRR_WDTR			(1<<4)
 #define DEFAULT_SHIFT			(8)
+#define SPACEMIT_WATCHDOG_COUNTER_BITS	(24)
+#define SPACEMIT_WATCHDOG_MAX_TICK	((1U << SPACEMIT_WATCHDOG_COUNTER_BITS) - 1)
 /*
  * MPMU_APSR is a dummy reg which is used to handle reboot
  * cmds. Its layout is:
@@ -170,11 +172,11 @@ static int spa_wdt_set_timeout(struct watchdog_device *wdd, unsigned timeout)
 	struct spa_wdt_info *info =
 		container_of(wdd, struct spa_wdt_info, wdt_dev);
 	/*
-	 * the wdt timer is 16 bit,
+	 * the wdt timer is 24 bit,
 	 * frequence is 256HZ
 	 */
 	unsigned int tick = timeout << DEFAULT_SHIFT;
-	if ((long long)tick > 0xffff) {
+	if (tick > SPACEMIT_WATCHDOG_MAX_TICK) {
 		dev_info(info->dev, "use default value!\n");
 		timeout = SPACEMIT_WATCHDOG_MAX_TIMEOUT;
 		tick = timeout << DEFAULT_SHIFT;
