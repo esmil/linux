@@ -2238,12 +2238,6 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 	for (i = 0; i < ARRAY_SIZE(soc_dp_link_priority_table); i++) {
 		uint32_t capacity;
 
-		if (soc_dp_hw_detect_hpd(dp) == connector_status_disconnected) {
-			mutex_unlock(&dp->mode_lock);
-			dev_warn(dp->dev, "DP: Training failed for the connector is disconnected\n");
-			return;
-		}
-
 		cfg = &soc_dp_link_priority_table[i];
 
 		/* Filter 1: Check HW Capabilities (Source & Sink limits) */
@@ -2274,6 +2268,12 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 
 		if (soc_dp_phy_power_on(dp))
 			continue;
+
+		if (soc_dp_hw_detect_hpd(dp) == connector_status_disconnected) {
+			mutex_unlock(&dp->mode_lock);
+			dev_warn(dp->dev, "DP: Training failed for the connector is disconnected\n");
+			return;
+		}
 
 		if (dp->edp_mode) {
 			soc_dp_reg_write_range(dp, SOC_DPTX_ENABLE_EDP, 0x1);

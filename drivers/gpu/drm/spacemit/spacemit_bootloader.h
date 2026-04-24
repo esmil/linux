@@ -10,8 +10,7 @@
 #include <linux/of_reserved_mem.h>
 
 void spacemit_dpu_free_bootloader_mem(void);
-#ifdef MODULE
+void spacemit_dpu_set_bootloader_mem_release_target(unsigned int count);
 int spacemit_dpu_bootloader_mem_setup(struct reserved_mem *rmem);
-#endif
 
 #endif
