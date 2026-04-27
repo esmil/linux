@@ -275,6 +275,8 @@ pvr_fence_context_signal_fences(void *data)
 		spin_lock_irqsave(&pvr_fence->fctx->list_lock, flags1);
 		list_del(&pvr_fence->signal_head);
 		spin_unlock_irqrestore(&pvr_fence->fctx->list_lock, flags1);
+		if (pvr_fence_sync_value(pvr_fence) == PVRSRV_SYNC_CHECKPOINT_ERRORED)
+			dma_fence_set_error(pvr_fence->fence, -EIO);
 		dma_fence_signal(pvr_fence->fence);
 		dma_fence_put(pvr_fence->fence);
 	}
@@ -851,7 +853,10 @@ pvr_fence_foreign_signal_sync(struct dma_fence *fence, struct dma_fence_cb *cb)
 	struct pvr_fence_context *fctx = pvr_fence->fctx;
 
 	/* Callback registered by dma_fence_add_callback can be called from an atomic ctx */
-	pvr_fence_sync_signal(pvr_fence, PVRSRV_FENCE_FLAG_CTX_ATOMIC);
+	if (fence->error < 0)
+		SyncCheckpointError(pvr_fence->sync_checkpoint, PVRSRV_FENCE_FLAG_CTX_ATOMIC);
+	else
+		pvr_fence_sync_signal(pvr_fence, PVRSRV_FENCE_FLAG_CTX_ATOMIC);
 
 	trace_pvr_fence_foreign_signal(pvr_fence);
 
@@ -1076,6 +1081,8 @@ pvr_fence_sw_error(struct pvr_fence *pvr_fence)
 		return -EINVAL;
 
 	SyncCheckpointError(pvr_fence->sync_checkpoint, PVRSRV_FENCE_FLAG_NONE);
+	dma_fence_set_error(&pvr_fence->base, -EIO);
+	dma_fence_signal(&pvr_fence->base);
 	PVR_FENCE_TRACE(&pvr_fence->base, "sw set fence sync errored (%s)\n",
 			pvr_fence->name);
 
