@@ -1053,7 +1053,7 @@
 	imx219@10 {
 		compatible = "sony,imx219";
 		reg = <0x10>;
-		csi-id = <1>;
+		csi-id = <0>;
 		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
