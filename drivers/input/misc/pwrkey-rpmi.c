@@ -11,8 +11,14 @@
 #include <linux/module.h>
 #include <linux/input.h>
 #include <linux/pm_wakeirq.h>
+#include <linux/notifier.h>
+#include <linux/suspend.h>
 #include <linux/platform_device.h>
 #include <linux/mailbox/riscv-rpmi-message.h>
+
+static int report_event, fall_triggered;
+static struct notifier_block   pm_notify;
+static spinlock_t pm_lock;
 
 /** RPMI pwrkey service IDs */
 enum rpmi_pwrkey_service_id {
@@ -51,6 +57,30 @@ struct rpmi_pwrkey_context {
 	u32 max_msg_data_size;
 };
 
+static int pwrk_pm_notify(struct notifier_block *notify_block,
+			unsigned long mode, void *unused)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&pm_lock, flags);
+
+	switch (mode) {
+	case PM_SUSPEND_PREPARE:
+		/* don't report power-key when enter suspend */
+		report_event = 0;
+		break;
+
+	case PM_POST_SUSPEND:
+		/* restore report power-key */
+		report_event = 1;
+		break;
+	}
+
+	spin_unlock_irqrestore(&pm_lock, flags);
+
+	return 0;
+}
+
 static irqreturn_t mpxy_pwrkey_irq_event(int irq, void *dev_id)
 {
 	/* We only have MSI for notification so just wakeup IRQ thread */
@@ -60,6 +90,7 @@ static irqreturn_t mpxy_pwrkey_irq_event(int irq, void *dev_id)
 static irqreturn_t mpxy_pwrkey_irq_thread(int irq, void *dev_id)
 {
 	int ret;
+	unsigned long flags;
 	struct rpmi_mbox_message msg;
 	struct rpmi_pwrkey_context *context = dev_id;
 	struct rpmi_pwrkey_query_pending_req alarmtx;
@@ -74,15 +105,26 @@ static irqreturn_t mpxy_pwrkey_irq_thread(int irq, void *dev_id)
 		return IRQ_HANDLED;
 
 	if (alarmrx.status) {
+		spin_lock_irqsave(&pm_lock, flags);
+
 		/* update the power key event */
 		if (alarmrx.status & RPMI_PWRKEY_PRESS_OFFSET) {
-			input_report_key(context->input, KEY_POWER, 1);
-			input_sync(context->input);
+			if (report_event) {
+				input_report_key(context->input, KEY_POWER, 1);
+				input_sync(context->input);
+				fall_triggered = 1;
+			}
 		}
+
 		if (alarmrx.status & RPMI_PWRKEY_RELEASE_OFFSET) {
-			input_report_key(context->input, KEY_POWER, 0);
-			input_sync(context->input);
+			if (fall_triggered) {
+				input_report_key(context->input, KEY_POWER, 0);
+				input_sync(context->input);
+				fall_triggered = 0;
+			}
 		}
+
+		spin_unlock_irqrestore(&pm_lock, flags);
 
 		pm_wakeup_event(context->dev, 0);
 
@@ -180,6 +222,15 @@ static int rpmi_pwrkey_probe(struct platform_device *pdev)
 
         dev_pm_set_wake_irq(&pdev->dev, context->virt_irq);
         device_init_wakeup(&pdev->dev, true);
+
+	spin_lock_init(&pm_lock);
+
+	pm_notify.notifier_call = pwrk_pm_notify;
+	ret = register_pm_notifier(&pm_notify);
+	if (ret) {
+		dev_err(&pdev->dev, "Register pm notifier failed\n");
+		return ret;
+	}
 
 	return 0;
 

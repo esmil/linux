@@ -1053,7 +1053,7 @@
 	imx219@10 {
 		compatible = "sony,imx219";
 		reg = <0x10>;
-		csi-id = <1>;
+		csi-id = <0>;
 		vdd-supply = <&aldo3>;
 		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
@@ -1317,25 +1317,6 @@
 			dldo7: dldo7 {
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-		};
-	};
-
-	mpq8655: mpq8655@30 {
-		compatible = "spacemit,mpq8655";
-		reg = <0x30>;
-
-		vcc-supply = <&p5v>;
-
-		regulators {
-			compatible = "spacemit,regulator,mpq8655";
-
-			edcdc1: edcdc1 {
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-ramp-delay = <10>;
 				regulator-always-on;
 				regulator-boot-on;
 			};

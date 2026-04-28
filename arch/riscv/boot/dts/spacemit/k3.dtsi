@@ -1207,7 +1207,7 @@
 			reg =  <0 0 0 0>;
 			mboxes = <&mailbox3 1>, <&mailbox3 2>;
 			mbox-names = "vq0", "vq1";
-			firmware-name = "k3_rcpu0_esos.elf";
+			firmware-name = "rt24_os0_rcpu.elf";
 			memory-region = <&rcpu0_pwr>, <&rcpu0_heap>, <&rcpu0_vdev0vring0>, <&rcpu0_vdev0buffer>,
 					<&rcpu0_vdev0vring1>, <&rcpu0_rsc_table>;
 			status = "disabled";
@@ -1278,10 +1278,10 @@
 			reg =  <0 0 0 0>;
 			mboxes = <&mailbox4 0>, <&mailbox4 1>;
 			mbox-names = "vq0", "vq1";
-			firmware-name = "k3_rcpu1_esos.elf";
+			firmware-name = "rt24_os1_rcpu.elf";
 			memory-region = <&rcpu1_runtime>, <&rcpu1_heap>, <&rcpu1_vdev0vring0>, <&rcpu1_vdev0buffer>,
 					<&rcpu1_vdev0vring1>, <&rcpu1_rsc_table>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		mpxy_mbox: mpxy_mbox@0 {
@@ -2526,6 +2526,8 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0x0 0x0 0x84000000 0x1000>;
+			pr-mem-base0 = <0x84000000>;
+			pr-mem-base1 = <0xcac8c000>;
 			clocks = <&syscon_apmu CLK_APMU_ESPI_SCLK_SRC>,
 				 <&syscon_apmu CLK_APMU_ESPI_SCLK>,
 				 <&syscon_apmu CLK_APMU_ESPI_MCLK>;
@@ -2534,6 +2536,17 @@
 				 <&syscon_apmu RESET_APMU_ESPI_SCLK>;
 			assigned-clocks = <&syscon_apmu CLK_APMU_ESPI_SCLK>;
 			assigned-clock-parents = <&syscon_apmu CLK_APMU_ESPI_SCLK_SRC>;
+			operating-frequency = <20>;
+			io-mode = "single";
+			alert-mode = "io1";
+			alert-type = "open-drain";
+			watchdog-timeout = <0xffff>;
+			crc-enable;
+			auto-gating-enable;
+			peripheral-channel-enable;
+			vwire-channel-enable;
+			oob-channel-enable;
+			flash-channel-enable;
 			status = "disabled";
 
 			ec: ec@0 {

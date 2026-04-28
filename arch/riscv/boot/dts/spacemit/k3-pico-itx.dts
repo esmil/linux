@@ -118,7 +118,7 @@
 		* Custom ramp to balance noise and thermals
 		*/
 		/* Keep headroom by capping max duty below 255. */
-		cooling-levels = <0 30 60 90 120 140 179 204 242>;
+		cooling-levels = <0 30 60 90 120 149 170 191 213>;
 		#cooling-cells = <2>;
 	};
 
@@ -561,6 +561,8 @@
 };
 
 &espi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&espi0_2_cfg>;
 	status = "okay";
 	ec: ec@0 {
 		status = "okay";
@@ -765,19 +767,25 @@
 			};
 
 			thermal_cluster0_trip4: thermal_cluster0-trip4 {
-				temperature = <85000>;
+				temperature = <78000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip5: thermal_cluster0-trip5 {
-				temperature = <90000>;
+				temperature = <82000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
 
 			thermal_cluster0_trip6: thermal_cluster0-trip6 {
-				temperature = <95000>;
+				temperature = <85000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+
+			thermal_cluster0_trip7: thermal_cluster0-trip7 {
+				temperature = <88000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
@@ -801,21 +809,26 @@
 
 			map3 {
 				trip = <&thermal_cluster0_trip3>;
-				cooling-device = <&fan0 4 5>;
+				cooling-device = <&fan0 4 4>;
 			};
 
 			map4 {
 				trip = <&thermal_cluster0_trip4>;
-				cooling-device = <&fan0 6 6>;
+				cooling-device = <&fan0 5 5>;
 			};
 
 			map5 {
 				trip = <&thermal_cluster0_trip5>;
-				cooling-device = <&fan0 7 7>;
+				cooling-device = <&fan0 6 6>;
 			};
 
 			map6 {
 				trip = <&thermal_cluster0_trip6>;
+				cooling-device = <&fan0 7 7>;
+			};
+
+			map7 {
+				trip = <&thermal_cluster0_trip7>;
 				cooling-device = <&fan0 8 8>;
 			};
 		};
@@ -1365,25 +1378,6 @@
 			dldo7: dldo7 {
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-		};
-	};
-
-	mpq8655: mpq8655@30 {
-		compatible = "spacemit,mpq8655";
-		reg = <0x30>;
-
-		vcc-supply = <&p12v>;
-
-		regulators {
-			compatible = "spacemit,regulator,mpq8655";
-
-			edcdc1: edcdc1 {
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-ramp-delay = <10>;
 				regulator-always-on;
 				regulator-boot-on;
 			};

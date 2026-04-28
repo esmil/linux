@@ -2707,27 +2707,29 @@
 		};
 	};
 
-	espi0_2_cfg: espi0-2-cfg {
-		espi0-0-pins {
-			pinmux = <K3_PADCONF(91, 4)>,	/* espi0 d0 */
-				 <K3_PADCONF(92, 4)>,	/* espi0 d1 */
-				 <K3_PADCONF(93, 4)>,	/* espi0 d2 */
-				 <K3_PADCONF(94, 4)>,	/* espi0 d3 */
-				 <K3_PADCONF(95, 4)>,	/* espi0 cs */
-				 <K3_PADCONF(97, 4)>,	/* espi0 reset */
-				 <K3_PADCONF(98, 4)>;	/* espi0 alert */
+		espi0_2_cfg: espi0-2-cfg {
+			espi0-0-pins {
+				pinmux = <K3_PADCONF(91, 4)>,	/* espi0 d0 */
+					 <K3_PADCONF(92, 4)>,	/* espi0 d1 */
+					 <K3_PADCONF(93, 4)>,	/* espi0 d2 */
+					 <K3_PADCONF(94, 4)>,	/* espi0 d3 */
+					 <K3_PADCONF(95, 4)>,	/* espi0 cs */
+					 <K3_PADCONF(97, 4)>,	/* espi0 reset */
+					 <K3_PADCONF(98, 4)>;	/* espi0 alert */
 
-			bias-pull-up;			/* normal pull-up */
-			drive-strength = <25>;		/* DS8 */
+				bias-pull-up;			/* normal pull-up */
+				drive-strength = <25>;		/* DS8 */
+				power-source = <1800>;
+			};
+
+			espi0-1-pins {
+				pinmux = <K3_PADCONF(96, 4)>;	/* espi0 clk */
+
+				bias-pull-down;			/* normal pull-down */
+				drive-strength = <25>;		/* DS8 */
+				power-source = <1800>;
+			};
 		};
-
-		espi0-1-pins {
-			pinmux = <K3_PADCONF(96, 4)>;	/* espi0 clk */
-
-			bias-pull-down;			/* normal pull-down */
-			drive-strength = <25>;		/* DS8 */
-		};
-	};
 
 	respi0_cfg: respi0-cfg {
 		respi0-0-pins {

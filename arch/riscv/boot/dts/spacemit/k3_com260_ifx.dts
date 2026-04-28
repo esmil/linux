@@ -8,10 +8,11 @@
 #include "lcd/lcd_tc358762xbg_dpi_800x480.dtsi"
 #include "lcd_dsi_panel.dtsi"
 #include "k3-dp1.dtsi"
+#include "k3-camera.dtsi"
 
 / {
-	model = "SpacemiT K3 Com260 Kit V02";
-	compatible = "spacemit,k3-com260-kit-v02";
+	model = "SpacemiT K3 Com260 IFX";
+	compatible = "spacemit,k3-com260-ifx";
 	cpus: cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -84,6 +85,16 @@
 		radio-type = "bluetooth";
 		shutdown-gpios = <&gpio 1 25 GPIO_ACTIVE_LOW>;
 	};
+
+	hub_reset: hub-reset {
+		compatible = "regulator-fixed";
+		regulator-name = "hub-reset";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-boot-on;
+		gpio = <&gpio 1 21 0>;
+	};
 };
 
 &resmem {
@@ -98,33 +109,9 @@
 };
 
 &pinctrl {
-	uart4-0-cfg {
-		uart4-0-pins {
+	can2-1-cfg {
+		can2-0-pins {
 			power-source = <3300>;
-		};
-	};
-
-	uart5-2-cfg {
-		uart5-0-pins {
-			power-source = <3300>;
-		};
-	};
-
-	can3-1-cfg {
-		can3-0-pins {
-			power-source = <1800>;
-		};
-	};
-
-	can4-1-cfg {
-		can4-0-pins {
-			power-source = <1800>;
-		};
-	};
-
-	rcan2-0-cfg {
-		rcan2-0-pins {
-			power-source = <1800>;
 		};
 	};
 
@@ -175,6 +162,12 @@
 	i2c3-2-cfg {
 		i2c3-0-pins {
 			power-source= <3300>;
+		};
+	};
+
+	i2c5_2_cfg: i2c5-2-cfg {
+		i2c5-0-pins {
+			power-source = <1800>;
 		};
 	};
 
@@ -265,6 +258,22 @@
 		};
 	};
 
+	cam0_2_cfg: cam0-2-cfg {
+               cam1-0-pins {
+                        power-source = <1800>;
+                };
+        };
+
+	cam_mux_cfg: cam-mux-cfg {
+		cam-mux-pins {
+			pinmux = <K3_PADCONF(103, 0)>;
+
+			bias-pull-up;
+			drive-strength = <25>;
+			power-source = <1800>;
+		};
+	};
+
 	mmc1_cd_cfg: mmc1-cd-cfg {
 		mmc1-cd-pins {
 			pinmux = <K3_PADCONF(4, 0)>;	/* cd gpio */
@@ -282,23 +291,9 @@
 	status = "okay";
 };
 
-&uart4 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart4_0_cfg>;
-	status = "okay";
-};
-
-&uart5 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart5_2_cfg>;
-	status = "okay";
-};
-
 &qspi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&qspi_cfg>;
-	spacemit,qspi-tx-dma = <0>;
-	spacemit,qspi-rx-dma = <0>;
 	status = "okay";
 
 	flash@0 {
@@ -356,6 +351,7 @@
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
 	monitor-vbus;
+	reset-on-resume;
 	status = "okay";
 
 	ports {
@@ -382,14 +378,15 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	reset-on-resume;
+	/* wakeup-source; */
 
 	/* VL817 USB2.0 hub (4 ports) */
 	hub_2_0: hub@1 {
 		compatible = "usb2109,2817";
 		reg = <1>;
 		peer-hub = <&hub_3_0>;
-		/* GPIO53(MIPI_CSI3_PWDN) reserved for HUB 3V3 RST,
-		 * now reset will be done by HW */
+		vdd-supply = <&hub_reset>;
 	};
 
 	/* VL817 USB3.0 hub (4 ports) */
@@ -397,8 +394,6 @@
 		compatible = "usb2109,817";
 		reg = <2>;
 		peer-hub = <&hub_2_0>;
-		/* GPIO53(MIPI_CSI3_PWDN) reserved for HUB 3V3 RST,
-		 * now reset will be done by HW */
 	};
 };
 
@@ -463,12 +458,8 @@
 	pinctrl-0 = <&gmac1_cfg>;
 
 	max-speed = <1000>;
-	tx-fifo-depth = <8192>;
-	rx-fifo-depth = <8192>;
-	snps,tso;
-	snps,force_sf_dma_mode;
 	phy-mode = "rgmii";
-	phy-handle = <&rgmii1>;
+	phy-handle = <&gmac1_phy>;
 	snps,reset-gpios = <&gpio 1 5 GPIO_ACTIVE_LOW>;
 	snps,reset-delays-us = <0 20000 100000>;
 
@@ -486,10 +477,29 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 
-		rgmii1: phy@1 {
-			compatible = "ethernet-phy-id001c.c916";
-			reg = <0x1>;
-			device_type = "ethernet-phy";
+		gmac1_phy: ethernet-phy@1 {
+			compatible = "ethernet-phy-id001c.c916",
+				     "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@1 {
+					reg = <1>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_GREEN>;
+					default-state = "keep";
+				};
+
+				led@2 {
+					reg = <2>;
+					function = LED_FUNCTION_LAN;
+					color = <LED_COLOR_ID_YELLOW>;
+					default-state = "keep";
+				};
+			};
 		};
 	};
 };
@@ -507,15 +517,15 @@
 	};
 
 	edcdc2: edcdc2 {
-		regulator-min-microvolt = <800000>;
-		regulator-max-microvolt = <800000>;
+		regulator-min-microvolt = <534000>;
+		regulator-max-microvolt = <1005000>;
 		regulator-always-on;
 		regulator-boot-on;
 	};
 
 	edcdc1: edcdc1 {
 		regulator-min-microvolt = <534000>;
-		regulator-max-microvolt = <1000000>;
+		regulator-max-microvolt = <1005000>;
 		regulator-always-on;
 		regulator-boot-on;
 	};
@@ -734,12 +744,12 @@
 
 			map1 {
 				trip = <&gpu_alert1>;
-				cooling-device = <&imggpu 1 2>;
+				cooling-device = <&imggpu 2 3>;
 			};
 
 			map2 {
 				trip = <&gpu_alert2>;
-				cooling-device = <&imggpu 2 3>;
+				cooling-device = <&imggpu 4 5>;
 			};
 		};
 	};
@@ -975,7 +985,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb301_cfg>;
 		irq-gpios = <&gpio 1 26 GPIO_ACTIVE_LOW>;
-		wakeup-source;
+		suspend-vbus-off;
 		status = "okay";
 
 		typec_0: connector@0 {
@@ -1033,6 +1043,60 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c2_1_cfg>;
 	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c5_2_cfg>;
+
+	imx219@10 {
+		compatible = "sony,imx219";
+		reg = <0x10>;
+		csi-id = <1>;
+		vdd-supply = <&aldo3>;
+		pwdn-gpios = <&gpio 1 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	ov5647@36 {
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		csi-id = <2>;
+		vdd-supply = <&aldo3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mux_cfg>;
+		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio 1 12 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	ov5640@3c {
+		compatible = "spacemit,ov5640-max96724-max9295";
+		reg = <0x3c>;
+		csi-id = <0>;
+		vdd-supply = <&aldo3>;
+		clock-names = "xclk";
+		clocks = <&syscon_apmu CLK_APMU_ISIM_VCLK0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam0_2_cfg>;
+		pwdn-gpios = <&gpio 1 12 GPIO_ACTIVE_HIGH>;
+		deserializer-addr = <0x27>;
+		serializer-base-addr = <0x41>;
+		status = "okay";
+	};
+
+	imx415@37 {
+		compatible = "sony,imx415";
+		reg = <0x37>;
+		csi-id = <2>;
+		vdd-supply = <&aldo3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mux_cfg>;
+		i2c-mux-gpios = <&gpio 3 7 GPIO_ACTIVE_HIGH>;
+		pwdn-gpios = <&gpio 1 12 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
+	};
 };
 
 &dpu_crtc0 {
@@ -1112,45 +1176,10 @@
 	};
 };
 
-&flexcan0 {
-	clock-frequency = <80000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&can0_1_cfg>;
-	status = "okay";
-};
-
-&flexcan1 {
-	clock-frequency = <80000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&can1_0_cfg>;
-	status = "okay";
-};
-
 &flexcan2 {
 	clock-frequency = <80000000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&can2_0_cfg>;
-	status = "okay";
-};
-
-&flexcan3 {
-	clock-frequency = <80000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&can3_1_cfg>;
-	status = "okay";
-};
-
-&flexcan4 {
-	clock-frequency = <80000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&can4_1_cfg>;
-	status = "okay";
-};
-
-&r_flexcan2 {
-	clock-frequency = <80000000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&rcan2_0_cfg>;
+	pinctrl-0 = <&can2_1_cfg>;
 	status = "okay";
 };
 
@@ -1328,4 +1357,33 @@
 			sound-dai = <&dp1>;
 		};
 	};
+};
+
+&ccic0 {
+	status = "okay";
+};
+
+&ccic1 {
+	status = "okay";
+};
+
+&ccic2 {
+	status = "okay";
+};
+
+&ccic3 {
+	status = "disabled";
+};
+
+&csiphy0 {
+	status = "okay";
+};
+
+&csiphy1 {
+	status = "okay";
+};
+
+&csiphy2 {
+	spacemit,bifmode-enable = <0>;
+	status = "okay";
 };

@@ -1042,25 +1042,6 @@
 			};
 		};
 	};
-
-	mpq8655: mpq8655@30 {
-		compatible = "spacemit,mpq8655";
-		reg = <0x30>;
-
-		vcc-supply = <&p12v>;
-
-		regulators {
-			compatible = "spacemit,regulator,mpq8655";
-
-			edcdc1: edcdc1 {
-				regulator-min-microvolt = <534000>;
-				regulator-max-microvolt = <1000000>;
-				regulator-ramp-delay = <10>;
-				regulator-always-on;
-				regulator-boot-on;
-			};
-		};
-	};
 };
 */
 

@@ -17,6 +17,8 @@
 #include <linux/of_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_qos.h>
+#include <linux/mutex.h>
+#include <linux/string.h>
 #include <linux/trace_events.h>
 #include <linux/of_platform.h>
 #include <linux/of_reserved_mem.h>
@@ -41,6 +43,83 @@ static int spacemit_crtc_init(struct spacemit_crtc *a_crtc);
 static int spacemit_crtc_uninit(struct spacemit_crtc *a_crtc);
 static int dpu_pm_suspend(struct device *dev);
 static int dpu_pm_resume(struct device *dev);
+static unsigned int spacemit_dpu_get_bootlogo_total_count(void);
+static DEFINE_MUTEX(spacemit_bootloader_mem_setup_lock);
+static bool spacemit_bootloader_mem_setup_done = false;
+
+static struct device_node *spacemit_dpu_find_bootloader_mem_node(void)
+{
+	struct device_node *rmem_np, *child;
+
+	rmem_np = of_find_node_by_path("/reserved-memory");
+	if (!rmem_np)
+		return NULL;
+
+	for_each_child_of_node(rmem_np, child) {
+		if (of_device_is_compatible(child, "framebuffer") ||
+		    !strncmp(child->name, "framebuffer",
+			     sizeof("framebuffer") - 1)) {
+			of_node_put(rmem_np);
+			return child;
+		}
+	}
+
+	of_node_put(rmem_np);
+	return NULL;
+}
+
+static void spacemit_dpu_setup_bootloader_mem(struct device *dev)
+{
+	struct device_node *np;
+	struct resource rsrv_mem;
+	struct reserved_mem rmem;
+	int ret;
+
+	mutex_lock(&spacemit_bootloader_mem_setup_lock);
+	if (spacemit_bootloader_mem_setup_done) {
+		mutex_unlock(&spacemit_bootloader_mem_setup_lock);
+		return;
+	}
+
+	np = spacemit_dpu_find_bootloader_mem_node();
+	if (!np) {
+		mutex_unlock(&spacemit_bootloader_mem_setup_lock);
+		return;
+	}
+
+	ret = of_address_to_resource(np, 0, &rsrv_mem);
+	if (ret < 0) {
+		DRM_INFO("no bootloader reserved memory resource found\n");
+		of_node_put(np);
+		mutex_unlock(&spacemit_bootloader_mem_setup_lock);
+		return;
+	}
+
+	rmem.base = rsrv_mem.start;
+	rmem.size = resource_size(&rsrv_mem);
+	spacemit_dpu_set_bootloader_mem_release_target(spacemit_dpu_get_bootlogo_total_count());
+	ret = spacemit_dpu_bootloader_mem_setup(&rmem);
+	if (ret)
+		DRM_INFO("failed to setup bootloader reserved memory: %d\n", ret);
+	else
+		spacemit_bootloader_mem_setup_done = true;
+
+	of_node_put(np);
+	mutex_unlock(&spacemit_bootloader_mem_setup_lock);
+}
+
+static unsigned int spacemit_dpu_get_bootlogo_total_count(void)
+{
+	struct device_node *np;
+	unsigned int count = 0;
+
+	for_each_compatible_node(np, NULL, "spacemit,dpu-saturn") {
+		if (of_device_is_available(np))
+			count++;
+	}
+
+	return count ? count : 1;
+}
 
 static atomic_t mclk_cnt = ATOMIC_INIT(0);
 bool dpu_mclk_exclusive_get(void)
@@ -453,13 +532,14 @@ static void spacemit_crtc_atomic_enable(struct drm_crtc *crtc,
 	DRM_INFO("%s(power on)\n", __func__);
 	trace_spacemit_crtc_atomic_enable(a_crtc->dev_id);
 
-	/* If bootloader logo is boot on, release its resources first */
+	/* If bootloader framebuffer is active, release its resources first */
 	if (unlikely(a_crtc->logo_booton)) {
 		pm_runtime_enable(a_crtc->dev);
 		spacemit_dpu_power_enable(a_crtc, true);
 		dpu_pm_resume(a_crtc->dev);
 		dpu_pm_suspend(a_crtc->dev);
 		spacemit_dpu_power_enable(a_crtc, false);
+		spacemit_dpu_free_bootloader_mem();
 		a_crtc->logo_booton = false;
 		msleep(10);
 	}
@@ -1569,11 +1649,6 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct spacemit_crtc *a_crtc;
 	struct device_node *np = dev->of_node;
-#ifdef MODULE
-	struct reserved_mem rmem;
-	struct resource rsrv_mem;
-	int ret;
-#endif
 	const char *str;
 	u32 dpu_id;
 	u32 pipeline_id;
@@ -1637,19 +1712,7 @@ static int spacemit_dpu_probe(struct platform_device *pdev)
 	if (a_crtc->core && a_crtc->core->parse_dt)
 		a_crtc->core->parse_dt(a_crtc, np);
 
-#ifdef MODULE
-	np = of_find_compatible_node(NULL, NULL, "bootloader_logo");
-	if (np) {
-		ret = of_address_to_resource(np, 0, &rsrv_mem);
-		if (ret < 0) {
-			DRM_DEV_ERROR(dev, "no reserved memory resource find in bootloader_logo node\n");
-		} else {
-			rmem.base = rsrv_mem.start;
-			rmem.size = resource_size(&rsrv_mem);
-			spacemit_dpu_bootloader_mem_setup(&rmem);
-		}
-	}
-#endif
+	spacemit_dpu_setup_bootloader_mem(dev);
 
 	return component_add(dev, &dpu_component_ops);
 }
