@@ -322,6 +322,16 @@
 			power-source = <3300>;
 		};
 	};
+
+	mmc1_cd_cfg: mmc1-cd-cfg {
+		mmc1-cd-pins {
+			pinmux = <K3_PADCONF(86, 0)>;	/* cd gpio */
+
+			bias-pull-up = <1>;
+			drive-strength = <8>;
+			power-source = <3300>;
+		};
+	};
 };
 
 &uart0 {
@@ -348,10 +358,9 @@
 };
 
 &sdcard {
-	pinctrl-names = "default","uhs","debug";
-	pinctrl-0 = <&mmc1_cfg>;
-	pinctrl-1 = <&mmc1_uhs_cfg>;
-	pinctrl-2 = <&mmc1_debug_cfg>;
+	pinctrl-names = "default","uhs";
+	pinctrl-0 = <&mmc1_cfg &mmc1_cd_cfg>;
+	pinctrl-1 = <&mmc1_uhs_cfg &mmc1_cd_cfg>;
 	bus-width = <4>;
 	wp-inverted;
 	cd-gpios = <&gpio 2 22 GPIO_ACTIVE_LOW>;

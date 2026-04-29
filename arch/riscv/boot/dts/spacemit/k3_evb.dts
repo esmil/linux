@@ -361,7 +361,7 @@
 	pinctrl-names = "default","uhs","debug";
 	pinctrl-0 = <&mmc1_cfg &mmc1_cd_cfg>;
 	pinctrl-1 = <&mmc1_uhs_cfg &mmc1_cd_cfg>;
-	pinctrl-2 = <&mmc1_debug_cfg>;
+	pinctrl-2 = <&mmc1_debug_cfg &mmc1_cd_cfg>;
 	bus-width = <4>;
 	wp-inverted;
 	cd-gpios = <&gpio 2 22 GPIO_ACTIVE_LOW>;
