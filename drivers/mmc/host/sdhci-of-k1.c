@@ -202,8 +202,7 @@ static void spacemit_sdhci_set_uhs_signaling(struct sdhci_host *host, unsigned i
 {
 	if (timing == MMC_TIMING_MMC_HS200)
 		spacemit_sdhci_setbits(host, SDHC_MMC_HS200, SPACEMIT_SDHC_MMC_CTRL_REG);
-
-	if (timing == MMC_TIMING_MMC_HS400)
+	else if (timing == MMC_TIMING_MMC_HS400)
 		spacemit_sdhci_setbits(host, SDHC_MMC_HS400, SPACEMIT_SDHC_MMC_CTRL_REG);
 
 	sdhci_set_uhs_signaling(host, timing);
@@ -223,11 +222,9 @@ static int spacemit_sdhci_card_busy(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
 	u32 present_state;
-	u32 ret;
 
 	/* Check whether DAT[0] is 0 */
 	present_state = sdhci_readl(host, SDHCI_PRESENT_STATE);
-	ret = !(present_state & SDHCI_DATA_0_LVL_MASK);
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		if ((SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)) == SD_SWITCH_VOLTAGE) &&
@@ -236,12 +233,13 @@ static int spacemit_sdhci_card_busy(struct mmc_host *mmc)
 			spacemit_sdhci_set_clk_gate(host, 1);
 	}
 
-	return ret;
+	return !(present_state & SDHCI_DATA_0_LVL_MASK);
 }
 
 static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 {
 	struct mmc_host *mmc = host->mmc;
+	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 
 	if (mmc->ios.timing <= MMC_TIMING_UHS_SDR50)
 		spacemit_sdhci_setbits(host, SDHC_TX_INT_CLK_SEL, SPACEMIT_SDHC_TX_CFG_REG);
@@ -249,6 +247,25 @@ static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock
 		spacemit_sdhci_clrbits(host, SDHC_TX_INT_CLK_SEL, SPACEMIT_SDHC_TX_CFG_REG);
 
 	sdhci_set_clock(host, clock);
+
+	/* Switch pinctrl mode based on voltage and bus width */
+	if (sdhst->pinctrl) {
+		if (mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
+			/* 1.8V: use UHS mode */
+			if (sdhst->pins_uhs)
+				pinctrl_select_state(sdhst->pinctrl, sdhst->pins_uhs);
+		} else if (mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
+			if (!clock || mmc->ios.bus_width < MMC_BUS_WIDTH_4) {
+				/* 3.3V 1-bit: use debug mode */
+				if (sdhst->pins_debug)
+					pinctrl_select_state(sdhst->pinctrl, sdhst->pins_debug);
+			} else {
+				/* 3.3V 4-bit: use default mode */
+				if (sdhst->pins_default)
+					pinctrl_select_state(sdhst->pinctrl, sdhst->pins_default);
+			}
+		}
+	}
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		/*
@@ -273,21 +290,6 @@ static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock
 		}
 	}
 };
-
-static void spacemit_sdhci_voltage_switch(struct sdhci_host *host)
-{
-	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
-	int vol = host->mmc->ios.signal_voltage;
-
-	switch (vol) {
-	case MMC_SIGNAL_VOLTAGE_180:
-		if (sdhst->pinctrl && sdhst->pins_uhs)
-			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_uhs);
-		break;
-	default:
-		break;
-	}
-}
 
 static void spacemit_sdhci_phy_dll_init(struct sdhci_host *host)
 {
@@ -551,7 +553,6 @@ static const struct sdhci_ops spacemit_sdhci_ops = {
 	.set_bus_width		= sdhci_set_bus_width,
 	.set_clock		= spacemit_sdhci_set_clock,
 	.set_uhs_signaling	= spacemit_sdhci_set_uhs_signaling,
-	.voltage_switch		= spacemit_sdhci_voltage_switch,
 	.set_power		= sdhci_set_power_and_bus_voltage,
 	.platform_execute_tuning = spacemit_sdhci_execute_sw_tuning,
 };
@@ -642,7 +643,9 @@ static void spacemit_sdhci_get_of_property(struct platform_device *pdev, struct 
 		if (IS_ERR(sdhst->pins_debug))
 			sdhst->pins_debug = NULL;
 
-		if (sdhst->pins_default)
+		if (sdhst->pins_debug)
+			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_debug);
+		else if (sdhst->pins_default)
 			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_default);
 	} else {
 		sdhst->pinctrl = NULL;
@@ -729,8 +732,7 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 	sdhst->reset = devm_reset_control_array_get_optional_shared(dev);
 	if (IS_ERR(sdhst->reset)) {
 		dev_err(dev, "failed to get reset control\n");
-		ret = PTR_ERR(sdhst->reset);
-		return ret;
+		return PTR_ERR(sdhst->reset);
 	}
 
 	ret = reset_control_deassert(sdhst->reset);
