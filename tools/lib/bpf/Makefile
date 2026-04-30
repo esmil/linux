@@ -79,7 +79,7 @@ endif
 
 # Append required CFLAGS
 override CFLAGS += -std=gnu89
-override CFLAGS += $(EXTRA_WARNINGS) -Wno-switch-enum
+override CFLAGS += $(EXTRA_WARNINGS) -Wno-switch-enum -Wno-discarded-qualifiers
 override CFLAGS += -Werror -Wall
 override CFLAGS += $(INCLUDES)
 override CFLAGS += -fvisibility=hidden
