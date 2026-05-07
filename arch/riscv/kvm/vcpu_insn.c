@@ -8,7 +8,9 @@
 #include <linux/kvm_host.h>
 
 #include <asm/cpufeature.h>
+#include <asm/insn-def.h>
 #include <asm/insn.h>
+#include <asm/pgtable.h>
 
 struct insn_func {
 	unsigned long mask;
@@ -87,6 +89,74 @@ static int wrs_insn(struct kvm_vcpu *vcpu, struct kvm_run *run, ulong insn)
 	return KVM_INSN_CONTINUE_NEXT_SEPC;
 }
 
+#ifdef CONFIG_KVM_RISCV_VTVM
+static int sfence_vma_insn(struct kvm_vcpu *vcpu, struct kvm_run *run,
+			   ulong insn)
+{
+	unsigned long vmid = READ_ONCE(vcpu->kvm->arch.vmid.vmid);
+	unsigned long gva = GET_RS1(insn, &vcpu->arch.guest_context);
+	unsigned long asid = GET_RS2(insn, &vcpu->arch.guest_context);
+	unsigned int rs1_num = (insn >> SH_RS1) & MASK_RX;
+	unsigned int rs2_num = (insn >> SH_RS2) & MASK_RX;
+
+	asid &= SATP_ASID_MASK;
+
+	if (!rs1_num && !rs2_num) {
+		kvm_riscv_local_hfence_vvma_all(vmid);
+		kvm_riscv_local_hfence_vvma_all(vmid);
+	}
+	else if (!rs1_num) {
+		kvm_riscv_local_hfence_vvma_asid_all(vmid, asid);
+		kvm_riscv_local_hfence_vvma_asid_all(vmid, asid);
+	}
+	else if (!rs2_num) {
+		kvm_riscv_local_hfence_vvma_gva(vmid, gva, PAGE_SIZE,
+						PAGE_SHIFT);
+		kvm_riscv_local_hfence_vvma_gva(vmid, gva, PAGE_SIZE,
+						PAGE_SHIFT);
+	}
+	else {
+		kvm_riscv_local_hfence_vvma_asid_gva(vmid, asid, gva,
+						     PAGE_SIZE, PAGE_SHIFT);
+		kvm_riscv_local_hfence_vvma_asid_gva(vmid, asid, gva,
+						     PAGE_SIZE, PAGE_SHIFT);
+	}
+
+	return KVM_INSN_CONTINUE_NEXT_SEPC;
+}
+
+static int sinval_vma_insn(struct kvm_vcpu *vcpu, struct kvm_run *run,
+			   ulong insn)
+{
+	if (!riscv_isa_extension_available(vcpu->arch.isa, SVINVAL))
+		return KVM_INSN_ILLEGAL_TRAP;
+
+	return sfence_vma_insn(vcpu, run, insn);
+}
+
+static int sfence_w_inval_insn(struct kvm_vcpu *vcpu, struct kvm_run *run,
+			       ulong insn)
+{
+	if (!riscv_isa_extension_available(vcpu->arch.isa, SVINVAL))
+		return KVM_INSN_ILLEGAL_TRAP;
+
+	asm volatile (SFENCE_W_INVAL() ::: "memory");
+
+	return KVM_INSN_CONTINUE_NEXT_SEPC;
+}
+
+static int sfence_inval_ir_insn(struct kvm_vcpu *vcpu, struct kvm_run *run,
+				ulong insn)
+{
+	if (!riscv_isa_extension_available(vcpu->arch.isa, SVINVAL))
+		return KVM_INSN_ILLEGAL_TRAP;
+
+	asm volatile (SFENCE_INVAL_IR() ::: "memory");
+
+	return KVM_INSN_CONTINUE_NEXT_SEPC;
+}
+#endif
+
 struct csr_func {
 	unsigned int base;
 	unsigned int count;
@@ -109,9 +179,39 @@ static int seed_csr_rmw(struct kvm_vcpu *vcpu, unsigned int csr_num,
 	return KVM_INSN_EXIT_TO_USER_SPACE;
 }
 
+#ifdef CONFIG_KVM_RISCV_VTVM
+static int satp_csr_rmw(struct kvm_vcpu *vcpu, unsigned int csr_num,
+			unsigned long *val, unsigned long new_val,
+			unsigned long wr_mask)
+{
+	unsigned long old_vsatp, next_vsatp, next_mode;
+
+	old_vsatp = csr_read(CSR_VSATP);
+	vcpu->arch.guest_csr.vsatp = old_vsatp;
+	if (val)
+		*val = old_vsatp;
+
+	if (!wr_mask)
+		return KVM_INSN_CONTINUE_NEXT_SEPC;
+
+	next_vsatp = (old_vsatp & ~wr_mask) | (new_val & wr_mask);
+	next_mode = next_vsatp & SATP_MODE_MASK;
+	if (next_mode && next_mode != (unsigned long)satp_mode)
+		return KVM_INSN_CONTINUE_NEXT_SEPC;
+
+	csr_write(CSR_VSATP, next_vsatp);
+	vcpu->arch.guest_csr.vsatp = csr_read(CSR_VSATP);
+
+	return KVM_INSN_CONTINUE_NEXT_SEPC;
+}
+#endif
+
 static const struct csr_func csr_funcs[] = {
 	KVM_RISCV_VCPU_AIA_CSR_FUNCS
 	KVM_RISCV_VCPU_HPMCOUNTER_CSR_FUNCS
+#ifdef CONFIG_KVM_RISCV_VTVM
+	{ .base = CSR_SATP, .count = 1, .func = satp_csr_rmw },
+#endif
 	{ .base = CSR_SEED, .count = 1, .func = seed_csr_rmw },
 };
 
@@ -257,6 +357,28 @@ static const struct insn_func system_opcode_funcs[] = {
 		.match = INSN_MATCH_CSRRCI,
 		.func  = csr_insn,
 	},
+#ifdef CONFIG_KVM_RISCV_VTVM
+	{
+		.mask  = RV_INSN_MASK_SFENCE_VMA,
+		.match = RV_INSN_MATCH_SFENCE_VMA,
+		.func  = sfence_vma_insn,
+	},
+	{
+		.mask  = RV_INSN_MASK_SINVAL_VMA,
+		.match = RV_INSN_MATCH_SINVAL_VMA,
+		.func  = sinval_vma_insn,
+	},
+	{
+		.mask  = RV_INSN_MASK_SFENCE_W_INVAL,
+		.match = RV_INSN_MATCH_SFENCE_W_INVAL,
+		.func  = sfence_w_inval_insn,
+	},
+	{
+		.mask  = RV_INSN_MASK_SFENCE_INVAL_IR,
+		.match = RV_INSN_MATCH_SFENCE_INVAL_IR,
+		.func  = sfence_inval_ir_insn,
+	},
+#endif
 	{
 		.mask  = INSN_MASK_WFI,
 		.match = INSN_MATCH_WFI,

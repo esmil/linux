@@ -74,6 +74,9 @@
 #define SATP_ASID_SHIFT	44
 #define SATP_ASID_MASK	_AC(0xFFFF, UL)
 #endif
+#define SATP_MODE_MASK	(~(SATP_PPN | \
+			  ((unsigned long)SATP_ASID_MASK << \
+			   SATP_ASID_SHIFT)))
 
 /* Exception cause high bit - is an interrupt if set */
 #define CAUSE_IRQ_FLAG		(_AC(1, UL) << (__riscv_xlen - 1))

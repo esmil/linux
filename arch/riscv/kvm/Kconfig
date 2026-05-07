@@ -39,4 +39,14 @@ config KVM
 
 	  If unsure, say N.
 
+config KVM_RISCV_VTVM
+	bool "Trap VS satp/TLB management with HSTATUS.VTVM"
+	depends on KVM && SOC_SPACEMIT_K3
+	default y
+	help
+	  Trap VS-mode page-table and TLB-management instructions through
+	  HSTATUS.VTVM and emulate them in HS-mode.
+
+	  If unsure, say Y.
+
 endif # VIRTUALIZATION

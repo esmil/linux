@@ -75,6 +75,9 @@ static void kvm_riscv_vcpu_context_reset(struct kvm_vcpu *vcpu,
 	cntx->hstatus |= HSTATUS_VTW;
 	cntx->hstatus |= HSTATUS_SPVP;
 	cntx->hstatus |= HSTATUS_SPV;
+#ifdef CONFIG_KVM_RISCV_VTVM
+	cntx->hstatus |= HSTATUS_VTVM;
+#endif
 }
 
 static void kvm_riscv_reset_vcpu(struct kvm_vcpu *vcpu, bool kvm_sbi_reset)
