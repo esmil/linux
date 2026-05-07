@@ -415,7 +415,6 @@
 		};
 
 		syscon_gpio: syscon-gpio{
-			compatible = "syscon";
 			reg = <0x0 0xd4019000 0x0 0x800>;
 		};
 
