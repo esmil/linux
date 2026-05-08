@@ -28,12 +28,19 @@
 #include "k3-pm_domain.h"
 
 #define MAX_REGULATOR_PER_DOMAIN	5
-#define PRIFIX_OF_PM_QOS		2000000000	
+#define PRIFIX_OF_PM_QOS		2000000000
 
 #define DEV_PM_QOS_CLK_GATE		(PRIFIX_OF_PM_QOS | 1)
 #define DEV_PM_QOS_REGULATOR_GATE	(PRIFIX_OF_PM_QOS | 2)
 #define DEV_PM_QOS_PM_DOMAIN_GATE	(PRIFIX_OF_PM_QOS | 4)
 #define DEV_PM_QOS_DEFAULT		(PRIFIX_OF_PM_QOS | 7)
+
+#define PM_VPU_SWITCH_INDEX		(0)
+#define PM_GPU_SWITCH_INDEX		(1)
+#define PM_AUDIO_SWITCH_INDEX		(2)
+#define PM_LCD0_SWITCH_INDEX		(3)
+#define PM_LCD1_SWITCH_INDEX		(4)
+#define PM_DUMMY_SWITCH_INDEX		(5)
 
 struct per_device_qos {
 	struct notifier_block notifier;
@@ -156,12 +163,16 @@ static int spacemit_pd_power_off(struct generic_pm_domain *domain)
 			return 0;
 	}
 
+	if (spd->pm_index == PM_DUMMY_SWITCH_INDEX)
+		goto _disable_regulator;
+
 	ret = rpmi_domain_handle_state(spd, false);
 	if (ret) {
 		pr_err("%s: index:%d, domain handle state failed\n", __func__, spd->pm_index);
 		return ret;
 	}
 
+_disable_regulator:
 	/* disable the supply */
 	for (loop = 0; loop < spd->rgr_count; ++loop) {
 		ret = regulator_disable(spd->rgr[loop]);
@@ -205,6 +216,9 @@ static int spacemit_pd_power_on(struct generic_pm_domain *domain)
 			return ret;
 		}
 	}
+
+	if (spd->pm_index == PM_DUMMY_SWITCH_INDEX)
+		return 0;
 
 	/* force to disable the power-switch */
 	ret = rpmi_domain_handle_state(spd, false);
