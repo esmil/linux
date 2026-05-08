@@ -46,4 +46,10 @@ config SPACEMIT_POWERKEY_MONITOR
 	help
 	  Say y here to using gpio to monitor the power key
 
+config SPACEMIT_DDR_BW
+	tristate "Spacemit DDR bandwidth monitor"
+	depends on SOC_SPACEMIT_K3
+	help
+	  Say y or m here to build the DDR bandwidth monitor driver.
+
 source "drivers/soc/spacemit/v2d/Kconfig"
