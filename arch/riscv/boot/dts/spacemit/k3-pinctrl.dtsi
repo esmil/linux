@@ -2819,6 +2819,19 @@
 		};
 	};
 
+	mmc1_jtag_cfg: mmc1-jtag-cfg {
+		mmc1-0-pins {
+			pinmux = <K3_PADCONF(132, 5)>,	/* pri tdi */
+				 <K3_PADCONF(133, 5)>,	/* pri tms */
+				 <K3_PADCONF(134, 5)>,	/* pri tdo */
+				 <K3_PADCONF(137, 5)>;	/* pri tck */
+
+			bias-pull-up;			/* normal pull-up */
+			drive-strength = <8>;		/* DS3 */
+			power-source = <3300>;
+		};
+	};
+
 	mmc2_cfg: mmc2-cfg {
 		mmc2-0-pins {
 			pinmux = <K3_PADCONF(122, 1)>,	/* mmc2 dat3 */
