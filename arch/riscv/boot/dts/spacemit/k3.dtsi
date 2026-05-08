@@ -2509,14 +2509,14 @@
 			reg = <0x0 0xc0e00000 0x0 0x40000>;
 			interrupt-parent = <&saplic>;
 			interrupts = <135 0x4>;
-			clocks = <&syscon_apmu CLK_APMU_UFS_ACLK>;
-			clock-names = "ufs-aclk";
+			clocks = <&syscon_apmu CLK_APMU_UFS_ACLK>,
+				 <&syscon_apmu CLK_APMU_UFS_REFCLK>;
+			clock-names = "ufs-aclk", "ref_clk";
 			resets = <&syscon_apmu RESET_APMU_UFS_ACLK>;
 			reset-names = "ufs-aclk-rst";
 			clock-freq = <491520000>;
-			freq-table-hz = <491520000 491520000>;
+			freq-table-hz = <491520000 491520000 19200000 19200000>;
 			lanes-per-direction = <2>;
-			ref-clk-freq = <19200000>;
 			status = "disabled";
 		};
 
