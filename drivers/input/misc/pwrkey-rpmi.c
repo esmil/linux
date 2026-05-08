@@ -210,6 +210,8 @@ static int rpmi_pwrkey_probe(struct platform_device *pdev)
 		goto fail_free_channel;
 	}
 
+	spin_lock_init(&pm_lock);
+
 	context->virt_irq = platform_get_irq_byname(pdev, "rpmi pwrkey");
 	ret = request_threaded_irq(context->virt_irq,
 				  mpxy_pwrkey_irq_event,
@@ -223,13 +225,12 @@ static int rpmi_pwrkey_probe(struct platform_device *pdev)
         dev_pm_set_wake_irq(&pdev->dev, context->virt_irq);
         device_init_wakeup(&pdev->dev, true);
 
-	spin_lock_init(&pm_lock);
-
 	pm_notify.notifier_call = pwrk_pm_notify;
 	ret = register_pm_notifier(&pm_notify);
 	if (ret) {
 		dev_err(&pdev->dev, "Register pm notifier failed\n");
-		return ret;
+		free_irq(context->virt_irq, context);
+		goto fail_free_channel;
 	}
 
 	return 0;
