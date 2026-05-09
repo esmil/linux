@@ -357,6 +357,8 @@
 			     <261 IRQ_TYPE_LEVEL_HIGH>;
 		#dma-cells= <1>;
 		#dma-channels = <2>;
+		rpmsg-services = "adma-service";
+		rpmsg-channels = <1>;
 		status = "disabled";
 	};
 
