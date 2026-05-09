@@ -20,6 +20,10 @@
 #include <linux/of.h>
 #include <linux/delay.h>
 #include <linux/bitfield.h>
+#include <linux/rpmsg.h>
+#include <linux/mutex.h>
+#include <linux/list.h>
+#include <linux/string.h>
 #include "dmaengine.h"
 
 #define BCR	0x00  /* channel byte count register */
@@ -66,6 +70,9 @@
 #define to_adma_dev(dmadev)	\
 		container_of(dmadev, struct adma_dev, device)
 
+#define STARTUP_MSG		"startup"
+#define STARTUP_OK_MSG		"startup-ok"
+
 enum {
 	AUDIO_SAMPLE_WORD_8BITS = 0x0,
 	AUDIO_SAMPLE_WORD_12BITS,
@@ -110,6 +117,7 @@ struct adma_ch {
 
 	struct dma_pool *sw_desc_pool;
 	struct gen_pool *hw_desc_pool;
+	bool init;
 };
 
 struct adma_pchan {
@@ -117,6 +125,9 @@ struct adma_pchan {
 	int irq;
 	void __iomem *base;
 	struct adma_ch *vchan;
+	bool use_rpmsg;  /* true if this channel uses rpmsg for interrupts */
+	struct rpmsg_device *rpdev;  /* rpmsg device for this channel (if use_rpmsg) */
+	char rpmsg_service[32];  /* rpmsg service name for this channel */
 };
 
 struct adma_dev {
@@ -130,6 +141,16 @@ struct adma_dev {
 	struct device		*dev;
 	struct adma_pchan	*phy;
 };
+
+struct adma_rpmsg_data {
+	struct rpmsg_device *rpdev;
+	struct list_head node;
+	struct adma_pchan *phy;  /* the channel using this rpmsg service */
+	char service_name[32];
+};
+
+static DEFINE_MUTEX(adma_rpmsg_lock);
+static LIST_HEAD(adma_rpmsg_list);
 
 static void adma_ch_write_reg(struct adma_pchan *phy, u32 reg_offset, u32 value)
 {
@@ -417,7 +438,9 @@ static void enable_chan(struct adma_pchan *phy)
 		return;
 	}
 
-	enable_irq(phy->irq);
+	if (!phy->use_rpmsg)
+		enable_irq(phy->irq);
+
 	if (achan->dir == DMA_MEM_TO_DEV)
 		adma_ch_write_reg(phy, DAR, achan->dev_addr);
 	else if (achan->dir == DMA_DEV_TO_MEM)
@@ -557,9 +580,12 @@ static int adma_terminate_all(struct dma_chan *dchan)
 	unsigned long flags;
 
 	spin_lock_irqsave(&achan->desc_lock, flags);
-	adma_ch_write_reg(achan->phy, ISR, 0);
+
+	if (!achan->phy->use_rpmsg) {
+		adma_ch_write_reg(achan->phy, ISR, 0);
+		disable_irq_nosync(achan->phy->irq);
+	}
 	adma_ch_write_reg(achan->phy, IER, 0);
-	disable_irq_nosync(achan->phy->irq);
 	adma_free_desc_list(achan, &achan->chain_pending);
 	adma_free_desc_list(achan, &achan->chain_running);
 	achan->status = DMA_COMPLETE;
@@ -630,6 +656,30 @@ static irqreturn_t adma_chan_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+/* rpmsg callback for handling remote interrupts */
+static int rpmsg_adma_client_cb(struct rpmsg_device *rpdev, void *data,
+				int len, void *priv, u32 src)
+{
+	struct adma_rpmsg_data *rpmsg_data;
+	struct adma_pchan *phy;
+
+	if (strcmp(data, STARTUP_OK_MSG) == 0) {
+		dev_info(&rpdev->dev, "channel: 0x%x -> 0x%x startup ok!\n",
+			rpdev->src, rpdev->dst);
+		return 0;
+	}
+
+	rpmsg_data = dev_get_drvdata(&rpdev->dev);
+	if (!rpmsg_data || !rpmsg_data->phy)
+		return 0;
+
+	phy = rpmsg_data->phy;
+	if (phy->vchan && phy->vchan->init)
+		tasklet_schedule(&phy->vchan->tasklet);
+
+	return 0;
+}
+
 const char *irq_names[] = { "tx", "rx" };
 static int adma_chan_init(struct adma_dev *adev, int idx, int irq)
 {
@@ -647,7 +697,8 @@ static int adma_chan_init(struct adma_dev *adev, int idx, int irq)
 	phy->vchan = chan;
 	chan->phy = phy;
 
-	if (irq) {
+	/* Only register hardware IRQ if not using rpmsg */
+	if (irq && !phy->use_rpmsg) {
 		irq_name = devm_kasprintf(adev->dev, GFP_KERNEL, "%s-%s",
 					  dev_name(adev->dev), irq_names[idx]);
 		if (!irq_name)
@@ -673,6 +724,7 @@ static int adma_chan_init(struct adma_dev *adev, int idx, int irq)
 
 	/* register virt channel to dma engine */
 	list_add_tail(&chan->chan.device_node, &adev->device.channels);
+	chan->init = true;
 
 	return 0;
 }
@@ -689,6 +741,7 @@ static int adma_probe(struct platform_device *pdev)
 	const struct of_device_id *of_id;
 	int dma_channels = 0;
 	int i, ret, irq = 0;
+	int channel_count;
 	struct resource *res;
 	const enum dma_slave_buswidth widths =
 		DMA_SLAVE_BUSWIDTH_1_BYTE | DMA_SLAVE_BUSWIDTH_2_BYTES |
@@ -738,7 +791,94 @@ static int adma_probe(struct platform_device *pdev)
 	if (adev->phy == NULL)
 		return -ENOMEM;
 
-	/*init adma-chan*/
+	/* Configure rpmsg for channels before initializing them */
+	channel_count = of_property_count_u32_elems(dev->of_node, "rpmsg-channels");
+	if (channel_count > 0) {
+		const char **service_names;
+		u32 *channels;
+		int service_count, j;
+
+		/* Validate rpmsg-service property */
+		service_count = of_property_count_strings(dev->of_node, "rpmsg-services");
+		if (service_count != channel_count) {
+			dev_err(dev, "rpmsg-services count (%d) must match rpmsg-channels count (%d)\n",
+				service_count, channel_count);
+			return -EINVAL;
+		}
+
+		/* Allocate arrays for service names and channel indices */
+		service_names = devm_kcalloc(dev, channel_count, sizeof(char *), GFP_KERNEL);
+		channels = devm_kcalloc(dev, channel_count, sizeof(u32), GFP_KERNEL);
+		if (!service_names || !channels)
+			return -ENOMEM;
+
+		/* Read service names and channel indices */
+		for (j = 0; j < channel_count; j++) {
+			ret = of_property_read_string_index(dev->of_node, "rpmsg-services",
+							     j, &service_names[j]);
+			if (ret) {
+				dev_err(dev, "failed to read rpmsg-service[%d]\n", j);
+				return ret;
+			}
+		}
+
+		ret = of_property_read_u32_array(dev->of_node, "rpmsg-channels",
+						  channels, channel_count);
+		if (ret) {
+			dev_err(dev, "failed to read rpmsg-channels\n");
+			return ret;
+		}
+
+		/* Configure each channel with its rpmsg service */
+		for (j = 0; j < channel_count; j++) {
+			struct adma_rpmsg_data *rpmsg_data;
+			struct adma_pchan *phy;
+			bool found = false;
+			int chan_idx = channels[j];
+
+			if (chan_idx >= dma_channels) {
+				dev_err(dev, "invalid channel index %d (max %d)\n",
+					chan_idx, dma_channels - 1);
+				return -EINVAL;
+			}
+
+			phy = &adev->phy[chan_idx];
+
+			/* Find matching rpmsg device */
+			mutex_lock(&adma_rpmsg_lock);
+			list_for_each_entry(rpmsg_data, &adma_rpmsg_list, node) {
+				if (strcmp(rpmsg_data->service_name, service_names[j]) == 0) {
+					phy->use_rpmsg = true;
+					phy->rpdev = rpmsg_data->rpdev;
+					strscpy(phy->rpmsg_service, service_names[j],
+						sizeof(phy->rpmsg_service));
+
+					rpmsg_data->phy = phy;
+					found = true;
+					dev_info(dev, "channel %d using rpmsg service: %s\n",
+						 chan_idx, service_names[j]);
+					break;
+				}
+			}
+			mutex_unlock(&adma_rpmsg_lock);
+
+			if (!found) {
+				dev_err(dev, "channel %d: rpmsg service '%s' not found, deferring probe\n",
+					chan_idx, service_names[j]);
+				return -EPROBE_DEFER;
+			}
+
+			/* Send startup message for this channel */
+			if (phy->rpdev && phy->rpdev->ept) {
+				ret = rpmsg_send(phy->rpdev->ept, STARTUP_MSG, strlen(STARTUP_MSG));
+				if (ret)
+					dev_warn(dev, "channel %d: rpmsg_send startup failed: %d\n",
+						 chan_idx, ret);
+			}
+		}
+	}
+
+	/* Initialize adma channels */
 	INIT_LIST_HEAD(&adev->device.channels);
 
 	for (i = 0; i < dma_channels; i++) {
@@ -787,11 +927,31 @@ static int adma_probe(struct platform_device *pdev)
 static void adma_remove(struct platform_device *pdev)
 {
 	struct adma_dev *adev = platform_get_drvdata(pdev);
+	int i;
 
 	if (pdev->dev.of_node)
 		of_dma_controller_free(pdev->dev.of_node);
 
 	dma_async_device_unregister(&adev->device);
+
+	/* Clear rpmsg channel associations */
+	mutex_lock(&adma_rpmsg_lock);
+	for (i = 0; i < adev->dma_channels; i++) {
+		struct adma_pchan *phy = &adev->phy[i];
+
+		if (phy->rpdev) {
+			struct adma_rpmsg_data *rpmsg_data;
+
+			list_for_each_entry(rpmsg_data, &adma_rpmsg_list, node) {
+				if (rpmsg_data->phy == phy) {
+					rpmsg_data->phy = NULL;
+					break;
+				}
+			}
+		}
+	}
+	mutex_unlock(&adma_rpmsg_lock);
+
 	platform_set_drvdata(pdev, NULL);
 }
 
@@ -804,14 +964,87 @@ static struct platform_driver adma_driver = {
 	.remove	= adma_remove,
 };
 
+/* rpmsg driver - supports multiple service names */
+static const struct rpmsg_device_id rpmsg_driver_adma_id_table[] = {
+	{ .name = "adma-service" },
+	{ },
+};
+MODULE_DEVICE_TABLE(rpmsg, rpmsg_driver_adma_id_table);
+
+static int rpmsg_adma_client_probe(struct rpmsg_device *rpdev)
+{
+	struct adma_rpmsg_data *rpmsg_data;
+	const char *service_name;
+
+	dev_info(&rpdev->dev, "new channel: 0x%x -> 0x%x!\n",
+		rpdev->src, rpdev->dst);
+
+	rpmsg_data = devm_kzalloc(&rpdev->dev, sizeof(*rpmsg_data), GFP_KERNEL);
+	if (!rpmsg_data)
+		return -ENOMEM;
+
+	rpmsg_data->rpdev = rpdev;
+	rpmsg_data->phy = NULL;
+
+	/* Get service name from rpmsg device id */
+	service_name = rpdev->id.name;
+	strscpy(rpmsg_data->service_name, service_name, sizeof(rpmsg_data->service_name));
+
+	dev_set_drvdata(&rpdev->dev, rpmsg_data);
+
+	/* Add to global list for platform driver to find */
+	mutex_lock(&adma_rpmsg_lock);
+	list_add_tail(&rpmsg_data->node, &adma_rpmsg_list);
+	mutex_unlock(&adma_rpmsg_lock);
+
+	dev_info(&rpdev->dev, "rpmsg service '%s' registered\n", service_name);
+
+	return 0;
+}
+
+static void rpmsg_adma_client_remove(struct rpmsg_device *rpdev)
+{
+	struct adma_rpmsg_data *rpmsg_data = dev_get_drvdata(&rpdev->dev);
+
+	dev_info(&rpdev->dev, "rpmsg adma client driver is removed\n");
+
+	/* Remove from global list */
+	mutex_lock(&adma_rpmsg_lock);
+	list_del(&rpmsg_data->node);
+	mutex_unlock(&adma_rpmsg_lock);
+}
+
+static struct rpmsg_driver rpmsg_adma_client = {
+	.drv.name	= KBUILD_MODNAME,
+	.id_table	= rpmsg_driver_adma_id_table,
+	.probe		= rpmsg_adma_client_probe,
+	.callback	= rpmsg_adma_client_cb,
+	.remove		= rpmsg_adma_client_remove,
+};
+
 static int __init adma_init(void)
 {
-	return platform_driver_register(&adma_driver);
+	int ret;
+
+	ret = register_rpmsg_driver(&rpmsg_adma_client);
+	if (ret) {
+		pr_err("Failed to register rpmsg driver: %d\n", ret);
+		return ret;
+	}
+
+	ret = platform_driver_register(&adma_driver);
+	if (ret) {
+		unregister_rpmsg_driver(&rpmsg_adma_client);
+		return ret;
+	}
+
+	return 0;
 }
 
 static void __exit adma_exit(void)
 {
 	platform_driver_unregister(&adma_driver);
+	unregister_rpmsg_driver(&rpmsg_adma_client);
 }
 
 subsys_initcall(adma_init);
