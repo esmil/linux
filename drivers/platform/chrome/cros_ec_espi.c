@@ -138,9 +138,10 @@ static DEFINE_MUTEX(g_espi_mutex);
 /**
  * cros_ec_espi_lock() - Acquire mutex for eSPI shared memory access
  *
+ * @out: Locked eSPI device on success.
  * @return: Negative error code, or zero for success
  */
-static int cros_ec_espi_lock(void)
+static int cros_ec_espi_lock(struct cros_ec_espi **out)
 {
 	struct cros_ec_espi *ec_espi;
 
@@ -153,22 +154,18 @@ static int cros_ec_espi_lock(void)
 
 	mutex_lock(&ec_espi->io_mutex);
 	mutex_unlock(&g_espi_mutex);
+	*out = ec_espi;
 	return 0;
 }
 
 /**
  * cros_ec_espi_unlock() - Release mutex for eSPI shared memory access
+ *
+ * @ec_espi: eSPI device returned by cros_ec_espi_lock().
  */
-static void cros_ec_espi_unlock(void)
+static void cros_ec_espi_unlock(struct cros_ec_espi *ec_espi)
 {
-	struct cros_ec_espi *ec_espi;
-
-	mutex_lock(&g_espi_mutex);
-	ec_espi = g_ec_espi;
-	mutex_unlock(&g_espi_mutex);
-
-	if (ec_espi)
-		mutex_unlock(&ec_espi->io_mutex);
+	mutex_unlock(&ec_espi->io_mutex);
 }
 
 /*
@@ -184,13 +181,12 @@ static int cros_ec_espi_read_bytes(unsigned int offset, unsigned int length,
 	u8 sum = 0;
 	int i, ret;
 
-	ret = cros_ec_espi_lock();
+	ret = cros_ec_espi_lock(&ec_espi);
 	if (ret)
 		return ret;
 
-	ec_espi = g_ec_espi;
-	if (!ec_espi || !ec_espi->espi_shared_mem_base) {
-		cros_ec_espi_unlock();
+	if (!ec_espi->espi_shared_mem_base) {
+		cros_ec_espi_unlock(ec_espi);
 		return -ENODEV;
 	}
 
@@ -203,7 +199,7 @@ static int cros_ec_espi_read_bytes(unsigned int offset, unsigned int length,
 		sum += dest[i];
 	}
 
-	cros_ec_espi_unlock();
+	cros_ec_espi_unlock(ec_espi);
 
 	/* Return checksum of all bytes read */
 	return sum;
@@ -222,13 +218,12 @@ static int cros_ec_espi_write_bytes(unsigned int offset, unsigned int length,
 	u8 sum = 0;
 	int i, ret;
 
-	ret = cros_ec_espi_lock();
+	ret = cros_ec_espi_lock(&ec_espi);
 	if (ret)
 		return ret;
 
-	ec_espi = g_ec_espi;
-	if (!ec_espi || !ec_espi->espi_shared_mem_base) {
-		cros_ec_espi_unlock();
+	if (!ec_espi->espi_shared_mem_base) {
+		cros_ec_espi_unlock(ec_espi);
 		return -ENODEV;
 	}
 
@@ -241,7 +236,7 @@ static int cros_ec_espi_write_bytes(unsigned int offset, unsigned int length,
 		sum += msg[i];
 	}
 
-	cros_ec_espi_unlock();
+	cros_ec_espi_unlock(ec_espi);
 
 	/* Return checksum of all bytes written */
 	return sum;
@@ -293,14 +288,15 @@ static int cros_ec_espi_read_id(u8 *buf)
 
 static int cros_ec_espi_recover_bus(struct device *dev)
 {
+	struct cros_ec_espi *ec_espi;
 	int ret;
 
-	ret = cros_ec_espi_lock();
+	ret = cros_ec_espi_lock(&ec_espi);
 	if (ret)
 		return ret;
 
 	ret = spacemit_k3_espi_recover(dev->parent);
-	cros_ec_espi_unlock();
+	cros_ec_espi_unlock(ec_espi);
 
 	return ret;
 }
