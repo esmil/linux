@@ -97,7 +97,7 @@ struct spacemit_timer {
 	struct clk *clk;
 	struct clk *clk_bus;
 	/* lock to protect hw operation. */
-	spinlock_t tm_lock;
+	raw_spinlock_t tm_lock;
 };
 
 struct timer_werror_info {
@@ -283,7 +283,7 @@ static irqreturn_t timer_interrupt(int irq, void *dev_id)
 	cnt = evt->cid;
 	base = evt->timer->base;
 
-	spin_lock_irqsave(&(evt->timer->tm_lock), flags);
+	raw_spin_lock_irqsave(&(evt->timer->tm_lock), flags);
 	/* We only use match #0 for the counter. */
 	if (__raw_readl(base + TMR_SR(cnt)) & 0x1) {
 		timer_counter_disable(evt);
@@ -293,14 +293,14 @@ static irqreturn_t timer_interrupt(int irq, void *dev_id)
 		/* Clear interrupt status */
 		timer_write_check(evt->timer, TMR_ICR(cnt), 0x1, 0x7, true, false);
 
-		spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
+		raw_spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
 
 		c->event_handler(c);
 
 		return IRQ_HANDLED;
 	}
 
-	spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
+	raw_spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
 	return IRQ_NONE;
 }
 
@@ -311,14 +311,14 @@ static int timer_set_shutdown(struct clock_event_device *dev)
 
 	evt = container_of(dev, struct spacemit_timer_evt, ced);
 
-	spin_lock_irqsave(&(evt->timer->tm_lock), flags);
+	raw_spin_lock_irqsave(&(evt->timer->tm_lock), flags);
 
 	evt->timer_enabled = !evt->timer_status;
 
 	/* disable counter */
 	timer_counter_disable(evt);
 
-	spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
+	raw_spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
 
 	return 0;
 }
@@ -348,12 +348,12 @@ static int timer_resume(struct clock_event_device *dev)
 		}
 	}
 
-	spin_lock_irqsave(&(tm->tm_lock), flags);
+	raw_spin_lock_irqsave(&(tm->tm_lock), flags);
 
 	/* check whether need to enable timer */
 	if (evt->timer_enabled)
 		timer_counter_enable(evt);
-	spin_unlock_irqrestore(&(tm->tm_lock), flags);
+	raw_spin_unlock_irqrestore(&(tm->tm_lock), flags);
 
 	return 0;
 }
@@ -371,7 +371,7 @@ static int timer_set_next_event(unsigned long delta,
 	cid = evt->cid;
 	base = evt->timer->base;
 
-	spin_lock_irqsave(&(evt->timer->tm_lock), flags);
+	raw_spin_lock_irqsave(&(evt->timer->tm_lock), flags);
 
 	cer = __raw_readl(base + TMR_CER);
 
@@ -389,7 +389,7 @@ static int timer_set_next_event(unsigned long delta,
 
 	evt->timeout = delta - 1;
 
-	spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
+	raw_spin_unlock_irqrestore(&(evt->timer->tm_lock), flags);
 	return 0;
 }
 
@@ -484,7 +484,7 @@ static int __init spacemit_timer_init(struct device_node *np, int tid, void __io
 	tm->loop_delay_fastclk = delay;
 	tm->fc_freq = fc_freq;
 	tm->freq = freq;
-	spin_lock_init(&(tm->tm_lock));
+	raw_spin_lock_init(&(tm->tm_lock));
 
 	spacemit_timers[tid] = tm;
 

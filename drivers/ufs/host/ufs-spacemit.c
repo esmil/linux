@@ -741,6 +741,7 @@ static int ufs_spacemit_platform_init(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct clk *ufs_aclk;
+	struct clk *ref_clk;
 	struct reset_control *rst;
 	u32 freq_table[2];
 	u32 clock_freq = 0;
@@ -752,6 +753,21 @@ static int ufs_spacemit_platform_init(struct platform_device *pdev)
 		dev_err(dev, "Failed to get %s: %ld\n",
 			"ufs-aclk", PTR_ERR(ufs_aclk));
 		return PTR_ERR(ufs_aclk);
+	}
+
+	ref_clk = devm_clk_get_optional(dev, "ref_clk");
+	if (IS_ERR(ref_clk)) {
+		dev_err(dev, "Failed to get %s: %ld\n",
+			"ref_clk", PTR_ERR(ref_clk));
+		return PTR_ERR(ref_clk);
+	}
+
+	if (ref_clk) {
+		ret = clk_prepare_enable(ref_clk);
+		if (ret) {
+			dev_err(dev, "Failed to enable %s: %d\n", "ref_clk", ret);
+			return ret;
+		}
 	}
 
 	rst = reset_control_get_exclusive(dev, "ufs-aclk-rst");

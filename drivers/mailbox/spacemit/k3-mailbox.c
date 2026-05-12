@@ -25,7 +25,8 @@ static irqreturn_t spacemit_mbox_irq(int irq, void *dev_id)
 {
 	struct spacemit_mailbox *mbox = dev_id;
 	struct mbox_chan *chan;
-	u32 status, msg;
+	u32 status, msgs[SPACEMIT_NUM_CHANNELS] = {};
+	u32 txdone_mask = 0, rxdata_mask = 0;
 	int i, j;
 	mbox_msg_status_t mstatus;
 	unsigned long flags;
@@ -55,7 +56,7 @@ static irqreturn_t spacemit_mbox_irq(int irq, void *dev_id)
 			writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_status_clr);
 
 			if (chan->txdone_method & TXDONE_BY_IRQ)
-				mbox_chan_txdone(chan, 0);
+				txdone_mask |= BIT(i);
 		}
 
 		/* new msg irq */
@@ -63,12 +64,12 @@ static irqreturn_t spacemit_mbox_irq(int irq, void *dev_id)
 
 			/* clear the fifo */
 			while (1) {
-				msg = readl((void *)&mbox->regs->mbox_msg[i]);
+				msgs[i] = readl((void *)&mbox->regs->mbox_msg[i]);
 				mstatus.val = readl((void *)&mbox->regs->msg_status[i]);
 				if (mstatus.bits.num_msg == 0)
 					break;
 			}
-			mbox_chan_received_data(chan, &msg);
+			rxdata_mask |= BIT(i);
 
 #if 0
 			/* disable the new msg irq */
@@ -81,9 +82,22 @@ static irqreturn_t spacemit_mbox_irq(int irq, void *dev_id)
 			j |= (1 << (i * 2));
 			writel(j, (void *)&mbox->regs->mbox_irq[USER0_MBOX_OFFSET].irq_status_clr);
 		}
-        }
+	}
 
 	spin_unlock_irqrestore(&mbox->lock, flags);
+
+	/*
+	 * Call framework callbacks without holding mbox->lock. mbox_chan_txdone
+	 * acquires chan->lock, while the send path holds chan->lock when calling
+	 * into this driver (which takes mbox->lock), causing lock inversion.
+	 */
+	for (i = 0; i < SPACEMIT_NUM_CHANNELS; ++i) {
+		chan = &mbox->controller.chans[i];
+		if (txdone_mask & BIT(i))
+			mbox_chan_txdone(chan, 0);
+		if (rxdata_mask & BIT(i))
+			mbox_chan_received_data(chan, &msgs[i]);
+	}
 
 	return IRQ_HANDLED;
 }

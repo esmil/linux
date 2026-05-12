@@ -202,8 +202,7 @@ static void spacemit_sdhci_set_uhs_signaling(struct sdhci_host *host, unsigned i
 {
 	if (timing == MMC_TIMING_MMC_HS200)
 		spacemit_sdhci_setbits(host, SDHC_MMC_HS200, SPACEMIT_SDHC_MMC_CTRL_REG);
-
-	if (timing == MMC_TIMING_MMC_HS400)
+	else if (timing == MMC_TIMING_MMC_HS400)
 		spacemit_sdhci_setbits(host, SDHC_MMC_HS400, SPACEMIT_SDHC_MMC_CTRL_REG);
 
 	sdhci_set_uhs_signaling(host, timing);
@@ -223,11 +222,9 @@ static int spacemit_sdhci_card_busy(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
 	u32 present_state;
-	u32 ret;
 
 	/* Check whether DAT[0] is 0 */
 	present_state = sdhci_readl(host, SDHCI_PRESENT_STATE);
-	ret = !(present_state & SDHCI_DATA_0_LVL_MASK);
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		if ((SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)) == SD_SWITCH_VOLTAGE) &&
@@ -236,12 +233,45 @@ static int spacemit_sdhci_card_busy(struct mmc_host *mmc)
 			spacemit_sdhci_set_clk_gate(host, 1);
 	}
 
-	return ret;
+	return !(present_state & SDHCI_DATA_0_LVL_MASK);
+}
+
+/*
+ * Select appropriate pinctrl state based on voltage and clock
+ * Returns: 0 on success, negative error code on failure
+ */
+static int spacemit_sdhci_select_pinctrl(struct spacemit_sdhci_host *sdhst,
+					 unsigned int clock,
+					 unsigned int signal_voltage)
+{
+	struct pinctrl_state *state = NULL;
+
+	if (!sdhst->pinctrl)
+		return 0;
+
+	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
+		/* 1.8V: use UHS mode */
+		state = sdhst->pins_uhs;
+	} else if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
+		/* Only use debug mode when clock is off (host idle).
+		 * DAT3 is muxed with UART TX in debug pinctrl, so switching
+		 * during card initialization would corrupt the SD bus. */
+		if (!clock && sdhst->pins_debug)
+			state = sdhst->pins_debug;
+		else
+			state = sdhst->pins_default;
+	}
+
+	if (state)
+		return pinctrl_select_state(sdhst->pinctrl, state);
+
+	return 0;
 }
 
 static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 {
 	struct mmc_host *mmc = host->mmc;
+	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 
 	if (mmc->ios.timing <= MMC_TIMING_UHS_SDR50)
 		spacemit_sdhci_setbits(host, SDHC_TX_INT_CLK_SEL, SPACEMIT_SDHC_TX_CFG_REG);
@@ -249,6 +279,9 @@ static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock
 		spacemit_sdhci_clrbits(host, SDHC_TX_INT_CLK_SEL, SPACEMIT_SDHC_TX_CFG_REG);
 
 	sdhci_set_clock(host, clock);
+
+	/* Switch pinctrl mode based on voltage */
+	spacemit_sdhci_select_pinctrl(sdhst, clock, mmc->ios.signal_voltage);
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		/*
@@ -271,21 +304,6 @@ static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock
 				 */
 				spacemit_sdhci_set_clk_gate(host, 0);
 		}
-	}
-};
-
-static void spacemit_sdhci_voltage_switch(struct sdhci_host *host)
-{
-	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
-	int vol = host->mmc->ios.signal_voltage;
-
-	switch (vol) {
-	case MMC_SIGNAL_VOLTAGE_180:
-		if (sdhst->pinctrl && sdhst->pins_uhs)
-			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_uhs);
-		break;
-	default:
-		break;
 	}
 }
 
@@ -437,7 +455,7 @@ static void spacemit_sw_tx_tuning_prepare(struct sdhci_host *host)
 	struct rx_tuning *rxtuning = &sdhst->rxtuning;
 
 	/* set TX_DLINE_REG */
-	spacemit_sdhci_clrsetbits(host, SDHC_RX_DLINE_GAIN,
+	spacemit_sdhci_clrsetbits(host, SDHC_TX_DLINE_REG,
 				  FIELD_PREP(SDHC_TX_DLINE_REG, rxtuning->tx_dline_reg),
 				  SPACEMIT_SDHC_DLINE_CFG_REG);
 	/* set TX_DLINE_CODE */
@@ -455,7 +473,7 @@ static int spacemit_sw_rx_select_window(struct sdhci_host *host, u32 opcode)
 	struct mmc_host *mmc = host->mmc;
 	struct rx_tuning *rxtuning = &sdhst->rxtuning;
 	struct tuning_window *window = &rxtuning->windows;
-	int min, max, start, ret;
+	int min = 0, max, start, ret;
 	int cur_windows = 0;
 	int max_windows = 0;
 
@@ -497,11 +515,11 @@ static int spacemit_sw_rx_select_window(struct sdhci_host *host, u32 opcode)
 	window->max_delay = max;
 
 	if (rxtuning->window_type == LEFT_WINDOW)
-		rxtuning->select_delay = window->min_delay + max_windows/3;
+		rxtuning->select_delay = window->min_delay + DIV_ROUND_CLOSEST(max_windows, 3);
 	else if (rxtuning->window_type == RIGHT_WINDOW)
-		rxtuning->select_delay = window->min_delay + max_windows*2/3;
+		rxtuning->select_delay = window->min_delay + DIV_ROUND_CLOSEST(max_windows * 2, 3);
 	else
-		rxtuning->select_delay = window->min_delay + max_windows/2;
+		rxtuning->select_delay = window->min_delay + DIV_ROUND_CLOSEST(max_windows, 2);
 
 	return 0;
 }
@@ -542,7 +560,7 @@ static int spacemit_sdhci_execute_sw_tuning(struct sdhci_host *host, u32 opcode)
 	dev_info(mmc_dev(mmc), "%s: tuning done, use delay_code:%d\n",
 		 mmc_hostname(mmc), rxtuning->select_delay);
 
-	return ret;
+	return 0;
 }
 
 static const struct sdhci_ops spacemit_sdhci_ops = {
@@ -551,7 +569,6 @@ static const struct sdhci_ops spacemit_sdhci_ops = {
 	.set_bus_width		= sdhci_set_bus_width,
 	.set_clock		= spacemit_sdhci_set_clock,
 	.set_uhs_signaling	= spacemit_sdhci_set_uhs_signaling,
-	.voltage_switch		= spacemit_sdhci_voltage_switch,
 	.set_power		= sdhci_set_power_and_bus_voltage,
 	.platform_execute_tuning = spacemit_sdhci_execute_sw_tuning,
 };
@@ -642,7 +659,9 @@ static void spacemit_sdhci_get_of_property(struct platform_device *pdev, struct 
 		if (IS_ERR(sdhst->pins_debug))
 			sdhst->pins_debug = NULL;
 
-		if (sdhst->pins_default)
+		if (sdhst->pins_debug)
+			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_debug);
+		else if (sdhst->pins_default)
 			pinctrl_select_state(sdhst->pinctrl, sdhst->pins_default);
 	} else {
 		sdhst->pinctrl = NULL;
@@ -656,7 +675,7 @@ static ssize_t spacemit_tx_delaycode_show(struct device *dev,
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 
-	return sprintf(buf, "0x%02x\n", sdhst->rxtuning.tx_delaycode);
+	return sysfs_emit(buf, "0x%02x\n", sdhst->rxtuning.tx_delaycode);
 }
 
 static ssize_t spacemit_tx_delaycode_set(struct device *dev,
@@ -666,9 +685,11 @@ static ssize_t spacemit_tx_delaycode_set(struct device *dev,
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 	u8 delaycode;
+	int ret;
 
-	if (kstrtou8(buf, 0, &delaycode))
-		return -EINVAL;
+	ret = kstrtou8(buf, 0, &delaycode);
+	if (ret)
+		return ret;
 
 	sdhst->rxtuning.tx_delaycode = delaycode;
 	return count;
@@ -729,8 +750,7 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 	sdhst->reset = devm_reset_control_array_get_optional_shared(dev);
 	if (IS_ERR(sdhst->reset)) {
 		dev_err(dev, "failed to get reset control\n");
-		ret = PTR_ERR(sdhst->reset);
-		return ret;
+		return PTR_ERR(sdhst->reset);
 	}
 
 	ret = reset_control_deassert(sdhst->reset);
@@ -754,8 +774,12 @@ static int spacemit_sdhci_probe(struct platform_device *pdev)
 	}
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
-		for (i = 0; i < ARRAY_SIZE(spacemit_sysfs_files); i++)
-			device_create_file(dev, &spacemit_sysfs_files[i]);
+		for (i = 0; i < ARRAY_SIZE(spacemit_sysfs_files); i++) {
+			ret = device_create_file(dev, &spacemit_sysfs_files[i]);
+			if (ret)
+				dev_warn(dev, "failed to create sysfs '%s': %d\n",
+					 spacemit_sysfs_files[i].attr.name, ret);
+		}
 	}
 
 	if (host->mmc->pm_caps & MMC_PM_WAKE_SDIO_IRQ)
@@ -815,9 +839,20 @@ static int spacemit_sdhci_runtime_resume(struct device *dev)
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct spacemit_sdhci_host *sdhst = sdhci_pltfm_priv(sdhci_priv(host));
 	unsigned long flags;
+	int ret;
 
-	clk_prepare_enable(sdhst->clk_io);
-	clk_prepare_enable(sdhst->clk_core);
+	ret = clk_prepare_enable(sdhst->clk_io);
+	if (ret) {
+		dev_err(dev, "failed to enable clk_io: %d\n", ret);
+		return ret;
+	}
+
+	ret = clk_prepare_enable(sdhst->clk_core);
+	if (ret) {
+		dev_err(dev, "failed to enable clk_core: %d\n", ret);
+		clk_disable_unprepare(sdhst->clk_io);
+		return ret;
+	}
 
 	spin_lock_irqsave(&host->lock, flags);
 	if (!(host->mmc->caps2 & MMC_CAP2_NO_MMC))

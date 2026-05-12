@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/mfd/syscon.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/seq_file.h>
@@ -84,6 +85,18 @@ static const u32 k1_bank_offsets[] = { 0x0, 0x4, 0x8, 0x100 };
 
 /* K3 bank_offsets */
 static const u32 k3_bank_offsets[] = { 0x0, 0x40, 0x80, 0x100 };
+
+/*
+ * Use raw spinlock so the regmap can be accessed from irq chip callbacks
+ * (irq_set_type, irq_mask, irq_unmask, irq_ack) which run in atomic context
+ * on PREEMPT_RT where regular spinlock_t becomes a sleeping rt_spin_lock.
+ */
+static const struct regmap_config spacemit_gpio_regmap_config = {
+	.reg_bits        = 32,
+	.val_bits        = 32,
+	.reg_stride      = 4,
+	.use_raw_spinlock = true,
+};
 
 #define to_spacemit_gpio_bank(x) container_of((x), struct spacemit_gpio_bank, gc)
 
@@ -358,9 +371,11 @@ static int spacemit_gpio_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
+	struct device_node *gpio_np;
 	struct spacemit_gpio *sg;
 	struct clk *core_clk, *bus_clk;
 	const struct spacemit_gpio_data *data;
+	void __iomem *base;
 	int i, irq, ret;
 
 	sg = devm_kzalloc(dev, sizeof(*sg), GFP_KERNEL);
@@ -375,10 +390,25 @@ static int spacemit_gpio_probe(struct platform_device *pdev)
 
 	sg->data = data;
 
-	sg->rm_gpio = syscon_regmap_lookup_by_phandle(np, "syscon-gpio-regs");
+	/*
+	 * Create a private MMIO regmap with use_raw_spinlock instead of using
+	 * the syscon regmap. On PREEMPT_RT, the MMIO regmap bus sets fast_io=true
+	 * which selects spinlock_t; spinlock_t becomes rt_spin_lock (a sleeping
+	 * lock) on PREEMPT_RT, making it illegal to call from the atomic context
+	 * of irq chip callbacks (__setup_irq holds desc->lock, a raw_spinlock).
+	 * use_raw_spinlock keeps raw_spin_lock_irqsave semantics on all configs.
+	 */
+	gpio_np = of_parse_phandle(np, "syscon-gpio-regs", 0);
+	base = devm_of_iomap(dev, gpio_np, 0, NULL);
+	of_node_put(gpio_np);
+	if (IS_ERR(base))
+		return dev_err_probe(dev, PTR_ERR(base),
+				     "Failed to iomap gpio registers\n");
+
+	sg->rm_gpio = devm_regmap_init_mmio(dev, base, &spacemit_gpio_regmap_config);
 	if (IS_ERR(sg->rm_gpio))
 		return dev_err_probe(dev, PTR_ERR(sg->rm_gpio),
-				     "Failed to get syscon-gpio regmap\n");
+				     "Failed to init gpio regmap\n");
 
 	sg->rm_gpio_edge = syscon_regmap_lookup_by_phandle(np, "syscon-gpio-edge");
 	if (IS_ERR(sg->rm_gpio_edge))
