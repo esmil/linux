@@ -167,7 +167,7 @@
 
 	i2c5_2_cfg: i2c5-2-cfg {
 		i2c5-0-pins {
-			power-source = <1800>;
+			power-source = <3300>;
 		};
 	};
 
