@@ -2269,7 +2269,7 @@ static void soc_dp_encoder_enable(struct drm_encoder *encoder)
 		if (soc_dp_phy_power_on(dp))
 			continue;
 
-		if (soc_dp_hw_detect_hpd(dp) == connector_status_disconnected) {
+		if (!dp->edp_mode && soc_dp_hw_detect_hpd(dp) == connector_status_disconnected) {
 			mutex_unlock(&dp->mode_lock);
 			dev_warn(dp->dev, "DP: Training failed for the connector is disconnected\n");
 			return;
