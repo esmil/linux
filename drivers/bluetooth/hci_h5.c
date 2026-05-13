@@ -9,10 +9,14 @@
 #include <linux/acpi.h>
 #include <linux/errno.h>
 #include <linux/gpio/consumer.h>
+#include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 #include <linux/pm_runtime.h>
+#include <linux/pm_wakeirq.h>
+#include <linux/regulator/consumer.h>
 #include <linux/serdev.h>
 #include <linux/skbuff.h>
 
@@ -100,6 +104,9 @@ struct h5 {
 
 	struct gpio_desc *enable_gpio;
 	struct gpio_desc *device_wake_gpio;
+	int host_wake_irq;
+	struct regulator_bulk_data *supplies;
+	int num_supplies;
 };
 
 enum h5_driver_info {
@@ -864,6 +871,17 @@ static int h5_serdev_probe(struct serdev_device *serdev)
 	if (IS_ERR(h5->device_wake_gpio))
 		return PTR_ERR(h5->device_wake_gpio);
 
+	h5->host_wake_irq = of_irq_get(dev->of_node, 0);
+	if (h5->host_wake_irq == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+	if (h5->host_wake_irq < 0)
+		h5->host_wake_irq = 0;
+
+	/* Get all regulators from DTS supply properties, optional */
+	h5->num_supplies = of_regulator_bulk_get_all(dev, dev->of_node, &h5->supplies);
+	if (h5->num_supplies < 0)
+		h5->num_supplies = 0;
+
 	return hci_uart_register_device_priv(&h5->serdev_hu, &h5p,
 					     h5->vnd->sizeof_priv);
 }
@@ -873,6 +891,7 @@ static void h5_serdev_remove(struct serdev_device *serdev)
 	struct h5 *h5 = serdev_device_get_drvdata(serdev);
 
 	hci_uart_unregister_device(&h5->serdev_hu);
+	kfree(h5->supplies);
 }
 
 static int __maybe_unused h5_serdev_suspend(struct device *dev)
@@ -898,6 +917,41 @@ static int __maybe_unused h5_serdev_resume(struct device *dev)
 }
 
 #ifdef CONFIG_BT_HCIUART_RTL
+static irqreturn_t h5_btrtl_host_wake(int irq, void *data)
+{
+	struct h5 *h5 = data;
+
+	pm_wakeup_event(&h5->hu->serdev->dev, 0);
+	pm_system_wakeup();
+
+	return IRQ_HANDLED;
+}
+
+/*
+ * Register host-wake IRQ as a system wakeup source after firmware download.
+ * Only called when H5_WAKEUP_DISABLE is not set (device supports host wakeup).
+ */
+static void h5_btrtl_setup_wakeup(struct h5 *h5)
+{
+	struct device *dev = &h5->hu->serdev->dev;
+	int err;
+
+	if (h5->host_wake_irq <= 0)
+		return;
+
+	err = devm_request_threaded_irq(dev, h5->host_wake_irq, NULL,
+					h5_btrtl_host_wake,
+					IRQF_ONESHOT,
+					"bt_host_wake", h5);
+	if (err) {
+		dev_warn(dev, "failed to setup host wakeup: %d\n", err);
+		return;
+	}
+
+	device_init_wakeup(dev, true);
+	dev_pm_set_wake_irq(dev, h5->host_wake_irq);
+}
+
 static int h5_btrtl_setup(struct h5 *h5)
 {
 	struct btrtl_device_info *btrtl_dev;
@@ -945,6 +999,10 @@ static int h5_btrtl_setup(struct h5 *h5)
 
 	btrtl_set_quirks(h5->hu->hdev, btrtl_dev);
 
+	/* Register host-wake IRQ as wakeup source after firmware is loaded */
+	if (!test_bit(H5_WAKEUP_DISABLE, &h5->flags))
+		h5_btrtl_setup_wakeup(h5);
+
 out_free:
 	btrtl_free(btrtl_dev);
 
@@ -953,6 +1011,9 @@ out_free:
 
 static void h5_btrtl_open(struct h5 *h5)
 {
+	struct device *dev = &h5->hu->serdev->dev;
+	int err;
+
 	/*
 	 * Since h5_btrtl_resume() does a device_reprobe() the suspend handling
 	 * done by the hci_suspend_notifier is not necessary; it actually causes
@@ -974,6 +1035,17 @@ static void h5_btrtl_open(struct h5 *h5)
 		pm_runtime_enable(&h5->hu->serdev->dev);
 	}
 
+	/* Power on the controller */
+	if (h5->num_supplies > 0) {
+		err = regulator_bulk_enable(h5->num_supplies, h5->supplies);
+		if (err) {
+			dev_err(dev, "Failed to enable regulators: %d\n", err);
+			if (!test_bit(H5_WAKEUP_DISABLE, &h5->flags))
+				pm_runtime_disable(dev);
+			return;
+		}
+	}
+
 	/* The controller needs reset to startup */
 	gpiod_set_value_cansleep(h5->enable_gpio, 0);
 	gpiod_set_value_cansleep(h5->device_wake_gpio, 0);
@@ -987,11 +1059,22 @@ static void h5_btrtl_open(struct h5 *h5)
 
 static void h5_btrtl_close(struct h5 *h5)
 {
+	struct device *dev = &h5->hu->serdev->dev;
+
+	if (h5->host_wake_irq > 0) {
+		dev_pm_clear_wake_irq(dev);
+		device_init_wakeup(dev, false);
+		devm_free_irq(dev, h5->host_wake_irq, h5);
+	}
+
 	if (!test_bit(H5_WAKEUP_DISABLE, &h5->flags))
-		pm_runtime_disable(&h5->hu->serdev->dev);
+		pm_runtime_disable(dev);
 
 	gpiod_set_value_cansleep(h5->device_wake_gpio, 0);
 	gpiod_set_value_cansleep(h5->enable_gpio, 0);
+
+	if (h5->num_supplies > 0)
+		regulator_bulk_disable(h5->num_supplies, h5->supplies);
 }
 
 /* Suspend/resume support. On many devices the RTL BT device loses power during
@@ -1005,8 +1088,11 @@ static int h5_btrtl_suspend(struct h5 *h5)
 	serdev_device_set_flow_control(h5->hu->serdev, false);
 	gpiod_set_value_cansleep(h5->device_wake_gpio, 0);
 
-	if (test_bit(H5_WAKEUP_DISABLE, &h5->flags))
+	if (test_bit(H5_WAKEUP_DISABLE, &h5->flags)) {
 		gpiod_set_value_cansleep(h5->enable_gpio, 0);
+		if (h5->num_supplies > 0)
+			regulator_bulk_disable(h5->num_supplies, h5->supplies);
+	}
 
 	return 0;
 }
@@ -1033,8 +1119,18 @@ static void h5_btrtl_reprobe_worker(struct work_struct *work)
 
 static int h5_btrtl_resume(struct h5 *h5)
 {
+	int err;
+
 	if (test_bit(H5_WAKEUP_DISABLE, &h5->flags)) {
 		struct h5_btrtl_reprobe *reprobe;
+
+		/* Full power restore and reprobe */
+		if (h5->num_supplies > 0) {
+			err = regulator_bulk_enable(h5->num_supplies, h5->supplies);
+			if (err)
+				return err;
+		}
+		gpiod_set_value_cansleep(h5->enable_gpio, 1);
 
 		reprobe = kzalloc(sizeof(*reprobe), GFP_KERNEL);
 		if (!reprobe)
@@ -1112,7 +1208,7 @@ static const struct of_device_id rtl_bluetooth_of_match[] = {
 	{ .compatible = "realtek,rtl8723ds-bt",
 	  .data = (const void *)&h5_data_rtl8723bs },
 	{ .compatible = "realtek,rtl8852bs-bt",
-	  .data = (const void *)&h5_data_rtl8723bs },
+	  .data = (const void *)&h5_data_rtl8822cs },
 #endif
 	{ },
 };
