@@ -266,7 +266,7 @@ void print_symbol_events(const struct print_callbacks *print_cb, void *print_sta
 	}
 
 	strlist__for_each_entry(nd, evt_name_list) {
-		char *alias = strstr(nd->s, " OR ");
+		char *alias = (char *)strstr(nd->s, " OR ");
 
 		if (alias) {
 			*alias = '\0';
