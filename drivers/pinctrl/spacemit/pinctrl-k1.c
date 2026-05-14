@@ -1120,9 +1120,9 @@ static int spacemit_pinctrl_probe(struct platform_device *pdev)
 	for (int i = 0; i < pctrl_data->npins; i++)
 		 spacemit_pinctrl_clear_edge(pctrl, i);
 
-	ret = devm_request_threaded_irq(dev, irq, NULL, spacemit_pinctrl_wakeirq_handler,
-					IRQF_ONESHOT | IRQF_SHARED,
-					"spacemit-wakeirq", pctrl);
+	ret = devm_request_irq(dev, irq, spacemit_pinctrl_wakeirq_handler,
+			       IRQF_ONESHOT | IRQF_SHARED,
+			       "spacemit-wakeirq", pctrl);
 	if (ret) {
 		dev_err(dev, "Failed to request wake IRQ: %d\n", ret);
 		return ret;
