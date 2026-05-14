@@ -517,6 +517,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
@@ -573,6 +575,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
@@ -629,6 +633,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
@@ -685,6 +691,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
