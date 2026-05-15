@@ -1315,6 +1315,11 @@
 			status = "okay";
 		};
 
+		pwrkey_monitor: pwrkey_monitor@1101 {
+			compatible = "spacemit,k3-pwrkey-monitor";
+			status = "disabled";
+		};
+
 		pmu: power-management@0 {
 			compatible = "simple-bus";
 			#address-cells = <2>;

@@ -86,6 +86,18 @@
 	};
 };
 
+&rpmi_pwrkey {
+	status = "disabled";
+};
+
+&pwrkey_monitor {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwrkey_monitor_cfg>;
+	monitor-gpios = <&gpio 2 20 0>;
+	interrupts-extended = <&pinctrl 84 IRQ_TYPE_EDGE_BOTH>;
+	status = "okay";
+};
+
 &resmem {
 	/* global autoconfigured region for contiguous allocations */
 	cmamem: linux,cma {
@@ -187,6 +199,16 @@
 	fusb301_cfg: fusb301-cfg {
 		fusb301-0-pins {
 			pinmux = <K3_PADCONF(58, 0)>;
+
+			bias-pull-up;
+			drive-strength = <25>;
+			power-source = <1800>;
+		};
+	};
+
+	pwrkey_monitor_cfg: pwrkey_monitor-cfg {
+		pwrkey-monitor-pins {
+			pinmux = <K3_PADCONF(84, 0)>;
 
 			bias-pull-up;
 			drive-strength = <25>;
