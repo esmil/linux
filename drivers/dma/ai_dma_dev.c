@@ -186,6 +186,7 @@ static int dma_list_open(struct inode *inode, struct file *filp)
 	struct ai_dmac *dma;
 	struct req_addr_info *info;
 	struct req_node *node;
+	unsigned long flags;
 
 	if (aidma_info[0].dma == NULL)
 		return -1;
@@ -197,12 +198,26 @@ static int dma_list_open(struct inode *inode, struct file *filp)
 		return -ENOMEM;
 
 	node = kmalloc(sizeof(struct req_node), GFP_KERNEL);
-	if (!node)
+	if (!node) {
+		kfree(info);
 		return -ENOMEM;
+	}
+
+	info->req_list = dma_alloc_coherent(dma->dev, AIDMA_MAX_REQ * sizeof(struct aidma_req),
+					    &info->req_addr, GFP_KERNEL);
+	if (!info->req_list) {
+		kfree(node);
+		kfree(info);
+		return -ENOMEM;
+	}
+
 	node->info = info;
 	INIT_LIST_HEAD(&node->list);
+
+	spin_lock_irqsave(&aidma_lock, flags);
 	list_add_tail(&node->list, &dma_req_list);
-	info->req_list = dma_alloc_coherent(dma->dev, AIDMA_MAX_REQ * sizeof(struct aidma_req), &info->req_addr, GFP_KERNEL);
+	spin_unlock_irqrestore(&aidma_lock, flags);
+
 	filp->private_data = info;
 
 	return 0;
@@ -226,7 +241,9 @@ static int dma_list_release(struct inode *inode, struct file *filp)
 {
 	struct req_addr_info *info = filp->private_data;
 	struct req_node *node, *tmp;
+	unsigned long flags;
 
+	spin_lock_irqsave(&aidma_lock, flags);
 	list_for_each_entry_safe(node, tmp, &dma_req_list, list) {
 		if (node->info->req_addr == info->req_addr) {
 			list_del(&node->list);
@@ -234,6 +251,8 @@ static int dma_list_release(struct inode *inode, struct file *filp)
 			break;
 		}
 	}
+	spin_unlock_irqrestore(&aidma_lock, flags);
+
 	dma_free_coherent(aidma_info[0].dma->dev, AIDMA_MAX_REQ * sizeof(struct aidma_req),
 				info->req_list, info->req_addr);
 	kfree(info);
