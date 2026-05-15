@@ -37,4 +37,10 @@ config SPACEMIT_SUSPEND_AFFINITY
 	  Say y here to handle irq affinity in resume process to migrate
 	  back to cpu before suspend.
 
+config SPACEMIT_POWERKEY_MONITOR
+	bool "Spacemit power key monitor config"
+	depends on SOC_SPACEMIT_K3
+	help
+	  Say y here to using gpio to monitor the power key
+
 source "drivers/soc/spacemit/v2d/Kconfig"

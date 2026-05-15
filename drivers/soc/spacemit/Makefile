@@ -8,3 +8,4 @@ obj-$(CONFIG_SPACEMIT_V2D) += v2d/
 obj-$(CONFIG_SPACEMIT_DDR_QOS) += ddr_qos.o
 obj-$(CONFIG_SPACEMIT_REBOOT_CONTROL) += spacemit_reboot.o
 obj-$(CONFIG_SPACEMIT_SUSPEND_AFFINITY) += suspend/
+obj-$(CONFIG_SPACEMIT_POWERKEY_MONITOR) += pwrkey_monitor.o
