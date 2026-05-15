@@ -3,6 +3,7 @@
 #define __RTC_SA1100_H__
 
 #include <linux/kernel.h>
+#include <linux/reset.h>
 
 struct clk;
 struct platform_device;
@@ -16,7 +17,8 @@ struct sa1100_rtc {
 	int			irq_1hz;
 	int			irq_alarm;
 	struct rtc_device	*rtc;
-	struct clk		*clk;
+	struct clk              *clk, *bus_clk;
+	struct reset_control    *resets;
 };
 
 int sa1100_rtc_init(struct platform_device *pdev, struct sa1100_rtc *info);
