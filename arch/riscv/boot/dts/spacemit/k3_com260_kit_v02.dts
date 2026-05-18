@@ -259,8 +259,13 @@
 	};
 
 	qspi-cfg {
-		/delete-node/ qspi-1-pins;
-		qspi-0-pins {
+		qspi-pins {
+			power-source = <1800>;
+		};
+	};
+
+	qspi-cs0-cfg {
+		qspi-cs0-pins {
 			power-source = <1800>;
 		};
 	};
@@ -296,7 +301,7 @@
 
 &qspi {
 	pinctrl-names = "default";
-	pinctrl-0 = <&qspi_cfg>;
+	pinctrl-0 = <&qspi_cfg &qspi_cs0_cfg>;
 	spacemit,qspi-tx-dma = <0>;
 	spacemit,qspi-rx-dma = <0>;
 	status = "okay";

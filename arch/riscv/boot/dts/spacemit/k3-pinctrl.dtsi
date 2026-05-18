@@ -2642,7 +2642,7 @@
 	};
 
 	qspi_cfg: qspi-cfg {
-		qspi-0-pins {
+		qspi-pins {
 			pinmux = <K3_PADCONF(138, 0)>,	/* qspi dat0 */
 				 <K3_PADCONF(139, 0)>,	/* qspi dat1 */
 				 <K3_PADCONF(140, 0)>,	/* qspi dat2 */
@@ -2652,10 +2652,20 @@
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
 		};
+	};
 
-		qspi-1-pins {
-			pinmux = <K3_PADCONF(142, 0)>,	/* qspi cs0 */
-				 <K3_PADCONF(143, 0)>;	/* qspi cs1 */
+	qspi_cs0_cfg: qspi-cs0-cfg {
+		qspi-cs0-pins {
+			pinmux = <K3_PADCONF(142, 0)>;	/* qspi cs0 */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+	};
+
+	qspi_cs1_cfg: qspi-cs1-cfg {
+		qspi-cs1-pins {
+			pinmux = <K3_PADCONF(143, 0)>;	/* qspi cs1 */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
