@@ -2663,6 +2663,16 @@
 			};
 		};
 
+		socinfo: socinfo@0 {
+			compatible = "spacemit,socinfo";
+			status = "okay";
+
+			nvmem-cells = <&soc_die_id>, <&soc_ver_id>, <&soc_pack_id>,
+				      <&soc_svt_dro>, <&soc_chip_id>;
+			nvmem-cell-names = "soc_die_id", "soc_ver_id", "soc_pack_id",
+					   "soc_svt_dro", "soc_chip_id";
+		};
+
 		reboot_mode_helper: reboot-mode-helper@c087c000 {
 			compatible = "spacemit,k3-reboot";
 			reg = <0x0 0xc087c000 0x0 0x1000>;
