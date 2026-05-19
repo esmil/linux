@@ -2612,12 +2612,6 @@
 			status = "okay";
 		};
 
-		ddr_qos: ddrqos@0xd4282c00 {
-			compatible = "spacemit,ddr-qos";
-			reg = <0x0 0xd4282c00 0x0 0x200>;
-			status = "okay";
-		};
-
 		efuse: fuse@f0702800 {
 			compatible = "simple-mfd";
 			#address-cells = <1>;
