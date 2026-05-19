@@ -161,22 +161,16 @@
 			no-map;
 		};
 
-		/* rpmi */
-		rpmi0: rpmi0@100800000 {
-			reg = <0x1 0x00800000 0x0 0x4000>;
-			no-map;
-		};
-
 		/*****************rcpu1**********************/
 		/* used for rcp1 code & data & bss space */
-		rcpu1_runtime: rcpu1_runtime@100804000 {
-			reg = <0x1 0x804000 0x0 0x300000>;
+		rcpu1_runtime: rcpu1_runtime@100800000 {
+			reg = <0x1 0x800000 0x0 0x300000>;
 			no-map;
 		};
 
 		/* rcpu1's heap */
-		rcpu1_heap: rcpu1_heap@100B04000 {
-			reg = <0x1 0xb04000 0x0 0x200000>;
+		rcpu1_heap: rcpu1_heap@100B00000 {
+			reg = <0x1 0xb00000 0x0 0x200000>;
 			no-map;
 		};
 
@@ -193,21 +187,29 @@
 		};
 
 		/* the rcpu1's share memory buffer */
-		rcpu1_vdev0buffer: vdev0buffer@100d04000 {
+		rcpu1_vdev0buffer: vdev0buffer@100d00000 {
 			compatible = "shared-dma-pool";
-			reg = <0x1 0xd04000 0x0 0xfc000>;
+			reg = <0x1 0xd00000 0x0 0xfc000>;
 			no-map;
 		};
 
 		/* the rcpu1's resource table */
-		rcpu1_rsc_table: rcpu1_rsc_table@100e00000 {
+		rcpu1_rsc_table: rcpu1_rsc_table@100dfc000 {
+			reg = <0x1 0xdfc000 0x0 0x4000>;
+			no-map;
+		};
+
+		/* rpmi */
+		rpmi0: rpmi0@100e00000 {
 			reg = <0x1 0xe00000 0x0 0x4000>;
 			no-map;
 		};
 
+		/* reseved rpmi for feture use */
+
 		/* reserve 3M for rcpu's dtb space */
-		rcpu_dtb_table: rcpu_dtb_table@100e04000 {
-			reg = <0x1 0xe04000 0x0 0x300000>;
+		rcpu_dtb_table: rcpu_dtb_table@100f00000 {
+			reg = <0x1 0xf00000 0x0 0x300000>;
 			no-map;
 		};
 
