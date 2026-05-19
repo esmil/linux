@@ -2618,6 +2618,51 @@
 			status = "okay";
 		};
 
+		efuse: fuse@f0702800 {
+			compatible = "simple-mfd";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x0 0xf0702800 0x400>;
+			status = "okay";
+
+			efuse_bank7: efuse_bank@7 {
+				compatible = "spacemit,efuse";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				reg = <0x190 0x20>;
+				resets = <&syscon_apmu RESET_APMU_AES_WTM>;
+				reset-names = "aes_reset";
+				clocks = <&syscon_apmu CLK_APMU_AES_WTM>;
+				clock-names = "aes_core";
+				status = "okay";
+
+				soc_die_id: bank7@11,3 {
+					reg = <0x11 3>;
+					bits = <3 16>;
+				};
+
+				soc_ver_id: bank7@1f,6 {
+					reg = <0x1F 1>;
+					bits = <6 2>;
+				};
+
+				soc_pack_id: bank7@16,6 {
+					reg = <0x16 2>;
+					bits = <6 9>;
+				};
+
+				soc_svt_dro: bank7@15,5 {
+					reg = <0x15 2>;
+					bits = <5 9>;
+				};
+
+				soc_chip_id: bank7@17,7 {
+					reg = <0x17 8>;
+					bits = <7 55>;
+				};
+			};
+		};
+
 		reboot_mode_helper: reboot-mode-helper@c087c000 {
 			compatible = "spacemit,k3-reboot";
 			reg = <0x0 0xc087c000 0x0 0x1000>;
