@@ -1405,8 +1405,11 @@
 			interrupt-parent = <&saplic>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>, <22 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "rtc 1Hz", "rtc alarm";
+			clocks = <&syscon_apbc CLK_APBC_RTC>,
+				 <&syscon_apbc CLK_APBC_RTC_BUS>;
+			clock-names = "func", "bus";
 			resets = <&syscon_apbc RESET_APBC_RTC>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		ircrx0: irc-rx0@d4017e00 {
