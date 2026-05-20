@@ -104,7 +104,7 @@
 &pwrkey_monitor {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pwrkey_monitor_cfg>;
-	monitor-gpios = <&gpio 2 20 0>;
+	monitor-gpios = <&gpio 2 20 GPIO_ACTIVE_HIGH>;
 	interrupts-extended = <&pinctrl 84 IRQ_TYPE_EDGE_BOTH>;
 	status = "okay";
 };
