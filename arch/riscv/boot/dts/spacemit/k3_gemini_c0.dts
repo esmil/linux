@@ -227,6 +227,18 @@
 			power-source = <3300>;
 		};
 	};
+
+	qspi-cfg {
+		qspi-pins {
+			power-source = <1800>;
+		};
+	};
+
+	qspi-cs0-cfg {
+		qspi-cs0-pins {
+			power-source = <1800>;
+		};
+	};
 };
 
 &uart0 {
@@ -236,6 +248,8 @@
 };
 
 &qspi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&qspi_cfg &qspi_cs0_cfg>;
 	status = "disabled";
 };
 

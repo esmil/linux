@@ -186,6 +186,16 @@ int sa1100_rtc_init(struct platform_device *pdev, struct sa1100_rtc *info)
 	ret = clk_prepare_enable(info->clk);
 	if (ret)
 		return ret;
+
+	info->bus_clk = devm_clk_get_optional_enabled(&pdev->dev, "bus");
+	if (IS_ERR(info->bus_clk))
+		return dev_err_probe(&pdev->dev, PTR_ERR(info->bus_clk), "failed to find rtc bus clock source\n");
+
+	/* Get reset control */
+	info->resets = devm_reset_control_get_optional_exclusive_deasserted(&pdev->dev, NULL);
+	if (IS_ERR(info->resets))
+		return dev_err_probe(&pdev->dev, PTR_ERR(info->resets), "failed to find rtc resets\n");
+
 	/*
 	 * According to the manual we should be able to let RTTR be zero
 	 * and then a default diviser for a 32.768KHz clock is used.

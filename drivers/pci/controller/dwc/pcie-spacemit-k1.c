@@ -1055,7 +1055,8 @@ static int k1_pcie_probe(struct platform_device *pdev)
 	if (irq > 0)
 		pp->use_linkup_irq = true;
 
-	k1->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
+	if (device_property_read_bool(dev, "wakeup-source"))
+		k1->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
 
 	k1_pcie_clear_irq_status(k1);
 

@@ -18,17 +18,20 @@ config SPACEMIT_PM_DOMAINS
 	  In order to meet high performance and low power requirements, a power
 	  management unit is designed or saving power.
 
-config CONFIG_SPACEMIT_DDR_QOS
-	bool "Spacemit ddr qos config"
-	depends on SOC_SPACEMIT_K3
-	help
-	  Say y here to enable ddr qos config function.
-
 config SPACEMIT_REBOOT_CONTROL
 	bool "Spacemit k3 reboot handler"
 	depends on SOC_SPACEMIT_K3
 	help
 	  Say y here to support go to uboot fastboot when reset.
+
+config SPACEMIT_SOCINFO
+	tristate "Socinfo driver for spacemit SoCs"
+	depends on SOC_SPACEMIT && NVMEM_SPACEMIT_EFUSE
+	select MFD_SYSCON
+	select SOC_BUS
+	help
+	  Spacemit SoCs information driver, which get information from efuse and
+	  report to userspace.
 
 config SPACEMIT_SUSPEND_AFFINITY
 	bool "Spacemit k3 handle irq affinity when standby"
@@ -36,5 +39,11 @@ config SPACEMIT_SUSPEND_AFFINITY
 	help
 	  Say y here to handle irq affinity in resume process to migrate
 	  back to cpu before suspend.
+
+config SPACEMIT_POWERKEY_MONITOR
+	bool "Spacemit power key monitor config"
+	depends on SOC_SPACEMIT_K3
+	help
+	  Say y here to using gpio to monitor the power key
 
 source "drivers/soc/spacemit/v2d/Kconfig"

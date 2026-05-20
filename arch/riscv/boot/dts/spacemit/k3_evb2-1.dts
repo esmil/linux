@@ -332,6 +332,18 @@
 			power-source = <3300>;
 		};
 	};
+
+	qspi-cfg {
+		qspi-pins {
+			power-source = <1800>;
+		};
+	};
+
+	qspi-cs0-cfg {
+		qspi-cs0-pins {
+			power-source = <1800>;
+		};
+	};
 };
 
 &uart0 {
@@ -354,6 +366,8 @@
 };
 
 &qspi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&qspi_cfg &qspi_cs0_cfg>;
 	status = "disabled";
 };
 
@@ -517,6 +531,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
@@ -573,6 +589,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
@@ -629,6 +647,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {
@@ -685,6 +705,8 @@
 			compatible = "ethernet-phy-id001c.c916",
 				     "ethernet-phy-ieee802.3-c22";
 			reg = <1>;
+			realtek,aldps-enable;
+			realtek,clkout-disable;
 			device_type = "ethernet-phy";
 
 			leds {

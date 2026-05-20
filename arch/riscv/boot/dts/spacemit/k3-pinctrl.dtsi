@@ -2165,7 +2165,7 @@
 				 <K3_PADCONF(13, 1)>;	/* gmac0 mdio */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* RGMII extra pins: add on top of base pins */
@@ -2177,7 +2177,7 @@
 				 <K3_PADCONF(10, 1)>;	/* gmac0 tx d3 */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* MII extra pins: add on top of (base + rgmii extra pins) */
@@ -2188,7 +2188,7 @@
 				 <K3_PADCONF(18, 1)>;	/* gmac0 col */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional int pins */
@@ -2196,7 +2196,7 @@
 			pinmux = <K3_PADCONF(14, 1)>;	/* gmac0 int (from phy) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional pps pins */
@@ -2204,7 +2204,7 @@
 			pinmux = <K3_PADCONF(19, 1)>;	/* gmac0 pps (tsn/1588) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional reference clock output */
@@ -2212,10 +2212,9 @@
 			pinmux = <K3_PADCONF(20, 1)>;	/* gmac0 clk ref */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 	};
-
 
 	gmac1_cfg: gmac1-cfg {
 		/* Base pins: - Used by RMII directly */
@@ -2231,7 +2230,7 @@
 				 <K3_PADCONF(34, 1)>;	/* gmac1 mdio */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* RGMII extra pins: add on top of base pins */
@@ -2243,7 +2242,7 @@
 				 <K3_PADCONF(31, 1)>;	/* gmac1 tx d3 */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* MII extra pins: add on top of (base + rgmii extra pins) */
@@ -2254,7 +2253,7 @@
 				 <K3_PADCONF(40, 1)>;	/* gmac1 col */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional int pins */
@@ -2262,7 +2261,7 @@
 			pinmux = <K3_PADCONF(35, 1)>;	/* gmac1 int (from phy) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional pps pins */
@@ -2270,7 +2269,7 @@
 			pinmux = <K3_PADCONF(41, 1)>;	/* gmac1 pps (tsn/1588) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional reference clock output */
@@ -2278,7 +2277,7 @@
 			pinmux = <K3_PADCONF(36, 1)>;	/* gmac1 clk ref */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 	};
 
@@ -2296,7 +2295,7 @@
 				 <K3_PADCONF(55, 1)>;	/* gmac2 mdio */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* RGMII extra pins: add on top of base pins */
@@ -2308,7 +2307,7 @@
 				 <K3_PADCONF(52, 1)>;	/* gmac2 tx d3 */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional int pins */
@@ -2316,7 +2315,7 @@
 			pinmux = <K3_PADCONF(56, 1)>;	/* gmac2 int (from phy) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional pps pins */
@@ -2324,7 +2323,7 @@
 			pinmux = <K3_PADCONF(58, 1)>;	/* gmac2 pps (tsn/1588) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional reference clock output */
@@ -2332,7 +2331,7 @@
 			pinmux = <K3_PADCONF(57, 1)>;	/* gmac2 clk ref */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 	};
 
@@ -2350,7 +2349,7 @@
 				 <K3_PADCONF(72, 1)>;	/* gmac3 mdio */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* RGMII extra pins: add on top of base pins */
@@ -2362,7 +2361,7 @@
 				 <K3_PADCONF(69, 1)>;	/* gmac3 tx d3 */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional int pins */
@@ -2370,7 +2369,7 @@
 			pinmux = <K3_PADCONF(73, 1)>;	/* gmac3 int (from phy) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional pps pins */
@@ -2378,7 +2377,7 @@
 			pinmux = <K3_PADCONF(75, 1)>;	/* gmac3 pps (tsn/1588) */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 
 		/* Optional reference clock output */
@@ -2386,7 +2385,7 @@
 			pinmux = <K3_PADCONF(74, 1)>;	/* gmac3 clk ref */
 
 			bias-disable;			/* normal bias disable */
-			drive-strength = <25>;		/* DS8 */
+			drive-strength = <9>;		/* DS4 */
 		};
 	};
 
@@ -2643,7 +2642,7 @@
 	};
 
 	qspi_cfg: qspi-cfg {
-		qspi-0-pins {
+		qspi-pins {
 			pinmux = <K3_PADCONF(138, 0)>,	/* qspi dat0 */
 				 <K3_PADCONF(139, 0)>,	/* qspi dat1 */
 				 <K3_PADCONF(140, 0)>,	/* qspi dat2 */
@@ -2653,10 +2652,20 @@
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
 		};
+	};
 
-		qspi-1-pins {
-			pinmux = <K3_PADCONF(142, 0)>,	/* qspi cs0 */
-				 <K3_PADCONF(143, 0)>;	/* qspi cs1 */
+	qspi_cs0_cfg: qspi-cs0-cfg {
+		qspi-cs0-pins {
+			pinmux = <K3_PADCONF(142, 0)>;	/* qspi cs0 */
+
+			bias-disable;			/* normal bias disable */
+			drive-strength = <25>;		/* DS8 */
+		};
+	};
+
+	qspi_cs1_cfg: qspi-cs1-cfg {
+		qspi-cs1-pins {
+			pinmux = <K3_PADCONF(143, 0)>;	/* qspi cs1 */
 
 			bias-disable;			/* normal bias disable */
 			drive-strength = <25>;		/* DS8 */
@@ -2707,29 +2716,29 @@
 		};
 	};
 
-		espi0_2_cfg: espi0-2-cfg {
-			espi0-0-pins {
-				pinmux = <K3_PADCONF(91, 4)>,	/* espi0 d0 */
-					 <K3_PADCONF(92, 4)>,	/* espi0 d1 */
-					 <K3_PADCONF(93, 4)>,	/* espi0 d2 */
-					 <K3_PADCONF(94, 4)>,	/* espi0 d3 */
-					 <K3_PADCONF(95, 4)>,	/* espi0 cs */
-					 <K3_PADCONF(97, 4)>,	/* espi0 reset */
-					 <K3_PADCONF(98, 4)>;	/* espi0 alert */
+	espi0_2_cfg: espi0-2-cfg {
+		espi0-0-pins {
+			pinmux = <K3_PADCONF(91, 4)>,	/* espi0 d0 */
+				 <K3_PADCONF(92, 4)>,	/* espi0 d1 */
+				 <K3_PADCONF(93, 4)>,	/* espi0 d2 */
+				 <K3_PADCONF(94, 4)>,	/* espi0 d3 */
+				 <K3_PADCONF(95, 4)>,	/* espi0 cs */
+				 <K3_PADCONF(97, 4)>,	/* espi0 reset */
+				 <K3_PADCONF(98, 4)>;	/* espi0 alert */
 
-				bias-pull-up;			/* normal pull-up */
-				drive-strength = <25>;		/* DS8 */
-				power-source = <1800>;
-			};
-
-			espi0-1-pins {
-				pinmux = <K3_PADCONF(96, 4)>;	/* espi0 clk */
-
-				bias-pull-down;			/* normal pull-down */
-				drive-strength = <25>;		/* DS8 */
-				power-source = <1800>;
-			};
+			bias-pull-up;			/* normal pull-up */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <1800>;
 		};
+
+		espi0-1-pins {
+			pinmux = <K3_PADCONF(96, 4)>;	/* espi0 clk */
+
+			bias-pull-down;			/* normal pull-down */
+			drive-strength = <25>;		/* DS8 */
+			power-source = <1800>;
+		};
+	};
 
 	respi0_cfg: respi0-cfg {
 		respi0-0-pins {

@@ -20,7 +20,6 @@
 #include <linux/irq.h>
 #include <linux/delay.h>
 #include <linux/pm_wakeup.h>
-#include <linux/version.h>
 
 #include <linux/workqueue.h>
 #include <linux/usb/typec.h>
@@ -116,7 +115,6 @@ struct fusb301_chip {
 	struct workqueue_struct  *cc_wq;
 	int irq;
 
-	unsigned int ufp_power;
 	unsigned int mode;
 	unsigned int dev_id;
 	unsigned int type;
@@ -174,15 +172,6 @@ static const char *const fusb301_toggle_name[] = {
 	[FUSB301_CONTROL_TGL_20MS]	= "Toggle_20ms",
 };
 
-static const char *const fusb301_mode_name[] = {
-	[FUSB301_MODES_DRP_ACC]		= "Drp_Acc",
-	[FUSB301_MODES_DRP]		= "Drp",
-	[FUSB301_MODES_SNK_ACC]		= "Snk_Acc",
-	[FUSB301_MODES_SNK]		= "Snk",
-	[FUSB301_MODES_SRC_ACC]		= "Src_Acc",
-	[FUSB301_MODES_SRC]		= "Src",
-};
-
 static const char *const fusb301_state_name[] = {
 	[FUSB_STATE_DISABLED]		= "Disabled",
 	[FUSB_STATE_ERROR_RECOVERY]	= "Error_Recovery",
@@ -201,15 +190,30 @@ static const char *const fusb301_state_name[] = {
 };
 
 #define fusb_update_state(chip, st) \
-	if (chip && (st <= FUSB_STATE_TRYWAIT_SNK)) { \
-		chip->state = st; \
-		dev_info(chip->dev, "%s: %s\n", __func__, fusb301_state_name[st]); \
-	}
+	do { \
+		if (chip && (st <= FUSB_STATE_TRYWAIT_SNK)) { \
+			chip->state = st; \
+			dev_info(chip->dev, "%s: %s\n", __func__, fusb301_state_name[st]); \
+		} \
+	} while (0)
 
 static void fusb301_detach(struct fusb301_chip *chip);
 static void fusb301_set_data_role(struct fusb301_chip *chip,
 				  enum typec_data_role data_role,
 				  bool attached);
+
+static const char *fusb301_get_mode_name(unsigned int mode)
+{
+	switch (mode) {
+	case FUSB301_MODES_DRP_ACC:	return "Drp_Acc";
+	case FUSB301_MODES_DRP:		return "Drp";
+	case FUSB301_MODES_SNK_ACC:	return "Snk_Acc";
+	case FUSB301_MODES_SNK:		return "Snk";
+	case FUSB301_MODES_SRC_ACC:	return "Src_Acc";
+	case FUSB301_MODES_SRC:		return "Src";
+	default:			return "Unknown";
+	}
+}
 
 static int fusb301_check_device_id(struct fusb301_chip *chip)
 {
@@ -250,8 +254,9 @@ static int fusb301_update_status(struct fusb301_chip *chip)
 	chip->pwr_mode = FIELD_GET(FUSB301_CONTROL_HOST_CUR_MASK, ctrl);
 	chip->dttime = FIELD_GET(FUSB301_CONTROL_TGL_MASK, ctrl);
 
-	dev_info(chip->dev, "mode[0x%02x], host_cur[0x%02x], dttime[0x%02x]\n",
-			chip->mode, chip->pwr_mode, chip->dttime);
+	dev_info(chip->dev, "mode[0x%02x]=%s, host_cur[0x%02x], dttime[0x%02x]\n",
+		 chip->mode, fusb301_get_mode_name(chip->mode),
+		 chip->pwr_mode, chip->dttime);
 out:
 	return ret;
 }
@@ -283,8 +288,7 @@ static int fusb301_set_chip_state(struct fusb301_chip *chip, enum fusb301_state 
 		break;
 	default:
 		dev_err(chip->dev, "unexpected state: 0x%02x\n", state);
-		manual = FUSB301_MANUAL_ERR_RECOVERY;
-		break;
+		return -EINVAL;
 	}
 	ret = regmap_write_bits(chip->regmap, FUSB301_REG_MANUAL,
 				FUSB301_MANUAL_MASK,
@@ -321,7 +325,7 @@ static int fusb301_set_mode(struct fusb301_chip *chip, unsigned int mode)
 		return ret;
 
 	chip->mode = mode;
-	dev_info(chip->dev, "fusb301 set mode: %s\n", fusb301_mode_name[mode]);
+	dev_info(chip->dev, "fusb301 set mode: %s\n", fusb301_get_mode_name(mode));
 
 	return 0;
 }
@@ -352,7 +356,7 @@ static int fusb301_set_pwr_mode(struct fusb301_chip *chip, unsigned int pwr_mode
 	chip->pwr_mode = pwr_mode;
 	dev_info(chip->dev, "fusb301 set pwr_mode: %s\n", fusb301_pwr_mode_name[pwr_mode]);
 
-	return ret;
+	return 0;
 }
 
 static int fusb301_set_toggle_time(struct fusb301_chip *chip, unsigned int toggle_time)
@@ -388,29 +392,27 @@ static int fusb301_init_reg(struct fusb301_chip *chip)
 	struct device *cdev = chip->dev;
 	int ret;
 
-	/* change current */
 	ret = fusb301_set_pwr_mode(chip, FUSB301_HOST_CUR_1500MA);
-	if (ret)
-		dev_err(cdev, "%s: failed to force dfp power\n",
-				__func__);
+	if (ret) {
+		dev_err(cdev, "%s: failed to force dfp power\n", __func__);
+		return ret;
+	}
 
-	/* change toggle time */
 	ret = fusb301_set_toggle_time(chip, FUSB301_CONTROL_TGL_35MS);
-	if (ret)
-		dev_err(cdev, "%s: failed to set toggle time\n",
-				__func__);
+	if (ret) {
+		dev_err(cdev, "%s: failed to set toggle time\n", __func__);
+		return ret;
+	}
 
-	/* change mode */
 	ret = fusb301_set_mode(chip, FUSB301_MODES_DRP_ACC);
-	if (ret)
-		dev_err(cdev, "%s: failed to set mode\n",
-				__func__);
+	if (ret) {
+		dev_err(cdev, "%s: failed to set mode\n", __func__);
+		return ret;
+	}
 
-	/* set error recovery state */
 	ret = fusb301_set_chip_state(chip, FUSB_STATE_ERROR_RECOVERY);
 	if (ret)
-		dev_err(cdev, "%s: failed to set error recovery state\n",
-				__func__);
+		dev_err(cdev, "%s: failed to set error recovery state\n", __func__);
 	return ret;
 }
 
@@ -460,20 +462,27 @@ static void fusb301_bclvl_changed(struct fusb301_chip *chip)
 		return;
 	}
 
-	dev_dbg(cdev, "sts[0x%02x], type[0x%02x]\n", status, type);
+	dev_dbg(cdev, "%s: sts[0x%02x], type[0x%02x], state[0x%02x]\n",
+		__func__, status, type, chip->state);
+
+	if (type == FUSB301_TYPE_INVALID &&
+	    (chip->state == FUSB_STATE_ATTACHED_SNK ||
+	     chip->state == FUSB_STATE_ATTACHED_SRC)) {
+		dev_info(cdev, "%s: missed detach, recovering\n", __func__);
+		fusb301_detach(chip);
+		return;
+	}
+
 	if (type == FUSB301_TYPE_SRC ||
 	    type == FUSB301_TYPE_PWR_AUD_ACC ||
 	    type == FUSB301_TYPE_PWR_DBG_ACC ||
 	    type == FUSB301_TYPE_PWR_ACC) {
-		chip->bc_lvl = status & 0x06;
-		chip->bc_lvl = (status & 0x06) >> 1;
+		chip->bc_lvl = FIELD_GET(FUSB301_STATUS_BC_LVL_MASK, status);
 	}
 }
 
 static void fusb301_acc_changed(struct fusb301_chip *chip)
 {
-	/* TODO */
-	/* implement acc changed work */
 }
 
 static void fusb301_src_detected(struct fusb301_chip *chip)
@@ -501,11 +510,14 @@ static void fusb301_src_detected(struct fusb301_chip *chip)
 		queue_delayed_work(chip->cc_wq, &chip->twork,
 				   msecs_to_jiffies(FUSB301_TRY_TIMEOUT));
 	} else {
-		if (chip->state == FUSB_STATE_TRYWAIT_SNK)
+		if (chip->state == FUSB_STATE_TRY_SNK ||
+		    chip->state == FUSB_STATE_TRYWAIT_SNK)
 			cancel_delayed_work(&chip->twork);
 		fusb_update_state(chip, FUSB_STATE_ATTACHED_SNK);
 		fusb301_set_data_role(chip, TYPEC_DEVICE, true);
 		chip->type = FUSB301_TYPE_SRC;
+		if (chip->try_snk_emulation)
+			chip->triedsnk = true;
 	}
 }
 
@@ -540,11 +552,14 @@ static void fusb301_snk_detected(struct fusb301_chip *chip)
 		 * mode == FUSB301_MODES_SRC/FUSB301_MODES_SRC_ACC
 		 */
 		fusb301_set_pwr_mode(chip, FUSB301_HOST_CUR_DEFAULT);
-		if (chip->state == FUSB_STATE_TRYWAIT_SRC)
+		if (chip->state == FUSB_STATE_TRY_SRC ||
+		    chip->state == FUSB_STATE_TRYWAIT_SRC)
 			cancel_delayed_work(&chip->twork);
 		fusb_update_state(chip, FUSB_STATE_ATTACHED_SRC);
 		fusb301_set_data_role(chip, TYPEC_HOST, true);
 		chip->type = FUSB301_TYPE_SNK;
+		if (chip->try_src_emulation)
+			chip->triedsrc = true;
 	}
 }
 
@@ -618,6 +633,7 @@ static void fusb301_timer_try_expired(struct fusb301_chip *chip)
 static void fusb301_detach(struct fusb301_chip *chip)
 {
 	struct device *cdev = chip->dev;
+	enum fusb301_state prev_state = chip->state;
 
 	dev_dbg(cdev, "%s: type[0x%02x] chipstate[0x%02x]\n",
 		__func__, chip->type, chip->state);
@@ -635,14 +651,12 @@ static void fusb301_detach(struct fusb301_chip *chip)
 		break;
 	case FUSB_STATE_TRY_SNK:
 	case FUSB_STATE_TRYWAIT_SRC:
+	case FUSB_STATE_TRY_SRC:
+	case FUSB_STATE_TRYWAIT_SNK:
 		cancel_delayed_work(&chip->twork);
 		break;
 	case FUSB_STATE_DISABLED:
 	case FUSB_STATE_ERROR_RECOVERY:
-		break;
-	case FUSB_STATE_TRY_SRC:
-	case FUSB_STATE_TRYWAIT_SNK:
-		cancel_delayed_work(&chip->twork);
 		break;
 	default:
 		dev_err(cdev, "%s: Invalid chipstate[0x%02x]\n", __func__, chip->state);
@@ -658,9 +672,17 @@ static void fusb301_detach(struct fusb301_chip *chip)
 	}
 	chip->type = FUSB301_TYPE_INVALID;
 	chip->bc_lvl = FUSB301_STATUS_SNK_0MA;
-	chip->ufp_power = 0;
-	chip->triedsnk = !chip->try_snk_emulation;
-	chip->triedsrc = !chip->try_src_emulation;
+	/*
+	 * Preserve tried flags when detaching from an attached state to avoid
+	 * re-entering the Try cycle on transient detach (e.g. hub VBUS glitch).
+	 * Only meaningful when the corresponding emulation is enabled.
+	 * prev_state is saved before fusb301_set_chip_state() above since that
+	 * call modifies chip->state internally.
+	 */
+	if (!chip->try_snk_emulation || prev_state != FUSB_STATE_ATTACHED_SNK)
+		chip->triedsnk = !chip->try_snk_emulation;
+	if (!chip->try_src_emulation || prev_state != FUSB_STATE_ATTACHED_SRC)
+		chip->triedsrc = !chip->try_src_emulation;
 	chip->try_attcnt = 0;
 	fusb_update_state(chip, FUSB_STATE_ERROR_RECOVERY);
 }
@@ -677,7 +699,7 @@ static bool fusb301_is_vbus_off(struct fusb301_chip *chip)
 		return false;
 	}
 
-	return !((status & FUSB301_STATUS_ATTACH) && (ret & FUSB301_STATUS_VBUS_OK));
+	return !((status & FUSB301_STATUS_ATTACH) && (status & FUSB301_STATUS_VBUS_OK));
 }
 
 static bool fusb301_is_vbus_on(struct fusb301_chip *chip)
@@ -692,6 +714,20 @@ static bool fusb301_is_vbus_on(struct fusb301_chip *chip)
 		return false;
 	}
 	return !!(status & FUSB301_STATUS_VBUS_OK);
+}
+
+static bool fusb301_is_snk_detected(struct fusb301_chip *chip)
+{
+	struct device *cdev = chip->dev;
+	unsigned int type;
+	int ret;
+
+	ret = regmap_read(chip->regmap, FUSB301_REG_TYPE, &type);
+	if (ret) {
+		dev_err(cdev, "%s: failed to read type\n", __func__);
+		return false;
+	}
+	return !!(type & FUSB301_TYPE_SNK);
 }
 
 /* workaround BC Level detection plugging slowly with C ot A on Rev1.0 */
@@ -838,28 +874,20 @@ static void fusb301_timer_work_handler(struct work_struct *work)
 {
 	struct fusb301_chip *chip = container_of(work, struct fusb301_chip, twork.work);
 	struct device *cdev = chip->dev;
-	unsigned int type;
 
 	mutex_lock(&chip->mlock);
 	if (chip->state == FUSB_STATE_TRY_SNK) {
 		if (fusb301_is_vbus_on(chip)) {
 			if (fusb301_set_mode(chip, FUSB301_MODES_DRP_ACC))
 				dev_err(cdev, "%s: failed to set init mode\n", __func__);
-			chip->triedsnk = !chip->try_snk_emulation;
 			mutex_unlock(&chip->mlock);
 			return;
 		}
 		fusb301_timer_try_expired(chip);
 	} else if (chip->state == FUSB_STATE_TRY_SRC) {
-		if (regmap_read(chip->regmap, FUSB301_REG_TYPE, &type)) {
-			dev_err(cdev, "%s: failed to read type\n", __func__);
-			mutex_unlock(&chip->mlock);
-			return;
-		}
-		if (type & FUSB301_TYPE_SNK) {
+		if (fusb301_is_snk_detected(chip)) {
 			if (fusb301_set_mode(chip, FUSB301_MODES_DRP_ACC))
 				dev_err(cdev, "%s: failed to set init mode\n", __func__);
-			chip->triedsrc = !chip->try_src_emulation;
 			mutex_unlock(&chip->mlock);
 			return;
 		}
@@ -886,9 +914,9 @@ static void fusb301_work_handler(struct work_struct *work)
 		goto unlock;
 	}
 	dev_info(cdev, "%s: int_sts[0x%02x]\n", __func__, int_sts);
-	if (int_sts & FUSB301_INT_DETACH) {
+	if (int_sts & FUSB301_INT_DETACH)
 		fusb301_detach(chip);
-	} else {
+	else {
 		if (int_sts & FUSB301_INT_ATTACH)
 			fusb301_attach(chip);
 		if (int_sts & FUSB301_INT_BCLVL)
@@ -929,7 +957,9 @@ static int fusb301_dr_set(struct typec_port *port, enum typec_data_role role)
 {
 	struct fusb301_chip *chip = typec_get_drvdata(port);
 
+	mutex_lock(&chip->mlock);
 	fusb301_set_data_role(chip, role, true);
+	mutex_unlock(&chip->mlock);
 
 	return 0;
 }
@@ -995,7 +1025,7 @@ static void fusb301_get_gpio_irq(struct fusb301_chip *chip)
 	struct gpio_desc *irq_gpiod;
 
 	irq_gpiod = devm_gpiod_get(chip->dev, "irq", GPIOD_IN);
-	if (IS_ERR_OR_NULL(irq_gpiod)) {
+	if (IS_ERR(irq_gpiod)) {
 		dev_err(chip->dev, "no interrupt gpio property\n");
 		return;
 	}
@@ -1033,10 +1063,8 @@ static int fusb301_probe(struct i2c_client *client)
 	}
 
 	ret = fusb301_check_device_id(chip);
-	if (ret < 0) {
-		dev_err(cdev, "fusb301 not found\n");
-		return -ENODEV;
-	}
+	if (ret < 0)
+		return ret;
 
 	ret = fusb301_typec_port_probe(chip);
 	if (ret) {
@@ -1048,7 +1076,6 @@ static int fusb301_probe(struct i2c_client *client)
 	chip->type = FUSB301_TYPE_INVALID;
 	chip->state = FUSB_STATE_ERROR_RECOVERY;
 	chip->bc_lvl = FUSB301_STATUS_SNK_0MA;
-	chip->ufp_power = 0;
 
 	if (chip->cap.prefer_role == TYPEC_SOURCE) {
 		chip->try_src_emulation = true;
@@ -1060,8 +1087,10 @@ static int fusb301_probe(struct i2c_client *client)
 
 	chip->try_attcnt = 0;
 	chip->cc_wq = alloc_ordered_workqueue("fusb301-wq", WQ_HIGHPRI);
-	if (!chip->cc_wq)
+	if (!chip->cc_wq) {
+		ret = -ENOMEM;
 		goto unregister_port;
+	}
 
 	INIT_WORK(&chip->dwork, fusb301_work_handler);
 	INIT_DELAYED_WORK(&chip->twork, fusb301_timer_work_handler);
@@ -1073,7 +1102,8 @@ static int fusb301_probe(struct i2c_client *client)
 
 	if (!chip->irq) {
 		dev_err(cdev, "fail to get interrupt IRQ\n");
-		goto unregister_port;
+		ret = -ENODEV;
+		goto destroy_workqueue;
 	}
 
 	ret = devm_request_threaded_irq(chip->dev, chip->irq, NULL,
@@ -1120,8 +1150,11 @@ static int __maybe_unused fusb301_pm_suspend(struct device *dev)
 	flush_work(&chip->dwork);
 	flush_delayed_work(&chip->twork);
 
-	if (chip->suspend_vbus_off)
+	if (chip->suspend_vbus_off) {
+		mutex_lock(&chip->mlock);
 		fusb301_set_chip_state(chip, FUSB_STATE_DISABLED);
+		mutex_unlock(&chip->mlock);
+	}
 
 	return 0;
 }
@@ -1130,10 +1163,13 @@ static int __maybe_unused fusb301_pm_resume(struct device *dev)
 {
 	struct fusb301_chip *chip = dev_get_drvdata(dev);
 
-	if (chip->suspend_vbus_off)
+	if (chip->suspend_vbus_off) {
+		mutex_lock(&chip->mlock);
 		fusb301_set_chip_state(chip, FUSB_STATE_ERROR_RECOVERY);
+		mutex_unlock(&chip->mlock);
+	}
 
-	schedule_work(&chip->dwork);
+	queue_work(chip->cc_wq, &chip->dwork);
 
 	return 0;
 }
@@ -1151,7 +1187,6 @@ MODULE_DEVICE_TABLE(of, fusb301_match_table);
 static struct i2c_driver fusb301_i2c_driver = {
 	.driver = {
 		.name = "fusb301",
-		.owner = THIS_MODULE,
 		.of_match_table = fusb301_match_table,
 		.pm = &fusb301_dev_pm_ops,
 	},

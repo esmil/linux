@@ -356,6 +356,16 @@ config NVMEM_SNVS_LPGPR
 	  This driver can also be built as a module. If so, the module
 	  will be called nvmem-snvs-lpgpr.
 
+config NVMEM_SPACEMIT_EFUSE
+	tristate "Spacemit SoCs efuse support"
+	depends on SOC_SPACEMIT || COMPILE_TEST
+	help
+	  This is a simple efuse provider driver for Spacemit SoC
+	  provide data from eFuse, such as chip-version.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called nvmem_spacemit_efuse.
+
 config NVMEM_SPMI_SDAM
 	tristate "SPMI SDAM Support"
 	depends on SPMI

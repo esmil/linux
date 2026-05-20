@@ -52,7 +52,6 @@
 
 #define SPACEMIT_SDHC_DLINE_CFG_REG	0x134
 #define  SDHC_RX_DLINE_REG		GENMASK(7, 0)
-#define  SDHC_RX_DLINE_GAIN		BIT(8)
 #define  SDHC_TX_DLINE_REG		GENMASK(23, 16)
 
 #define SPACEMIT_SDHC_PHY_CTRL_REG	0x160
@@ -110,7 +109,6 @@ struct rx_tuning {
 	u8 tx_delaycode;
 	u8 tx_dline_reg;
 	u8 rx_dline_reg;
-	u8 select_delay_num;
 	struct tuning_window windows;
 	u8 select_delay;
 
@@ -228,7 +226,7 @@ static int spacemit_sdhci_card_busy(struct mmc_host *mmc)
 
 	if (host->mmc->caps2 & MMC_CAP2_NO_MMC) {
 		if ((SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)) == SD_SWITCH_VOLTAGE) &&
-		    (host->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_180))
+		    host->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_180)
 			/* recover the auto clock */
 			spacemit_sdhci_set_clk_gate(host, 1);
 	}
@@ -255,7 +253,8 @@ static int spacemit_sdhci_select_pinctrl(struct spacemit_sdhci_host *sdhst,
 	} else if (signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
 		/* Only use debug mode when clock is off (host idle).
 		 * DAT3 is muxed with UART TX in debug pinctrl, so switching
-		 * during card initialization would corrupt the SD bus. */
+		 * during card initialization would corrupt the SD bus.
+		 */
 		if (!clock && sdhst->pins_debug)
 			state = sdhst->pins_debug;
 		else
@@ -294,7 +293,7 @@ static void spacemit_sdhci_set_clock(struct sdhci_host *host, unsigned int clock
 		 * always on for 1ms.
 		 */
 		if ((SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND)) == SD_SWITCH_VOLTAGE) &&
-		   (host->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_180)) {
+		    host->mmc->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
 			/* disable auto clock */
 			if (clock)
 				/*
@@ -416,21 +415,9 @@ static inline int spacemit_sdhci_get_clocks(struct device *dev,
 
 static void spacemit_sw_rx_tuning_prepare(struct sdhci_host *host, u8 dline_reg)
 {
-	struct mmc_host *mmc = host->mmc;
-	u32 reg;
-
-	reg = sdhci_readl(host, SPACEMIT_SDHC_DLINE_CFG_REG);
-	if ((mmc->ios.timing == MMC_TIMING_UHS_SDR50) && (reg & 0x40))
-		spacemit_sdhci_clrsetbits(host, SDHC_RX_DLINE_REG |
-					SDHC_RX_DLINE_GAIN,
-					FIELD_PREP(SDHC_RX_DLINE_REG, dline_reg) |
-					FIELD_PREP(SDHC_RX_DLINE_GAIN, 1),
-					SPACEMIT_SDHC_DLINE_CFG_REG);
-	else
-		spacemit_sdhci_clrsetbits(host, SDHC_RX_DLINE_REG |
-					SDHC_RX_DLINE_GAIN,
-					FIELD_PREP(SDHC_RX_DLINE_REG, dline_reg),
-					SPACEMIT_SDHC_DLINE_CFG_REG);
+	spacemit_sdhci_clrsetbits(host, SDHC_RX_DLINE_REG,
+				  FIELD_PREP(SDHC_RX_DLINE_REG, dline_reg),
+				  SPACEMIT_SDHC_DLINE_CFG_REG);
 
 	spacemit_sdhci_setbits(host, SDHC_DLINE_PU, SPACEMIT_SDHC_DLINE_CTRL_REG);
 	udelay(5);
@@ -438,7 +425,7 @@ static void spacemit_sw_rx_tuning_prepare(struct sdhci_host *host, u8 dline_reg)
 				  FIELD_PREP(SDHC_RX_SDCLK_SEL1, 1),
 				  SPACEMIT_SDHC_RX_CFG_REG);
 
-	if (mmc->ios.timing == MMC_TIMING_MMC_HS200)
+	if (host->mmc->ios.timing == MMC_TIMING_MMC_HS200)
 		spacemit_sdhci_setbits(host, SDHC_HS200_USE_RFIFO, SPACEMIT_SDHC_PHY_FUNC_REG);
 }
 
@@ -487,7 +474,7 @@ static int spacemit_sw_rx_select_window(struct sdhci_host *host, u32 opcode)
 		if (ret) {
 			if (cur_windows)
 				dev_info(mmc_dev(mmc), "%s: pass window [%d %d)\n",
-						mmc_hostname(host->mmc), min, start);
+					 mmc_hostname(host->mmc), min, start);
 			cur_windows = 0;
 		} else {
 			if (!cur_windows)
@@ -500,7 +487,7 @@ static int spacemit_sw_rx_select_window(struct sdhci_host *host, u32 opcode)
 			}
 			if (start == SDHC_RX_TUNE_DELAY_MAX)
 				dev_info(mmc_dev(mmc), "%s: pass window [%d %d]\n",
-						mmc_hostname(host->mmc), min, start);
+					 mmc_hostname(host->mmc), min, start);
 		}
 		start += SDHC_RX_TUNE_DELAY_STEP;
 	}
@@ -536,7 +523,7 @@ static int spacemit_sdhci_execute_sw_tuning(struct sdhci_host *host, u32 opcode)
 	 */
 	if (host->clock < 100 * 1000 * 1000 ||
 	    !(mmc->ios.timing == MMC_TIMING_MMC_HS200 ||
-	    (mmc->ios.timing == MMC_TIMING_UHS_SDR50) ||
+	    mmc->ios.timing == MMC_TIMING_UHS_SDR50 ||
 	    mmc->ios.timing == MMC_TIMING_UHS_SDR104))
 		return 0;
 
