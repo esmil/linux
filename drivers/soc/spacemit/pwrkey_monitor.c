@@ -13,6 +13,13 @@
 #include <linux/cleanup.h>
 #include <linux/of.h>
 
+#define PWRKEY_EVENT_DISABLED	0
+#define PWRKEY_EVENT_ENABLED	1
+#define PWRKEY_PRESSED		1
+#define PWRKEY_RELEASED		0
+#define PWRKEY_FALL_TRIGGERED	1
+#define PWRKEY_FALL_CLEARED	0
+
 struct pwrkey_monitor {
 	struct notifier_block pm_notify;
 	int report_event, fall_triggered, wakeup_irq;
@@ -32,12 +39,12 @@ static int pwrk_pm_notify(struct notifier_block *notify_block,
 	switch (mode) {
 	case PM_SUSPEND_PREPARE:
 		/* don't report power-key when enter suspend */
-		monitor->report_event = 0;
+		monitor->report_event = PWRKEY_EVENT_DISABLED;
 		break;
 
 	case PM_POST_SUSPEND:
 		/* restore report power-key */
-		monitor->report_event = 1;
+		monitor->report_event = PWRKEY_EVENT_ENABLED;
 		break;
 	default:
 		break;
@@ -48,7 +55,7 @@ static int pwrk_pm_notify(struct notifier_block *notify_block,
 
 static irqreturn_t monitor_wakeup_detect(int irq, void *arg)
 {
-	unsigned char state = 0;
+	unsigned char state = PWRKEY_RELEASED;
 	struct pwrkey_monitor *monitor = (struct pwrkey_monitor *)arg;
 
 	guard(spinlock_irqsave)(&monitor->pm_lock);
@@ -58,13 +65,13 @@ static irqreturn_t monitor_wakeup_detect(int irq, void *arg)
 	pm_wakeup_event(monitor->dev, 0);
 
 	if (!state && monitor->report_event) {
-		input_report_switch(monitor->input, KEY_POWER, 1);
+		input_report_switch(monitor->input, KEY_POWER, PWRKEY_PRESSED);
 	 	input_sync(monitor->input);
-		monitor->fall_triggered = 1;
+		monitor->fall_triggered = PWRKEY_FALL_TRIGGERED;
 	} else if (state && monitor->fall_triggered) {
-		input_report_switch(monitor->input, KEY_POWER, 0);
+		input_report_switch(monitor->input, KEY_POWER, PWRKEY_RELEASED);
 	 	input_sync(monitor->input);
-		monitor->fall_triggered = 0;
+		monitor->fall_triggered = PWRKEY_FALL_CLEARED;
 	}
 
 	return IRQ_HANDLED;
@@ -92,6 +99,7 @@ static int spacemit_pwrkey_monitor_probe(struct platform_device *pdev)
 
 	monitor->dev = &pdev->dev;
 	monitor->input = input;
+	monitor->report_event = PWRKEY_EVENT_ENABLED;
 
 	spin_lock_init(&monitor->pm_lock);
 
