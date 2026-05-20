@@ -276,8 +276,8 @@
 			msi-controller;
 			/* Number of interrupt identities: 511 */
 			riscv,num-ids = <511>;
-			/* Number of guest interrupt identities: 511 */
-			riscv,num-guest-ids = <511>;
+			/* Number of guest interrupt identities: 63 */
+			riscv,num-guest-ids = <63>;
 			/* Number of HART index bits: 4 (2^4 = 16 harts) */
 			riscv,hart-index-bits = <4>;
 			/*
