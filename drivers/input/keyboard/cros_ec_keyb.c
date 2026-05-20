@@ -94,6 +94,7 @@ struct cros_ec_keyb {
 	u8 fn_key_status[CROS_EC_KEYBOARD_COLS_MAX];
 	bool fn_key_pressed;
 	bool fn_key_triggered;
+	bool fn_locked;
 };
 
 /**
@@ -256,12 +257,21 @@ static void cros_ec_keyb_process_one(struct cros_ec_keyb *ckdev,
 	int pos = MATRIX_SCAN_CODE(row, col, ckdev->row_shift);
 	unsigned int normal_code = keycodes[pos];
 	unsigned int code = normal_code;
+	bool effective_fn;
+	bool is_f_key = (normal_code >= KEY_F1 && normal_code <= KEY_F12);
 
 	dev_dbg(ckdev->dev, "changed: [r%d c%d]: byte %02x\n", row, col, state);
 
 	if (ckdev->has_fn_map) {
 		if (code == KEY_FN) {
 			cros_ec_keyb_process_fn_key(ckdev, row, col, state);
+			return;
+		}
+
+		if (state && ckdev->fn_key_pressed && normal_code == KEY_ESC) {
+			ckdev->fn_locked = !ckdev->fn_locked;
+			ckdev->fn_key_triggered = true;
+			dev_dbg(ckdev->dev, "Fn Lock: %d\n", ckdev->fn_locked);
 			return;
 		}
 
@@ -276,21 +286,37 @@ static void cros_ec_keyb_process_one(struct cros_ec_keyb *ckdev,
 				/* Discard, key press code was not sent */
 				return;
 			}
-		} else if (ckdev->fn_key_pressed) {
-			code = cros_ec_keyb_fn_code(ckdev, row, col, &pos);
-
-			ckdev->fn_key_triggered = true;
-
-			if (!code)
-				return;
-
-			ckdev->fn_key_status[col] |= BIT(row);
-			dev_dbg(
-				ckdev->dev,
-				"FN map: r=%d c=%d state=%d normal=%u -> fn=%u\n",
-				row, col, state, normal_code, code);
 		} else {
-			ckdev->normal_key_status[col] |= BIT(row);
+			if (is_f_key)
+				effective_fn = ckdev->fn_key_pressed ^ ckdev->fn_locked;
+			else
+				effective_fn = ckdev->fn_key_pressed;
+
+			if (effective_fn) {
+				code = cros_ec_keyb_fn_code(ckdev, row, col, &pos);
+
+				if (!code && !ckdev->fn_key_pressed) {
+					code = normal_code;
+					effective_fn = false;
+					pos = MATRIX_SCAN_CODE(row, col, ckdev->row_shift);
+				}
+
+				ckdev->fn_key_triggered = true;
+				if (!code)
+					return;
+
+				if (effective_fn) {
+					ckdev->fn_key_status[col] |= BIT(row);
+					dev_dbg(
+						ckdev->dev,
+						"FN map: r=%d c=%d state=%d normal=%u -> fn=%u\n",
+						row, col, state, normal_code, code);
+				} else {
+					ckdev->normal_key_status[col] |= BIT(row);
+				}
+			} else {
+				ckdev->normal_key_status[col] |= BIT(row);
+			}
 		}
 	}
 
@@ -1065,6 +1091,7 @@ static int cros_ec_keyb_probe(struct platform_device *pdev)
 
 	ckdev->ec = ec;
 	ckdev->dev = dev;
+	ckdev->fn_locked = true;
 	dev_set_drvdata(dev, ckdev);
 	spin_lock_init(&ckdev->led_sync_lock);
 	INIT_DELAYED_WORK(&ckdev->led_sync_work, cros_ec_keyb_led_sync_work);

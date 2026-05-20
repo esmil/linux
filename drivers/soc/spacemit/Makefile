@@ -9,3 +9,4 @@ obj-$(CONFIG_SPACEMIT_REBOOT_CONTROL) += spacemit_reboot.o
 obj-$(CONFIG_SPACEMIT_SOCINFO) += spacemit-socinfo.o
 obj-$(CONFIG_SPACEMIT_SUSPEND_AFFINITY) += suspend/
 obj-$(CONFIG_SPACEMIT_POWERKEY_MONITOR) += pwrkey_monitor.o
+obj-$(CONFIG_SPACEMIT_DDR_BW) += ddr_bw.o
