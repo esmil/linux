@@ -644,18 +644,23 @@
 			 * Fn layer (row + 8):
 			 *  F1..F12 -> media/system keys when Fn is held.
 			 */
-			MATRIX_KEY(0x09, 0x0f, KEY_KBDILLUMUP)    /* Fn+F8  */
-			MATRIX_KEY(0x0a, 0x05, KEY_VOLUMEDOWN)    /* Fn+F2  */
-			MATRIX_KEY(0x0a, 0x0a, KEY_KBDILLUMDOWN)  /* Fn+F7  */
-			MATRIX_KEY(0x0b, 0x04, KEY_PREVIOUSSONG)  /* Fn+F4  */
-			MATRIX_KEY(0x0b, 0x05, KEY_MUTE)          /* Fn+F1  */
-			MATRIX_KEY(0x0b, 0x0a, KEY_PLAYPAUSE)     /* Fn+F6  */
-			MATRIX_KEY(0x0b, 0x0b, KEY_DISPLAYTOGGLE) /* Fn+F9  */
-			MATRIX_KEY(0x0b, 0x0d, KEY_MICMUTE)       /* Fn+F12 */
+			MATRIX_KEY(0x08, 0x01, KEY_INSERT)        /* Fn+Delete = Insert */
+			MATRIX_KEY(0x09, 0x08, KEY_PAGEDOWN)      /* Fn+Down */
+			MATRIX_KEY(0x09, 0x0d, KEY_PAGEUP)        /* Fn+Up */
+			MATRIX_KEY(0x09, 0x0f, KEY_BRIGHTNESSUP)  /* Fn+F8 */
+			MATRIX_KEY(0x0a, 0x05, KEY_VOLUMEDOWN)    /* Fn+F2 */
+			MATRIX_KEY(0x0a, 0x0a, KEY_BRIGHTNESSDOWN)/* Fn+F7 */
+			MATRIX_KEY(0x0a, 0x0f, KEY_END)           /* Fn+Right */
+			MATRIX_KEY(0x0b, 0x04, KEY_PREVIOUSSONG)  /* Fn+F4 */
+			MATRIX_KEY(0x0b, 0x05, KEY_MUTE)          /* Fn+F1 */
+			MATRIX_KEY(0x0b, 0x0a, KEY_NEXTSONG)      /* Fn+F6 */
+			MATRIX_KEY(0x0b, 0x0b, KEY_SWITCHVIDEOMODE)/* Fn+F9 */
+			MATRIX_KEY(0x0b, 0x0d, KEY_CONFIG)        /* Fn+F12 */
 			MATRIX_KEY(0x0c, 0x08, KEY_RFKILL)        /* Fn+F10 */
-			MATRIX_KEY(0x0c, 0x0a, KEY_NEXTSONG)      /* Fn+F5  */
-			MATRIX_KEY(0x0e, 0x04, KEY_VOLUMEUP)      /* Fn+F3  */
+			MATRIX_KEY(0x0c, 0x0a, KEY_PLAYPAUSE)     /* Fn+F5 */
+			MATRIX_KEY(0x0e, 0x04, KEY_VOLUMEUP)      /* Fn+F3 */
 			MATRIX_KEY(0x0e, 0x08, KEY_SYSRQ)         /* Fn+F11 */
+			MATRIX_KEY(0x0e, 0x0b, KEY_HOME)          /* Fn+Left */
 			>;
 		};
 	};
