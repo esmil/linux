@@ -772,6 +772,7 @@ static int k1_spi_probe(struct platform_device *pdev)
 
 static const struct of_device_id k1_spi_dt_ids[] = {
 	{ .compatible = "spacemit,k1-spi", },
+	{ .compatible = "spacemit,k3-spi", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, k1_spi_dt_ids);
