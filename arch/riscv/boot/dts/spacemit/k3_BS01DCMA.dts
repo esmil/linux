@@ -734,6 +734,12 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c3_3_cfg>;
 	status = "okay";
+
+	spacemit@51 {
+		status = "okay";
+		compatible = "spacemit,i2c-slave";
+		reg = <0x51>;
+	};
 };
 
 &i2c6 {
