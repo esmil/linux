@@ -4,7 +4,6 @@
  * Author: liangzhen <zhen.liang@spacemit.com>
  */
 
-#include <linux/pm_runtime.h>
 #include <linux/sysfs.h>
 #include <linux/rvtrace.h>
 #include "rvtrace-encoder.h"

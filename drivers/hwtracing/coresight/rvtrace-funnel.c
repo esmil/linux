@@ -7,7 +7,6 @@
 #include <linux/kernel.h>
 #include <linux/coresight.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/property.h>
 #include <linux/rvtrace.h>
 
@@ -304,7 +303,6 @@ static int funnel_probe(struct platform_device *pdev)
 	if (IS_ERR(funnel_data->csdev))
 		return PTR_ERR(funnel_data->csdev);
 
-	pm_runtime_enable(dev);
 	dev_dbg(dev, "Trace Funnel initialized\n");
 
 	return 0;
@@ -315,7 +313,6 @@ static void funnel_remove(struct platform_device *pdev)
 	struct rvtrace_component *comp = platform_get_drvdata(pdev);
 	struct funnel_data *funnel_data = rvtrace_component_data(comp);
 
-	pm_runtime_disable(&pdev->dev);
 	coresight_unregister(funnel_data->csdev);
 }
 

@@ -15,7 +15,6 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/property.h>
 #include <linux/rvtrace.h>
 
@@ -496,7 +495,6 @@ static int encoder_probe(struct platform_device *pdev)
 
 	encoder_set_default(comp);
 
-	pm_runtime_put(dev);
 	dev_dbg(dev, "CPU%d: Trace Encoder initialized\n", comp->cpu);
 
 	if (boot_enable) {
@@ -541,7 +539,6 @@ static void encoder_remove(struct platform_device *pdev)
 
 	cpus_read_unlock();
 
-	pm_runtime_disable(dev);
 	coresight_unregister(encoder_data->csdev);
 }
 
