@@ -1514,18 +1514,25 @@ static inline void dpu_isr_vblank(struct spacemit_crtc *a_crtc, bool *flip)
 	drm_crtc_handle_vblank(crtc);
 	if (!*flip) {
 		struct drm_device *drm = a_crtc->crtc.dev;
-		struct drm_pending_vblank_event *event = crtc->state->event;
+		struct drm_crtc_state *state;
+		struct drm_pending_vblank_event *event = NULL;
 
 		*flip = true;
 		spin_lock(&drm->event_lock);
-		if (crtc->state->event) {
+
+		state = crtc->state;
+		if (state)
+			event = state->event;
+
+		if (event) {
 			/*
-			 * Set event to NULL first to ensure event is consumed
-			 * before drm_atomic_helper_commit_hw_done.
-			 */
-			crtc->state->event = NULL;
+			* Set event to NULL first to ensure event is consumed
+			* before drm_atomic_helper_commit_hw_done.
+			*/
+			state->event = NULL;
 			drm_crtc_send_vblank_event(crtc, event);
 		}
+
 		spin_unlock(&drm->event_lock);
 		drm_crtc_vblank_put(crtc);
 		dpu_pm_update_commit_qos(a_crtc);
