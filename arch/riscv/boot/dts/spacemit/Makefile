@@ -11,3 +11,4 @@ dtb-$(CONFIG_SOC_SPACEMIT_K3) += k3-deepcomputing-fml13v05.dtb
 dtb-$(CONFIG_SOC_SPACEMIT_K3) += k3_com260_kit_v02.dtb
 dtb-$(CONFIG_SOC_SPACEMIT_K3) += k3_gemini_c0.dtb k3_gemini_c1.dtb
 dtb-$(CONFIG_SOC_SPACEMIT_K3) += k3_BS01DCMA.dtb
+dtb-$(CONFIG_SOC_SPACEMIT_K3) += k3_com260_tq.dtb
