@@ -7,7 +7,6 @@
 #include <linux/kernel.h>
 #include <linux/coresight.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/bitfield.h>
 #include <linux/rvtrace.h>
 
@@ -208,7 +207,6 @@ static int atbbridge_probe(struct platform_device *pdev)
 
 	comp->id.data = atbbridge_data;
 
-	pm_runtime_enable(dev);
 	dev_dbg(dev, "Trace ATB Bridge initialized\n");
 
 	return 0;
@@ -219,7 +217,6 @@ static void atbbridge_remove(struct platform_device *pdev)
 	struct rvtrace_component *comp = platform_get_drvdata(pdev);
 	struct atbbridge_data *atbbridge_data = rvtrace_component_data(comp);
 
-	pm_runtime_disable(&pdev->dev);
 	coresight_trace_id_put_system_id(atbbridge_data->traceid);
 	coresight_unregister(atbbridge_data->csdev);
 }

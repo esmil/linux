@@ -94,6 +94,7 @@ struct adma_desc_sw {
 	struct list_head node;
 	struct list_head tx_list;
 	struct dma_async_tx_descriptor async_tx;
+	dma_addr_t dma_addr;
 };
 
 struct adma_pchan;
@@ -232,7 +233,7 @@ static void adma_free_desc_list(struct adma_ch *chan,
 		list_del(&desc->node);
 		desc->desc->nxt_desc = 0;
 		gen_pool_free(chan->hw_desc_pool, (long)desc->desc, sizeof(struct adma_desc_hw));
-		dma_pool_free(chan->sw_desc_pool, desc, sizeof(struct adma_desc_sw));
+		dma_pool_free(chan->sw_desc_pool, desc, desc->dma_addr);
 	}
 }
 
@@ -264,12 +265,13 @@ static struct adma_desc_sw *alloc_descriptor(struct adma_ch *achan)
 		dev_err(achan->dev, "can't alloc for sw descriptor\n");
 		return NULL;
 	}
+	desc->dma_addr = pdesc;
 
 	desc->desc = (struct adma_desc_hw *)gen_pool_alloc(achan->hw_desc_pool,
 				sizeof(struct adma_desc_hw));
 	if (!desc->desc) {
 		dev_err(achan->dev, "can't alloc for hw descriptor\n");
-		dma_pool_free(achan->sw_desc_pool, desc, sizeof(struct adma_desc_sw));
+		dma_pool_free(achan->sw_desc_pool, desc, desc->dma_addr);
 		return NULL;
 	}
 

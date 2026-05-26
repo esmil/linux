@@ -14,6 +14,7 @@
 		ethernet0 = &eth0;
 		ethernet1 = &eth1;
 		serial0 = &uart0;
+		spi3 = &spi3;
 	};
 
 	chosen {
@@ -89,6 +90,12 @@
 };
 
 &pdma {
+	status = "okay";
+};
+
+&spi3 {
+	pinctrl-0 = <&ssp3_0_cfg>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 

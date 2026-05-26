@@ -24,6 +24,10 @@ properties:
               - milkv,jupiter
               - xunlong,orangepi-rv2
           - const: spacemit,k1
+      - items:
+          - enum:
+              - deepcomputing,fml13v05
+          - const: spacemit,k3
 
 additionalProperties: true
 

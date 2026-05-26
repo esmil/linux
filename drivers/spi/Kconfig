@@ -346,12 +346,6 @@ config SPI_DAVINCI
 	help
 	  SPI master controller for DaVinci/DA8x/OMAP-L/AM1x SPI modules.
 
-config SPI_K1
-	tristate "Spacemit K1 SPI Controller"
-	depends on SPI_MEM
-	help
-	  Enable support for the Spacemit K1 SPI controller.
-
 config SPI_K1_QSPI
 	tristate "Spacemit k1 QSPI Controller"
 	depends on SPI_MEM
@@ -1086,6 +1080,15 @@ config SPI_SG2044_NOR
 	  which supports Dual/Quad read and write operations while
 	  also supporting 3Byte address devices and 4Byte address
 	  devices.
+
+config SPI_SPACEMIT_K1
+	tristate "K1 SPI Controller"
+	depends on ARCH_SPACEMIT || COMPILE_TEST
+	depends on OF
+	imply MMP_PDMA if ARCH_SPACEMIT
+	default m if ARCH_SPACEMIT
+	help
+	  Enable support for the SpacemiT K1 SPI controller.
 
 config SPI_SPRD
 	tristate "Spreadtrum SPI controller"

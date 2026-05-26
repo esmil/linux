@@ -134,6 +134,13 @@ config I2C_SLAVE_TESTUNIT
 	  multi-master, SMBus Host Notify, etc. Please read
 	  Documentation/i2c/slave-testunit-backend.rst for further details.
 
+config I2C_SPACEMIT_SLAVE
+	tristate "I2C spacemit slave driver"
+	depends on THERMAL || THERMAL=n
+	depends on CPU_FREQ || CPU_FREQ=n
+	help
+	  This backend is used by spacemit's K3 Cluster Server project.
+
 endif
 
 config I2C_DEBUG_CORE

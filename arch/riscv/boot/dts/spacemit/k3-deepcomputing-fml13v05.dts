@@ -11,8 +11,8 @@
 #include <dt-bindings/input/cros-ec-keyboard.h>
 
 / {
-	model = "SpacemiT K3 Digital Computer";
-	compatible = "spacemit,k3-dc-board";
+	model = "DeepComputing FML13V05";
+	compatible = "deepcomputing,fml13v05", "spacemit,k3";
 	cpus: cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -140,38 +140,28 @@
 		compatible = "pwm-backlight";
 		pwms = <&pwm18 0 20000 0>;
 		brightness-levels = <
-			0   20  20  20  21  21  21  22
-			22  22  23  23  23  24  24  24
-			25  25  25  26  26  26  27  27
-			28  28  29  29  30  30  31  31
-			32  33  34  35  36  37  38  39
-			40  41  42  43  44  45  46  47
-			48  49  50  51  52  53  54  55
-			56  57  58  59  60  61  62  63
-			64  65  66  67  68  69  70  71
-			72  73  74  75  76  77  78  79
-			80  81  82  83  84  85  86  87
-			88  89  90  91  92  93  94  95
-			96  97  98  99 100 101 102 103
-			104 105 106 107 108 109 110 111
-			112 113 114 115 116 117 118 119
-			120 121 122 123 124 125 126 127
-			128 129 130 131 132 133 134 135
-			136 137 138 139 140 141 142 143
-			144 145 146 147 148 149 150 151
-			152 153 154 155 156 157 158 159
-			160 161 162 163 164 165 166 167
-			168 169 170 171 172 173 174 175
-			176 177 178 179 180 181 182 183
-			184 185 186 187 188 189 190 191
-			192 193 194 195 196 197 198 199
-			200 201 202 203 204 205 206 207
-			208 209 210 211 212 213 214 215
-			216 217 218 219 220 221 222 223
-			224 225 226 227 228 229 230 231
-			232 233 234 235 236 237 238 239
-			240 241 242 243 244 245 246 247
-			248 249 250 251 252 253 254 255>;
+			  0  20  20  20  21  21  21  21
+			 22  22  22  22  23  23  23  24
+			 24  24  25  25  25  26  26  27
+			 27  28  28  29  29  30  30  31
+			 31  32  32  33  33  34  34  35
+			 36  36  37  38  38  39  40  41
+			 41  42  43  44  45  45  46  47
+			 48  49  50  51  52  53  54  55
+			 56  57  58  59  60  61  62  63
+			 64  65  67  68  69  70  72  73
+			 74  75  77  78  79  81  82  84
+			 85  87  88  90  91  93  94  96
+			 98  99 101 103 104 106 108 110
+			112 113 115 117 119 121 123 125
+			127 129 131 133 135 137 139 141
+			143 145 147 149 152 154 156 158
+			161 163 165 168 170 173 175 178
+			180 183 186 188 191 194 196 199
+			202 205 208 210 213 216 219 222
+			225 228 231 234 238 241 244 247
+			251 255
+		>;
 		default-brightness-level = <128>;
 		status = "okay";
 	};
@@ -382,8 +372,10 @@
 &usb2_host {
 	#address-cells = <1>;
 	#size-cells = <0>;
+	reset-on-resume;
 	status = "okay";
 
+	/* Ensure no deferred probe cause USB disconnect */
 	/* For BT, FG, CAM */
 	hub@1 {
 		/* FE1.1S USB2.0 hub (4 ports) */
@@ -408,6 +400,7 @@
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
 	monitor-vbus;
+	reset-on-resume;
 	status = "okay";
 
 	ports {
@@ -445,6 +438,7 @@
 
 &usb3_portc {
 	/* TypeC */
+	reset-on-resume;
 	status = "okay";
 };
 
@@ -508,10 +502,12 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&espi0_2_cfg>;
 	status = "okay";
-	ec@0 {
+	ec: ec@0 {
 		status = "okay";
 		interrupt-parent = <&gpio>;
 		interrupts = <1 11 IRQ_TYPE_EDGE_RISING>;
+		gpio-controller;
+		#gpio-cells = <2>;
 
 		i2c_tunnel1: i2c-tunnel@1 {
 			compatible = "google,cros-ec-i2c-tunnel";
@@ -616,6 +612,7 @@
 			MATRIX_KEY(0x05, 0x07, KEY_7)           /* ID: 8 */
 			MATRIX_KEY(0x05, 0x08, KEY_9)           /* ID: 10 */
 			MATRIX_KEY(0x05, 0x0a, KEY_8)           /* ID: 9 */
+			MATRIX_KEY(0x05, 0x0b, KEY_102ND)       /* ID: 45 */
 			MATRIX_KEY(0x05, 0x0d, KEY_P)           /* ID: 26 */
 			MATRIX_KEY(0x05, 0x0e, KEY_BACKSPACE)   /* ID: 15 */
 
@@ -1138,6 +1135,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb301_cfg>;
 		irq-gpios = <&gpio 2 21 GPIO_ACTIVE_LOW>;
+		suspend-vbus-off;
 		wakeup-source;
 		status = "okay";
 
@@ -1146,7 +1144,7 @@
 			label = "USB-C";
 			data-role = "dual";
 			power-role = "dual";
-			try-power-role = "sink";
+			try-power-role = "source";
 			typec-power-opmode = "default";
 			pd-disable;
 
