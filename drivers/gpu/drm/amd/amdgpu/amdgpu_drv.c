@@ -175,7 +175,11 @@ int amdgpu_exp_hw_support;
 int amdgpu_dc = -1;
 int amdgpu_sched_jobs = 32;
 int amdgpu_sched_hw_submission = 2;
+#ifdef CONFIG_SOC_SPACEMIT_K3
+uint amdgpu_pcie_gen_cap = 0x00040004;
+#else
 uint amdgpu_pcie_gen_cap;
+#endif
 uint amdgpu_pcie_lane_cap;
 u64 amdgpu_cg_mask = 0xffffffffffffffff;
 uint amdgpu_pg_mask = 0xffffffff;
